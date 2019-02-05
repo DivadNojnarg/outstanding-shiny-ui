@@ -475,14 +475,172 @@ contains these functions).
 \hypertarget{the-dirty-approach}{%
 \subsubsection{The dirty approach}\label{the-dirty-approach}}
 
+Let's consider the following example. I want to include a bootstrap 4 card in a shiny app.
+This example is taken from an interesting question \href{https://community.rstudio.com/t/create-a-div-using-htmltools-withtags/22439/2}{here}.
+The naive approach would be to include the HTML code directly in the app code
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(shiny)}
+
+\CommentTok{# we create the card function before}
+\NormalTok{my_card <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(...) \{}
+\NormalTok{  htmltools}\OperatorTok{::}\KeywordTok{withTags}\NormalTok{(}
+    \KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{class =} \StringTok{"card border-success mb-3"}\NormalTok{,}
+      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-header bg-transparent border-success"}\NormalTok{),}
+      \KeywordTok{div}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"card-body text-success"}\NormalTok{,}
+        \KeywordTok{h3}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-title"}\NormalTok{, }\StringTok{"title"}\NormalTok{),}
+        \KeywordTok{p}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-text"}\NormalTok{, ...)}
+\NormalTok{      ),}
+      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-footer bg-transparent border-success"}\NormalTok{, }\StringTok{"footer"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{\}}
+
+\CommentTok{# we build our app}
+\KeywordTok{shinyApp}\NormalTok{(}
+    \DataTypeTok{ui =} \KeywordTok{fluidPage}\NormalTok{(}
+      \KeywordTok{fluidRow}\NormalTok{(}
+       \KeywordTok{column}\NormalTok{(}
+        \DataTypeTok{width =} \DecValTok{6}\NormalTok{,}
+        \DataTypeTok{align =} \StringTok{"center"}\NormalTok{,}
+        \KeywordTok{br}\NormalTok{(),}
+        \KeywordTok{my_card}\NormalTok{(}\StringTok{"blablabla. PouetPouet Pouet."}\NormalTok{)}
+\NormalTok{       )}
+\NormalTok{     )}
+\NormalTok{    ),}
+    \DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output) \{\}}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+and desesperately see that nothing is displayed. If you remember, this was expected since
+shiny does not contain bootstrap 4 dependencies and this card is unfortunately a
+bootstrap 4 object. Don't panic! We just need to tell shiny to load the css we need to display
+this card (if required, we could include the javascript as well). We could use either
+\texttt{includeCSS()}, \texttt{tags\$head(tags\$link(rel\ =\ "stylesheet",\ type\ =\ "text/css",\ href\ =\ "custom.css"))}. See
+more \href{https://shiny.rstudio.com/articles/css.html}{here}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{shinyApp}\NormalTok{(}
+    \DataTypeTok{ui =} \KeywordTok{fluidPage}\NormalTok{(}
+      \CommentTok{# load the css code}
+      \KeywordTok{includeCSS}\NormalTok{(}\DataTypeTok{path =} \StringTok{"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"}\NormalTok{),}
+      \KeywordTok{fluidRow}\NormalTok{(}
+       \KeywordTok{column}\NormalTok{(}
+        \DataTypeTok{width =} \DecValTok{6}\NormalTok{,}
+        \DataTypeTok{align =} \StringTok{"center"}\NormalTok{,}
+        \KeywordTok{br}\NormalTok{(),}
+        \KeywordTok{my_card}\NormalTok{(}\StringTok{"blablabla. PouetPouet Pouet."}\NormalTok{)}
+\NormalTok{       )}
+\NormalTok{     )}
+\NormalTok{    ),}
+    \DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output) \{\}}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+The card is ugly (which is another problem we will fix later) but at least displayed.
+
+When I say this approach is dirty, it is because it will not be easily re-usable by others.
+Instead, we prefer a packaging approach, like in the next section.
+
 \hypertarget{the-clean-approach}{%
 \subsubsection{The clean approach}\label{the-clean-approach}}
+
+We will use the \texttt{htmlDependency} and \texttt{attachDependencies} functions from htmltools.
+The htmlDependency takes several arguments:
+
+\begin{itemize}
+\tightlist
+\item
+  the name of your dependency
+\item
+  the version (useful to remember on which version it is built upon)
+\item
+  a path to the dependency (can be a CDN or a local folder)
+\item
+  script and stylesheet to respectively pass css and scripts
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# handle dependency}
+\NormalTok{card_css <-}\StringTok{ "bootstrap.min.css"}
+\NormalTok{bs4_card_dep <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{() \{}
+\NormalTok{  htmltools}\OperatorTok{::}\KeywordTok{htmlDependency}\NormalTok{(}
+    \DataTypeTok{name =} \StringTok{"bs4_card"}\NormalTok{,}
+    \DataTypeTok{version =} \StringTok{"1.0"}\NormalTok{,}
+    \DataTypeTok{src =} \KeywordTok{c}\NormalTok{(}\DataTypeTok{href =} \StringTok{"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/"}\NormalTok{),}
+    \DataTypeTok{stylesheet =}\NormalTok{ card_css}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We create the card tag and give it the bootstrap 4 dependency through the \texttt{attachDependencies()}
+function.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# create the card}
+\NormalTok{my_card <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(...) \{}
+\NormalTok{  cardTag <-}\StringTok{ }\NormalTok{htmltools}\OperatorTok{::}\KeywordTok{withTags}\NormalTok{(}
+    \KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{class =} \StringTok{"card border-success mb-3"}\NormalTok{,}
+      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-header bg-transparent border-success"}\NormalTok{),}
+      \KeywordTok{div}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"card-body text-success"}\NormalTok{,}
+        \KeywordTok{h3}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-title"}\NormalTok{, }\StringTok{"title"}\NormalTok{),}
+        \KeywordTok{p}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-text"}\NormalTok{, ...)}
+\NormalTok{      ),}
+      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-footer bg-transparent border-success"}\NormalTok{, }\StringTok{"footer"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+  
+  \CommentTok{# attach dependencies}
+\NormalTok{  htmltools}\OperatorTok{::}\KeywordTok{attachDependencies}\NormalTok{(cardTag, }\KeywordTok{bs4_card_dep}\NormalTok{())}
+  
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We finally run our app:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# run shiny app }
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+  \DataTypeTok{title =} \StringTok{"Hello Shiny!"}\NormalTok{,}
+  \KeywordTok{fluidRow}\NormalTok{(}
+    \KeywordTok{column}\NormalTok{(}
+      \DataTypeTok{width =} \DecValTok{6}\NormalTok{,}
+      \DataTypeTok{align =} \StringTok{"center"}\NormalTok{,}
+      \KeywordTok{br}\NormalTok{(),}
+      \KeywordTok{my_card}\NormalTok{(}\StringTok{"blablabla. PouetPouet Pouet."}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{)}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, }\DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output) \{ \})}
+\end{Highlighting}
+\end{Shaded}
+
+With this approach, you could develop a package of custom dependencies that people
+could use when they need to add custom elements in shiny.
 
 \hypertarget{template-skeleton}{%
 \section{Template Skeleton}\label{template-skeleton}}
 
-\hypertarget{example}{%
-\section{Example}\label{example}}
+Now that you have the basis about tags and dependencies, we can go through the template organisation\ldots{}
+
+TO DO
+
+\hypertarget{further-considerations}{%
+\section{Further Considerations}\label{further-considerations}}
 
 \bibliography{book.bib,packages.bib}
 

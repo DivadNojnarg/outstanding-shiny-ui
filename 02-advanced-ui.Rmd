@@ -197,11 +197,149 @@ that do not come along with shiny. No problem, htmltools is here for you (shiny 
 contains these functions).
 
 #### The dirty approach
+Let's consider the following example. I want to include a bootstrap 4 card in a shiny app.
+This example is taken from an interesting question [here](https://community.rstudio.com/t/create-a-div-using-htmltools-withtags/22439/2).
+The naive approach would be to include the HTML code directly in the app code
 
+```r
+library(shiny)
+
+# we create the card function before
+my_card <- function(...) {
+  htmltools::withTags(
+    div(
+      class = "card border-success mb-3",
+      div(class = "card-header bg-transparent border-success"),
+      div(
+        class = "card-body text-success",
+        h3(class = "card-title", "title"),
+        p(class = "card-text", ...)
+      ),
+      div(class = "card-footer bg-transparent border-success", "footer")
+    )
+  )
+}
+
+# we build our app
+shinyApp(
+    ui = fluidPage(
+      fluidRow(
+       column(
+        width = 6,
+        align = "center",
+        br(),
+        my_card("blablabla. PouetPouet Pouet.")
+       )
+     )
+    ),
+    server = function(input, output) {}
+)
+```
+
+and desesperately see that nothing is displayed. If you remember, this was expected since
+shiny does not contain bootstrap 4 dependencies and this card is unfortunately a
+bootstrap 4 object. Don't panic! We just need to tell shiny to load the css we need to display
+this card (if required, we could include the javascript as well). We could use either
+`includeCSS()`, `tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"))`. See
+more [here](https://shiny.rstudio.com/articles/css.html).
+
+```r
+shinyApp(
+    ui = fluidPage(
+      # load the css code
+      includeCSS(path = "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"),
+      fluidRow(
+       column(
+        width = 6,
+        align = "center",
+        br(),
+        my_card("blablabla. PouetPouet Pouet.")
+       )
+     )
+    ),
+    server = function(input, output) {}
+)
+```
+
+The card is ugly (which is another problem we will fix later) but at least displayed.
+
+When I say this approach is dirty, it is because it will not be easily re-usable by others.
+Instead, we prefer a packaging approach, like in the next section.
 
 #### The clean approach
 
+We will use the `htmlDependency` and `attachDependencies` functions from htmltools.
+The htmlDependency takes several arguments:
+
+- the name of your dependency
+- the version (useful to remember on which version it is built upon)
+- a path to the dependency (can be a CDN or a local folder)
+- script and stylesheet to respectively pass css and scripts
+
+```r
+# handle dependency
+card_css <- "bootstrap.min.css"
+bs4_card_dep <- function() {
+  htmltools::htmlDependency(
+    name = "bs4_card",
+    version = "1.0",
+    src = c(href = "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/"),
+    stylesheet = card_css
+  )
+}
+```
+
+We create the card tag and give it the bootstrap 4 dependency through the `attachDependencies()`
+function. 
+
+```r
+# create the card
+my_card <- function(...) {
+  cardTag <- htmltools::withTags(
+    div(
+      class = "card border-success mb-3",
+      div(class = "card-header bg-transparent border-success"),
+      div(
+        class = "card-body text-success",
+        h3(class = "card-title", "title"),
+        p(class = "card-text", ...)
+      ),
+      div(class = "card-footer bg-transparent border-success", "footer")
+    )
+  )
+  
+  # attach dependencies
+  htmltools::attachDependencies(cardTag, bs4_card_dep())
+  
+}
+
+```
+
+We finally run our app:
+
+```r
+# run shiny app 
+ui <- fluidPage(
+  title = "Hello Shiny!",
+  fluidRow(
+    column(
+      width = 6,
+      align = "center",
+      br(),
+      my_card("blablabla. PouetPouet Pouet.")
+    )
+  )
+)
+
+shinyApp(ui, server = function(input, output) { })
+```
+
+With this approach, you could develop a package of custom dependencies that people
+could use when they need to add custom elements in shiny.
 
 ## Template Skeleton
+Now that you have the basis about tags and dependencies, we can go through the template organisation...
 
-## Example
+TO DO
+
+## Further Considerations
