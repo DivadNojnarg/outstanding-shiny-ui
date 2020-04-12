@@ -28,8 +28,6 @@ To DO
 
 # (PART\*) Survival Kit {-}
 
-# Introduction {-}
-
 This part will give you basis in HTML, JavaScript to get started...
 
 <!--chapter:end:survival-kit.Rmd-->
