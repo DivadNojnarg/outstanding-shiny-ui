@@ -609,7 +609,7 @@ In this chapter, you will learn how to build your own html templates taken from 
 
 <!--chapter:end:custom-templates.Rmd-->
 
-# Selecting a good template {#practice-template}
+# Template selection {#custom-templates-selection}
 There exists tons of HTML templates over the web. However, only a few part will be suitable for shiny, mainly because of what follows:
 
 * shiny is built on top of [bootstrap 3](https://getbootstrap.com/docs/3.3/) (HTML, CSS and Javascript framework), meaning that going for another framework might
