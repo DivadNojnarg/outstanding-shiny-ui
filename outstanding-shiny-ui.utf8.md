@@ -127,6 +127,16 @@ are some issues, non standard attributes (like `data-toggle`) are not correctly 
 
 [![](outstanding-shiny-ui_files/figure-latex/unnamed-chunk-5-1.pdf)](https://alandipert.shinyapps.io/html2r/)<!-- --> 
 
+<div class="device device-iphone-x">
+<div class="device-frame">
+<iframe class="device-content" width="100%" src="https://alandipert.shinyapps.io/html2r/" allowfullscreen="" frameborder="0" scrolling="no" height="710px></iframe></div>
+<div class="device-stripe"></div>
+<div class="device-header"></div>
+<div class="device-sensors"></div>
+<div class="device-btns"></div>
+<div class="device-power"></div>
+</div>
+
 
 ## Playing with tags
 
