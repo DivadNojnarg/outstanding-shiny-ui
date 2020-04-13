@@ -603,7 +603,7 @@ Now, you may imagine the possibilities are almost unlimited!
 In this chapter, you will learn how to build your own html templates taken from the web 
 and package them, so that they can be re-used at any time by anybody.
 
-<!--chapter:end:practice.Rmd-->
+<!--chapter:end:custom-templates.Rmd-->
 
 # Selecting a good template {#practice-template}
 There exists tons of HTML templates over the web. However, only a few part will be suitable
@@ -625,5 +625,25 @@ See a working example here with [bs4Dash](https://github.com/RinteRface/bs4Dash)
 
 A good source of **open source** HTML templates is [Colorlib](https://colorlib.com) and [Creative Tim](https://www.creative-tim.com/bootstrap-themes/free). You might also buy your template, but forget about the packaging option, which would be illegal in this particular case, unless you have a legal agreement with the author (very unlikely however).
 
-<!--chapter:end:practice-intro.Rmd-->
+<!--chapter:end:custom-templates-intro.Rmd-->
+
+# Define dependencies {#custom-templates-dependencies}
+
+<!--chapter:end:custom-templates-dependencies.Rmd-->
+
+# Template skeleton {#custom-templates-skeleton}
+
+<!--chapter:end:custom-templates-skeleton.Rmd-->
+
+# Develop custom input widgets {#custom-templates-inputs}
+
+## How does Shiny handle inputs?
+
+## How to add new input to Shiny?
+
+<!--chapter:end:custom-templates-inputs.Rmd-->
+
+# Testing templates elements {#custom-templates-testing}
+
+<!--chapter:end:custom-templates-testing.Rmd-->
 
