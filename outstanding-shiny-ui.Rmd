@@ -275,7 +275,7 @@ Let's consider the following example. I want to include a bootstrap 4 card in a 
 This example is taken from an interesting question [here](https://community.rstudio.com/t/create-a-div-using-htmltools-withtags/22439/2).
 The naive approach would be to include the HTML code directly in the app code
 
-```r
+```{r, eval = FALSE}
 library(shiny)
 
 # we create the card function before
@@ -317,7 +317,7 @@ this card (if required, we could include the javascript as well). We could use e
 `includeCSS()`, `tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"))`. See
 more [here](https://shiny.rstudio.com/articles/css.html).
 
-```r
+```{r, eval = FALSE}
 shinyApp(
     ui = fluidPage(
       # load the css code
@@ -350,7 +350,7 @@ The htmlDependency takes several arguments:
 - a path to the dependency (can be a CDN or a local folder)
 - script and stylesheet to respectively pass css and scripts
 
-```r
+```{r, eval = FALSE}
 # handle dependency
 card_css <- "bootstrap.min.css"
 bs4_card_dep <- function() {
@@ -366,7 +366,7 @@ bs4_card_dep <- function() {
 We create the card tag and give it the bootstrap 4 dependency through the `attachDependencies()`
 function. 
 
-```r
+```{r, eval = FALSE}
 # create the card
 my_card <- function(...) {
   cardTag <- htmltools::withTags(
@@ -391,7 +391,7 @@ my_card <- function(...) {
 
 We finally run our app:
 
-```r
+```{r, eval = FALSE}
 # run shiny app 
 ui <- fluidPage(
   title = "Hello Shiny!",
@@ -410,6 +410,129 @@ shinyApp(ui, server = function(input, output) { })
 
 With this approach, you could develop a package of custom dependencies that people
 could use when they need to add custom elements in shiny.
+
+
+## Another example: Importing HTML dependencies from other packages
+
+You may know shinydashboard, a package to design dashboards with shiny. In the following, we would like to integrate the box component in a classic Shiny App (without the dashboard layout). However, if you try to include the Shinydashboard box tag, you will notice that nothing is displayed since Shiny does not have shinydashboard dependencies. Fortunately htmltools contains a function, namely `findDependencies` that looks for all dependencies attached to a tag. How about extracting shinydashboard dependencies? Before going futher, let's define the basic skeleton of a shinydashboard:
+
+```{r, eval = FALSE}
+library(shiny)
+shinyApp(
+  ui = dashboardPage(
+    dashboardHeader(),
+    dashboardSidebar(),
+    dashboardBody(),
+    title = "Dashboard example"
+  ),
+  server = function(input, output) { }
+)
+```
+
+We don't need to understand shinydashboard details. However, if you are interested to dig in, [help yourself](https://rstudio.github.io/shinydashboard/). What is important here is the main
+wrapper function `dashboardPage`. (You should already be familiar with `fluidPage`, another wrapper function). We apply `findDependencies` on `dashboardPage`.
+
+```{r, eval = FALSE}
+deps <- findDependencies(
+  shinydashboard::dashboardPage(
+    header = shinydashboard::dashboardHeader(), 
+    sidebar = shinydashboard::dashboardSidebar(), 
+    body = shinydashboard::dashboardBody()
+  )
+)
+deps
+```
+
+deps is a list containg 4 dependencies:
+  
+  - [Font Awesome](https://fontawesome.com) handles icons
+- [Bootstrap](https://getbootstrap.com/docs/3.3/) is the main HTML/CSS/JS template. Importantly,
+please note the version 3.3.7, whereas the current is 4.3.1
+- [AdminLTE](https://adminlte.io) is the dependency containg HTML/CSS/JS related to the admin template.
+It is closely linked to Bootstrap 3. 
+- shinydashboard, the CSS and javascript necessary for shinydashboard to work properly. In practice,
+integrating custom HTML templates to shiny does not usually work out of the box for many reasons (Explain why!) and some modifications are necessary.
+
+
+```
+[[1]]
+List of 10
+$ name      : chr "font-awesome"
+$ version   : chr "5.3.1"
+$ src       :List of 1
+..$ file: chr "www/shared/fontawesome"
+$ meta      : NULL
+$ script    : NULL
+$ stylesheet: chr [1:2] "css/all.min.css" "css/v4-shims.min.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : chr "shiny"
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+[[2]]
+List of 10
+$ name      : chr "bootstrap"
+$ version   : chr "3.3.7"
+$ src       :List of 2
+..$ href: chr "shared/bootstrap"
+..$ file: chr "/Library/Frameworks/R.framework/Versions/3.5/Resources/library/shiny/www/shared/bootstrap"
+$ meta      :List of 1
+..$ viewport: chr "width=device-width, initial-scale=1"
+$ script    : chr [1:3] "js/bootstrap.min.js" "shim/html5shiv.min.js" "shim/respond.min.js"
+$ stylesheet: chr "css/bootstrap.min.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : NULL
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+[[3]]
+List of 10
+$ name      : chr "AdminLTE"
+$ version   : chr "2.0.6"
+$ src       :List of 1
+..$ file: chr "/Library/Frameworks/R.framework/Versions/3.5/Resources/library/shinydashboard/AdminLTE"
+$ meta      : NULL
+$ script    : chr "app.min.js"
+$ stylesheet: chr [1:2] "AdminLTE.min.css" "_all-skins.min.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : NULL
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+[[4]]
+List of 10
+$ name      : chr "shinydashboard"
+$ version   : chr "0.7.1"
+$ src       :List of 1
+..$ file: chr "/Library/Frameworks/R.framework/Versions/3.5/Resources/library/shinydashboard"
+$ meta      : NULL
+$ script    : chr "shinydashboard.min.js"
+$ stylesheet: chr "shinydashboard.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : NULL
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+```
+
+Below, we attach the dependencies to the `box` with `attachDependencies`. For that
+we wrap it in a function. Notice that our custom `box` does not contain all original features
+from shinydashboard but this is not what matters in this example.
+
+```{r, eval = FALSE}
+library(shiny)
+my_box <- function(title, status) {
+  attachDependencies(box(title = title, status = status), deps)
+}
+ui <- fluidPage(
+  titlePanel("Shiny with a box"),
+  my_box(title = "My box", status = "danger"),
+)
+server <- function(input, output) {}
+shinyApp(ui, server)
+```
+
+Now, you may imagine the possibilities are almost unlimited! 
 
 <!--chapter:end:02-htmltools-dependencies.Rmd-->
 

@@ -429,23 +429,24 @@ The \href{https://github.com/ThinkR-open/brighter}{brighter} package written by 
 \end{Highlighting}
 \end{Shaded}
 
-```r
-mydiv \textless{}- div(class = ``test'', id = ``coucou'', ``Hello'')
-tagRemoveAttributes(mydiv, ``class'', ``id'')
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{mydiv <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"test"}\NormalTok{, }\DataTypeTok{id =} \StringTok{"coucou"}\NormalTok{, }\StringTok{"Hello"}\NormalTok{)}
+\KeywordTok{tagRemoveAttributes}\NormalTok{(mydiv, }\StringTok{"class"}\NormalTok{, }\StringTok{"id"}\NormalTok{)}
 
-\hypertarget{htmltools-dependencies}{%
-\chapter{Dependency utilities}\label{htmltools-dependencies}}
+\OperatorTok{<!--}\NormalTok{chapter}\OperatorTok{:}\NormalTok{end}\OperatorTok{:}\DecValTok{02}\OperatorTok{-}\NormalTok{htmltools}\OperatorTok{-}\NormalTok{overview.Rmd}\OperatorTok{-}\NormalTok{->}
 
-When creating a new template, you sometimes need to import custom HTML dependencies
-that do not come along with shiny. No problem, htmltools is here for you (shiny also
-contains these functions).
+\CommentTok{# Dependency utilities \{#htmltools-dependencies\}}
+\NormalTok{When creating a new template, you sometimes need to import custom HTML dependencies}
+\NormalTok{that do not come along with shiny. No problem, htmltools is here }\ControlFlowTok{for} \KeywordTok{you}\NormalTok{ (shiny also }
+\NormalTok{contains these functions).}
 
-\hypertarget{the-dirty-approach}{%
-\section{The dirty approach}\label{the-dirty-approach}}
-
-Let's consider the following example. I want to include a bootstrap 4 card in a shiny app.
-This example is taken from an interesting question \href{https://community.rstudio.com/t/create-a-div-using-htmltools-withtags/22439/2}{here}.
-The naive approach would be to include the HTML code directly in the app code
+\CommentTok{## The dirty approach}
+\NormalTok{Let}\StringTok{'s consider the following example. I want to include a bootstrap 4 card in a shiny app.}
+\StringTok{This example is taken from an interesting question [here](https://community.rstudio.com/t/create-a-div-using-htmltools-withtags/22439/2).}
+\StringTok{The naive approach would be to include the HTML code directly in the app code}
+\end{Highlighting}
+\end{Shaded}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -599,6 +600,141 @@ We finally run our app:
 
 With this approach, you could develop a package of custom dependencies that people
 could use when they need to add custom elements in shiny.
+
+\hypertarget{another-example-importing-html-dependencies-from-other-packages}{%
+\section{Another example: Importing HTML dependencies from other packages}\label{another-example-importing-html-dependencies-from-other-packages}}
+
+You may know shinydashboard, a package to design dashboards with shiny. In the following, we would like to integrate the box component in a classic Shiny App (without the dashboard layout). However, if you try to include the Shinydashboard box tag, you will notice that nothing is displayed since Shiny does not have shinydashboard dependencies. Fortunately htmltools contains a function, namely \texttt{findDependencies} that looks for all dependencies attached to a tag. How about extracting shinydashboard dependencies? Before going futher, let's define the basic skeleton of a shinydashboard:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(shiny)}
+\KeywordTok{shinyApp}\NormalTok{(}
+  \DataTypeTok{ui =} \KeywordTok{dashboardPage}\NormalTok{(}
+    \KeywordTok{dashboardHeader}\NormalTok{(),}
+    \KeywordTok{dashboardSidebar}\NormalTok{(),}
+    \KeywordTok{dashboardBody}\NormalTok{(),}
+    \DataTypeTok{title =} \StringTok{"Dashboard example"}
+\NormalTok{  ),}
+  \DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output) \{ \}}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+We don't need to understand shinydashboard details. However, if you are interested to dig in, \href{https://rstudio.github.io/shinydashboard/}{help yourself}. What is important here is the main
+wrapper function \texttt{dashboardPage}. (You should already be familiar with \texttt{fluidPage}, another wrapper function). We apply \texttt{findDependencies} on \texttt{dashboardPage}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{deps <-}\StringTok{ }\KeywordTok{findDependencies}\NormalTok{(}
+\NormalTok{  shinydashboard}\OperatorTok{::}\KeywordTok{dashboardPage}\NormalTok{(}
+    \DataTypeTok{header =}\NormalTok{ shinydashboard}\OperatorTok{::}\KeywordTok{dashboardHeader}\NormalTok{(), }
+    \DataTypeTok{sidebar =}\NormalTok{ shinydashboard}\OperatorTok{::}\KeywordTok{dashboardSidebar}\NormalTok{(), }
+    \DataTypeTok{body =}\NormalTok{ shinydashboard}\OperatorTok{::}\KeywordTok{dashboardBody}\NormalTok{()}
+\NormalTok{  )}
+\NormalTok{)}
+\NormalTok{deps}
+\end{Highlighting}
+\end{Shaded}
+
+deps is a list containg 4 dependencies:
+
+\begin{itemize}
+\tightlist
+\item
+  \href{https://fontawesome.com}{Font Awesome} handles icons
+\item
+  \href{https://getbootstrap.com/docs/3.3/}{Bootstrap} is the main HTML/CSS/JS template. Importantly,
+  please note the version 3.3.7, whereas the current is 4.3.1
+\item
+  \href{https://adminlte.io}{AdminLTE} is the dependency containg HTML/CSS/JS related to the admin template.
+  It is closely linked to Bootstrap 3.
+\item
+  shinydashboard, the CSS and javascript necessary for shinydashboard to work properly. In practice,
+  integrating custom HTML templates to shiny does not usually work out of the box for many reasons (Explain why!) and some modifications are necessary.
+\end{itemize}
+
+\begin{verbatim}
+[[1]]
+List of 10
+$ name      : chr "font-awesome"
+$ version   : chr "5.3.1"
+$ src       :List of 1
+..$ file: chr "www/shared/fontawesome"
+$ meta      : NULL
+$ script    : NULL
+$ stylesheet: chr [1:2] "css/all.min.css" "css/v4-shims.min.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : chr "shiny"
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+[[2]]
+List of 10
+$ name      : chr "bootstrap"
+$ version   : chr "3.3.7"
+$ src       :List of 2
+..$ href: chr "shared/bootstrap"
+..$ file: chr "/Library/Frameworks/R.framework/Versions/3.5/Resources/library/shiny/www/shared/bootstrap"
+$ meta      :List of 1
+..$ viewport: chr "width=device-width, initial-scale=1"
+$ script    : chr [1:3] "js/bootstrap.min.js" "shim/html5shiv.min.js" "shim/respond.min.js"
+$ stylesheet: chr "css/bootstrap.min.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : NULL
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+[[3]]
+List of 10
+$ name      : chr "AdminLTE"
+$ version   : chr "2.0.6"
+$ src       :List of 1
+..$ file: chr "/Library/Frameworks/R.framework/Versions/3.5/Resources/library/shinydashboard/AdminLTE"
+$ meta      : NULL
+$ script    : chr "app.min.js"
+$ stylesheet: chr [1:2] "AdminLTE.min.css" "_all-skins.min.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : NULL
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+[[4]]
+List of 10
+$ name      : chr "shinydashboard"
+$ version   : chr "0.7.1"
+$ src       :List of 1
+..$ file: chr "/Library/Frameworks/R.framework/Versions/3.5/Resources/library/shinydashboard"
+$ meta      : NULL
+$ script    : chr "shinydashboard.min.js"
+$ stylesheet: chr "shinydashboard.css"
+$ head      : NULL
+$ attachment: NULL
+$ package   : NULL
+$ all_files : logi TRUE
+- attr(*, "class")= chr "html_dependency"
+\end{verbatim}
+
+Below, we attach the dependencies to the \texttt{box} with \texttt{attachDependencies}. For that
+we wrap it in a function. Notice that our custom \texttt{box} does not contain all original features
+from shinydashboard but this is not what matters in this example.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(shiny)}
+\NormalTok{my_box <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(title, status) \{}
+  \KeywordTok{attachDependencies}\NormalTok{(}\KeywordTok{box}\NormalTok{(}\DataTypeTok{title =}\NormalTok{ title, }\DataTypeTok{status =}\NormalTok{ status), deps)}
+\NormalTok{\}}
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+  \KeywordTok{titlePanel}\NormalTok{(}\StringTok{"Shiny with a box"}\NormalTok{),}
+  \KeywordTok{my_box}\NormalTok{(}\DataTypeTok{title =} \StringTok{"My box"}\NormalTok{, }\DataTypeTok{status =} \StringTok{"danger"}\NormalTok{),}
+\NormalTok{)}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output) \{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Now, you may imagine the possibilities are almost unlimited!
 
 \hypertarget{practice}{%
 \chapter{Practice}\label{practice}}
