@@ -118,12 +118,15 @@ class(div("Blabla"))
 You will not be able to use tag related functions, as in the following parts.
 Therefore, I strongly recommand using R and not mixing HTML in R. Interestingly, if
 you want to convert HTML to R code, there is a Shiny App developed by Alan
-Dippert from RStudio, namely [html2R](https://github.com/alandipert/html2r). There
+Dipert from RStudio, namely [html2R](https://github.com/alandipert/html2r). There
 are some issues, non standard attributes (like `data-toggle`) are not correctly processed but there are [fixes](https://github.com/alandipert/html2r/issues/2). This will save you precious time!
 
-```
+
+```r
 knitr::include_app("https://alandipert.shinyapps.io/html2r/", height = "600px")
 ```
+
+[![](outstanding-shiny-ui_files/figure-latex/unnamed-chunk-5-1.pdf)](https://alandipert.shinyapps.io/html2r/)<!-- --> 
 
 
 ## Playing with tags
