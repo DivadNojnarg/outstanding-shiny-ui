@@ -300,6 +300,7 @@ library(brighter)
 ```r
 mydiv <- div(class = "test", id = "coucou", "Hello")
 tagRemoveAttributes(mydiv, "class", "id")
+```
 
 <!--chapter:end:htmltools-overview.Rmd-->
 
@@ -307,7 +308,7 @@ tagRemoveAttributes(mydiv, "class", "id")
 When creating a new template, you sometimes need to import custom HTML dependencies
 that do not come along with shiny. No problem, htmltools is here for you (shiny also 
 contains these functions).
-```
+
 
 ```r
 library(shiny)
