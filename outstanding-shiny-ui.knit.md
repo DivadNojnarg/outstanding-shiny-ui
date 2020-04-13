@@ -129,10 +129,11 @@ are some issues, non standard attributes (like `data-toggle`) are not correctly 
 ### Tags structure
 
 According to the `tag` function, a tag has:
-- a name such as span, div, h1 ... `tag$name`
-- some attributes, which you can access with `tag$attribs`
-- children, which you can access with `tag$children`
-- a class, namely "shiny.tag"
+
+  - a name such as span, div, h1 ... `tag$name`
+  - some attributes, which you can access with `tag$attribs`
+  - children, which you can access with `tag$children`
+  - a class, namely "shiny.tag"
 
 For instance:
 
@@ -600,14 +601,12 @@ Now, you may imagine the possibilities are almost unlimited!
 
 # (PART\*) Practice {-}
 
-In this chapter, you will learn how to build your own html templates taken from the web 
-and package them, so that they can be re-used at any time by anybody.
+In this chapter, you will learn how to build your own html templates taken from the web and package them, so that they can be re-used at any time by anybody.
 
 <!--chapter:end:custom-templates.Rmd-->
 
 # Selecting a good template {#practice-template}
-There exists tons of HTML templates over the web. However, only a few part will be suitable
-for shiny, mainly because of what follows:
+There exists tons of HTML templates over the web. However, only a few part will be suitable for shiny, mainly because of what follows:
 
 * shiny is built on top of [bootstrap 3](https://getbootstrap.com/docs/3.3/) (HTML, CSS and Javascript framework), meaning that going for another framework might
 not be straightforward. However, shinymaterial and shiny.semantic are examples showing
@@ -617,13 +616,10 @@ the [reactR](https://react-r.github.io/reactR/) package developed by Kent Russel
 
 See [the github repository](https://github.com/rstudio/shiny/tree/master/inst/www/shared) for more details about all dependencies related to the shiny package.
 
-Therefore in the following, we will restict ourself to Bootstrap (3 and 4) together with jQuery. Don't be disapointed since there is still a lot to say.
-
 > Notes: As shiny depends on Bootstrap 3.3.7, we recommand the user who would like to
-experiment Boostrap 4 features to be particularly careful about potential incompatibilies.
-See a working example here with [bs4Dash](https://github.com/RinteRface/bs4Dash).
+experiment Bootstrap 4 features to be particularly careful about potential incompatibilies. See a working example here with [bs4Dash](https://github.com/RinteRface/bs4Dash).
 
-A good source of **open source** HTML templates is [Colorlib](https://colorlib.com) and [Creative Tim](https://www.creative-tim.com/bootstrap-themes/free). You might also buy your template, but forget about the packaging option, which would be illegal in this particular case, unless you have a legal agreement with the author (very unlikely however).
+A good source of **open source** HTML templates is [Colorlib](https://colorlib.com) and [Creative Tim](https://www.creative-tim.com/bootstrap-themes/free). You might also buy your template, but forget about the packaging option, which would be illegal in this particular case.
 
 <!--chapter:end:custom-templates-intro.Rmd-->
 
