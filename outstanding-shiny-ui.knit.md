@@ -69,11 +69,7 @@ While building a custom html template, you will need to know more about the wond
 # htmltools overview {#htmltools-overview}
 
 ## HTML Tags
-htmltools contain tags. However, by experience, htmltools contains more exported tags than shiny.
-For instance, the HTML `<nav></nav>` tag, namely `tags$nav()` in R is not included in the shiny package but 
-in htmltools. 
-
-Within your package code, your tags will be like:
+htmltools contains tools to write HTML tags we saw in Chapter \@ref(survival-kit-html). Within your package code, your tags will be like:
 
 
 ```r
@@ -81,20 +77,32 @@ Within your package code, your tags will be like:
 htmltools::tags$div(...)
 ```
 
-If you had to gather multiple tags together, prefer `tagList()` as `list()`, although the HTML output is the same. The first
-has the shiny.tag.list class in addition to list.
+If you had to gather multiple tags together, prefer `tagList()` as `list()`, although the HTML output is the same. The first has the shiny.tag.list class in addition to list. (The [Golem](http://golemverse.org) package allows to test if a R object is a tag list, therefore using list would make the test fail).
 
 ## Notations
-Whether to use `tags$div` or `div` is the tag is exported by default.
-For instance, you could use `htmltools::div` but not `htmltools::nav` since nav does not 
-have a dedicated function (only for p, h1, h2, h3, h4, h5, h6, a, br, div, span, pre, code, img, strong, em, hr). 
+Whether to use `tags$div` or `div` depends if the tag is exported by default.
+For instance, you could use `htmltools::div` but not `htmltools::nav` since nav does not have a dedicated function (only for p, h1, h2, h3, h4, h5, h6, a, br, div, span, pre, code, img, strong, em, hr). 
 Rather use `htmltools::tags$nav`. Alternatively, there exists a function (in shiny and htmltools) 
 called `withTags()`. Wrapping your code in this function enables you to use `withTags(nav(), ...)` 
 instead of `tags$nav()`.
 
+## Adding new tags
+The `tag` function allows to add extra HTML tags not already defined. You may use it as follows:
+
+
+```r
+tag("test", list(class = "test", p("Custom Tag")))
+# structure below
+█─tag 
+├─"test" 
+└─█─list 
+  ├─class = "test" 
+  └─█─p 
+    └─"Custom Tag" 
+```
 
 ## Alternative way to write tags
-htmltools and shiny come with the `HTML()` function that you can feed with raw HTML:
+htmltools comes with the `HTML()` function that you can feed with raw HTML:
 
 
 ```r
@@ -108,7 +116,15 @@ class(div("Blabla"))
 ```
 
 You will not be able to use tag related functions, as in the following parts.
-Therefore, I strongly recommand using R and not mixing HTML in R.
+Therefore, I strongly recommand using R and not mixing HTML in R. Interestingly, if
+you want to convert HTML to R code, there is a Shiny App developed by Alan
+Dippert from RStudio, namely [html2R](https://github.com/alandipert/html2r). There
+are some issues, non standard attributes (like `data-toggle`) are not correctly processed but there are [fixes](https://github.com/alandipert/html2r/issues/2). This will save you precious time!
+
+```
+knitr::include_app("https://alandipert.shinyapps.io/html2r/", height = "600px")
+```
+
 
 ## Playing with tags
 
