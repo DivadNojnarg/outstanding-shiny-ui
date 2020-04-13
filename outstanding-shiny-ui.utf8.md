@@ -1,7 +1,7 @@
 --- 
 title: "Outstanding User Interfaces with Shiny"
 author: "David Granjon"
-date: "2020-04-13"
+date: "2020-04-14"
 site: bookdown::bookdown_site
 output: bookdown::gitbook
 documentclass: book
@@ -126,16 +126,6 @@ Dipert from RStudio, namely [html2R](https://github.com/alandipert/html2r). Ther
 are some issues, non standard attributes (like `data-toggle`) are not correctly processed but there are [fixes](https://github.com/alandipert/html2r/issues/2). This will save you precious time!
 
 [![](outstanding-shiny-ui_files/figure-latex/unnamed-chunk-5-1.pdf)](https://alandipert.shinyapps.io/html2r/)<!-- --> 
-
-<div class="device device-iphone-x">
-<div class="device-frame">
-<iframe class="device-content" width="100%" src="https://alandipert.shinyapps.io/html2r/" allowfullscreen="" frameborder="0" scrolling="no" height="710px></iframe></div>
-<div class="device-stripe"></div>
-<div class="device-header"></div>
-<div class="device-sensors"></div>
-<div class="device-btns"></div>
-<div class="device-power"></div>
-</div>
 
 
 ## Playing with tags
