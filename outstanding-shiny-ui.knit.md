@@ -49,12 +49,12 @@ This part will give you basis in HTML, JavaScript to get started...
 
 <!--chapter:end:02-survival-kit.Rmd-->
 
-# HTML {#html}
+# HTML {#survival-kit-html}
 
 
 <!--chapter:end:02-survival-kit-html.Rmd-->
 
-# JavaScript {#javascript}
+# JavaScript {#survival-kit-javascript}
 
 
 <!--chapter:end:02-survival-kit-javascript.Rmd-->
@@ -287,7 +287,7 @@ mydiv <- div(class = "parent", id = "mother", "Not the mama!!!", "Hey!")
 
 Alternatively, we could also create a `tagRemoveChildren` function. Also notice that the function raises an error if the provided tag does not have children. 
 
-#### Other interesting functions
+### Other interesting functions
 The [brighter](https://github.com/ThinkR-open/brighter) package written by Colin Fay contains neat functions to edit your tags. Particularly, the `tagRemoveAttributes`
 
 
@@ -307,16 +307,20 @@ tagRemoveAttributes(mydiv, "class", "id")
 When creating a new template, you sometimes need to import custom HTML dependencies
 that do not come along with shiny. No problem, htmltools is here for you (shiny also 
 contains these functions).
+```
+
+```r
+library(shiny)
+library(shinydashboard)
+```
 
 ## The dirty approach
 Let's consider the following example. I want to include a bootstrap 4 card in a shiny app.
 This example is taken from an interesting question [here](https://community.rstudio.com/t/create-a-div-using-htmltools-withtags/22439/2).
 The naive approach would be to include the HTML code directly in the app code
-```
+
 
 ```r
-library(shiny)
-
 # we create the card function before
 my_card <- function(...) {
   htmltools::withTags(
@@ -335,17 +339,17 @@ my_card <- function(...) {
 
 # we build our app
 shinyApp(
-    ui = fluidPage(
-      fluidRow(
-       column(
+  ui = fluidPage(
+    fluidRow(
+      column(
         width = 6,
         align = "center",
         br(),
         my_card("blablabla. PouetPouet Pouet.")
-       )
-     )
-    ),
-    server = function(input, output) {}
+      )
+    )
+  ),
+  server = function(input, output) {}
 )
 ```
 
@@ -359,19 +363,19 @@ more [here](https://shiny.rstudio.com/articles/css.html).
 
 ```r
 shinyApp(
-    ui = fluidPage(
-      # load the css code
-      includeCSS(path = "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"),
-      fluidRow(
-       column(
+  ui = fluidPage(
+    # load the css code
+    includeCSS(path = "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"),
+    fluidRow(
+      column(
         width = 6,
         align = "center",
         br(),
         my_card("blablabla. PouetPouet Pouet.")
-       )
-     )
-    ),
-    server = function(input, output) {}
+      )
+    )
+  ),
+  server = function(input, output) {}
 )
 ```
 
@@ -460,7 +464,6 @@ You may know shinydashboard, a package to design dashboards with shiny. In the f
 
 
 ```r
-library(shiny)
 shinyApp(
   ui = dashboardPage(
     dashboardHeader(),
@@ -488,8 +491,8 @@ deps
 ```
 
 deps is a list containg 4 dependencies:
-  
-  - [Font Awesome](https://fontawesome.com) handles icons
+
+- [Font Awesome](https://fontawesome.com) handles icons
 - [Bootstrap](https://getbootstrap.com/docs/3.3/) is the main HTML/CSS/JS template. Importantly,
 please note the version 3.3.7, whereas the current is 4.3.1
 - [AdminLTE](https://adminlte.io) is the dependency containg HTML/CSS/JS related to the admin template.
@@ -565,7 +568,6 @@ from shinydashboard but this is not what matters in this example.
 
 
 ```r
-library(shiny)
 my_box <- function(title, status) {
   attachDependencies(box(title = title, status = status), deps)
 }
@@ -594,7 +596,7 @@ for shiny, mainly because of what follows:
 not be straightforward. However, shinymaterial and shiny.semantic are examples showing
 this can be possible.
 * shiny relies on [jQuery](https://jquery.com) (currently v 1.12.4 for shiny, whereas the latest version is 3.3.1). Consequently, all templates based upon React, Vue and other Javascript framework will not be natively supported. Again, there exist some [examples](https://github.com/alandipert/react-widget-demo/blob/master/app.R) for React with shiny and more generally,
-the [reactR](https://react-r.github.io/reactR/) package developed by Kent Russell (@timelyportfolio on Twitter) and Alan Dipert from RStudio.
+the [reactR](https://react-r.github.io/reactR/) package developed by Kent Russell and Alan Dipert from RStudio.
 
 See [the github repository](https://github.com/rstudio/shiny/tree/master/inst/www/shared) for more details about all dependencies related to the shiny package.
 
