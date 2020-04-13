@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-04-12}
+\date{2020-04-13}
 
 \begin{document}
 \maketitle
@@ -155,7 +155,7 @@ While building a custom html template, you will need to know more about the wond
 \hypertarget{html-tags}{%
 \section{HTML Tags}\label{html-tags}}
 
-Both shiny and htmltools contain tags. However, by experience, htmltools contains more exported tags than shiny.
+htmltools contain tags. However, by experience, htmltools contains more exported tags than shiny.
 For instance, the HTML \texttt{\textless{}nav\textgreater{}\textless{}/nav\textgreater{}} tag, namely \texttt{tags\$nav()} in R is not included in the shiny package but
 in htmltools.
 
@@ -172,7 +172,7 @@ If you had to gather multiple tags together, prefer \texttt{tagList()} as \textt
 has the shiny.tag.list class in addition to list.
 
 \hypertarget{notations}{%
-\subsection{Notations}\label{notations}}
+\section{Notations}\label{notations}}
 
 Whether to use \texttt{tags\$div} or \texttt{div} is the tag is exported by default.
 For instance, you could use \texttt{htmltools::div} but not \texttt{htmltools::nav} since nav does not
@@ -182,7 +182,7 @@ called \texttt{withTags()}. Wrapping your code in this function enables you to u
 instead of \texttt{tags\$nav()}.
 
 \hypertarget{alternative-way-to-write-tags}{%
-\subsection{Alternative way to write tags}\label{alternative-way-to-write-tags}}
+\section{Alternative way to write tags}\label{alternative-way-to-write-tags}}
 
 htmltools and shiny come with the \texttt{HTML()} function that you can feed with raw HTML:
 
@@ -201,12 +201,15 @@ htmltools and shiny come with the \texttt{HTML()} function that you can feed wit
 You will not be able to use tag related functions, as in the following parts.
 Therefore, I strongly recommand using R and not mixing HTML in R.
 
+\hypertarget{playing-with-tags}{%
+\section{Playing with tags}\label{playing-with-tags}}
+
 \hypertarget{tags-structure}{%
 \subsection{Tags structure}\label{tags-structure}}
 
-According to the htmltools \texttt{tag()} function, a tag has:
-- a name such as span, div, h1 \ldots{}
-- attributes, which you can access with \texttt{tag\$attribs}
+According to the \texttt{tag} function, a tag has:
+- a name such as span, div, h1 \ldots{} \texttt{tag\$name}
+- some attributes, which you can access with \texttt{tag\$attribs}
 - children, which you can access with \texttt{tag\$children}
 - a class, namely ``shiny.tag''
 
@@ -219,35 +222,31 @@ For instance:
   \DataTypeTok{class =} \StringTok{"divclass"}\NormalTok{, }
   \DataTypeTok{id =} \StringTok{"first"}\NormalTok{,}
   \KeywordTok{h1}\NormalTok{(}\StringTok{"Here comes your baby"}\NormalTok{),}
-  \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"child"}\NormalTok{, }\DataTypeTok{id =} \StringTok{"baby"}\NormalTok{, }\StringTok{"Ouinnnnn"}\NormalTok{)}
+  \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"child"}\NormalTok{, }\DataTypeTok{id =} \StringTok{"baby"}\NormalTok{, }\StringTok{"Crying"}\NormalTok{)}
 \NormalTok{)}
-
 \CommentTok{# access its name}
 \NormalTok{myTag}\OperatorTok{$}\NormalTok{name}
-
 \CommentTok{# access its attributes (id and class)}
 \NormalTok{myTag}\OperatorTok{$}\NormalTok{attribs}
-
 \CommentTok{# access children (returns a list of 2 elements)}
 \NormalTok{myTag}\OperatorTok{$}\NormalTok{children}
+\CommentTok{# access its class}
+\KeywordTok{class}\NormalTok{(myTag)}
 \end{Highlighting}
 \end{Shaded}
 
-How to modify the class of the second child?
+How to modify the class of the second child, namely span?
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{second_children <-}\StringTok{ }\NormalTok{myTag}\OperatorTok{$}\NormalTok{children[[}\DecValTok{2}\NormalTok{]]}
 \NormalTok{second_children}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class <-}\StringTok{ "adult"}
 \NormalTok{myTag}
-
 \CommentTok{# Hummm, this is not working ...}
 \end{Highlighting}
 \end{Shaded}
 
-The code above is wrong. Indeed, by assigning \texttt{myTag\$children{[}{[}2{]}{]}} to second\_children,
-\texttt{second\_children\$attribs\$class\ \textless{}-\ "adult"} modifies the class of the copy and not the
-original object. Only one way:
+Why is this not working? By assigning \texttt{myTag\$children{[}{[}2{]}{]}} to second\_children, \texttt{second\_children\$attribs\$class\ \textless{}-\ "adult"} modifies the class of the copy and not the original object. Thus we do:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -256,21 +255,23 @@ original object. Only one way:
 \end{Highlighting}
 \end{Shaded}
 
-For strongly nested tags, you will see that the following section contains amazing functions,
-such as \texttt{tagAppenChild()}.
+In the following section we explore helper functions, such as \texttt{tagAppendChild} from htmltools.
 
 \hypertarget{useful-functions-for-tags}{%
-\subsection{Useful functions for Tags}\label{useful-functions-for-tags}}
+\subsection{Useful functions for tags}\label{useful-functions-for-tags}}
 
-htmltools and shiny have powerful functions to easily add attributes to tags, check for
-existing attributes, get attributes and add other tags to a list of tags.
+htmltools and Shiny have powerful functions to easily add attributes to tags, check for existing attributes, get attributes and add other siblings to a list of tags.
+
+\hypertarget{add-attributes}{%
+\subsubsection{Add attributes}\label{add-attributes}}
 
 \begin{itemize}
 \tightlist
 \item
-  \texttt{tagAppendAttributes()}: this function allow you to add a new attribute to the current tag.
-  For instance, assuming you created a div for which you forgot to add and id attribute:
+  \texttt{tagAppendAttributes}: this function allow you to add a new attribute to the current tag.
 \end{itemize}
+
+For instance, assuming you created a div for which you forgot to add an id attribute:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -279,8 +280,7 @@ existing attributes, get attributes and add other tags to a list of tags.
 \end{Highlighting}
 \end{Shaded}
 
-You can pass as many attributes as you want, including non standard attributes such as
-\texttt{data-toggle} (see Bootstrap 3 tabs for instance):
+You can pass as many attributes as you want, including non standard attributes such as \texttt{data-toggle} (see Bootstrap 3 tabs for instance):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -290,10 +290,13 @@ You can pass as many attributes as you want, including non standard attributes s
 \end{Highlighting}
 \end{Shaded}
 
+\hypertarget{check-if-tag-has-specific-attribute}{%
+\subsubsection{Check if tag has specific attribute}\label{check-if-tag-has-specific-attribute}}
+
 \begin{itemize}
 \tightlist
 \item
-  \texttt{tagHasAttribute()}: to check if a tag has a specific attribute
+  \texttt{tagHasAttribute}: to check if a tag has a specific attribute
 \end{itemize}
 
 \begin{Shaded}
@@ -302,17 +305,19 @@ You can pass as many attributes as you want, including non standard attributes s
 \NormalTok{mydiv <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"myclass"}\NormalTok{)}
 \NormalTok{has_class <-}\StringTok{ }\KeywordTok{tagHasAttribute}\NormalTok{(mydiv, }\StringTok{"class"}\NormalTok{)}
 \NormalTok{has_class}
-
 \CommentTok{# if you are familiar with %>%}
 \NormalTok{has_class <-}\StringTok{ }\NormalTok{mydiv }\OperatorTok{%>%}\StringTok{ }\KeywordTok{tagHasAttribute}\NormalTok{(}\StringTok{"class"}\NormalTok{)}
 \NormalTok{has_class}
 \end{Highlighting}
 \end{Shaded}
 
+\hypertarget{get-all-attributes}{%
+\subsubsection{Get all attributes}\label{get-all-attributes}}
+
 \begin{itemize}
 \tightlist
 \item
-  \texttt{tagGetAttribute()}: to get the value of the targeted attributes, if it exists, otherwise NULL.
+  \texttt{tagGetAttribute}: to get the value of the targeted attributes, if it exists, otherwise NULL.
 \end{itemize}
 
 \begin{Shaded}
@@ -325,11 +330,37 @@ You can pass as many attributes as you want, including non standard attributes s
 \end{Highlighting}
 \end{Shaded}
 
+\hypertarget{set-childchildren}{%
+\subsection{Set child/children}\label{set-childchildren}}
+
 \begin{itemize}
 \tightlist
 \item
-  \texttt{tagAppendChild()} and \texttt{tagAppendChildren()}: add other tags to an existing tag.
-  Whereas \texttt{tagAppendChild()} only takes on tag, you can pass a list of tags to \texttt{tagAppendChildren()}.
+  \texttt{tagSetChildren} allows to create children for a given tag. For instance:
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{mydiv <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"parent"}\NormalTok{, }\DataTypeTok{id =} \StringTok{"mother"}\NormalTok{, }\StringTok{"Not the mama!!!"}\NormalTok{)}
+\CommentTok{# mydiv has 1 child "Not the mama!!!"}
+\NormalTok{mydiv }
+\NormalTok{children <-}\StringTok{ }\KeywordTok{lapply}\NormalTok{(}\DecValTok{1}\OperatorTok{:}\DecValTok{3}\NormalTok{, span)}
+\NormalTok{mydiv <-}\StringTok{ }\KeywordTok{tagSetChildren}\NormalTok{(mydiv, children)}
+\CommentTok{# mydiv has 3 children, the first one was removed}
+\NormalTok{mydiv }
+\end{Highlighting}
+\end{Shaded}
+
+Notice that \texttt{tagSetChildren} removes all existing children. Below we see another set of functions to add children while conserving existing ones.
+
+\hypertarget{add-child-or-children}{%
+\subsubsection{Add child or children}\label{add-child-or-children}}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{tagAppendChild} and \texttt{tagAppendChildren}: add other tags to an existing tag.
+  Whereas \texttt{tagAppendChild} only takes one tag, you can pass a list of tags to \texttt{tagAppendChildren}.
 \end{itemize}
 
 \begin{Shaded}
@@ -340,13 +371,56 @@ You can pass as many attributes as you want, including non standard attributes s
 \end{Highlighting}
 \end{Shaded}
 
-You might wonder why there is no \texttt{tagRemoveChild()} or \texttt{tagRemoveAttributes()}.
+You might wonder why there is no \texttt{tagRemoveChild} or \texttt{tagRemoveAttributes}.
+Let's look at the \texttt{tagAppendChild}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tagAppendChild <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{ (tag, child) \{}
+\NormalTok{  tag}\OperatorTok{$}\NormalTok{children[[}\KeywordTok{length}\NormalTok{(tag}\OperatorTok{$}\NormalTok{children) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{]] <-}\StringTok{ }\NormalTok{child}
+\NormalTok{  tag}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Below we write the \texttt{tagRemoveChild}, where tag is the target and n is the position to remove in the list of children:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{mydiv <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"parent"}\NormalTok{, }\DataTypeTok{id =} \StringTok{"mother"}\NormalTok{, }\StringTok{"Not the mama!!!"}\NormalTok{, }\KeywordTok{span}\NormalTok{(}\StringTok{"Hey!"}\NormalTok{))}
+
+\CommentTok{# we create the tagRemoveChild function}
+\NormalTok{tagRemoveChild <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(tag, n) \{}
+  \CommentTok{# check if the list is empty}
+  \ControlFlowTok{if}\NormalTok{ (rlang}\OperatorTok{::}\KeywordTok{is_empty}\NormalTok{(tag}\OperatorTok{$}\NormalTok{children)) \{}
+    \KeywordTok{stop}\NormalTok{(}\KeywordTok{paste}\NormalTok{(tag}\OperatorTok{$}\NormalTok{name, }\StringTok{"does not have any children"}\NormalTok{))}
+\NormalTok{  \}}
+\NormalTok{  tag}\OperatorTok{$}\NormalTok{children[n] <-}\StringTok{ }\OtherTok{NULL}
+\NormalTok{  tag}
+\NormalTok{\}}
+\NormalTok{mydiv <-}\StringTok{ }\KeywordTok{tagRemoveChild}\NormalTok{(mydiv, }\DecValTok{1}\NormalTok{)}
+\NormalTok{mydiv}
+\end{Highlighting}
+\end{Shaded}
+
+When defining the \texttt{tagRemoveChild}, we choose \texttt{{[}} instead of \texttt{{[}{[}} to allow to select multiple list elements:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{mydiv <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"parent"}\NormalTok{, }\DataTypeTok{id =} \StringTok{"mother"}\NormalTok{, }\StringTok{"Not the mama!!!"}\NormalTok{, }\StringTok{"Hey!"}\NormalTok{)}
+\CommentTok{# fails}
+\StringTok{`}\DataTypeTok{[[}\StringTok{`}\NormalTok{(mydiv}\OperatorTok{$}\NormalTok{children, }\KeywordTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{))}
+\CommentTok{# works}
+\StringTok{`}\DataTypeTok{[}\StringTok{`}\NormalTok{(mydiv}\OperatorTok{$}\NormalTok{children, }\KeywordTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+Alternatively, we could also create a \texttt{tagRemoveChildren} function. Also notice that the function raises an error if the provided tag does not have children.
 
 \hypertarget{other-interesting-functions}{%
-\subsection{Other interesting functions}\label{other-interesting-functions}}
+\subsubsection{Other interesting functions}\label{other-interesting-functions}}
 
-The \href{https://github.com/ThinkR-open/brighter}{brighter} package written by Colin Fay contains
-very neat functions to edit your tags. Particularly, the \texttt{tagRemoveAttributes()}
+The \href{https://github.com/ThinkR-open/brighter}{brighter} package written by Colin Fay contains neat functions to edit your tags. Particularly, the \texttt{tagRemoveAttributes}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -355,14 +429,9 @@ very neat functions to edit your tags. Particularly, the \texttt{tagRemoveAttrib
 \end{Highlighting}
 \end{Shaded}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{mydiv <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"test"}\NormalTok{, }\DataTypeTok{id =} \StringTok{"coucou"}\NormalTok{, }\StringTok{"Prout"}\NormalTok{)}
-\KeywordTok{tagRemoveAttributes}\NormalTok{(mydiv, }\StringTok{"class"}\NormalTok{, }\StringTok{"id"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-Up to you to create new functions to add in this package and do a nice PR.
+```r
+mydiv \textless{}- div(class = ``test'', id = ``coucou'', ``Hello'')
+tagRemoveAttributes(mydiv, ``class'', ``id'')
 
 \hypertarget{htmltools-dependencies}{%
 \chapter{Dependency utilities}\label{htmltools-dependencies}}
