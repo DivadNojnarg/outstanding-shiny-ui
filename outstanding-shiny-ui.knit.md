@@ -12,14 +12,26 @@ github-repo: rstudio/bookdown-demo
 description: "This book will serve as content for the 2020 erum workshop."
 ---
 
-# Prerequisites
+# Prerequisites {-}
 
 - Be familiar with [Shiny](https://mastering-shiny.org), the concept of modules
 - Basic knowledge in HTML and JavaScript is a plus but not mandatory.
 
-# Disclaimer
+## Disclaimer {-}
 
 This book is not an HTML/Javascript/CSS course! It provides a _survival kit_ to be able to customize Shiny. I am sure however that readers will want to explore more about these topics.
+
+## Is this book for me? {-}
+
+You should read this book if you answer yes to at least 2 of the following questions:
+
+  - Do you want to know how to develop outstanding shiny apps?
+  - Have you ever wondered how to develop new input widgets?
+  
+
+## Related content {-}
+
+See the [RStudio Cloud](https://rstudio.cloud) dedicated project.
 
 
 
@@ -37,12 +49,12 @@ This part will give you basis in HTML, JavaScript to get started...
 
 <!--chapter:end:02-survival-kit.Rmd-->
 
-# HTML 
+# HTML {#html}
 
 
 <!--chapter:end:02-survival-kit-html.Rmd-->
 
-# JavaScript
+# JavaScript {#javascript}
 
 
 <!--chapter:end:02-survival-kit-javascript.Rmd-->
