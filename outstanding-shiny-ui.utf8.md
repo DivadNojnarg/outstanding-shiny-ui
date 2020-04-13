@@ -332,6 +332,7 @@ contains these functions).
 ```r
 library(shiny)
 library(shinydashboard)
+library(shiny.semantic)
 ```
 
 ## The dirty approach
@@ -601,6 +602,28 @@ shinyApp(ui, server)
 ```
 
 Now, you may imagine the possibilities are almost unlimited! 
+
+## Suppress dependencies
+
+In rare cases, you may need to remove an existing dependency (conflict). The `suppressDependencies` allows to perform that task. [shiny.semantic](https://github.com/Appsilon/shiny.semantic) built on top of 
+semantic ui is not compatible with Bootstrap. Below, we remove the AdminLTE dependency
+from a shinydashboard page and nothing is displayed (as expected):
+
+
+```r
+shinyApp(
+  ui = tagList(
+    dashboardPage(
+    dashboardHeader(),
+    dashboardSidebar(),
+    dashboardBody(suppressDependencies("AdminLTE")),
+    title = "Dashboard example"
+  ),
+  adminlte3_deps
+  ),
+  server = function(input, output) { }
+)
+```
 
 <!--chapter:end:htmltools-dependencies.Rmd-->
 
