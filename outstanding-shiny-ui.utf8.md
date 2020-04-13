@@ -583,12 +583,14 @@ Now, you may imagine the possibilities are almost unlimited!
 
 <!--chapter:end:htmltools-dependencies.Rmd-->
 
-# Practice {#practice}
+# (PART\*) Practice {-}
 
 In this chapter, you will learn how to build your own html templates taken from the web 
 and package them, so that they can be re-used at any time by anybody.
 
-## Selecting a good template
+<!--chapter:end:practice.Rmd-->
+
+# Selecting a good template {#practice-template}
 There exists tons of HTML templates over the web. However, only a few part will be suitable
 for shiny, mainly because of what follows:
 
@@ -608,5 +610,5 @@ See a working example here with [bs4Dash](https://github.com/RinteRface/bs4Dash)
 
 A good source of **open source** HTML templates is [Colorlib](https://colorlib.com) and [Creative Tim](https://www.creative-tim.com/bootstrap-themes/free). You might also buy your template, but forget about the packaging option, which would be illegal in this particular case, unless you have a legal agreement with the author (very unlikely however).
 
-<!--chapter:end:practice.Rmd-->
+<!--chapter:end:practice-intro.Rmd-->
 
