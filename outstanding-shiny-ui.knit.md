@@ -333,6 +333,7 @@ contains these functions).
 library(shiny)
 library(shinydashboard)
 library(shiny.semantic)
+library(cascadess)
 ```
 
 ## The dirty approach
@@ -628,6 +629,19 @@ shinyApp(
 
 ## CSS
 - See [cascadess](https://github.com/nteetor/cascadess) to customize the style of tags
+
+
+```r
+ui <- list(
+  cascadess(),
+  h4(
+    .style %>%
+      font(case = "upper") %>%
+      border(bottom = "red"),
+    "Etiam vel tortor sodales tellus ultricies commodo."
+  )
+)
+```
 
 <!--chapter:end:htmltools-other-tools.Rmd-->
 
