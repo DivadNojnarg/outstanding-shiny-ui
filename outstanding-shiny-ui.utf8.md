@@ -624,6 +624,13 @@ shinyApp(
 
 <!--chapter:end:htmltools-dependencies.Rmd-->
 
+# Other tools {#htmltools-other-tools}
+
+## CSS
+- See [cascadess](https://github.com/nteetor/cascadess) to customize the style of tags
+
+<!--chapter:end:htmltools-other-tools.Rmd-->
+
 # (PART\*) Practice {-}
 
 In this chapter, you will learn how to build your own html templates taken from the web and package them, so that they can be re-used at any time by anybody.
