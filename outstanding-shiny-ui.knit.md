@@ -34,12 +34,23 @@ You should read this book if you answer yes to the following questions:
 See the [RStudio Cloud](https://rstudio.cloud) dedicated project.
 
 
+```r
+library(shiny)
+library(shinydashboard)
+library(shiny.semantic)
+library(cascadess)
+library(htmltools)
+library(purrr)
+library(magrittr)
+```
+
+
 
 <!--chapter:end:index.Rmd-->
 
 # Introduction {#intro}
 
-In the past two years, there were various Shiny focused resources introducing basic as well as advanced topics such as modules and Javascript/R interactions. However, handling advanced user interfaces was never an emphasis. Clients often desire custom designs, yet this generally exceeds core features of Shiny. We recognized that R App developers lacking a significant background in web development may have found this requirement to be overwhelming. Consequently, the aim of this book is to provide readers the necessary knowledge to extend Shiny's layout, input widgets and output elements. Thi book is organized into four parts. We first go through the basics of HTML, JavaScript and jQuery. In part 2, we dive into the {htmltools} package, providing functions to create and manipulate shiny tags as well as manage dependencies. Part 3 homes in on the development of a new template on top of Shiny by demonstrating examples from the {bs4Dash} and {shinyMobile} packages, part of the RinteRface project.
+There are various Shiny focused resources introducing basic as well as advanced topics such as modules and Javascript/R interactions. However, handling advanced user interfaces was never an emphasis. Clients often desire custom designs, yet this generally exceeds core features of Shiny. We recognized that R App developers lacking a significant background in web development may have found this requirement to be overwhelming. Consequently, the aim of this book is to provide readers the necessary knowledge to extend Shiny's layout, input widgets and output elements. This book is organized into four parts. We first go through the basics of HTML, JavaScript and jQuery. In part 2, we dive into the {htmltools} package, providing functions to create and manipulate shiny tags as well as manage dependencies. Part 3 homes in on the development of a new template on top of Shiny by demonstrating examples from the {bs4Dash} and {shinyMobile} packages, part of the RinteRface project.
 
 <!--chapter:end:intro.Rmd-->
 
@@ -73,12 +84,12 @@ While building a custom html template, you will need to know more about the wond
 # htmltools overview {#htmltools-overview}
 
 ## HTML Tags
-htmltools contains tools to write HTML tags we saw in Chapter \@ref(survival-kit-html). Within your package code, your tags will be like:
+
+htmltools contains tools to write HTML tags we saw in Chapter \@ref(survival-kit-html):
 
 
 ```r
-# we use htmltools tags instead of shiny
-htmltools::tags$div(...)
+div()
 ```
 
 If you had to gather multiple tags together, prefer `tagList()` as `list()`, although the HTML output is the same. The first has the shiny.tag.list class in addition to list. (The [Golem](http://golemverse.org) package allows to test if a R object is a tag list, therefore using list would make the test fail).
@@ -283,8 +294,8 @@ mydiv <- div(class = "parent", id = "mother", "Not the mama!!!", span("Hey!"))
 # we create the tagRemoveChild function
 tagRemoveChild <- function(tag, n) {
   # check if the list is empty
-  if (rlang::is_empty(tag$children)) {
-    stop(paste(tag$name, "does not have any children"))
+  if (length(tag$children) == 0) {
+    stop(paste(tag$name, "does not have any children!"))
   }
   tag$children[n] <- NULL
   tag
@@ -307,12 +318,19 @@ mydiv <- div(class = "parent", id = "mother", "Not the mama!!!", "Hey!")
 Alternatively, we could also create a `tagRemoveChildren` function. Also notice that the function raises an error if the provided tag does not have children. 
 
 ### Other interesting functions
-The [brighter](https://github.com/ThinkR-open/brighter) package written by Colin Fay contains neat functions to edit your tags. Particularly, the `tagRemoveAttributes`
+The [Golem](https://github.com/ThinkR-open/golem/blob/dev/inst/utils/golem_utils_ui.R) package written by [thinkr](https://thinkr.fr) contains neat functions to edit your tags. 
+
+Particularly, the `tagRemoveAttributes`:
 
 
 ```r
-remotes::install_github("Thinkr-open/brighter")
-library(brighter)
+tagRemoveAttributes <- function(tag, ...) {
+  attrs <- as.character(list(...))
+  for (i in seq_along(attrs)) {
+    tag$attribs[[ attrs[i] ]] <- NULL
+  }
+  tag
+}
 ```
 
 
@@ -367,6 +385,31 @@ div(class = "cl", h1("Hello")) %>%
   tagAppendChild(p("some extra text here!"))
 ```
 
+### Programmatically create children elements
+
+Assume you want to create a tag with 3 children inside:
+
+
+```r
+div(
+  span(1),
+  span(2),
+  span(3),
+  span(4),
+  span(5)
+)
+```
+
+The structure is correct but imagine if you had to create 1000 `span` or fancier tag. The previous approach is not consistent with DRY programming. `lapply` function will be useful here (or the purrr `map` family):
+
+
+```r
+# base R
+div(lapply(1:5, function(i) span(i)))
+# purrr + %>%
+map(1:5, function(i) span(i)) %>% div()
+```
+
 <!--chapter:end:htmltools-overview.Rmd-->
 
 # Dependency utilities {#htmltools-dependencies}
@@ -374,13 +417,6 @@ When creating a new template, you sometimes need to import custom HTML dependenc
 that do not come along with shiny. No problem, htmltools is here for you (shiny also 
 contains these functions).
 
-
-```r
-library(shiny)
-library(shinydashboard)
-library(shiny.semantic)
-library(cascadess)
-```
 
 ## The dirty approach
 Let's consider the following example. I want to include a bootstrap 4 card in a shiny app.
@@ -391,7 +427,7 @@ The naive approach would be to include the HTML code directly in the app code
 ```r
 # we create the card function before
 my_card <- function(...) {
-  htmltools::withTags(
+  withTags(
     div(
       class = "card border-success mb-3",
       div(class = "card-header bg-transparent border-success"),
@@ -467,7 +503,7 @@ The htmlDependency takes several arguments:
 # handle dependency
 card_css <- "bootstrap.min.css"
 bs4_card_dep <- function() {
-  htmltools::htmlDependency(
+  htmlDependency(
     name = "bs4_card",
     version = "1.0",
     src = c(href = "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/"),
@@ -483,7 +519,7 @@ We create the card tag and give it the bootstrap 4 dependency through the `attac
 ```r
 # create the card
 my_card <- function(...) {
-  cardTag <- htmltools::withTags(
+  cardTag <- withTags(
     div(
       class = "card border-success mb-3",
       div(class = "card-header bg-transparent border-success"),
@@ -552,10 +588,10 @@ wrapper function `dashboardPage`. (You should already be familiar with `fluidPag
 
 ```r
 deps <- findDependencies(
-  shinydashboard::dashboardPage(
-    header = shinydashboard::dashboardHeader(), 
-    sidebar = shinydashboard::dashboardSidebar(), 
-    body = shinydashboard::dashboardBody()
+  dashboardPage(
+    header = dashboardHeader(), 
+    sidebar = dashboardSidebar(), 
+    body = dashboardBody()
   )
 )
 deps

@@ -1,11 +1,11 @@
 # htmltools overview {#htmltools-overview}
 
 ## HTML Tags
-htmltools contains tools to write HTML tags we saw in Chapter \@ref(survival-kit-html). Within your package code, your tags will be like:
+
+htmltools contains tools to write HTML tags we saw in Chapter \@ref(survival-kit-html):
 
 ```{r, eval = FALSE}
-# we use htmltools tags instead of shiny
-htmltools::tags$div(...)
+div()
 ```
 
 If you had to gather multiple tags together, prefer `tagList()` as `list()`, although the HTML output is the same. The first has the shiny.tag.list class in addition to list. (The [Golem](http://golemverse.org) package allows to test if a R object is a tag list, therefore using list would make the test fail).
@@ -199,8 +199,8 @@ mydiv <- div(class = "parent", id = "mother", "Not the mama!!!", span("Hey!"))
 # we create the tagRemoveChild function
 tagRemoveChild <- function(tag, n) {
   # check if the list is empty
-  if (rlang::is_empty(tag$children)) {
-    stop(paste(tag$name, "does not have any children"))
+  if (length(tag$children) == 0) {
+    stop(paste(tag$name, "does not have any children!"))
   }
   tag$children[n] <- NULL
   tag
@@ -222,11 +222,18 @@ mydiv <- div(class = "parent", id = "mother", "Not the mama!!!", "Hey!")
 Alternatively, we could also create a `tagRemoveChildren` function. Also notice that the function raises an error if the provided tag does not have children. 
 
 ### Other interesting functions
-The [brighter](https://github.com/ThinkR-open/brighter) package written by Colin Fay contains neat functions to edit your tags. Particularly, the `tagRemoveAttributes`
+The [Golem](https://github.com/ThinkR-open/golem/blob/dev/inst/utils/golem_utils_ui.R) package written by [thinkr](https://thinkr.fr) contains neat functions to edit your tags. 
 
-```{r, eval = FALSE}
-remotes::install_github("Thinkr-open/brighter")
-library(brighter)
+Particularly, the `tagRemoveAttributes`:
+
+```{r}
+tagRemoveAttributes <- function(tag, ...) {
+  attrs <- as.character(list(...))
+  for (i in seq_along(attrs)) {
+    tag$attribs[[ attrs[i] ]] <- NULL
+  }
+  tag
+}
 ```
 
 ```{r, eval = FALSE}
@@ -275,4 +282,27 @@ objects, this is a good idea to use `%>%` from magrittr:
 div(class = "cl", h1("Hello")) %>% 
   tagAppendAttributes(id = "myid") %>%
   tagAppendChild(p("some extra text here!"))
+```
+
+### Programmatically create children elements
+
+Assume you want to create a tag with 3 children inside:
+
+```{r, eval = FALSE}
+div(
+  span(1),
+  span(2),
+  span(3),
+  span(4),
+  span(5)
+)
+```
+
+The structure is correct but imagine if you had to create 1000 `span` or fancier tag. The previous approach is not consistent with DRY programming. `lapply` function will be useful here (or the purrr `map` family):
+
+```{r, eval = FALSE}
+# base R
+div(lapply(1:5, function(i) span(i)))
+# purrr + %>%
+map(1:5, function(i) span(i)) %>% div()
 ```
