@@ -100,9 +100,9 @@ tag("test", list(class = "test", p("Custom Tag")))
 █─tag 
 ├─"test" 
 └─█─list 
-  ├─class = "test" 
-  └─█─p 
-    └─"Custom Tag" 
+├─class = "test" 
+└─█─p 
+└─"Custom Tag" 
 ```
 
 ## Alternative way to write tags
@@ -134,10 +134,10 @@ are some issues, non standard attributes (like `data-toggle`) are not correctly 
 
 According to the `tag` function, a tag has:
 
-  - a name such as span, div, h1 ... `tag$name`
-  - some attributes, which you can access with `tag$attribs`
-  - children, which you can access with `tag$children`
-  - a class, namely "shiny.tag"
+- a name such as span, div, h1 ... `tag$name`
+- some attributes, which you can access with `tag$attribs`
+- children, which you can access with `tag$children`
+- a class, namely "shiny.tag"
 
 For instance:
 
@@ -222,7 +222,7 @@ has_class
 ```
 
 #### Get all attributes 
- 
+
 - `tagGetAttribute`: to get the value of the targeted attributes, if it exists, otherwise NULL.
 
 
@@ -319,6 +319,52 @@ library(brighter)
 ```r
 mydiv <- div(class = "test", id = "coucou", "Hello")
 tagRemoveAttributes(mydiv, "class", "id")
+```
+
+
+### Conditionally set attributes
+
+Sometimes, you only want to set attributes under specific conditions. 
+
+
+```r
+my_button <- function(color = NULL) {
+  tags$button( 
+    style = paste("color:", color),
+    p("Hello")
+  )
+}
+
+my_button()
+```
+
+This example will not fail but having `style="color: "` is not clean. We may use conditions:
+
+
+```r
+my_button <- function(color = NULL) {
+  tags$button( 
+    style = if (!is.null(color)) paste("color:", color),
+    p("Hello")
+  )
+}
+
+my_button("blue")
+my_button()
+```
+
+In this example, style won't be available if color is not specified.
+
+### Using %>%
+
+While doing a lot of manipulation for a tag, if you don't need to create intermediate
+objects, this is a good idea to use `%>%` from magrittr:
+
+
+```r
+div(class = "cl", h1("Hello")) %>% 
+  tagAppendAttributes(id = "myid") %>%
+  tagAppendChild(p("some extra text here!"))
 ```
 
 <!--chapter:end:htmltools-overview.Rmd-->
