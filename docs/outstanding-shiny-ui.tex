@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-10}
+\date{2020-05-11}
 
 \begin{document}
 \maketitle
@@ -780,6 +780,12 @@ Now, if we create a \texttt{test.js} script in the same folder and want to use \
 \end{Highlighting}
 \end{Shaded}
 
+\hypertarget{jquery}{%
+\section{jQuery}\label{jquery}}
+
+\hypertarget{event-listeners}{%
+\section{Event listeners}\label{event-listeners}}
+
 In the next chapters, we will see that some of the underlying JS code to build custom shiny inputs share the same utils functions. Therefore, introducing modules is necessary.
 
 \hypertarget{survival-kit-shiny}{%
@@ -844,18 +850,162 @@ In summary, all those libraries are necessary to make Shiny what it is! Customiz
 \hypertarget{shiny-hiddens-gems}{%
 \section{Shiny hiddens gems}\label{shiny-hiddens-gems}}
 
-As promised earlier, let's talk about the \href{https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js}{Shiny JavaScript core}. The goal of this part is to better understand how input/output are bound to Shiny\ldots{}
+As promised earlier, let's talk about the \href{https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js}{Shiny JavaScript core}. The goal of this part is to better understand the mechanisms behind Shiny, especially the input system.
+
+\hypertarget{initialization}{%
+\subsection{Initialization}\label{initialization}}
+
+Upon initialization, Shiny runs several JavaScript functions. Not surprisingly, there is one called \href{https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js}{\texttt{initShiny}} containing a subtantial amount of elements.
+
+We find utils functions like \texttt{bindOutputs}, \texttt{unbindOutputs} to respectively bind/unbind outputs, \texttt{bindInputs} and \texttt{unbindInputs} for inputs. Only \texttt{bindAll} and \texttt{unbindAll} are available to the user (see a usecase \href{https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny}{here}). To illustrate what they do, let's run the app below.
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-  \KeywordTok{p}\NormalTok{(}\StringTok{"Hello World"}\NormalTok{)}
+  \KeywordTok{sliderInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Number of observations:"}\NormalTok{,}
+    \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
+\NormalTok{  ),}
+  \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"distPlot"}\NormalTok{)}
 \NormalTok{)}
 
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{\}}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{distPlot <-}\StringTok{ }\KeywordTok{renderPlot}\NormalTok{(\{}
+    \KeywordTok{hist}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(input}\OperatorTok{$}\NormalTok{obs))}
+\NormalTok{  \})}
+\NormalTok{\}}
 \KeywordTok{shinyApp}\NormalTok{(ui, server)}
 \end{Highlighting}
 \end{Shaded}
+
+We then open the HTML inspector and run \texttt{Shiny.unbindAll(document)} (document is the scope, that is where to search). Try to change the slider input. What do you observe? Now let's type \texttt{Shiny.bindAll(document)} and update the slider value. What happens? Magic isn't it? This simply shows that when inputs are not bound, nothing happens so binding inputs is necessary. Let's see below how an input binding works.
+
+\hypertarget{input-bindings}{%
+\subsubsection{Input bindings}\label{input-bindings}}
+
+The input binding is defined by a class living in the \texttt{input\_binding.js} \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js}{file}.
+An input binding allows Shiny to identify each instance of a given input and what you can do with this input. The interesting thing is that if your app contains 10 different sliders, they all share the same input binding! An input binding is an object having the following methods:
+
+\begin{itemize}
+\tightlist
+\item
+  find(scope): this method specifies how to find the current input element (el) in the DOM. scope refers to the \texttt{document} element. In general, we use jQuery selector to search for a class.
+\item
+  initialize(el): This is called before the input is bound but not all input need to be initalized. Some API like \href{https://framework7.io}{Framework7} require to almost always have an initialize method (We will see later).
+\item
+  getValue(el): returns the input value. The way to obtain the value tighly depends on the object and is different for almost all inputs.
+\item
+  setValue(el, value): This method is used to set the value of the current input.
+\item
+  receiveMessage(el, data): This method is the JavaScript part of all the \texttt{updateInput} functions. We usually call the setValue method inside.
+\item
+  subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
+\item
+  getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
+\end{itemize}
+
+At the end of the input binding definition, we register it for Shiny.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{let}\NormalTok{ myBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{inputBinding}\NormalTok{()}\OperatorTok{;}
+\VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(myBinding}\OperatorTok{,} \OperatorTok{\{}
+  \CommentTok{// methods go here}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+
+\VariableTok{Shiny}\NormalTok{.}\VariableTok{inputBindings}\NormalTok{.}\AttributeTok{register}\NormalTok{(myBinding}\OperatorTok{,} \StringTok{'reference'}\NormalTok{)}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+Even thought the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting binding, it is better not to use it.
+
+Upon initialization, Shiny calls the \texttt{initializeInputs} function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a \texttt{\_shiny\_initialized} tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
+
+\hypertarget{utilities-to-quickly-define-new-inputs}{%
+\subsection{Utilities to quickly define new inputs}\label{utilities-to-quickly-define-new-inputs}}
+
+If you ever wondered where the \texttt{Shiny.onInputChange} or \texttt{Shiny.setInputValue} comes from (see \href{https://shiny.rstudio.com/articles/communicating-with-js.html}{article}), it is actually defined in the \texttt{initShiny} function.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\VariableTok{exports}\NormalTok{.}\AttributeTok{setInputValue} \OperatorTok{=} \VariableTok{exports}\NormalTok{.}\AttributeTok{onInputChange} \OperatorTok{=} \KeywordTok{function}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts) }\OperatorTok{\{}
+\NormalTok{  opts }\OperatorTok{=} \AttributeTok{addDefaultInputOpts}\NormalTok{(opts)}\OperatorTok{;}
+  \VariableTok{inputs}\NormalTok{.}\AttributeTok{setInput}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts)}\OperatorTok{;}
+\OperatorTok{\};}
+\end{Highlighting}
+\end{Shaded}
+
+Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like \texttt{sliderInput} have their own update function like \texttt{updateSliderInput}, because of the custom input binding system (We will see it very soon)!
+
+\hypertarget{get-access-to-initial-values}{%
+\subsection{Get access to initial values}\label{get-access-to-initial-values}}
+
+Something we may notice when exploring the \texttt{initShiny} function is the existence of a shinyapp object, defined as follows:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{var}\NormalTok{ shinyapp }\OperatorTok{=} \VariableTok{exports}\NormalTok{.}\AttributeTok{shinyapp} \OperatorTok{=} \KeywordTok{new} \AttributeTok{ShinyApp}\NormalTok{()}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+Let's explore what ShinyApp contains. The definition is located in the shinyapps.js \href{https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js}{script}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{var}\NormalTok{ ShinyApp }\OperatorTok{=} \KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$socket} \OperatorTok{=} \KeywordTok{null}\OperatorTok{;}
+
+  \CommentTok{// Cached input values}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$inputValues} \OperatorTok{=} \OperatorTok{\{\};}
+
+  \CommentTok{// Input values at initialization (and reconnect)}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$initialInput} \OperatorTok{=} \OperatorTok{\{\};}
+
+  \CommentTok{// Output bindings}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$bindings} \OperatorTok{=} \OperatorTok{\{\};}
+
+  \CommentTok{// Cached values/errors}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$values} \OperatorTok{=} \OperatorTok{\{\};}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$errors} \OperatorTok{=} \OperatorTok{\{\};}
+
+  \CommentTok{// Conditional bindings (show/hide element based on expression)}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$conditionals} \OperatorTok{=} \OperatorTok{\{\};}
+
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$pendingMessages} \OperatorTok{=}\NormalTok{ []}\OperatorTok{;}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$activeRequests} \OperatorTok{=} \OperatorTok{\{\};}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$nextRequestId} \OperatorTok{=} \DecValTok{0}\OperatorTok{;}
+
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$allowReconnect} \OperatorTok{=} \KeywordTok{false}\OperatorTok{;}
+\OperatorTok{\};}
+\end{Highlighting}
+\end{Shaded}
+
+It creates several properties, some of them are easy to guess like \texttt{inputValues} or \texttt{initialInput}. Let's run the example below and open the HTML inspector. Notice that the \texttt{sliderInput} is set to 500 at \texttt{t0} (initialization).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+  \KeywordTok{sliderInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Number of observations:"}\NormalTok{,}
+    \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
+\NormalTok{  ),}
+  \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"distPlot"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{distPlot <-}\StringTok{ }\KeywordTok{renderPlot}\NormalTok{(\{}
+    \KeywordTok{hist}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(input}\OperatorTok{$}\NormalTok{obs))}
+\NormalTok{  \})}
+\NormalTok{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Figure \ref{fig:shiny-initial-inputs} shows how to access Shiny's initial input value with \texttt{Shiny.shinyapp.\$initialInput.obs}. After changing the slider position, its value is given by \texttt{Shiny.shinyapp.\$inputValues.obs}. \texttt{\$initialInput} and \texttt{\$inputValues} contains way more elements but we are only interested by the slider in this example.
+
+\begin{figure}
+\includegraphics[width=27.61in]{images/survival-kit/shiny-init-input} \caption{Explore initial input values}\label{fig:shiny-initial-inputs}
+\end{figure}
+
+I acknowledge, the practical interest might be limited but still good to know for debugging purposes.
 
 \hypertarget{part-htmltools}{%
 \part*{htmltools}\label{part-htmltools}}

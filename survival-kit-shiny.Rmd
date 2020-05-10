@@ -41,14 +41,136 @@ We see in the head section that Shiny has 4 dependencies:
 In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny will imply to alter those existing libraries (except the Shiny core JavaScript and json2). 
 
 ## Shiny hiddens gems
-As promised earlier, let's talk about the [Shiny JavaScript core](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js). The goal of this part is to better understand how input/output are bound to Shiny...
+As promised earlier, let's talk about the [Shiny JavaScript core](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js). The goal of this part is to better understand the mechanisms behind Shiny, especially the input system. 
+
+
+### Initialization
+Upon initialization, Shiny runs several JavaScript functions. Not surprisingly, there is one called [`initShiny`](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) containing a subtantial amount of elements.
+
+We find utils functions like `bindOutputs`, `unbindOutputs` to respectively bind/unbind outputs, `bindInputs` and `unbindInputs` for inputs. Only `bindAll` and `unbindAll` are available to the user (see a usecase [here](https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny)). To illustrate what they do, let's run the app below.
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
-  p("Hello World")
+  sliderInput("obs", "Number of observations:",
+    min = 0, max = 1000, value = 500
+  ),
+  plotOutput("distPlot")
 )
 
-server <- function(input, output, session) {}
+server <- function(input, output, session) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
 shinyApp(ui, server)
 ```
+
+We then open the HTML inspector and run `Shiny.unbindAll(document)` (document is the scope, that is where to search). Try to change the slider input. What do you observe? Now let's type `Shiny.bindAll(document)` and update the slider value. What happens? Magic isn't it? This simply shows that when inputs are not bound, nothing happens so binding inputs is necessary. Let's see below how an input binding works.
+
+#### Input bindings
+The input binding is defined by a class living in the `input_binding.js` [file](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js). 
+An input binding allows Shiny to identify each instance of a given input and what you can do with this input. The interesting thing is that if your app contains 10 different sliders, they all share the same input binding! An input binding is an object having the following methods:
+
+   - find(scope): this method specifies how to find the current input element (el) in the DOM. scope refers to the `document` element. In general, we use jQuery selector to search for a class.
+   - initialize(el): This is called before the input is bound but not all input need to be initalized. Some API like [Framework7](https://framework7.io) require to almost always have an initialize method (We will see later).
+   - getValue(el): returns the input value. The way to obtain the value tighly depends on the object and is different for almost all inputs.
+   - setValue(el, value): This method is used to set the value of the current input.
+   - receiveMessage(el, data): This method is the JavaScript part of all the `updateInput` functions. We usually call the setValue method inside.
+   - subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...). 
+   - getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy ([debounce](https://davidwalsh.name/javascript-debounce-function), throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined [here](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js).
+   
+At the end of the input binding definition, we register it for Shiny.
+
+```javascript
+let myBinding = new Shiny.inputBinding();
+$.extend(myBinding, {
+  // methods go here
+});
+
+Shiny.inputBindings.register(myBinding, 'reference');
+```
+
+Even thought the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting binding, it is better not to use it.
+   
+Upon initialization, Shiny calls the ` initializeInputs` function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
+
+### Utilities to quickly define new inputs
+If you ever wondered where the `Shiny.onInputChange` or `Shiny.setInputValue` comes from (see  [article](https://shiny.rstudio.com/articles/communicating-with-js.html)), it is actually defined in the `initShiny` function. 
+
+```javascript
+exports.setInputValue = exports.onInputChange = function(name, value, opts) {
+  opts = addDefaultInputOpts(opts);
+  inputs.setInput(name, value, opts);
+};
+```
+
+Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like `sliderInput` have their own update function like `updateSliderInput`, because of the custom input binding system (We will see it very soon)!
+
+### Get access to initial values 
+Something we may notice when exploring the `initShiny` function is the existence of a shinyapp object, defined as follows:
+
+```javascript
+var shinyapp = exports.shinyapp = new ShinyApp();
+```
+
+
+Let's explore what ShinyApp contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). 
+
+```javascript
+var ShinyApp = function() {
+  this.$socket = null;
+
+  // Cached input values
+  this.$inputValues = {};
+
+  // Input values at initialization (and reconnect)
+  this.$initialInput = {};
+
+  // Output bindings
+  this.$bindings = {};
+
+  // Cached values/errors
+  this.$values = {};
+  this.$errors = {};
+
+  // Conditional bindings (show/hide element based on expression)
+  this.$conditionals = {};
+
+  this.$pendingMessages = [];
+  this.$activeRequests = {};
+  this.$nextRequestId = 0;
+
+  this.$allowReconnect = false;
+};
+```
+
+It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization).
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  sliderInput("obs", "Number of observations:",
+    min = 0, max = 1000, value = 500
+  ),
+  plotOutput("distPlot")
+)
+
+server <- function(input, output, session) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
+shinyApp(ui, server)
+```
+
+
+Figure \@ref(fig:shiny-initial-inputs) shows how to access Shiny's initial input value with `Shiny.shinyapp.$initialInput.obs`. After changing the slider position, its value is given by `Shiny.shinyapp.$inputValues.obs`. `$initialInput` and `$inputValues` contains way more elements but we are only interested by the slider in this example.
+
+```{r shiny-initial-inputs, echo=FALSE, fig.cap='Explore initial input values'}
+knitr::include_graphics("images/survival-kit/shiny-init-input.png")
+```
+
+I acknowledge, the practical interest might be limited but still good to know for debugging purposes. 
+
+
+
 
