@@ -1,9 +1,9 @@
-# Shiny {#survival-kit-shiny}
+# Shiny, under the hood {#survival-kit-shiny}
 In the 2 previous chapters, we quickly introduced HTML and JavaScript. Chapter 1 finished on an example showing how to modify an HTML page with JavaScript. Yet, in Chapter 2, we simply introduced the language without showing any link with HTML.
 In this chapter we are going to see what shiny has under the hood to better understand the link between those languages. We will particularly accord a great importance to jQuery.
 
-## Reminders about Shiny
-This books assumes you are already quite advanded in Shiny but it is always good to remind what is behind this incredible API. 
+## Shiny dependencies
+This books assumes you are already quite advanded in Shiny. Below we will investigate elements that you probably never noticed. 
 
 Shiny allows to develop web applications by only using R. If you remember about the first experiment of Chapter \@ref(survival-kit-html), we only did 
 
@@ -12,7 +12,7 @@ library(shiny)
 p("Hello World")
 ```
 
-to notice that the `p` function generates HTML. We will see in the next chapters other tools to build/modify/delete tags. We notice that the main difference between HTML tags and Shiny tags is the absence of closing tag for Shiny. For instance, in raw HTML, we expect `<p>` to be closed by `</p>`. In Shiny, we only call `p(...)`, where `...` may be attributes like class/id or children tags. However, this is still a bit far from web application. The simplest Shiny layout is the `fluidPage` (if you type shinyapp in the R console, it will show a predefined snippet with this default template):
+to notice that the `p` function generates HTML. We will see in the next chapters other tools to build/modify/delete tags. The main difference between HTML tags and Shiny tags is the absence of closing tag for Shiny. For instance, in raw HTML, we expect `<p>` to be closed by `</p>`. In Shiny, we only call `p(...)`, where `...` may be attributes like class/id or children tags. However, this is still a bit far from web application since there is no user interface, interactivity and computations. The simplest Shiny layout is the `fluidPage` (if you type shinyapp in the R console, it will show a predefined snippet with this default template):
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -23,7 +23,7 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
-Let's run the above example and open the HTML inspector. Results are displayed on Figure \@ref(fig:shiny-deps). 
+At first glance, the page only contains the Hello World text. Waiiit ... are you sure about this? Let's run the above example and open the HTML inspector. Results are displayed on Figure \@ref(fig:shiny-deps). In Chapter \@ref(htmltools-dependencies) we will see better tools to extract HTML dependencies.
 
 ```{r shiny-deps, echo=FALSE, fig.cap='Shiny dependencies'}
 knitr::include_graphics("images/survival-kit/shiny-deps.png")
@@ -36,5 +36,19 @@ We see in the head section that Shiny has 4 dependencies:
   - shiny (custom JavaScript and CSS)
   - Bootstrap 3.4.1 (JavaScript and CSS) + other files (html5shiv, respond)
   
-[Bootstrap](https://getbootstrap.com) is here to provide plug and play design and interactions (tabs, navs). For instance the `fluidRow` and `column` functions of Shiny leverage the Bootstrap grid to control how elements are displayed in a page. This is convenient because it avoids to write a crazy amount of CSS/JavaScript and always reinvent the wheel. [jQuery](https://jquery.com) is a famous JavaScript library providing a user friendly interface to manipulate the DOM and is present in almost all actual websites. It is slighly easier (understand more convenient tu use) than vanilla JS, even though web developers tend to avoid it to go back to vanilla JS (Bootstrap 5, the next iteration of Bootstrap will not rely on jQuery anymore). Shiny has its own JS and CSS files (we will discuss this very soon). 
+[Bootstrap](https://getbootstrap.com) is here to provide plug and play design and interactions (tabs, navs). For instance the `fluidRow` and `column` functions of Shiny leverage the Bootstrap grid to control how elements are displayed in a page. This is convenient because it avoids to write a crazy amount of CSS/JavaScript and always reinvent the wheel. [jQuery](https://jquery.com) is a famous JavaScript library providing a user friendly interface to manipulate the DOM and is present in almost all actual websites. It is slighly easier (understand more convenient tu use) than vanilla JS, even though web developers tend to avoid it to go back to vanilla JS (Bootstrap 5, the next iteration of Bootstrap will not rely on jQuery anymore). Shiny has its own JS and CSS files (we will discuss this very soon). Finally, json2 is a library to handle the [JSON](https://www.json.org/json-en.html) data format (JavaScript Object Notation). In the following chapters we will use it a lot, through the jsonlite package that allows to transform JSON objects in R objects and inversely. 
+
+In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny will imply to alter those existing libraries (except the Shiny core JavaScript and json2). 
+
+## Shiny hiddens gems
+As promised earlier, let's talk about the [Shiny JavaScript core](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js). The goal of this part is to better understand how input/output are bound to Shiny...
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  p("Hello World")
+)
+
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
 
