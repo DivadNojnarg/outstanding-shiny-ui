@@ -36,3 +36,60 @@ knitr::include_graphics("images/practice/tabler-deps-2.png")
 As depicted on Figure \@ref(fig:tabler-deps) left-hand side, we need to include the tabler.min.css from the header. If you are not convinced, try to remove it from the DOM and see what happens. [jqvmap](https://www.10bestdesign.com/jqvmap/) is actually related to an external visualization plugin used in the demo. Finally the demo.min.css file is for the demo purpose. This will not prevent the template to work if we skip it. So far so good, we only need 1 file thus!
 
 JavaScript dependencies are shown on the right-hand side and located at the end of the body tag. We won't need all chart-related dependencies like apexcharts, jquery.vmap and vmap world and can sefely ignore them. We will keep the Bootstrap 4 bundle.js, jQuery core and tabler.min.js (the order is crucial).
+
+
+## Bundle dependencies
+With the help of the `htmltoolsDependency` function, we are going to create our main tabler HTML dependency containing all assets to allow our template to render properly. In this example, I am going to cheat a bit: instead of handling local files, I will use a CDN (content delivery network) that hosts all necessary tabler [assets](https://www.jsdelivr.com/package/npm/tabler). The main reason is that it will allow us to test the template directly from the bookdown project. But in theory, this template would need to live inside an R package, in a github repository.
+
+```{r}
+tablers_deps <- htmlDependency(
+  name = "tabler",
+  version = "1.0.7", # we take that of tabler,
+  src = c(href = "https://cdn.jsdelivr.net/npm/tabler@1.0.0-alpha.7/dist/"),
+  script = "js/tabler.min.js",
+  stylesheet = "css/tabler.min.css"
+)
+```
+
+I advise the reader to create 1 HTML dependency per element. The Bootstrap version is v4.3.1 (Shiny relies on 3.4.1) and jQuery is 3.5.0 (Shiny relies on 3.4.1). We can also use a CDN:
+
+```{r}
+bs4_deps <- htmlDependency(
+  name = "Bootstrap",
+  version = "4.3.1",
+  src = c(href = "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/"),
+  script = "bootstrap.bundle.min.js"
+)
+
+jQuery_deps <- htmlDependency(
+  name = "jQuery",
+  version = "3.5.0",
+  src = c(href = "https://code.jquery.com/"),
+  script = "jquery-3.5.0.slim.min.js"
+)
+```
+
+We finally create our dependency manager (TO DO: add more details):
+
+```{r}
+# Add an html dependency without overwriting existing ones
+appendDependencies <- function(x, value) {
+  if (inherits(value, "html_dependency"))
+    value <- list(value)
+  
+  old <- attr(x, "html_dependencies", TRUE)
+  
+  htmlDependencies(x) <- c(old, value)
+  x
+}
+
+addDeps <- function(x) {
+  # below, the order is of critical importance!
+  dashboardDeps <- list(bs4_deps, jQuery_deps, tablers_deps)
+  appendDependencies(x, dashboardDeps)
+}
+```
+
+The `addDeps` function will be applied to the core HTML template, that remain to be designed!
+
+Would you like to see if our dependency system works? Let's meet in the next chapter to design the main dashboard layout.

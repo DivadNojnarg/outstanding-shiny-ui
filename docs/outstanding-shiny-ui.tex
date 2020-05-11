@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-11}
+\date{2020-05-12}
 
 \begin{document}
 \maketitle
@@ -2448,6 +2448,70 @@ To inspect dependencies, we proceed as follows
 As depicted on Figure \ref{fig:tabler-deps} left-hand side, we need to include the tabler.min.css from the header. If you are not convinced, try to remove it from the DOM and see what happens. \href{https://www.10bestdesign.com/jqvmap/}{jqvmap} is actually related to an external visualization plugin used in the demo. Finally the demo.min.css file is for the demo purpose. This will not prevent the template to work if we skip it. So far so good, we only need 1 file thus!
 
 JavaScript dependencies are shown on the right-hand side and located at the end of the body tag. We won't need all chart-related dependencies like apexcharts, jquery.vmap and vmap world and can sefely ignore them. We will keep the Bootstrap 4 bundle.js, jQuery core and tabler.min.js (the order is crucial).
+
+\hypertarget{bundle-dependencies}{%
+\section{Bundle dependencies}\label{bundle-dependencies}}
+
+With the help of the \texttt{htmltoolsDependency} function, we are going to create our main tabler HTML dependency containing all assets to allow our template to render properly. In this example, I am going to cheat a bit: instead of handling local files, I will use a CDN (content delivery network) that hosts all necessary tabler \href{https://www.jsdelivr.com/package/npm/tabler}{assets}. The main reason is that it will allow us to test the template directly from the bookdown project. But in theory, this template would need to live inside an R package, in a github repository.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tablers_deps <-}\StringTok{ }\KeywordTok{htmlDependency}\NormalTok{(}
+  \DataTypeTok{name =} \StringTok{"tabler"}\NormalTok{,}
+  \DataTypeTok{version =} \StringTok{"1.0.7"}\NormalTok{, }\CommentTok{# we take that of tabler,}
+  \DataTypeTok{src =} \KeywordTok{c}\NormalTok{(}\DataTypeTok{href =} \StringTok{"https://cdn.jsdelivr.net/npm/tabler@1.0.0-alpha.7/dist/"}\NormalTok{),}
+  \DataTypeTok{script =} \StringTok{"js/tabler.min.js"}\NormalTok{,}
+  \DataTypeTok{stylesheet =} \StringTok{"css/tabler.min.css"}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+I advise the reader to create 1 HTML dependency per element. The Bootstrap version is v4.3.1 (Shiny relies on 3.4.1) and jQuery is 3.5.0 (Shiny relies on 3.4.1). We can also use a CDN:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{bs4_deps <-}\StringTok{ }\KeywordTok{htmlDependency}\NormalTok{(}
+  \DataTypeTok{name =} \StringTok{"Bootstrap"}\NormalTok{,}
+  \DataTypeTok{version =} \StringTok{"4.3.1"}\NormalTok{,}
+  \DataTypeTok{src =} \KeywordTok{c}\NormalTok{(}\DataTypeTok{href =} \StringTok{"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/"}\NormalTok{),}
+  \DataTypeTok{script =} \StringTok{"bootstrap.bundle.min.js"}
+\NormalTok{)}
+
+\NormalTok{jQuery_deps <-}\StringTok{ }\KeywordTok{htmlDependency}\NormalTok{(}
+  \DataTypeTok{name =} \StringTok{"jQuery"}\NormalTok{,}
+  \DataTypeTok{version =} \StringTok{"3.5.0"}\NormalTok{,}
+  \DataTypeTok{src =} \KeywordTok{c}\NormalTok{(}\DataTypeTok{href =} \StringTok{"https://code.jquery.com/"}\NormalTok{),}
+  \DataTypeTok{script =} \StringTok{"jquery-3.5.0.slim.min.js"}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+We finally create our dependency manager (TO DO: add more details):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Add an html dependency without overwriting existing ones}
+\NormalTok{appendDependencies <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(x, value) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{inherits}\NormalTok{(value, }\StringTok{"html_dependency"}\NormalTok{))}
+\NormalTok{    value <-}\StringTok{ }\KeywordTok{list}\NormalTok{(value)}
+  
+\NormalTok{  old <-}\StringTok{ }\KeywordTok{attr}\NormalTok{(x, }\StringTok{"html_dependencies"}\NormalTok{, }\OtherTok{TRUE}\NormalTok{)}
+  
+  \KeywordTok{htmlDependencies}\NormalTok{(x) <-}\StringTok{ }\KeywordTok{c}\NormalTok{(old, value)}
+\NormalTok{  x}
+\NormalTok{\}}
+
+\NormalTok{addDeps <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(x) \{}
+  \CommentTok{# below, the order is of critical importance!}
+\NormalTok{  dashboardDeps <-}\StringTok{ }\KeywordTok{list}\NormalTok{(bs4_deps, jQuery_deps, tablers_deps)}
+  \KeywordTok{appendDependencies}\NormalTok{(x, dashboardDeps)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+The \texttt{addDeps} function will be applied to the core HTML template, that remain to be designed!
+
+Would you like to see if our dependency system works? Let's meet in the next chapter to design the main dashboard layout.
 
 \hypertarget{custom-templates-skeleton}{%
 \chapter{Template skeleton}\label{custom-templates-skeleton}}
