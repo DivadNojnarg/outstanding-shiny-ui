@@ -1292,7 +1292,19 @@ With vanilla JS we would use \texttt{Object.defineProperty}:
 \chapter{Shiny, under the hood}\label{survival-kit-shiny}}
 
 In the 2 previous chapters, we quickly introduced HTML and JavaScript. Chapter 1 finished on an example showing how to modify an HTML page with JavaScript. Yet, in Chapter 2, we simply introduced the language without showing any link with HTML.
-In this chapter we are going to see what shiny has under the hood to better understand the link between those languages. We will particularly accord a great importance to jQuery.
+In this chapter we are going to see what Shiny has under the hood to better understand the link between those languages. We will particularly accord a great importance to jQuery.
+
+We will answer to the following questions:
+
+\begin{itemize}
+\tightlist
+\item
+  What web dependencies is Shiny based on?
+\item
+  How does Shiny deal with inputs?
+\item
+  How is R/JavaScript communication achieved?
+\end{itemize}
 
 \hypertarget{shiny-dependencies}{%
 \section{Shiny dependencies}\label{shiny-dependencies}}
@@ -1307,8 +1319,6 @@ Shiny allows to develop web applications by only using R. If you remember about 
 \KeywordTok{p}\NormalTok{(}\StringTok{"Hello World"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
-
-Hello World
 
 to notice that the \texttt{p} function generates HTML. We will see in the next chapters other tools to build/modify/delete tags. The main difference between HTML tags and Shiny tags is the absence of closing tag for Shiny. For instance, in raw HTML, we expect \texttt{\textless{}p\textgreater{}} to be closed by \texttt{\textless{}/p\textgreater{}}. In Shiny, we only call \texttt{p(...)}, where \texttt{...} may be attributes like class/id or children tags. However, this is still a bit far from web application since there is no user interface, interactivity and computations. The simplest Shiny layout is the \texttt{fluidPage} (if you type shinyapp in the R console, it will show a predefined snippet with this default template):
 
@@ -1383,7 +1393,7 @@ We then open the HTML inspector and run \texttt{Shiny.unbindAll(document)} (docu
 \subsection{Input bindings}\label{input-bindings}}
 
 The input binding is defined by a class living in the \texttt{input\_binding.js} \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js}{file}.
-An input binding allows Shiny to identify each instance of a given input and what you can do with this input. The interesting thing is that if your app contains 10 different sliders, they all share the same input binding! An input binding is an object having the following methods:
+An input binding allows Shiny to identify each instance of a given input and what you can do with this input. The interesting thing is that if your app contains 10 different sliders, they all share the same input binding! An input binding is an object having the following methods (but not only):
 
 \begin{itemize}
 \tightlist
@@ -1416,7 +1426,7 @@ At the end of the input binding definition, we register it for Shiny.
 \end{Highlighting}
 \end{Shaded}
 
-Even thought the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting binding, it is better not to use it.
+Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting bindings, it is better not to use it.
 
 Upon initialization, Shiny calls the \texttt{initializeInputs} function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a \texttt{\_shiny\_initialized} tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
 
@@ -1425,7 +1435,7 @@ TO DO: picture to add visual representation of an input binding
 \hypertarget{websocket}{%
 \subsection{websocket}\label{websocket}}
 
-TO DO: expose how to inspect messages sent between R and JS to detect errors in input/output or hidden outputs
+How does R and JavaScript communicate? This is a builtin Shiny feature highlighted \href{Fast\%20bidirectional\%20communication\%20between\%20the\%20web\%20browser\%20and\%20R\%20using\%20the\%20httpuv\%20package.}{here}, leveraging the \href{https://github.com/rstudio/httpuv}{httpuv} and \href{https://github.com/rstudio/websocket}{websocket} packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let's run the following app.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1446,10 +1456,75 @@ TO DO: expose how to inspect messages sent between R and JS to detect errors in 
 \end{Highlighting}
 \end{Shaded}
 
-\hypertarget{custom-handlers}{%
-\subsection{Custom handlers}\label{custom-handlers}}
+After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js \href{https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js}{file}. The first element received from R is the first message in the list shown in Figure \ref{fig:shiny-websocket}. It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.
 
-These are dedicated to send messages from R to JavaScript.
+\begin{Shaded}
+\begin{Highlighting}[]
+\VariableTok{socket}\NormalTok{.}\AttributeTok{send}\NormalTok{(}\VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
+  \DataTypeTok{method}\OperatorTok{:} \StringTok{'init'}\OperatorTok{,}
+  \DataTypeTok{data}\OperatorTok{:} \VariableTok{self}\NormalTok{.}\AttributeTok{$initialInput}
+\OperatorTok{\}}\NormalTok{))}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+The second message received from R is after updating the select input.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{this}\NormalTok{.}\AttributeTok{sendInput} \OperatorTok{=} \KeywordTok{function}\NormalTok{(values) }\OperatorTok{\{}
+  \KeywordTok{var}\NormalTok{ msg }\OperatorTok{=} \VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
+    \DataTypeTok{method}\OperatorTok{:} \StringTok{'update'}\OperatorTok{,}
+    \DataTypeTok{data}\OperatorTok{:}\NormalTok{ values}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+
+  \CommentTok{// other things}
+\OperatorTok{\};}
+\end{Highlighting}
+\end{Shaded}
+
+All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field \texttt{error} containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.
+
+\begin{figure}
+\includegraphics[width=27.69in]{images/survival-kit/shiny-websocket} \caption{Shiny dependencies}\label{fig:shiny-websocket}
+\end{figure}
+
+\hypertarget{custom-handlers-from-r-to-javascript}{%
+\subsection{Custom handlers: from R to JavaScript}\label{custom-handlers-from-r-to-javascript}}
+
+Shiny contains tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a \texttt{selectInput} and a \texttt{datatable}. How does R send messages to JavaScript?
+
+Shiny is made of input and output. Yet there is a third parameter you can pass to the server function called session. The \href{https://shiny.rstudio.com/reference/shiny/1.4.0/session.html}{session} object contains informations on the current session like clientData, the namespace ns (if working inside modules), as well as methods (yes methods since session is an R6 class). Among those methods, we are interested by 2 of them:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{sendCustomMessage(type,\ message)}: \textgreater{} Custom messages have no meaning to Shiny itself; they are used soley to convey information to custom JavaScript logic in the browser
+\item
+  \texttt{sendInputMessage()}: \textgreater{} if the input is present and bound on the page at the time the message is received, then the input binding object's receiveMessage(el, message) method will be called
+\end{itemize}
+
+While \texttt{sendInputMessage} is the R side of the input features, \texttt{sendCustomMessage} simply allows to communicate between R and JavaScript.
+Basically a R function :
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sayHelloToJS <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, session) \{}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\DataTypeTok{type =} \StringTok{'say-hello'}\NormalTok{, }\DataTypeTok{message =}\NormalTok{ text)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We need a JavaScript receptor, handle by the \texttt{addCustomMessageHandler} method:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\VariableTok{Shiny}\NormalTok{.}\AttributeTok{AddCustomMessageHandler}\NormalTok{(}\StringTok{'say-hello'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
+  \AttributeTok{alert}\NormalTok{(}\VerbatimStringTok{`R says }\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{ to you!`}\NormalTok{)}
+\OperatorTok{\}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Of course, the type parameter is critical to make the connection between R and JavaScript and 2 different message handlers must have different types to avoid conflicts.
 
 TO DO: picture showing the communication
 
