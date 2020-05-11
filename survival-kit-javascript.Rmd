@@ -137,7 +137,7 @@ Below are the operators to check conditions.
 <ul>
 <li>== (A equal B)</li>
 <li>!= (A not equal to B)</li>
-<li>> (>=)</li>
+<li>\> (>=)</li>
 <li>< (<=)</li>
 <li>AND (A AND B)</li>
 <li>OR (A OR B)</li>
@@ -353,6 +353,42 @@ const {findMax} = require('./utils.js');
 findMax(1, 2); // prints 2
 ```
 
+In the next chapters, we will see that some of the underlying JS code to build custom shiny inputs share the same utils functions. Therefore, introducing modules is necessary.
+
+## Event listeners
+When you explore a web application, clicking on a button usually triggers something like a computation, a modal or an alert. How does this work?
+In JavaScript, interactivity plays a critical role. Indeed, you want the web application to react to user inputs like mouse clicks, keyboard events. Below we introduce DOM events.
+
+Let's consider a basic HTML button.
+
+```html
+<button id="mybutton">Go!</button>
+```
+
+On the JavaScript side, we first capture the button element using its id selector (`getElementById`).
+
+```javascript
+const btn = document.getElementById('mybutton');
+```
+
+We then apply the `addEventListener` method. In short, an event listener is a program that triggers when a given event occurs (we can add multiple event listeners per HTML element). It takes 2 main parameters:
+
+  - the event: click, change, mouseover, ...
+  - the function to call
+  
+```javascript
+btn.addEventListener('click', function() {
+  alert('Thanks!');
+});
+```
+
+<br>
+<div class="callout callout-info">
+We could compare the JavaScript events to Shiny observeEvent in which we are listenning to a specific user input. 
+</div>
+<br>
+
+
 ## jQuery
 
 ### Introduction
@@ -377,14 +413,136 @@ let inner = document.getElementsByClassName('text').innerHTML; // vanilla JS
 let inner = $('.text').html(); // jQuery
 ```
 
+This is of course possible to chain selectors
+
+```html
+<ul class="list">
+  <li class="item">1</li>
+  <li class="item">2</li>
+  <li class="item">3</li>
+  <li class="item" id="precious-item">4</li>
+</ul>
+
+<ul class="list" id="list2">
+  <li class="item">1</li>
+  <li class="item">2</li>
+  <li class="item">3</li>
+  <li class="item">4</li>
+</ul>
+```
+
+```javascript
+let items = $('.list .item'); // will return an array containing 8 li tags
+let otherItems = $('#list2 .item'); // will select only li tags from the second ul element
+let lists = $('ul'); // will return an array with 2 ul elements
+let firstItem = $('#list2:first-child'); // will return the first li element of the second ul.
+```
+
 jQuery is obviously simpler than pure JavaScript. 
 
 ### Useful functions
+There exist filtering functions dedicated to simplify item [selection](https://api.jquery.com/category/traversing/). We gathered the one mostly used in Shiny below.
 
-TO DO: add more examples of useful function we (may) use later
+| Method   |     Description     | 
+|:----------:|:-------------:|
+| children() | Get the children of each element passed in the selector (important: only travels a single level down the DOM tree) |
+| first() | Given an list of elements, select the first item | 
+| last() | Given an list of elements, select the last item |
+| find() | Look for a descendant of the selected element(s) that could be multiple levels down in the DOM |
+| closest() | Returns the first ancestor matching the condition (travels up in the DOM) |
+| filter() | Fine tune element selection by applying a filter. Only return element for which the condition is true |
+| siblings() | Get all siblings of the selected element(s) |
+| next() | Get the immediately following sibling |
+| prev() | Get the immediately preceding sibling |
+| not() | Given an existing set of selected elements, remove element(s) that match the given condition | 
 
-## Event listeners
+### Chaining jQuery methods
+A lot of jQuery methods may be chained, that is like pipe operations in R.
 
-TO TO: this will be needed in the following part
+```html
+<ul>
+  <li>Item 1</li>
+  <li>Item 2</li>
+  <li>Item 3</li>
+  <li>Item 4</li>
+  <li>Item 5</li>
+</ul>
+```
 
-In the next chapters, we will see that some of the underlying JS code to build custom shiny inputs share the same utils functions. Therefore, introducing modules is necessary.
+We end the chain by `;` and each step is indent by 2 spaces in the right direction.
+
+```javascript
+$('ul')
+  .first()
+  .css('color', 'green') // add some style with css
+  .attr('id', 'myAwesomeItem'); // add an id attribute
+  .fadeIn(500); // add animation
+```
+
+### Iterations
+Like in vanilla JavaScript, it is possible to do iterations in jQuery. Let's consider the following HTML elements.
+
+```html
+<ul>
+  <li>Item 1</li>
+  <li>Item 2</li>
+</ul>
+```
+
+We apply the `each` method to change the style of each matched element step by step.
+
+```javascript
+$('li').each(function() {
+  $(this).css('visibility', 'hidden'); // will hide all li items
+});
+```
+
+The `map` methods has a different purpose. It creates a new object based on the provided one. 
+
+```javascript
+let items = [0,1,2,3,4,5];
+let threshold = 3;
+
+let filteredItems = $.map(items, function(i) {
+  // removes all items > threshold
+  if (i > threshold) 
+    return null;
+  return i;
+});
+```
+
+### Good practice
+It is recommended to wrap any jQuery code as follows:
+
+```javascript
+$(document).ready(function(){
+  // your code
+});
+
+// or a shortcut
+
+$(function() {
+  // your code
+});
+```
+
+Indeed, do you guess what would happen if you try to modify an element that does not even exist? The code above will make sure that the document is ready before starting any jQuery manipulation.
+
+
+### Events
+In jQuery there exists a significant number methods related to events. Below are the most popular:
+
+```javascript
+$(element).click(); // click event
+$(element).change(); // trigger change on an element
+$(element).on('click', function() {
+ // whatever
+}); // attach an event handler function. Here we add click for the example
+$(element).one('click', function() {
+ // whatever
+}); // the difference with on is that one will trigger only once
+$(element).resize(); // useful to trigger plot resize in Shiny so that they correctly fit their container
+$(element).trigger('change') // similar to $(element).change(); You will find it in the Shiny core.
+```
+
+The `.on` event is frequently used in Shiny since it allows to pass custom events which are not part of the JS prefined events. For instance shinydashboard relies on a specific HTML/JavaScript/CSS template including a homemade API for handling the dashboard events. Don't worry if this section is not clear at the moment. We will see practical examples in the following chapters.
