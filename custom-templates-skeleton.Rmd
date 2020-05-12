@@ -385,20 +385,21 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
+#### Fine tune tabs behavior
 Quite good isn't it? However, you will notice that pills are colored in blue, it would be better to respect the shades of grey. Moreover, even if the first tab was selected by default, it's content is not shown! To fix this, we will apply our jQuery skills. According to the Bootstrap documentation, we must trigger the show event of the active tab at start. We therefore target the nav item that has the active class and if no item is found, we select the first item by default and activate its tab.
 
 ```javascript
 $(function() {
-  // this makes sure to trigger the show event on the active tab at start
-  const activeTab = $('#navbar-menu .nav-link.active');
-  // if multiple items are found
-  if (activeTab.length > 0) {
-    $(activeTab).tab('show');
-  } else {
-    $('#navbar-menu .nav-link')
-      .first()
-      .tab('show');
-  }
+// this makes sure to trigger the show event on the active tab at start
+const activeTab = $('#navbar-menu .nav-link.active');
+// if multiple items are found
+if (activeTab.length > 0) {
+$(activeTab).tab('show');
+} else {
+$('#navbar-menu .nav-link')
+.first()
+.tab('show');
+}
 });
 ```
 
@@ -467,8 +468,103 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
-The result is shown in Figure \@ref(fig:tabler-nav).
+The result is shown in Figure \@ref(fig:tabler-nav).  I'd also suggest to include at least 1 input/output per tab, to test whether everything works properly. 
 
 ```{r tabler-nav, echo=FALSE, fig.cap='Tabler template with navbar'}
 knitr::include_graphics("images/practice/tabler-nav.png")
+```
+
+
+Looks like we are done for the main template elements. Actually, wouldn't it be better to include, at least, card containers?
+
+### Card containers
+Card are a central piece of template as they may contain visualizations, metrics and much more. Tabler has a large range of card containers. 
+
+
+#### Classic card
+What I call a classic card is like the `box` container of [shinydashboard](https://rstudio.github.io/shinydashboard/structure.html). The card structure has key elements:
+
+- a width to control the space taken by the card in the Bootstrap [grid](https://getbootstrap.com/docs/4.0/layout/grid/)
+- a title, in general in the header (tabler does always not follow this rule and header is optional)
+- a body where is the main content
+- style elements like color statuses
+- a footer (optional, tabler does not include this)
+
+A comprehensive list of all tabler card features may be found [here](https://preview-dev.tabler.io/docs/cards.html). To be faster, I will copy the following HTML code in the [html2R]() shiny app to convert it to Shiny tags
+
+```html
+<div class="col-md-6">
+<div class="card">
+<div class="card-status-top bg-danger"></div>
+<div class="card-body">
+<h3 class="card-title">Card with top status</h3>
+<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Aperiam deleniti fugit incidunt, iste, itaque minima
+neque pariatur perferendis sed suscipit velit vitae voluptatem.</p>
+</div>
+</div>
+</div>
+```
+
+Below is the result. The next step consist in replacing all content by parameters to the `tabler_card` function, whenever necessary. For instance, the first `<div>` sets the width of the card. The Bootstrap grid ranges from 0 to 12, so why not creating a width parameter to control the card size. We proceed similarly for the title, status, body content. A last comment on parameters default values. It seems reasonable to allow title to be NULL (if so, the title won't be shown), same thing for the status. Regarding the card default width, 6 also makes sense.
+
+```{r}
+tabler_card <- function(..., title = NULL, status = NULL, width = 6, stacked = FALSE, padding = NULL) {
+  
+  card_cl <- paste0(
+    "card", 
+    if (stacked) " card-stacked",
+    if (!is.null(padding)) paste0(" card-", padding)
+  )
+  
+  div(
+    class = paste0("col-md-", width),
+    div(
+      class = card_cl,
+      if (!is.null(status)) {
+        div(class = paste0("card-status-top bg-", status))
+      },
+      div(
+        class = "card-body",
+        # we could have a smaller title like h4 or h5...
+        if (!is.null(title)) {
+          h3(class = "card-title", title)
+        },
+        ...
+      )
+    )
+  )
+  
+}
+
+# test the card
+my_card <- tabler_card(
+  p("Hello"), 
+  title = "My card", 
+  status = "danger"
+)
+```
+
+In the meantime, I'd be also nice to be able to display cards in the same row. Let's create the `tabler_row`:
+
+```{r}
+tabler_row <- function(...) {
+  div(class = "row row-deck", ...)
+}
+```
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tabler_body(
+    tabler_row(
+      my_card,
+      tabler_card(
+        p("Hello"), 
+        title = "My card", 
+        status = "success"
+      ) 
+    )
+  )
+)
+server <- function(input, output, session) {}
+shinyApp(ui, server)
 ```
