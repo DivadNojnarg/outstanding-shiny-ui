@@ -2624,8 +2624,11 @@ Something important: the dashboard body does not mean \texttt{\textless{}body\te
 
 This is all!
 
-\hypertarget{design-the-page-wrapper}{%
-\section{Design the page wrapper}\label{design-the-page-wrapper}}
+\hypertarget{design-the-page-layout}{%
+\section{Design the page layout}\label{design-the-page-layout}}
+
+\hypertarget{the-page-wrapper}{%
+\subsection{The page wrapper}\label{the-page-wrapper}}
 
 Do you remember the structure of a basic html page seen in Chapter \ref{survival-kit-html}? Well, if not, here is a reminder.
 
@@ -2633,12 +2636,12 @@ Do you remember the structure of a basic html page seen in Chapter \ref{survival
 \begin{Highlighting}[]
 \DataTypeTok{<!DOCTYPE }\NormalTok{HTML}\DataTypeTok{>}
 \KeywordTok{<html>}
-  \KeywordTok{<head>}
-  \CommentTok{<!-- head content here -->}
-  \KeywordTok{</head>}
-  \KeywordTok{<body>}
-  \KeywordTok{<p>}\NormalTok{Hello World}\KeywordTok{</p>}
-  \KeywordTok{</body>}
+\KeywordTok{<head>}
+\CommentTok{<!-- head content here -->}
+\KeywordTok{</head>}
+\KeywordTok{<body>}
+\KeywordTok{<p>}\NormalTok{Hello World}\KeywordTok{</p>}
+\KeywordTok{</body>}
 \KeywordTok{</html>}
 \end{Highlighting}
 \end{Shaded}
@@ -2700,7 +2703,7 @@ Below we quickly test if a tabler element renders well to see whether our depend
 \NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
   \StringTok{"test"}\NormalTok{, }
   \KeywordTok{sliderInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Number of observations:"}\NormalTok{,}
-    \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
+              \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
 \NormalTok{  ),}
   \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"distPlot"}\NormalTok{),}
   \KeywordTok{br}\NormalTok{(),}
@@ -2747,7 +2750,7 @@ Below we quickly test if a tabler element renders well to see whether our depend
 \StringTok{</div>}
 \StringTok{    '}
 \NormalTok{  ),}
-  \DataTypeTok{title =} \StringTok{"Tabler test"}
+\DataTypeTok{title =} \StringTok{"Tabler test"}
 \NormalTok{)}
 \NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
 \NormalTok{  output}\OperatorTok{$}\NormalTok{distPlot <-}\StringTok{ }\KeywordTok{renderPlot}\NormalTok{(\{}
@@ -2759,6 +2762,163 @@ Below we quickly test if a tabler element renders well to see whether our depend
 \end{Shaded}
 
 Ok\ldots{} The layout is ugly, margins are not correct, the plot background does not match with the overall theme, \ldots{} but our info card and the shiny element work like a charm, which is a good start.
+
+\hypertarget{the-body-content}{%
+\subsection{The body content}\label{the-body-content}}
+
+In this part, we translate the dashboard body HTML code to R. We create a function called \texttt{tabler\_body}. The \ldots{} parameter holds all the dashboard body elements and the footer is dedicated for the future \texttt{tabler\_footer} function.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_body <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{footer =} \OtherTok{NULL}\NormalTok{) \{}
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \StringTok{"content"}\NormalTok{,}
+    \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"container-xl"}\NormalTok{, ...),}
+\NormalTok{    tags}\OperatorTok{$}\KeywordTok{footer}\NormalTok{(}\DataTypeTok{class =} \StringTok{"footer footer-transparent"}\NormalTok{, footer)}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Let's test it with the previous example.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}\KeywordTok{tabler_body}\NormalTok{(}\KeywordTok{p}\NormalTok{(}\StringTok{"Hello World"}\NormalTok{)))}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Way better!
+
+\hypertarget{the-footer}{%
+\subsection{The footer}\label{the-footer}}
+
+The footer is composed of a left and right containers. We decide to create parameters left and right in which the user will be able to pass any elements.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_footer <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(}\DataTypeTok{left =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{right =} \OtherTok{NULL}\NormalTok{) \{}
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \StringTok{"container"}\NormalTok{,}
+    \KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{class =} \StringTok{"row text-center align-items-center flex-row-reverse"}\NormalTok{,}
+      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"col-lg-auto ml-lg-auto"}\NormalTok{, right),}
+      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"col-12 col-lg-auto mt-3 mt-lg-0"}\NormalTok{, left)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+As above, let's check our brand new element.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
+  \KeywordTok{tabler_body}\NormalTok{(}
+    \KeywordTok{p}\NormalTok{(}\StringTok{"Hello World"}\NormalTok{),}
+    \DataTypeTok{footer =} \KeywordTok{tabler_footer}\NormalTok{(}
+      \DataTypeTok{left =} \StringTok{"Rstats, 2020"}\NormalTok{, }
+      \DataTypeTok{right =} \KeywordTok{a}\NormalTok{(}\DataTypeTok{href =} \StringTok{"https://www.google.com"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{)}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{the-navbar-or-header}{%
+\subsection{The navbar (or header)}\label{the-navbar-or-header}}
+
+This function is called \texttt{tabler\_header}. In the tabler template, the header has the classes ``navbar navbar-expand-md navbar-light''. We don't need the navbar-light classe since we are interested in the dark theme. As shown in Figure \ref{fig:tabler-header}, the navbar is composed of 4 elements:
+
+\begin{itemize}
+\tightlist
+\item
+  the navbar toggler is only visible when we reduce the screen width (like on mobile devices)
+\item
+  the brand image
+\item
+  the navigation
+\item
+  the dropdown menu (this is not mandatory)
+\end{itemize}
+
+Each of these element will be considered as an input parameter to the \texttt{tabler\_header} function, except the first element which is a default element and should not be removed. Morever, we will only show the brand element when it is provided. The \ldots{} parameter is a slot for extra elements (between the menu and dropdowns).
+
+\begin{figure}
+\includegraphics[width=15.94in]{images/practice/tabler-header} \caption{Tabler header structure}\label{fig:tabler-header}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_header <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{brand_url =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{brand_image =} \OtherTok{NULL}\NormalTok{, nav_menu, }\DataTypeTok{nav_right =} \OtherTok{NULL}\NormalTok{) \{}
+\NormalTok{  navbar_cl <-}\StringTok{ "navbar navbar-expand-md"}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{header}\NormalTok{(}
+    \DataTypeTok{class =}\NormalTok{ navbar_cl,}
+\NormalTok{    tags}\OperatorTok{$}\KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{class =} \StringTok{"container-xl"}\NormalTok{,}
+      \CommentTok{# toggler for small devices (must not be removed)}
+\NormalTok{      tags}\OperatorTok{$}\KeywordTok{button}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"navbar-toggler"}\NormalTok{, }
+        \DataTypeTok{type =} \StringTok{"button"}\NormalTok{, }
+        \StringTok{`}\DataTypeTok{data-toggle}\StringTok{`}\NormalTok{ =}\StringTok{ "collapse"}\NormalTok{, }
+        \StringTok{`}\DataTypeTok{data-target}\StringTok{`}\NormalTok{ =}\StringTok{ "#navbar-menu"}\NormalTok{,}
+        \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"navbar-toggler-icon"}\NormalTok{)}
+\NormalTok{      ),}
+      
+      \CommentTok{# brand stuff}
+      \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{any}\NormalTok{(brand_url, brand_image)) \{}
+        \KeywordTok{a}\NormalTok{(}
+          \DataTypeTok{href =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(brand_url)) \{}
+\NormalTok{            brand_url}
+\NormalTok{          \} }\ControlFlowTok{else}\NormalTok{ \{}
+            \StringTok{"#"}
+\NormalTok{          \},}
+          \DataTypeTok{class =} \StringTok{"navbar-brand navbar-brand-autodark d-none-navbar-horizontal pr-0 pr-md-3"}\NormalTok{,}
+          \ControlFlowTok{if}\NormalTok{(}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(brand_image)) \{}
+            \KeywordTok{img}\NormalTok{(}
+            \DataTypeTok{src =}\NormalTok{ brand_image, }
+            \DataTypeTok{alt =} \StringTok{"brand Image"}\NormalTok{,}
+            \DataTypeTok{class =} \StringTok{"navbar-brand-image"}
+\NormalTok{          )}
+\NormalTok{          \}}
+\NormalTok{        )}
+\NormalTok{      \},}
+      
+      \CommentTok{# slot for dropdown element}
+      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"navbar-nav flex-row order-md-last"}\NormalTok{, nav_right),}
+      
+      \CommentTok{# }
+      \KeywordTok{div}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"collapse navbar-collapse"}\NormalTok{, }
+        \DataTypeTok{id =} \StringTok{"navbar-menu"}\NormalTok{,}
+        \KeywordTok{div}\NormalTok{(}
+          \DataTypeTok{class =} \StringTok{"d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center"}\NormalTok{,}
+\NormalTok{          nav_menu}
+\NormalTok{        ),}
+        \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"ml-md-auto pl-md-4 py-2 py-md-0 mr-md-4 order-first order-md-last flex-grow-1 flex-md-grow-0"}\NormalTok{, ...)}
+\NormalTok{      )}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Let's create the navbar menu. The \ldots{} parameter is a slot for the menu items. There is nothing else to say about this simple container.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_navbar_menu <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(...) \{}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{ul}\NormalTok{(}\DataTypeTok{class =} \StringTok{"navbar-nav"}\NormalTok{, ...)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Each navbar menu item could be either a simple button or contain multiple menu sub-items. For now, we only focus on simple items.
 
 \hypertarget{custom-templates-inputs}{%
 \chapter{Develop custom input widgets}\label{custom-templates-inputs}}

@@ -22,19 +22,21 @@ Something important: the dashboard body does not mean `<body>` tag!
 This is all!
 
 
-## Design the page wrapper
+## Design the page layout
+
+### The page wrapper
 
 Do you remember the structure of a basic html page seen in Chapter \@ref(survival-kit-html)? Well, if not, here is a reminder.
 
 ```html
 <!DOCTYPE HTML>
 <html>
-  <head>
-  <!-- head content here -->
-  </head>
-  <body>
-  <p>Hello World</p>
-  </body>
+<head>
+<!-- head content here -->
+</head>
+<body>
+<p>Hello World</p>
+</body>
 </html>
 ```
 
@@ -92,7 +94,7 @@ Below we quickly test if a tabler element renders well to see whether our depend
 ui <- tabler_page(
   "test", 
   sliderInput("obs", "Number of observations:",
-    min = 0, max = 1000, value = 500
+              min = 0, max = 1000, value = 500
   ),
   plotOutput("distPlot"),
   br(),
@@ -139,7 +141,7 @@ ui <- tabler_page(
 </div>
     '
   ),
-  title = "Tabler test"
+title = "Tabler test"
 )
 server <- function(input, output, session) {
   output$distPlot <- renderPlot({
@@ -150,3 +152,141 @@ shinyApp(ui, server)
 ```
 
 Ok... The layout is ugly, margins are not correct, the plot background does not match with the overall theme, ... but our info card and the shiny element work like a charm, which is a good start.
+
+
+### The body content
+In this part, we translate the dashboard body HTML code to R. We create a function called `tabler_body`. The ... parameter holds all the dashboard body elements and the footer is dedicated for the future `tabler_footer` function.
+
+```{r}
+tabler_body <- function(..., footer = NULL) {
+  div(
+    class = "content",
+    div(class = "container-xl", ...),
+    tags$footer(class = "footer footer-transparent", footer)
+  )
+}
+```
+
+Let's test it with the previous example.
+
+```{r, eval=FALSE}
+ui <- tabler_page(tabler_body(p("Hello World")))
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+Way better!
+
+
+
+### The footer
+
+The footer is composed of a left and right containers. We decide to create parameters left and right in which the user will be able to pass any elements.
+
+```{r}
+tabler_footer <- function(left = NULL, right = NULL) {
+  div(
+    class = "container",
+    div(
+      class = "row text-center align-items-center flex-row-reverse",
+      div(class = "col-lg-auto ml-lg-auto", right),
+      div(class = "col-12 col-lg-auto mt-3 mt-lg-0", left)
+    )
+  )
+}
+```
+
+As above, let's check our brand new element.
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tabler_body(
+    p("Hello World"),
+    footer = tabler_footer(
+      left = "Rstats, 2020", 
+      right = a(href = "https://www.google.com")
+    )
+  )
+)
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+### The navbar (or header)
+This function is called `tabler_header`. In the tabler template, the header has the classes "navbar navbar-expand-md navbar-light". We don't need the navbar-light classe since we are interested in the dark theme. As shown in Figure \@ref(fig:tabler-header), the navbar is composed of 4 elements:
+
+  - the navbar toggler is only visible when we reduce the screen width (like on mobile devices)
+  - the brand image
+  - the navigation
+  - the dropdown menu (this is not mandatory)
+  
+Each of these element will be considered as an input parameter to the `tabler_header` function, except the first element which is a default element and should not be removed. Morever, we will only show the brand element when it is provided. The ... parameter is a slot for extra elements (between the menu and dropdowns).
+
+```{r tabler-header, echo=FALSE, fig.cap='Tabler header structure'}
+knitr::include_graphics("images/practice/tabler-header.png")
+```
+
+
+
+```{r}
+tabler_header <- function(..., brand_url = NULL, brand_image = NULL, nav_menu, nav_right = NULL) {
+  navbar_cl <- "navbar navbar-expand-md"
+  tags$header(
+    class = navbar_cl,
+    tags$div(
+      class = "container-xl",
+      # toggler for small devices (must not be removed)
+      tags$button(
+        class = "navbar-toggler", 
+        type = "button", 
+        `data-toggle` = "collapse", 
+        `data-target` = "#navbar-menu",
+        span(class = "navbar-toggler-icon")
+      ),
+      
+      # brand stuff
+      if (any(brand_url, brand_image)) {
+        a(
+          href = if (!is.null(brand_url)) {
+            brand_url
+          } else {
+            "#"
+          },
+          class = "navbar-brand navbar-brand-autodark d-none-navbar-horizontal pr-0 pr-md-3",
+          if(!is.null(brand_image)) {
+            img(
+            src = brand_image, 
+            alt = "brand Image",
+            class = "navbar-brand-image"
+          )
+          }
+        )
+      },
+      
+      # slot for dropdown element
+      div(class = "navbar-nav flex-row order-md-last", nav_right),
+      
+      # 
+      div(
+        class = "collapse navbar-collapse", 
+        id = "navbar-menu",
+        div(
+          class = "d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center",
+          nav_menu
+        ),
+        div(class = "ml-md-auto pl-md-4 py-2 py-md-0 mr-md-4 order-first order-md-last flex-grow-1 flex-md-grow-0", ...)
+      )
+    )
+  )
+}
+```
+
+Let's create the navbar menu. The ... parameter is a slot for the menu items. There is nothing else to say about this simple container.
+
+```{r}
+tabler_navbar_menu <- function(...) {
+  tags$ul(class = "navbar-nav", ...)
+}
+```
+
+Each navbar menu item could be either a simple button or contain multiple menu sub-items. For now, we only focus on simple items.
