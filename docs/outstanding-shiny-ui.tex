@@ -2501,26 +2501,104 @@ We finally create our dependency manager (TO DO: add more details):
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# Add an html dependency without overwriting existing ones}
-\NormalTok{appendDependencies <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(x, value) \{}
+\CommentTok{# utility to add an html dependency without overwriting existing ones}
+\NormalTok{appendDependencies <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(tag, value) \{}
   \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{inherits}\NormalTok{(value, }\StringTok{"html_dependency"}\NormalTok{))}
 \NormalTok{    value <-}\StringTok{ }\KeywordTok{list}\NormalTok{(value)}
   
-\NormalTok{  old <-}\StringTok{ }\KeywordTok{attr}\NormalTok{(x, }\StringTok{"html_dependencies"}\NormalTok{, }\OtherTok{TRUE}\NormalTok{)}
+\NormalTok{  old <-}\StringTok{ }\KeywordTok{attr}\NormalTok{(tag, }\StringTok{"html_dependencies"}\NormalTok{, }\OtherTok{TRUE}\NormalTok{)}
   
-  \KeywordTok{htmlDependencies}\NormalTok{(x) <-}\StringTok{ }\KeywordTok{c}\NormalTok{(old, value)}
-\NormalTok{  x}
+  \KeywordTok{htmlDependencies}\NormalTok{(tag) <-}\StringTok{ }\KeywordTok{c}\NormalTok{(old, value)}
+\NormalTok{  tag}
 \NormalTok{\}}
 
-\NormalTok{addDeps <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(x) \{}
+\CommentTok{# add all dependencies to a tag}
+\NormalTok{addDeps <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(tag) \{}
   \CommentTok{# below, the order is of critical importance!}
-\NormalTok{  dashboardDeps <-}\StringTok{ }\KeywordTok{list}\NormalTok{(bs4_deps, jQuery_deps, tablers_deps)}
-  \KeywordTok{appendDependencies}\NormalTok{(x, dashboardDeps)}
+\NormalTok{  deps <-}\StringTok{ }\KeywordTok{list}\NormalTok{(bs4_deps, jQuery_deps, tablers_deps)}
+  \KeywordTok{appendDependencies}\NormalTok{(tag, deps)}
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
 
-The \texttt{addDeps} function will be applied to the core HTML template, that remain to be designed!
+Let's see how to use \texttt{addDeps}. We consider a \texttt{\textless{}div\textgreater{}} placeholder and check for its dependencies with \texttt{findDependencies} (should be NULL). Then, we wrap it with \texttt{addDeps}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tag <-}\StringTok{ }\KeywordTok{div}\NormalTok{()}
+\KeywordTok{findDependencies}\NormalTok{(tag)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## NULL
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tag <-}\StringTok{ }\KeywordTok{addDeps}\NormalTok{(}\KeywordTok{div}\NormalTok{())}
+\KeywordTok{findDependencies}\NormalTok{(tag)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [[1]]
+## List of 10
+##  $ name      : chr "Bootstrap"
+##  $ version   : chr "4.3.1"
+##  $ src       :List of 1
+##   ..$ href: chr "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/"
+##  $ meta      : NULL
+##  $ script    : chr "bootstrap.bundle.min.js"
+##  $ stylesheet: NULL
+##  $ head      : NULL
+##  $ attachment: NULL
+##  $ package   : NULL
+##  $ all_files : logi TRUE
+##  - attr(*, "class")= chr "html_dependency"
+## 
+## [[2]]
+## List of 10
+##  $ name      : chr "jQuery"
+##  $ version   : chr "3.5.0"
+##  $ src       :List of 1
+##   ..$ href: chr "https://code.jquery.com/"
+##  $ meta      : NULL
+##  $ script    : chr "jquery-3.5.0.slim.min.js"
+##  $ stylesheet: NULL
+##  $ head      : NULL
+##  $ attachment: NULL
+##  $ package   : NULL
+##  $ all_files : logi TRUE
+##  - attr(*, "class")= chr "html_dependency"
+## 
+## [[3]]
+## List of 10
+##  $ name      : chr "tabler"
+##  $ version   : chr "1.0.7"
+##  $ src       :List of 1
+##   ..$ href: chr "https://cdn.jsdelivr.net/npm/tabler@1.0.0-alpha.7/dist/"
+##  $ meta      : NULL
+##  $ script    : chr "js/tabler.min.js"
+##  $ stylesheet: chr "css/tabler.min.css"
+##  $ head      : NULL
+##  $ attachment: NULL
+##  $ package   : NULL
+##  $ all_files : logi TRUE
+##  - attr(*, "class")= chr "html_dependency"
+\end{verbatim}
+
+As shown above, our dependencies are applied to the div, in the correct order. This order is set by the list \texttt{list(bs4\_deps,\ jQuery\_deps,\ tablers\_deps)}. This flexibility allows to avoid potential conflicts. If we try to run this simple tag in a shiny app, we notice that all dependencies are added to the \texttt{\textless{}head\textgreater{}} tag, whereas the original template loads JavaScript dependencies in the \texttt{\textless{}body\textgreater{}}. Currently, htmltools does not allow to distribute dependencies in different places. Here there is no impact but for other templates like \href{https://framework7.io}{Framework7} (which is powering \href{https://github.com/RinteRface/shinyMobile}{shinyMobile}), JavaScript must be place in the body. In practice, this is quite honestly hard to guess and only manual testing will help you.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(tag)}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Even though the \texttt{addDeps} function may be applied to any tag, we will use it with the core HTML template, that remain to be designed!
 
 Would you like to see if our dependency system works? Let's meet in the next chapter to design the main dashboard layout.
 
@@ -2540,12 +2618,32 @@ We are quite lucky since there is nothing fancy about the tabler layout. As usua
 
 There are 2 main components:
 - the header containing the brand logo, the navigation and dropdown
-- the content containing the dashboard body (does not mean \texttt{\textless{}body\textgreater{}} tag!!) as well as the footer
+- the content containing the dashboard body as well as the footer
+
+Something important: the dashboard body does not mean \texttt{\textless{}body\textgreater{}} tag!
 
 This is all!
 
 \hypertarget{design-the-page-wrapper}{%
 \section{Design the page wrapper}\label{design-the-page-wrapper}}
+
+Do you remember the structure of a basic html page seen in Chapter \ref{survival-kit-html}? Well, if not, here is a reminder.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DataTypeTok{<!DOCTYPE }\NormalTok{HTML}\DataTypeTok{>}
+\KeywordTok{<html>}
+  \KeywordTok{<head>}
+  \CommentTok{<!-- head content here -->}
+  \KeywordTok{</head>}
+  \KeywordTok{<body>}
+  \KeywordTok{<p>}\NormalTok{Hello World}\KeywordTok{</p>}
+  \KeywordTok{</body>}
+\KeywordTok{</html>}
+\end{Highlighting}
+\end{Shaded}
+
+We actually don't need to take care of the \texttt{\textless{}html\textgreater{}} tag. Below we construct a list of tags with \texttt{tagList}, including the head and the body. In the head we have \texttt{meta} tag that briefly describe the encoding, how to display the app on different devices (For instance \texttt{apple-mobile-web-app-status-bar-style} is for mobile support), set the favicon (website icon, the icon you see on the right side of the searchbar. Try twitter for instance). The page title may change, so is the favicon, so we include them as parameters of the function. If you remember, there also should be CSS in the head but nothing here! Actually, the insertion of dependencies will be achieved by our \texttt{addDeps} function defined in Chapter \ref{custom-templates-dependencies}. This is what we do to the \texttt{\textless{}body\textgreater{}} tag that is wrapped by this function. Let's talk about the dark parameter. In short, the only difference between the dark and the light theme is the class applied to the \texttt{\textless{}body\textgreater{}} tag (respectively ``antialiased theme-dark'' and ``antialiased''). The \ldots{} parameter contain other template elements like the header and the dashboard body.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2592,9 +2690,13 @@ This is all!
 \NormalTok{    )}
 \NormalTok{  )}
 \NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
 
-\CommentTok{# Below we quickly test if a tabler element renders well to see whether}
-\CommentTok{# deps are correctly proccessed. We also ensure that basic Shiny input/output system works as expected}
+Below we quickly test if a tabler element renders well to see whether our dependency system is adequately setup. We also ensure that basic Shiny input/output system works as expected by including a sliderInput linked to a plot output.
+
+\begin{Shaded}
+\begin{Highlighting}[]
 \NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
   \StringTok{"test"}\NormalTok{, }
   \KeywordTok{sliderInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Number of observations:"}\NormalTok{,}

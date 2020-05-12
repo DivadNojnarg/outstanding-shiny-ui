@@ -72,24 +72,42 @@ jQuery_deps <- htmlDependency(
 We finally create our dependency manager (TO DO: add more details):
 
 ```{r}
-# Add an html dependency without overwriting existing ones
-appendDependencies <- function(x, value) {
+# utility to add an html dependency without overwriting existing ones
+appendDependencies <- function(tag, value) {
   if (inherits(value, "html_dependency"))
     value <- list(value)
   
-  old <- attr(x, "html_dependencies", TRUE)
+  old <- attr(tag, "html_dependencies", TRUE)
   
-  htmlDependencies(x) <- c(old, value)
-  x
+  htmlDependencies(tag) <- c(old, value)
+  tag
 }
 
-addDeps <- function(x) {
+# add all dependencies to a tag
+addDeps <- function(tag) {
   # below, the order is of critical importance!
-  dashboardDeps <- list(bs4_deps, jQuery_deps, tablers_deps)
-  appendDependencies(x, dashboardDeps)
+  deps <- list(bs4_deps, jQuery_deps, tablers_deps)
+  appendDependencies(tag, deps)
 }
 ```
 
-The `addDeps` function will be applied to the core HTML template, that remain to be designed!
+Let's see how to use `addDeps`. We consider a `<div>` placeholder and check for its dependencies with `findDependencies` (should be NULL). Then, we wrap it with `addDeps`. 
+
+```{r}
+tag <- div()
+findDependencies(tag)
+tag <- addDeps(div())
+findDependencies(tag)
+```
+
+As shown above, our dependencies are applied to the div, in the correct order. This order is set by the list `list(bs4_deps, jQuery_deps, tablers_deps)`. This flexibility allows to avoid potential conflicts. If we try to run this simple tag in a shiny app, we notice that all dependencies are added to the `<head>` tag, whereas the original template loads JavaScript dependencies in the `<body>`. Currently, htmltools does not allow to distribute dependencies in different places. Here there is no impact but for other templates like [Framework7](https://framework7.io) (which is powering [shinyMobile](https://github.com/RinteRface/shinyMobile)), JavaScript must be place in the body. In practice, this is quite honestly hard to guess and only manual testing will help you.
+
+```{r, eval=FALSE}
+ui <- fluidPage(tag)
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+Even though the `addDeps` function may be applied to any tag, we will use it with the core HTML template, that remain to be designed!
 
 Would you like to see if our dependency system works? Let's meet in the next chapter to design the main dashboard layout.
