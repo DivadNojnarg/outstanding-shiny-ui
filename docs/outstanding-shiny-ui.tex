@@ -3559,6 +3559,87 @@ Et voilà! 2 inputs in few minutes.
 \hypertarget{custom-templates-interactivity}{%
 \chapter{Adding more interactivity}\label{custom-templates-interactivity}}
 
+In this part, we are going to add more life to the template element.
+
+\hypertarget{custom-progress-bars}{%
+\section{Custom progress bars}\label{custom-progress-bars}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_progress <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(}\DataTypeTok{id =} \OtherTok{NULL}\NormalTok{, value) \{}
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \StringTok{"progress"}\NormalTok{,}
+    \KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{id =}\NormalTok{ id, }
+      \DataTypeTok{class =} \StringTok{"progress-bar"}\NormalTok{,}
+      \DataTypeTok{style =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"width: "}\NormalTok{, value, }\StringTok{"%"}\NormalTok{),}
+      \DataTypeTok{role =} \StringTok{"progressbar"}\NormalTok{,}
+      \StringTok{`}\DataTypeTok{aria-valuenow}\StringTok{`}\NormalTok{ =}\StringTok{ }\KeywordTok{as.character}\NormalTok{(value),}
+      \StringTok{`}\DataTypeTok{aria-valuemin}\StringTok{`}\NormalTok{ =}\StringTok{ "0"}\NormalTok{,}
+      \StringTok{`}\DataTypeTok{aria-valuemax}\StringTok{`}\NormalTok{ =}\StringTok{ "100"}\NormalTok{,}
+      \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"sr-only"}\NormalTok{, }\StringTok{"38% Complete"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{\}}
+
+\NormalTok{update_tabler_progress <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(id, value, }\DataTypeTok{session =}\NormalTok{ shiny}\OperatorTok{::}\KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
+\NormalTok{  message <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ session}\OperatorTok{$}\KeywordTok{ns}\NormalTok{(id), }\DataTypeTok{value =}\NormalTok{ value)}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\DataTypeTok{type =} \StringTok{"update-progress"}\NormalTok{, message)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+On the JS side, we have:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{$}\NormalTok{(}\KeywordTok{function}\NormalTok{ () }\OperatorTok{\{}
+  \VariableTok{Shiny}\NormalTok{.}\AttributeTok{addCustomMessageHandler}\NormalTok{(}\StringTok{'update-progress'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
+    \AttributeTok{$}\NormalTok{(}\StringTok{'#'} \OperatorTok{+} \VariableTok{message}\NormalTok{.}\AttributeTok{id}\NormalTok{).}\AttributeTok{css}\NormalTok{(}\StringTok{'width'}\OperatorTok{,} \VariableTok{message}\NormalTok{.}\AttributeTok{value} \OperatorTok{+}\StringTok{'%'}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{head}\NormalTok{(}
+\NormalTok{    tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+      \StringTok{"$(function() \{}
+\StringTok{        Shiny.addCustomMessageHandler('update-progress', function(message) \{}
+\StringTok{          console.log(message);}
+\StringTok{          $('#' + message.id).css('width', message.value +'%');}
+\StringTok{            //.html(message.value +'%');}
+\StringTok{          \});}
+\StringTok{        \});}
+\StringTok{      "}
+\NormalTok{    )}
+\NormalTok{  ),}
+  \KeywordTok{tabler_body}\NormalTok{(}
+    \KeywordTok{sliderInput}\NormalTok{(}
+      \StringTok{"progress_value"}\NormalTok{, }
+      \StringTok{"Progress value:"}\NormalTok{,}
+      \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }
+      \DataTypeTok{max =} \DecValTok{100}\NormalTok{, }
+      \DataTypeTok{value =} \DecValTok{50}
+\NormalTok{    ),}
+    \KeywordTok{tabler_progress}\NormalTok{(}\DataTypeTok{id =} \StringTok{"progress1"}\NormalTok{, }\DecValTok{12}\NormalTok{)}
+\NormalTok{  )}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{progress_value, \{}
+    \KeywordTok{update_tabler_progress}\NormalTok{(}
+      \DataTypeTok{id =} \StringTok{"progress1"}\NormalTok{, }
+\NormalTok{      input}\OperatorTok{$}\NormalTok{progress_value}
+\NormalTok{    )}
+\NormalTok{  \})}
+\NormalTok{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
 \hypertarget{custom-templates-testing}{%
 \chapter{Testing templates elements}\label{custom-templates-testing}}
 

@@ -1,1 +1,75 @@
 # Adding more interactivity {#custom-templates-interactivity}
+In this part, we are going to add more life to the template element.
+
+## Custom progress bars
+
+```{r}
+tabler_progress <- function(id = NULL, value) {
+  div(
+    class = "progress",
+    div(
+      id = id, 
+      class = "progress-bar",
+      style = paste0("width: ", value, "%"),
+      role = "progressbar",
+      `aria-valuenow` = as.character(value),
+      `aria-valuemin` = "0",
+      `aria-valuemax` = "100",
+      span(class = "sr-only", "38% Complete")
+    )
+  )
+}
+
+update_tabler_progress <- function(id, value, session = shiny::getDefaultReactiveDomain()) {
+  message <- list(id = session$ns(id), value = value)
+  session$sendCustomMessage(type = "update-progress", message)
+}
+```
+
+On the JS side, we have:
+
+```javascript
+$(function () {
+  Shiny.addCustomMessageHandler('update-progress', function(message) {
+    $('#' + message.id).css('width', message.value +'%');
+  });
+});
+```
+
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tags$head(
+    tags$script(
+      "$(function() {
+        Shiny.addCustomMessageHandler('update-progress', function(message) {
+          console.log(message);
+          $('#' + message.id).css('width', message.value +'%');
+            //.html(message.value +'%');
+          });
+        });
+      "
+    )
+  ),
+  tabler_body(
+    sliderInput(
+      "progress_value", 
+      "Progress value:",
+      min = 0, 
+      max = 100, 
+      value = 50
+    ),
+    tabler_progress(id = "progress1", 12)
+  )
+)
+
+server <- function(input, output, session) {
+  observeEvent(input$progress_value, {
+    update_tabler_progress(
+      id = "progress1", 
+      input$progress_value
+    )
+  })
+}
+shinyApp(ui, server)
+```
