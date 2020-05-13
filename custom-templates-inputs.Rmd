@@ -28,13 +28,13 @@ When the app starts, the action button has the value 0 and each click will incre
 ```javascript
 var actionButtonInputBinding = new InputBinding();
 $.extend(actionButtonInputBinding, {
-  find: function(scope) {
-    return $(scope).find(".action-button");
-  },
-  getValue: function(el) {
-    return $(el).data('val') || 0;
-  },
-  // ... other methods
+find: function(scope) {
+return $(scope).find(".action-button");
+},
+getValue: function(el) {
+return $(el).data('val') || 0;
+},
+// ... other methods
 });
 ```
 
@@ -104,4 +104,82 @@ As a general rule, don't try to reinvent the wheel and see whether any existing 
 </div>
 <br>
 
-## Checkbox Group
+## Toggle Switch
+We implement the toggle [switch](https://preview-dev.tabler.io/docs/form-elements.html#custom-selectboxes) component. 
+
+```html
+<label class="form-check form-switch">
+<input class="form-check-input" type="checkbox" checked>
+<span class="form-check-label">Option 1</span>
+</label>
+```
+
+Notice that the tabler switch has the checkbox type, which is very similar to the Shiny checkbox (a switch is a checkbox with a different style)
+
+```{r}
+checkboxInput("test", "Test", TRUE)
+```
+
+Therefore, we should again be able to build on top of an existing input [binding](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding_checkbox.js). We create the `tabler_switch` function:
+
+```{r}
+tabler_switch <- function(inputId, label, value = FALSE, width = NULL) {
+  
+  value <- restoreInput(id = inputId, default = value)
+  inputTag <- tags$input(
+    id = inputId, 
+    type = "checkbox",
+    class = "form-check-input"
+  )
+  
+  if (!is.null(value) && value) {
+    inputTag$attribs$checked <- "checked"
+  }
+  
+  tags$label(
+    class = "form-check form-switch", 
+    style = if (!is.null(width)) {
+      paste0("width: ", validateCssUnit(width), ";")
+    }, 
+    inputTag,
+    span(class = "form-check-label", label)
+  )
+}
+```
+
+Besides, we may also create an `update_tabler_switch` function similar to the `updateCheckboxInput`. We will also need `dropNulls`, a function that removes all NULL elements from a list (this function is often used in all custom Shiny templates). If you remember the `sendInputMessage` from R will be received by the ` receiveMessage` method on the JavaScript side.
+
+```{r}
+dropNulls <- function (x) {
+  x[!vapply(x, is.null, FUN.VALUE = logical(1))]
+}
+
+update_tabler_switch <- function (session, inputId, label = NULL, value = NULL) {
+  message <- dropNulls(list(label = label, value = value))
+  session$sendInputMessage(inputId, message)
+}
+```
+
+In the following example, the action button toggles the switch input value when clicked.
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tabler_switch("toggle", "Switch", value = TRUE, width = "25%"),
+  tabler_button("update", "Go!")
+)
+
+server <- function(input, output, session) {
+  observe(print(input$toggle))
+  observeEvent(input$update, {
+    update_tabler_switch(
+      session, 
+      "toggle", 
+      value = !input$toggle
+    )
+  })
+}
+
+shinyApp(ui, server)
+```
+
+Et voilà! 2 inputs in few minutes. 

@@ -3365,13 +3365,13 @@ When the app starts, the action button has the value 0 and each click will incre
 \begin{Highlighting}[]
 \KeywordTok{var}\NormalTok{ actionButtonInputBinding }\OperatorTok{=} \KeywordTok{new} \AttributeTok{InputBinding}\NormalTok{()}\OperatorTok{;}
 \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(actionButtonInputBinding}\OperatorTok{,} \OperatorTok{\{}
-  \DataTypeTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
-    \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{".action-button"}\NormalTok{)}\OperatorTok{;}
-  \OperatorTok{\},}
-  \DataTypeTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
-    \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{data}\NormalTok{(}\StringTok{'val'}\NormalTok{) }\OperatorTok{||} \DecValTok{0}\OperatorTok{;}
-  \OperatorTok{\},}
-  \CommentTok{// ... other methods}
+\DataTypeTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
+\ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{".action-button"}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\},}
+\DataTypeTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+\ControlFlowTok{return} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{data}\NormalTok{(}\StringTok{'val'}\NormalTok{) }\OperatorTok{||} \DecValTok{0}\OperatorTok{;}
+\OperatorTok{\},}
+\CommentTok{// ... other methods}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -3445,8 +3445,99 @@ We easily check that clicking on the button increments the related input. In few
 
 As a general rule, don't try to reinvent the wheel and see whether any existing Shiny element may be reused/adapted!
 
-\hypertarget{checkbox-group}{%
-\section{Checkbox Group}\label{checkbox-group}}
+\hypertarget{toggle-switch}{%
+\section{Toggle Switch}\label{toggle-switch}}
+
+We implement the toggle \href{https://preview-dev.tabler.io/docs/form-elements.html\#custom-selectboxes}{switch} component.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{<label}\OtherTok{ class=}\StringTok{"form-check form-switch"}\KeywordTok{>}
+\KeywordTok{<input}\OtherTok{ class=}\StringTok{"form-check-input"}\OtherTok{ type=}\StringTok{"checkbox"}\OtherTok{ checked}\KeywordTok{>}
+\KeywordTok{<span}\OtherTok{ class=}\StringTok{"form-check-label"}\KeywordTok{>}\NormalTok{Option 1}\KeywordTok{</span>}
+\KeywordTok{</label>}
+\end{Highlighting}
+\end{Shaded}
+
+Notice that the tabler switch has the checkbox type, which is very similar to the Shiny checkbox (a switch is a checkbox with a different style)
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{checkboxInput}\NormalTok{(}\StringTok{"test"}\NormalTok{, }\StringTok{"Test"}\NormalTok{, }\OtherTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+{Test}
+
+Therefore, we should again be able to build on top of an existing input \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_binding_checkbox.js}{binding}. We create the \texttt{tabler\_switch} function:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_switch <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(inputId, label, }\DataTypeTok{value =} \OtherTok{FALSE}\NormalTok{, }\DataTypeTok{width =} \OtherTok{NULL}\NormalTok{) \{}
+  
+\NormalTok{  value <-}\StringTok{ }\KeywordTok{restoreInput}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ inputId, }\DataTypeTok{default =}\NormalTok{ value)}
+\NormalTok{  inputTag <-}\StringTok{ }\NormalTok{tags}\OperatorTok{$}\KeywordTok{input}\NormalTok{(}
+    \DataTypeTok{id =}\NormalTok{ inputId, }
+    \DataTypeTok{type =} \StringTok{"checkbox"}\NormalTok{,}
+    \DataTypeTok{class =} \StringTok{"form-check-input"}
+\NormalTok{  )}
+  
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(value) }\OperatorTok{&&}\StringTok{ }\NormalTok{value) \{}
+\NormalTok{    inputTag}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{checked <-}\StringTok{ "checked"}
+\NormalTok{  \}}
+  
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{label}\NormalTok{(}
+    \DataTypeTok{class =} \StringTok{"form-check form-switch"}\NormalTok{, }
+    \DataTypeTok{style =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(width)) \{}
+      \KeywordTok{paste0}\NormalTok{(}\StringTok{"width: "}\NormalTok{, }\KeywordTok{validateCssUnit}\NormalTok{(width), }\StringTok{";"}\NormalTok{)}
+\NormalTok{    \}, }
+\NormalTok{    inputTag,}
+    \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"form-check-label"}\NormalTok{, label)}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Besides, we may also create an \texttt{update\_tabler\_switch} function similar to the \texttt{updateCheckboxInput}. We will also need \texttt{dropNulls}, a function that removes all NULL elements from a list (this function is often used in all custom Shiny templates). If you remember the \texttt{sendInputMessage} from R will be received by the \texttt{receiveMessage} method on the JavaScript side.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{dropNulls <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{ (x) \{}
+\NormalTok{  x[}\OperatorTok{!}\KeywordTok{vapply}\NormalTok{(x, is.null, }\DataTypeTok{FUN.VALUE =} \KeywordTok{logical}\NormalTok{(}\DecValTok{1}\NormalTok{))]}
+\NormalTok{\}}
+
+\NormalTok{update_tabler_switch <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{ (session, inputId, }\DataTypeTok{label =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{value =} \OtherTok{NULL}\NormalTok{) \{}
+\NormalTok{  message <-}\StringTok{ }\KeywordTok{dropNulls}\NormalTok{(}\KeywordTok{list}\NormalTok{(}\DataTypeTok{label =}\NormalTok{ label, }\DataTypeTok{value =}\NormalTok{ value))}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendInputMessage}\NormalTok{(inputId, message)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+In the following example, the action button toggles the switch input value when clicked.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
+  \KeywordTok{tabler_switch}\NormalTok{(}\StringTok{"toggle"}\NormalTok{, }\StringTok{"Switch"}\NormalTok{, }\DataTypeTok{value =} \OtherTok{TRUE}\NormalTok{, }\DataTypeTok{width =} \StringTok{"25%"}\NormalTok{),}
+  \KeywordTok{tabler_button}\NormalTok{(}\StringTok{"update"}\NormalTok{, }\StringTok{"Go!"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+  \KeywordTok{observe}\NormalTok{(}\KeywordTok{print}\NormalTok{(input}\OperatorTok{$}\NormalTok{toggle))}
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{update, \{}
+    \KeywordTok{update_tabler_switch}\NormalTok{(}
+\NormalTok{      session, }
+      \StringTok{"toggle"}\NormalTok{, }
+      \DataTypeTok{value =} \OperatorTok{!}\NormalTok{input}\OperatorTok{$}\NormalTok{toggle}
+\NormalTok{    )}
+\NormalTok{  \})}
+\NormalTok{\}}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Et voilà! 2 inputs in few minutes.
 
 \hypertarget{custom-templates-testing}{%
 \chapter{Testing templates elements}\label{custom-templates-testing}}
