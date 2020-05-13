@@ -1,5 +1,107 @@
 # Develop custom input widgets {#custom-templates-inputs}
+In the previous chapter, we built the template dependencies, the page skeleton as well as containers like cards. However, it would be nice to custonize user interactions by bringing new inputs. In this chapter, we will apply knowledge from Chapter \@ref(survival-kit-shiny) about creating new Shiny input. 
 
-## How does Shiny handle inputs?
+## Tabler action button
+Let's start with a simple input: the action button. Tabler has builtin HTML buttons with a substantial amount of custom styles, compared to the classic Shiny action button. 
 
-## How to add new input to Shiny?
+### Reminders about the action button
+Below is the code of the `actionButton` input.
+
+```{r}
+actionButton <- function (inputId, label, icon = NULL, width = NULL, ...)  {
+  value <- restoreInput(id = inputId, default = NULL)
+  tags$button(
+    id = inputId, 
+    style = if (!is.null(width)) paste0("width: ", validateCssUnit(width), ";"), 
+    type = "button", 
+    class = "btn btn-default action-button", 
+    `data-val` = value, 
+    list(validateIcon(icon), label), ...
+  )
+}
+```
+
+The button tag has some attributes: id, style, type, class, `data-val`, label and children passed via `...`
+
+When the app starts, the action button has the value 0 and each click will increment its value by 1. How is this behaviour created? For each Shiny input element (radio, slider), there is an associated JavaScript magic file, called input binding, which you can find [here](https://github.com/rstudio/shiny/tree/master/srcjs). In our case, we are only interested in the action button binding:
+
+```javascript
+var actionButtonInputBinding = new InputBinding();
+$.extend(actionButtonInputBinding, {
+  find: function(scope) {
+    return $(scope).find(".action-button");
+  },
+  getValue: function(el) {
+    return $(el).data('val') || 0;
+  },
+  // ... other methods
+});
+```
+
+What you see above is **not** the whole script since we focus on the first method, that is `find`. It will look for **all** elements having the class **.action-button**, making it possible to define multiple action buttons at the same time.
+
+Consequently, if we go back to the previous section, the `actionButton` has the class **.action-button**, thereby making it visible to the binding. What is interesting is that all elements having the class .action-button will be considered by the same shiny input binding. 
+
+### Application to tabler
+First of all, let's compare the tabler HTML button to the Shiny action button.
+
+```html
+<button class="btn btn-primary">Button</button>
+```
+
+We convert it to R. The button API contains more style and leave the reader to add extra elements as an exercise.
+
+```{r}
+tabler_button <- function(inputId, label, status = NULL, icon = NULL, width = NULL, ...) {
+  
+  btn_cl <- paste0(
+    "btn action-button",
+    if (is.null(status)) {
+      " btn-primary"
+    } else {
+      paste0(" btn-", status)
+    }
+  )
+  
+  value <- restoreInput(id = inputId, default = NULL)
+  
+  # custom right margin
+  if (!is.null(icon)) icon$attribs$class <- paste0(
+    icon$attribs$class, " mr-1"
+  )
+  
+  tags$button(
+    id = inputId, 
+    style = if (!is.null(width)) paste0("width: ", validateCssUnit(width), ";"), 
+    type = "button", 
+    class = btn_cl, 
+    `data-val` = value, 
+    list(icon, label), ...
+  )
+}
+```
+
+In tabler, the button status is mandatory, which is the reason why it is a parameter of the function. Moreover, we need to add an horizontal right margin to the icon, if provided so that the label renders well.
+
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tabler_button("btn", "Click", icon = icon("thumbs-up"), width = "25%")
+)
+
+server <- function(input, output, session) {
+  observe(print(input$btn))
+}
+
+shinyApp(ui, server)
+```
+
+We easily check that clicking on the button increments the related input. In few minutes, we were able to implement a custom tabler input button, built on top of the Shiny action button. 
+
+<br>
+<div class="callout callout-info">
+As a general rule, don't try to reinvent the wheel and see whether any existing Shiny element may be reused/adapted!
+</div>
+<br>
+
+## Checkbox Group

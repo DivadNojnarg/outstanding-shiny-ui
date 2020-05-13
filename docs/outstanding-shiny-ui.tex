@@ -481,7 +481,7 @@ Let's move to the next chapter to discover JavaScript!
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
-JavaScript (JS) was created in 1995 by Brendan Eich and also known as ECMAScript (ES). Interestingly, you might have heard about ActionScript, which is no more than an implementation of ES by Adobe Systems. Nowadays, JavaScript is a centerpiece of the web and included in almost all websites.
+JavaScript (JS) was created in 1995 by Brendan Eich and is also known as ECMAScript (ES). Interestingly, you might have heard about ActionScript, which is no more than an implementation of ES by Adobe Systems. Nowadays, JavaScript is a centerpiece of the web and included in almost all websites.
 
 Let's make a little experiment. If you have a personal blog (it is very popular in the RStats community) you probably know Hugo or Jekyll. These tools allow to quickly setup professionnal looking (or at least not too ugly) blogs in literraly few minutes. You can focus on the content and this is what matters! Now, if you open the HTML inspector introduced in Chapter \ref{survival-kit-html}, click on the elements tab (in theory it is the first tab and open by default), and uncollapse the \texttt{\textless{}head\textgreater{}} tag, you see that a lot of scripts are included, as shown in Figure \ref{fig:scripts-list}. Same remark in the \texttt{\textless{}body\textgreater{}} tag.
 
@@ -3329,11 +3329,124 @@ Not mentionned before but we can use fontawesome icons provided with Shiny, as w
 \hypertarget{custom-templates-inputs}{%
 \chapter{Develop custom input widgets}\label{custom-templates-inputs}}
 
-\hypertarget{how-does-shiny-handle-inputs}{%
-\section{How does Shiny handle inputs?}\label{how-does-shiny-handle-inputs}}
+In the previous chapter, we built the template dependencies, the page skeleton as well as containers like cards. However, it would be nice to custonize user interactions by bringing new inputs. In this chapter, we will apply knowledge from Chapter \ref{survival-kit-shiny} about creating new Shiny input.
 
-\hypertarget{how-to-add-new-input-to-shiny}{%
-\section{How to add new input to Shiny?}\label{how-to-add-new-input-to-shiny}}
+\hypertarget{tabler-action-button}{%
+\section{Tabler action button}\label{tabler-action-button}}
+
+Let's start with a simple input: the action button. Tabler has builtin HTML buttons with a substantial amount of custom styles, compared to the classic Shiny action button.
+
+\hypertarget{reminders-about-the-action-button}{%
+\subsection{Reminders about the action button}\label{reminders-about-the-action-button}}
+
+Below is the code of the \texttt{actionButton} input.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{actionButton <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{ (inputId, label, }\DataTypeTok{icon =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{width =} \OtherTok{NULL}\NormalTok{, ...)  \{}
+\NormalTok{  value <-}\StringTok{ }\KeywordTok{restoreInput}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ inputId, }\DataTypeTok{default =} \OtherTok{NULL}\NormalTok{)}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{button}\NormalTok{(}
+    \DataTypeTok{id =}\NormalTok{ inputId, }
+    \DataTypeTok{style =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(width)) }\KeywordTok{paste0}\NormalTok{(}\StringTok{"width: "}\NormalTok{, }\KeywordTok{validateCssUnit}\NormalTok{(width), }\StringTok{";"}\NormalTok{), }
+    \DataTypeTok{type =} \StringTok{"button"}\NormalTok{, }
+    \DataTypeTok{class =} \StringTok{"btn btn-default action-button"}\NormalTok{, }
+    \StringTok{`}\DataTypeTok{data-val}\StringTok{`}\NormalTok{ =}\StringTok{ }\NormalTok{value, }
+    \KeywordTok{list}\NormalTok{(}\KeywordTok{validateIcon}\NormalTok{(icon), label), ...}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+The button tag has some attributes: id, style, type, class, \texttt{data-val}, label and children passed via \texttt{...}
+
+When the app starts, the action button has the value 0 and each click will increment its value by 1. How is this behaviour created? For each Shiny input element (radio, slider), there is an associated JavaScript magic file, called input binding, which you can find \href{https://github.com/rstudio/shiny/tree/master/srcjs}{here}. In our case, we are only interested in the action button binding:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{var}\NormalTok{ actionButtonInputBinding }\OperatorTok{=} \KeywordTok{new} \AttributeTok{InputBinding}\NormalTok{()}\OperatorTok{;}
+\VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(actionButtonInputBinding}\OperatorTok{,} \OperatorTok{\{}
+  \DataTypeTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
+    \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{".action-button"}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\},}
+  \DataTypeTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+    \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{data}\NormalTok{(}\StringTok{'val'}\NormalTok{) }\OperatorTok{||} \DecValTok{0}\OperatorTok{;}
+  \OperatorTok{\},}
+  \CommentTok{// ... other methods}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+What you see above is \textbf{not} the whole script since we focus on the first method, that is \texttt{find}. It will look for \textbf{all} elements having the class \textbf{.action-button}, making it possible to define multiple action buttons at the same time.
+
+Consequently, if we go back to the previous section, the \texttt{actionButton} has the class \textbf{.action-button}, thereby making it visible to the binding. What is interesting is that all elements having the class .action-button will be considered by the same shiny input binding.
+
+\hypertarget{application-to-tabler}{%
+\subsection{Application to tabler}\label{application-to-tabler}}
+
+First of all, let's compare the tabler HTML button to the Shiny action button.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{<button}\OtherTok{ class=}\StringTok{"btn btn-primary"}\KeywordTok{>}\NormalTok{Button}\KeywordTok{</button>}
+\end{Highlighting}
+\end{Shaded}
+
+We convert it to R. The button API contains more style and leave the reader to add extra elements as an exercise.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_button <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(inputId, label, }\DataTypeTok{status =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{icon =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{width =} \OtherTok{NULL}\NormalTok{, ...) \{}
+  
+\NormalTok{  btn_cl <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}
+    \StringTok{"btn action-button"}\NormalTok{,}
+    \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{is.null}\NormalTok{(status)) \{}
+      \StringTok{" btn-primary"}
+\NormalTok{    \} }\ControlFlowTok{else}\NormalTok{ \{}
+      \KeywordTok{paste0}\NormalTok{(}\StringTok{" btn-"}\NormalTok{, status)}
+\NormalTok{    \}}
+\NormalTok{  )}
+  
+\NormalTok{  value <-}\StringTok{ }\KeywordTok{restoreInput}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ inputId, }\DataTypeTok{default =} \OtherTok{NULL}\NormalTok{)}
+  
+  \CommentTok{# custom right margin}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(icon)) icon}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}
+\NormalTok{    icon}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class, }\StringTok{" mr-1"}
+\NormalTok{  )}
+  
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{button}\NormalTok{(}
+    \DataTypeTok{id =}\NormalTok{ inputId, }
+    \DataTypeTok{style =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(width)) }\KeywordTok{paste0}\NormalTok{(}\StringTok{"width: "}\NormalTok{, }\KeywordTok{validateCssUnit}\NormalTok{(width), }\StringTok{";"}\NormalTok{), }
+    \DataTypeTok{type =} \StringTok{"button"}\NormalTok{, }
+    \DataTypeTok{class =}\NormalTok{ btn_cl, }
+    \StringTok{`}\DataTypeTok{data-val}\StringTok{`}\NormalTok{ =}\StringTok{ }\NormalTok{value, }
+    \KeywordTok{list}\NormalTok{(icon, label), ...}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+In tabler, the button status is mandatory, which is the reason why it is a parameter of the function. Moreover, we need to add an horizontal right margin to the icon, if provided so that the label renders well.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
+  \KeywordTok{tabler_button}\NormalTok{(}\StringTok{"btn"}\NormalTok{, }\StringTok{"Click"}\NormalTok{, }\DataTypeTok{icon =} \KeywordTok{icon}\NormalTok{(}\StringTok{"thumbs-up"}\NormalTok{), }\DataTypeTok{width =} \StringTok{"25%"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+  \KeywordTok{observe}\NormalTok{(}\KeywordTok{print}\NormalTok{(input}\OperatorTok{$}\NormalTok{btn))}
+\NormalTok{\}}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+We easily check that clicking on the button increments the related input. In few minutes, we were able to implement a custom tabler input button, built on top of the Shiny action button.
+
+As a general rule, don't try to reinvent the wheel and see whether any existing Shiny element may be reused/adapted!
+
+\hypertarget{checkbox-group}{%
+\section{Checkbox Group}\label{checkbox-group}}
 
 \hypertarget{custom-templates-testing}{%
 \chapter{Testing templates elements}\label{custom-templates-testing}}
