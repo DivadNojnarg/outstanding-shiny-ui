@@ -31,12 +31,12 @@ Do you remember the structure of a basic html page seen in Chapter \@ref(surviva
 ```html
 <!DOCTYPE HTML>
 <html>
-<head>
-<!-- head content here -->
-</head>
-<body>
-<p>Hello World</p>
-</body>
+  <head>
+  <!-- head content here -->
+  </head>
+  <body>
+    <p>Hello World</p>
+  </body>
 </html>
 ```
 
@@ -91,6 +91,8 @@ tabler_page <- function(..., dark = TRUE, title = NULL, favicon = NULL){
 Below we quickly test if a tabler element renders well to see whether our dependency system is adequately setup. To that end, we include a random tabler element taken from the demo html page and include it as raw html, using `HTML`. We also ensure that basic Shiny input/output system works as expected with a sliderInput linked to a plot output.
 
 ```{r, eval=FALSE}
+thematic_on()
+onStop(thematic_off)
 ui <- tabler_page(
   "test", 
   sliderInput("obs", "Number of observations:",
@@ -391,11 +393,11 @@ Quite good isn't it? However, you will notice that even if the first tab was sel
 
 ```javascript
 $(function() {
-  // this makes sure to trigger the show event on the active tab at start
-  const activeTab = $('#navbar-menu .nav-link.active');
+  // this makes sure to trigger the show event on the active   tab at start
+  let activeTab = $('#navbar-menu .nav-link.active');
   // if multiple items are found
   if (activeTab.length > 0) {
-    const tabId = $(activeTab).attr('data-value');
+    let tabId = $(activeTab).attr('data-value');
     $(activeTab).tab('show');
     $(`#${tabId}`).addClass('show active');
   } else {
@@ -409,6 +411,8 @@ $(function() {
 The script is included in a tag but best practice it to put it in a separate js file (I do it this way because it is more convenient for the demonstration).
 
 ```{r, eval=FALSE}
+thematic_on()
+onStop(thematic_off)
 ui <- tabler_page(
   tags$head(
     tags$script(
@@ -451,7 +455,14 @@ ui <- tabler_page(
     tabler_tab_items(
       tabler_tab_item(
         tabName = "tab1",
-        p("Hello World")
+        sliderInput(
+          "obs", 
+          "Number of observations:",
+          min = 0,
+          max = 1000, 
+          value = 500
+        ),
+        plotOutput("distPlot")
       ),
       tabler_tab_item(
         tabName = "tab2",
@@ -464,7 +475,11 @@ ui <- tabler_page(
     )
   )
 )
-server <- function(input, output, session) {}
+server <- function(input, output, session) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
 shinyApp(ui, server)
 ```
 
