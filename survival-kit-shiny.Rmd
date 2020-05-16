@@ -128,17 +128,91 @@ We then open the HTML inspector and run `Shiny.unbindAll(document)` (document is
 Let's see below what is an input binding and how it works.
 
 ### Input bindings
-The input binding is defined by a class living in the `input_binding.js` [file](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js). 
-An input binding allows Shiny to identify each instance of a given input and what you can do with this input. The interesting thing is that if your app contains 10 different sliders, they all share the same input binding! An input binding is an object having the following methods (but not only):
 
-   - find(scope): this method specifies how to find the current input element (el) in the DOM. scope refers to the `document` element. In general, we use jQuery selector to search for a class.
-   - initialize(el): This is called before the input is bound but not all input need to be initalized. Some API like [Framework7](https://framework7.io) require to almost always have an initialize method (We will see later).
-   - getValue(el): returns the input value. The way to obtain the value tighly depends on the object and is different for almost all inputs.
-   - setValue(el, value): This method is used to set the value of the current input.
-   - receiveMessage(el, data): This method is the JavaScript part of all the `updateInput` functions. We usually call the setValue method inside.
+#### Reminders about Shiny inputs
+Shiny contains a lot of inputs like `sliderInput`, `checkboxInput`, `radioButtons`, `numericInput`, ...Their role is to provide a way for the user to change parameters and update the app state. 
+
+```{r, eval=FALSE}
+numericInput("obs", "Observations:", 10, min = 1, max = 100)
+```
+
+All input functions have the same common `inputId` parameter, to guarantee the uniqueness of the given input. 
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  textInput("text", "My Text 1"),
+  hr(),
+  uiOutput("mytext")
+)
+
+server <- function(input, output, session) {
+  output$mytext <- renderText(input$text)
+}
+
+shinyApp(ui, server)
+```
+
+Now the questions is: how does Shiny recognizes inputs and drives their behavior?
+
+#### Binding Shiny inputs
+An input binding allows Shiny to identify each instance of a given input and what you may do with this input. For instance, a slider input must update whenever the range is dragged or when the left and right arrows of the keyboard are pressed. It relies on a class defined in the `input_binding.js` [file](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js). 
+
+Let's describe each method chronologically.
+
+##### Find the input
+The first step, is critical and consists in locating the input in the DOM. We could compare this to the receptor/ligand reaction. 
+On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, the `type` attribute will suit. Sometimes it may also be the class, like for the `actionButton`. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance `radioButton` and `selectInput`) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the `find` method of the `InputBinding` class. This method must be applied on a scope, that is the `document`.  `find` accepts any valid jQuery selector. Figure \@ref(fig:shiny-find-inputs) summarizes this important step.
+
+
+```{r shiny-find-inputs, echo=FALSE, fig.cap='How to find inputs?'}
+knitr::include_graphics("images/survival-kit/shiny-find-inputs.png")
+```
+
+
+##### Initialize inputs
+`initialize(el)` is called before the input is bound but not all input need to be initalized. Some API like [Framework7](https://framework7.io) require to have an initialize method. Below is an example for the toggle input:
+
+```javascript
+// what is expected
+var toggle = app.toggle.create({
+  el: '.toggle',
+  on: {
+    change: function () {
+      console.log('Toggle changed')
+    }
+  }
+})
+```
+
+The corresponding shinyMobile input binding starts as follows. 
+
+```javascript
+var f7ToggleBinding = new Shiny.InputBinding();
+
+$.extend(f7ToggleBinding, {
+
+  initialize: function(el) {
+    app.toggle.create({el: el});
+  },
+  // other methods
+}
+```
+
+##### Get the value
+`getValue(el)` returns the input value. The way to obtain the value is different for almost all inputs.
+
+
+##### Set the value
+`setValue(el, value)` is used to set the value of the current input.
+
+
+##### Update 
+- receiveMessage(el, data): This method is the JavaScript part of all the `updateInput` functions. We usually call the setValue method inside.
    - subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...). 
    - getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy ([debounce](https://davidwalsh.name/javascript-debounce-function), throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined [here](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js).
    
+   
+##### Register an input binding
 At the end of the input binding definition, we register it for Shiny.
 
 ```javascript
@@ -150,9 +224,11 @@ $.extend(myBinding, {
 Shiny.inputBindings.register(myBinding, 'reference');
 ```
 
-Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, it is better not to use it.
-   
-Upon initialization, Shiny calls the ` initializeInputs` function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
+Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, it is better not to have to use it.
+
+
+##### Wrap up   
+Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
 
 TO DO: picture to add visual representation of an input binding
 

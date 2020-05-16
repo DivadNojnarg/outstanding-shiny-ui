@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-16}
+\date{2020-05-17}
 
 \begin{document}
 \maketitle
@@ -1610,26 +1610,118 @@ Let's see below what is an input binding and how it works.
 \hypertarget{input-bindings}{%
 \subsection{Input bindings}\label{input-bindings}}
 
-The input binding is defined by a class living in the \texttt{input\_binding.js} \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js}{file}.
-An input binding allows Shiny to identify each instance of a given input and what you can do with this input. The interesting thing is that if your app contains 10 different sliders, they all share the same input binding! An input binding is an object having the following methods (but not only):
+\hypertarget{reminders-about-shiny-inputs}{%
+\subsubsection{Reminders about Shiny inputs}\label{reminders-about-shiny-inputs}}
+
+Shiny contains a lot of inputs like \texttt{sliderInput}, \texttt{checkboxInput}, \texttt{radioButtons}, \texttt{numericInput}, \ldots{}Their role is to provide a way for the user to change parameters and update the app state.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{numericInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Observations:"}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DataTypeTok{min =} \DecValTok{1}\NormalTok{, }\DataTypeTok{max =} \DecValTok{100}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+All input functions have the same common \texttt{inputId} parameter, to guarantee the uniqueness of the given input.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+  \KeywordTok{textInput}\NormalTok{(}\StringTok{"text"}\NormalTok{, }\StringTok{"My Text 1"}\NormalTok{),}
+  \KeywordTok{hr}\NormalTok{(),}
+  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"mytext"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{mytext <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{text)}
+\NormalTok{\}}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Now the questions is: how does Shiny recognizes inputs and drives their behavior?
+
+\hypertarget{binding-shiny-inputs}{%
+\subsubsection{Binding Shiny inputs}\label{binding-shiny-inputs}}
+
+An input binding allows Shiny to identify each instance of a given input and what you may do with this input. For instance, a slider input must update whenever the range is dragged or when the left and right arrows of the keyboard are pressed. It relies on a class defined in the \texttt{input\_binding.js} \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js}{file}.
+
+Let's describe each method chronologically.
+
+\hypertarget{find-the-input}{%
+\paragraph{Find the input}\label{find-the-input}}
+
+The first step, is critical and consists in locating the input in the DOM. We could compare this to the receptor/ligand reaction.
+On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, the \texttt{type} attribute will suit. Sometimes it may also be the class, like for the \texttt{actionButton}. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance \texttt{radioButton} and \texttt{selectInput}) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the \texttt{find} method of the \texttt{InputBinding} class. This method must be applied on a scope, that is the \texttt{document}. \texttt{find} accepts any valid jQuery selector. Figure \ref{fig:shiny-find-inputs} summarizes this important step.
+
+\begin{figure}
+\includegraphics[width=20in]{images/survival-kit/shiny-find-inputs} \caption{How to find inputs?}\label{fig:shiny-find-inputs}
+\end{figure}
+
+\hypertarget{initialize-inputs}{%
+\paragraph{Initialize inputs}\label{initialize-inputs}}
+
+\texttt{initialize(el)} is called before the input is bound but not all input need to be initalized. Some API like \href{https://framework7.io}{Framework7} require to have an initialize method. Below is an example for the toggle input:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{// what is expected}
+\KeywordTok{var}\NormalTok{ toggle }\OperatorTok{=} \VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}
+  \DataTypeTok{el}\OperatorTok{:} \StringTok{'.toggle'}\OperatorTok{,}
+  \DataTypeTok{on}\OperatorTok{:} \OperatorTok{\{}
+    \DataTypeTok{change}\OperatorTok{:} \KeywordTok{function}\NormalTok{ () }\OperatorTok{\{}
+      \VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(}\StringTok{'Toggle changed'}\NormalTok{)}
+    \OperatorTok{\}}
+  \OperatorTok{\}}
+\OperatorTok{\}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+The corresponding shinyMobile input binding starts as follows.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{var}\NormalTok{ f7ToggleBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{InputBinding}\NormalTok{()}\OperatorTok{;}
+
+\VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(f7ToggleBinding}\OperatorTok{,} \OperatorTok{\{}
+
+  \DataTypeTok{initialize}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+    \VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}\DataTypeTok{el}\OperatorTok{:}\NormalTok{ el}\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\},}
+  \CommentTok{// other methods}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{get-the-value}{%
+\paragraph{Get the value}\label{get-the-value}}
+
+\texttt{getValue(el)} returns the input value. The way to obtain the value is different for almost all inputs.
+
+\hypertarget{set-the-value}{%
+\paragraph{Set the value}\label{set-the-value}}
+
+\texttt{setValue(el,\ value)} is used to set the value of the current input.
+
+\hypertarget{update}{%
+\paragraph{Update}\label{update}}
 
 \begin{itemize}
 \tightlist
 \item
-  find(scope): this method specifies how to find the current input element (el) in the DOM. scope refers to the \texttt{document} element. In general, we use jQuery selector to search for a class.
-\item
-  initialize(el): This is called before the input is bound but not all input need to be initalized. Some API like \href{https://framework7.io}{Framework7} require to almost always have an initialize method (We will see later).
-\item
-  getValue(el): returns the input value. The way to obtain the value tighly depends on the object and is different for almost all inputs.
-\item
-  setValue(el, value): This method is used to set the value of the current input.
-\item
   receiveMessage(el, data): This method is the JavaScript part of all the \texttt{updateInput} functions. We usually call the setValue method inside.
-\item
-  subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
-\item
-  getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
+  \item
+    getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
+  \end{itemize}
 \end{itemize}
+
+\hypertarget{register-an-input-binding}{%
+\paragraph{Register an input binding}\label{register-an-input-binding}}
 
 At the end of the input binding definition, we register it for Shiny.
 
@@ -1644,7 +1736,10 @@ At the end of the input binding definition, we register it for Shiny.
 \end{Highlighting}
 \end{Shaded}
 
-Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting bindings, it is better not to use it.
+Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting bindings, it is better not to have to use it.
+
+\hypertarget{wrap-up}{%
+\paragraph{Wrap up}\label{wrap-up}}
 
 Upon initialization, Shiny calls the \texttt{initializeInputs} function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a \texttt{\_shiny\_initialized} tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
 
