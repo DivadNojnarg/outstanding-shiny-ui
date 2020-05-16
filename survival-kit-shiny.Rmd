@@ -1,24 +1,28 @@
-# Shiny, under the hood {#survival-kit-shiny}
-In the 2 previous chapters, we quickly introduced HTML and JavaScript. Chapter 1 finished on an example showing how to modify an HTML page with JavaScript. Yet, in Chapter 2, we simply introduced the language without showing any link with HTML.
-In this chapter we are going to see what Shiny has under the hood to better understand the link between those languages. We will particularly accord a great importance to jQuery.
+# Shiny: What's under the Hood? {#survival-kit-shiny}
+In the 2 previous chapters, we quickly introduced HTML and JavaScript. In this chapter, we are going to see what Shiny has under the hood. Therefore, as mentionned in the book prerequisites, you should be quite familiar with Shiny if you want to get the most out of this chapter.
 
 We will answer to the following questions:
 
   - What web dependencies is Shiny based on?
   - How does Shiny deal with inputs? 
   - How is R/JavaScript communication achieved?
+  
+## Shiny, HTML, CSS and JavaScript
+Shiny allows to develop web applications with R in minutes. Let's face it: this is quite mind blowing! Well, this won't probably be a production app but still a working prototype. Believe me, doing a web application with pure HTML/CSS and JavaScript is more difficult, especially for a non web developer background. 
 
-## Shiny dependencies
-This books assumes you are already quite advanded in Shiny. Below we will investigate elements that you probably never noticed. 
+Is Shiny less customizable than a classic web app? Not at all! Indeed, Shiny has its own engine to build HTML tags, through R, meaning that all HTML elements are available. You may also include any custom [JavaScript](https://shiny.rstudio.com/articles/packaging-javascript.html) or [CSS](https://mastering-shiny.org/advanced-ui.html) code. 
 
-Shiny allows to develop web applications by only using R. If you remember about the first experiment of Chapter \@ref(survival-kit-html), we only did 
+Do you remember about the first experiment of Chapter \@ref(survival-kit-html)? We only did 
 
 ```{r, eval=FALSE}
 library(shiny)
 p("Hello World")
 ```
 
-to notice that the `p` function generates HTML. We will see in the next chapters other tools to build/modify/delete tags. The main difference between HTML tags and Shiny tags is the absence of closing tag for Shiny. For instance, in raw HTML, we expect `<p>` to be closed by `</p>`. In Shiny, we only call `p(...)`, where `...` may be attributes like class/id or children tags. However, this is still a bit far from web application since there is no user interface, interactivity and computations. The simplest Shiny layout is the `fluidPage` (if you type shinyapp in the R console, it will show a predefined snippet with this default template):
+and noticed that the `p` function generates HTML. We will study in chapter \@ref(htmltools-overview) the tools to build/modify/delete these tags. The main difference between HTML tags and Shiny tags is the absence of closing tag for Shiny. For instance, in raw HTML, we expect `<p>` to be closed by `</p>`. In Shiny, we only call `p(...)`, where `...` may be attributes like class/id or children tags.
+
+## Discover Shiny dependencies
+The simplest Shiny layout is the `fluidPage`. The `shinyapp` predefined Rstudio snippet will create a basic app skeleton (type shinyapp in RStudio IDE):
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -29,7 +33,7 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
-At first glance, the page only contains the Hello World text. Waiiit ... are you sure about this? Let's run the above example and open the HTML inspector. Results are displayed on Figure \@ref(fig:shiny-deps). In Chapter \@ref(htmltools-dependencies) we will see better tools to extract HTML dependencies.
+At first glance, the page only contains text. Waiiit ... are you sure about this? Let's run the above example and open the HTML inspector introduced in \@ref(survival-kit-html). Results are displayed on Figure \@ref(fig:shiny-deps).
 
 ```{r shiny-deps, echo=FALSE, fig.cap='Shiny dependencies'}
 knitr::include_graphics("images/survival-kit/shiny-deps.png")
@@ -42,18 +46,66 @@ We see in the head section that Shiny has 4 dependencies:
   - shiny (custom JavaScript and CSS)
   - Bootstrap 3.4.1 (JavaScript and CSS) + other files (html5shiv, respond)
   
-[Bootstrap](https://getbootstrap.com) is here to provide plug and play design and interactions (tabs, navs). For instance the `fluidRow` and `column` functions of Shiny leverage the Bootstrap grid to control how elements are displayed in a page. This is convenient because it avoids to write a crazy amount of CSS/JavaScript and always reinvent the wheel. jQuery drives the DOM manipulations. Shiny has its own JS and CSS files (we will discuss this very soon). Finally, json2 is a library to handle the [JSON](https://www.json.org/json-en.html) data format (JavaScript Object Notation). In the following chapters we will use it a lot, through the jsonlite package that allows to transform JSON objects in R objects and inversely. 
+[Bootstrap](https://getbootstrap.com) is here to provide plug and play design and interactions (tabs, navs). For instance the `fluidRow` and `column` functions of Shiny leverage the Bootstrap grid to control how elements are displayed in a page. This is convenient because it avoids to write a crazy amount of CSS/JavaScript and always reinvent the wheel. 
 
-In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny will imply to alter those existing libraries (except the Shiny core JavaScript and json2). 
+jQuery drives the DOM manipulations. Shiny has its own JS and CSS files. Finally, json2 is a library to handle the [JSON](https://www.json.org/json-en.html) data format (JavaScript Object Notation). In the following chapters we will use it a lot, through the [jsonlite](https://cran.r-project.org/web/packages/jsonlite/index.html) package that allows to transform JSON objects in R objects and inversely. 
 
-## Shiny hiddens gems
-As promised earlier, let's talk about the [Shiny JavaScript core](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js). The goal of this part is to better understand the mechanisms behind Shiny, especially the input system. 
+In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny may imply to alter those existing libraries (except the Shiny core JavaScript and json2). In Chapter \@ref(htmltools-dependencies) we will discover better tools to extract HTML dependencies.
 
+## Shiny's input system
+The goal of this part is to better understand how Shiny inputs work.
+
+### Shiny JavaScript sources
+The Shiny input system relies on the Shiny JavaScript sources. They are located in the srcjs folder shown in Figure \@ref(fig:shiny-js-sources).
+
+```{r shiny-js-sources, echo=FALSE, fig.cap='Shiny JavaScript sources'}
+knitr::include_graphics("images/survival-kit/shiny-js-sources.png")
+```
+
+
+Notice the `_start.js` and `_end.js`. These will be used by the `Gruntfile.js`, that is a [grunt-based](https://gruntjs.com) tool to run different tasks such as concatenate multiple JavaScript files, lint the code, minify it ... See [here](https://github.com/rstudio/shiny/tree/master/tools) for a summary.
+
+```javascript
+grunt.registerTask('default', [
+    'concat',
+    'string-replace',
+    'validateStringReplace',
+    'eslint',
+    'configureBabel',
+    'babel',
+    'uglify'
+  ]);
+```
+
+These results in a large big [file](https://github.com/rstudio/shiny/blob/master/inst/www/shared/shiny.js) and its minified [version](https://github.com/rstudio/shiny/blob/master/inst/www/shared/shiny.min.js) in the `shiny/inst/www/shared` folder.
+
+
+### The Shiny JavaScript object
+The `Shiny` object is exported at the top of the `shiny.js` file [^export-js]. In other words, this means that we may use this object and any of its properties within the HTML inspector console tab, in any JavaScript file or shiny app as below.
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+    "$(function() {
+      console.log(Shiny);
+    });
+    "
+  )
+)
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+This object contains many properties and methods as shown in Figure \@ref(fig:shiny-object). We will discuss some of them later, like `Shiny.setInputValue`, `Shiny.addCustomMessageHandler`, `Shiny.shinyapps`, `Shiny.bindAll`, ...
+
+```{r shiny-object, echo=FALSE, fig.cap='The Shiny JavaScript object'}
+knitr::include_graphics("images/survival-kit/shiny-object.png")
+```
+
+[^export-js]: Refer to Chapter \@ref(survival-kit-javascript) if you don't remember how to export an object and make it available to all JS files.
 
 ### Initialization
-Upon initialization, Shiny runs several JavaScript functions. Not surprisingly, there is one called [`initShiny`](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) containing a subtantial amount of elements.
-
-We find utils functions like `bindOutputs`, `unbindOutputs` to respectively bind/unbind outputs, `bindInputs` and `unbindInputs` for inputs. Only `bindAll` and `unbindAll` are available to the user (see a usecase [here](https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny)). To illustrate what they do, let's run the app below.
+When we run our app, most of the time it works and it is just fine! But what happens so that inputs and outputs are correctly handled? Upon initialization, Shiny runs several JavaScript functions. Not surprisingly, there is one called [`init_shiny`](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) containing a subtantial amount of elements. We find utils functions like `bindOutputs`, `unbindOutputs` to respectively bind/unbind outputs, `bindInputs` and `unbindInputs` for inputs. Only `bindAll` and `unbindAll` are available to the user (see a usecase [here](https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny)). To illustrate what they do, let's run the app below.
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -71,7 +123,9 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-We then open the HTML inspector and run `Shiny.unbindAll(document)` (document is the scope, that is where to search). Try to change the slider input. What do you observe? Now let's type `Shiny.bindAll(document)` and update the slider value. What happens? Magic isn't it? This simply shows that when inputs are not bound, nothing happens so binding inputs is necessary. Let's see below how an input binding works.
+We then open the HTML inspector and run `Shiny.unbindAll(document)` (document is the scope, that is where to search). Try to change the slider input. What do you observe? Now let's type `Shiny.bindAll(document)` and update the slider value. What happens? Magic isn't it? This simply shows that when inputs are not bound, nothing happens so binding inputs is necessary. 
+
+Let's see below what is an input binding and how it works.
 
 ### Input bindings
 The input binding is defined by a class living in the `input_binding.js` [file](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js). 
@@ -197,14 +251,14 @@ exports.setInputValue = exports.onInputChange = function(name, value, opts) {
 Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like `sliderInput` have their own update function like `updateSliderInput`, because of the custom input binding system (We will see it very soon)!
 
 ### Get access to initial values 
-Something we may notice when exploring the `initShiny` function is the existence of a shinyapp object, defined as follows:
+Something we may notice when exploring the `initShiny` function is the existence of a `Shiny.shinyapp` object, defined as follows:
 
 ```javascript
 var shinyapp = exports.shinyapp = new ShinyApp();
 ```
 
 
-Let's explore what ShinyApp contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). 
+Let's explore what `shinyApp` contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). 
 
 ```javascript
 var ShinyApp = function() {
