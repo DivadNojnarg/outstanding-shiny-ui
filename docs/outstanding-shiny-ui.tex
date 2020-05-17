@@ -1457,9 +1457,9 @@ We will answer to the following questions:
 \item
   What web dependencies is Shiny based on?
 \item
-  How does Shiny deal with inputs?
-\item
   How is R/JavaScript communication achieved?
+\item
+  How does Shiny deal with inputs?
 \end{itemize}
 
 \hypertarget{shiny-html-css-and-javascript}{%
@@ -1522,6 +1522,65 @@ jQuery drives the DOM manipulations. Shiny has its own JS and CSS files. Finally
 
 In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny may imply to alter those existing libraries (except the Shiny core JavaScript and json2). In Chapter \ref{htmltools-dependencies} we will discover better tools to extract HTML dependencies.
 
+\hypertarget{websocket-rjs-bidirectional-communication}{%
+\section{Websocket: R/JS bidirectional communication}\label{websocket-rjs-bidirectional-communication}}
+
+How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted \href{Fast\%20bidirectional\%20communication\%20between\%20the\%20web\%20browser\%20and\%20R\%20using\%20the\%20httpuv\%20package.}{here}, leveraging the \href{https://github.com/rstudio/httpuv}{httpuv} and \href{https://github.com/rstudio/websocket}{websocket} packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let's run the following app.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{shinyApp}\NormalTok{(}
+  \DataTypeTok{ui =} \KeywordTok{fluidPage}\NormalTok{(}
+    \KeywordTok{selectInput}\NormalTok{(}\StringTok{"variable"}\NormalTok{, }\StringTok{"Variable:"}\NormalTok{,}
+                \KeywordTok{c}\NormalTok{(}\StringTok{"Cylinders"}\NormalTok{ =}\StringTok{ "cyl"}\NormalTok{,}
+                  \StringTok{"Transmission"}\NormalTok{ =}\StringTok{ "am"}\NormalTok{,}
+                  \StringTok{"Gears"}\NormalTok{ =}\StringTok{ "gear"}\NormalTok{)),}
+    \KeywordTok{tableOutput}\NormalTok{(}\StringTok{"data"}\NormalTok{)}
+\NormalTok{  ),}
+  \DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output) \{}
+\NormalTok{    output}\OperatorTok{$}\NormalTok{data <-}\StringTok{ }\KeywordTok{renderTable}\NormalTok{(\{}
+\NormalTok{      mtcars[, }\KeywordTok{c}\NormalTok{(}\StringTok{"mpg"}\NormalTok{, input}\OperatorTok{$}\NormalTok{variable), drop =}\StringTok{ }\OtherTok{FALSE}\NormalTok{]}
+\NormalTok{    \}, }\DataTypeTok{rownames =} \OtherTok{TRUE}\NormalTok{)}
+\NormalTok{  \}}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js \href{https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js}{file}. The first element received from R is the first message in the list shown in Figure \ref{fig:shiny-websocket}. It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\VariableTok{socket}\NormalTok{.}\AttributeTok{send}\NormalTok{(}\VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
+  \DataTypeTok{method}\OperatorTok{:} \StringTok{'init'}\OperatorTok{,}
+  \DataTypeTok{data}\OperatorTok{:} \VariableTok{self}\NormalTok{.}\AttributeTok{$initialInput}
+\OperatorTok{\}}\NormalTok{))}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+The second message received from R is after updating the select input.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{this}\NormalTok{.}\AttributeTok{sendInput} \OperatorTok{=} \KeywordTok{function}\NormalTok{(values) }\OperatorTok{\{}
+  \KeywordTok{var}\NormalTok{ msg }\OperatorTok{=} \VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
+    \DataTypeTok{method}\OperatorTok{:} \StringTok{'update'}\OperatorTok{,}
+    \DataTypeTok{data}\OperatorTok{:}\NormalTok{ values}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+  \CommentTok{// other things}
+\OperatorTok{\};}
+\end{Highlighting}
+\end{Shaded}
+
+All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field \texttt{error} containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.
+
+Finally, \texttt{Shiny.shinyapp.\$socket.readyState} returns the state of the socket connection. It should be 1 if your app is running but I've seen some cases where the socket was actually closed (and nothing could happen).
+
+\begin{figure}
+\includegraphics[width=27.69in]{images/survival-kit/shiny-websocket} \caption{Shiny websocket}\label{fig:shiny-websocket}
+\end{figure}
+
+Understanding how R and JS may communicate will help in the next section about the Shiny input system.
+
 \hypertarget{shinys-input-system}{%
 \section{Shiny's input system}\label{shinys-input-system}}
 
@@ -1541,13 +1600,13 @@ Notice the \texttt{\_start.js} and \texttt{\_end.js}. These will be used by the 
 \begin{Shaded}
 \begin{Highlighting}[]
 \VariableTok{grunt}\NormalTok{.}\AttributeTok{registerTask}\NormalTok{(}\StringTok{'default'}\OperatorTok{,}\NormalTok{ [}
-\StringTok{'concat'}\OperatorTok{,}
-\StringTok{'string-replace'}\OperatorTok{,}
-\StringTok{'validateStringReplace'}\OperatorTok{,}
-\StringTok{'eslint'}\OperatorTok{,}
-\StringTok{'configureBabel'}\OperatorTok{,}
-\StringTok{'babel'}\OperatorTok{,}
-\StringTok{'uglify'}
+  \StringTok{'concat'}\OperatorTok{,}
+  \StringTok{'string-replace'}\OperatorTok{,}
+  \StringTok{'validateStringReplace'}\OperatorTok{,}
+  \StringTok{'eslint'}\OperatorTok{,}
+  \StringTok{'configureBabel'}\OperatorTok{,}
+  \StringTok{'babel'}\OperatorTok{,}
+  \StringTok{'uglify'}
 \NormalTok{])}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -1717,7 +1776,7 @@ We put everything in a Shiny app and invit the reader to open the HTML inspector
 \hypertarget{initialize-inputs}{%
 \paragraph{Initialize inputs}\label{initialize-inputs}}
 
-\texttt{initialize(el)} is called before the input is bound but not all inputs need to be initalized. Some API like \href{https://framework7.io}{Framework7}, on top of which \href{https://github.com/RinteRface/shinyMobile}{shinyMobile} is built, require to have an initialize method. Below is an example for the toggle input:
+Upon initialization, Shiny calls the \texttt{initializeInputs} function that takes all input bindings and call their \texttt{initialize} method before binding all inputs. Note that once an input has been initialized it has a \texttt{\_shiny\_initialized} tag to avoid initializing it twice. The initialize method is not always defined but some API like \href{https://framework7.io}{Framework7}, on top of which \href{https://github.com/RinteRface/shinyMobile}{shinyMobile} is built, require to have it. Below is an example for the toggle input:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1733,7 +1792,7 @@ We put everything in a Shiny app and invit the reader to open the HTML inspector
 \end{Highlighting}
 \end{Shaded}
 
-The corresponding shinyMobile input binding starts as follows.
+\texttt{app.toggle.create} is internal to the API. The corresponding shinyMobile input binding starts as follows.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1747,10 +1806,12 @@ The corresponding shinyMobile input binding starts as follows.
 \end{Highlighting}
 \end{Shaded}
 
+Once initialized, we may use all specific methods provided by the API. \href{https://framework7.io}{Framework7} is clearly a gold mine, as its API provides a lot of possible options for many inputs/widgets.
+
 \hypertarget{get-the-value}{%
 \paragraph{Get the value}\label{get-the-value}}
 
-\texttt{getValue(el)} returns the input value. The way to obtain the value is different for almost all inputs. \texttt{el} refers to the element holding the id attribute and recognized by the \texttt{find} method. Figure \ref{fig:shiny-el} shows the result of a \texttt{console.log(\$(el));}.
+\texttt{getValue(el)} returns the input value. The way to obtain the value is different for almost all inputs. For instance, the \texttt{textInput} is pretty simple since the value is located in the \texttt{value} attribute. \texttt{el} refers to the element holding the id attribute and recognized by the \texttt{find} method. Figure \ref{fig:shiny-el} shows the result of a \texttt{console.log(\$(el));}.
 
 \begin{figure}
 \includegraphics[width=35.5in]{images/survival-kit/shiny-el} \caption{About el}\label{fig:shiny-el}
@@ -1864,6 +1925,12 @@ We add \texttt{setValue} and \texttt{receiveMessage} to custom input binding:
 \KeywordTok{shinyApp}\NormalTok{(ui, server)}
 \end{Highlighting}
 \end{Shaded}
+
+Figure \ref{fig:shiny-update-inputs} illustrates the main mechanisms.
+
+\begin{figure}
+\includegraphics[width=20in]{images/survival-kit/shiny-update-inputs} \caption{What happens after clickin on the update button?}\label{fig:shiny-update-inputs}
+\end{figure}
 
 If we have to pass multiple elements to update, we would have to change the \texttt{updateCustomTextInput} function such as:
 
@@ -2128,110 +2195,10 @@ At the end of the input binding definition, we register it for Shiny.
 
 Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting bindings, it is better not to have to use it.
 
-\hypertarget{wrap-up}{%
-\paragraph{Wrap up}\label{wrap-up}}
+\hypertarget{binding-other-elements}{%
+\subsubsection{Binding other elements}\label{binding-other-elements}}
 
-Upon initialization, Shiny calls the \texttt{initializeInputs} function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a \texttt{\_shiny\_initialized} tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
-
-TO DO: picture to add visual representation of an input binding
-
-\hypertarget{websocket}{%
-\subsection{websocket}\label{websocket}}
-
-How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted \href{Fast\%20bidirectional\%20communication\%20between\%20the\%20web\%20browser\%20and\%20R\%20using\%20the\%20httpuv\%20package.}{here}, leveraging the \href{https://github.com/rstudio/httpuv}{httpuv} and \href{https://github.com/rstudio/websocket}{websocket} packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let's run the following app.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{shinyApp}\NormalTok{(}
-  \DataTypeTok{ui =} \KeywordTok{fluidPage}\NormalTok{(}
-    \KeywordTok{selectInput}\NormalTok{(}\StringTok{"variable"}\NormalTok{, }\StringTok{"Variable:"}\NormalTok{,}
-                \KeywordTok{c}\NormalTok{(}\StringTok{"Cylinders"}\NormalTok{ =}\StringTok{ "cyl"}\NormalTok{,}
-                  \StringTok{"Transmission"}\NormalTok{ =}\StringTok{ "am"}\NormalTok{,}
-                  \StringTok{"Gears"}\NormalTok{ =}\StringTok{ "gear"}\NormalTok{)),}
-    \KeywordTok{tableOutput}\NormalTok{(}\StringTok{"data"}\NormalTok{)}
-\NormalTok{  ),}
-  \DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output) \{}
-\NormalTok{    output}\OperatorTok{$}\NormalTok{data <-}\StringTok{ }\KeywordTok{renderTable}\NormalTok{(\{}
-\NormalTok{      mtcars[, }\KeywordTok{c}\NormalTok{(}\StringTok{"mpg"}\NormalTok{, input}\OperatorTok{$}\NormalTok{variable), drop =}\StringTok{ }\OtherTok{FALSE}\NormalTok{]}
-\NormalTok{    \}, }\DataTypeTok{rownames =} \OtherTok{TRUE}\NormalTok{)}
-\NormalTok{  \}}
-\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js \href{https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js}{file}. The first element received from R is the first message in the list shown in Figure \ref{fig:shiny-websocket}. It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\VariableTok{socket}\NormalTok{.}\AttributeTok{send}\NormalTok{(}\VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
-\DataTypeTok{method}\OperatorTok{:} \StringTok{'init'}\OperatorTok{,}
-\DataTypeTok{data}\OperatorTok{:} \VariableTok{self}\NormalTok{.}\AttributeTok{$initialInput}
-\OperatorTok{\}}\NormalTok{))}\OperatorTok{;}
-\end{Highlighting}
-\end{Shaded}
-
-The second message received from R is after updating the select input.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{this}\NormalTok{.}\AttributeTok{sendInput} \OperatorTok{=} \KeywordTok{function}\NormalTok{(values) }\OperatorTok{\{}
-\KeywordTok{var}\NormalTok{ msg }\OperatorTok{=} \VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
-\DataTypeTok{method}\OperatorTok{:} \StringTok{'update'}\OperatorTok{,}
-\DataTypeTok{data}\OperatorTok{:}\NormalTok{ values}
-\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
-
-\CommentTok{// other things}
-\OperatorTok{\};}
-\end{Highlighting}
-\end{Shaded}
-
-All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field \texttt{error} containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.
-
-Finally, \texttt{Shiny.shinyapp.\$socket.readyState} returns the state of the socket connection. It should be 1 if your app is running but I've seen some cases where the socket was actually closed (and nothing could happen).
-
-\begin{figure}
-\includegraphics[width=27.69in]{images/survival-kit/shiny-websocket} \caption{Shiny websocket}\label{fig:shiny-websocket}
-\end{figure}
-
-\hypertarget{custom-handlers-from-r-to-javascript}{%
-\subsection{Custom handlers: from R to JavaScript}\label{custom-handlers-from-r-to-javascript}}
-
-Shiny contains tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a \texttt{selectInput} and a \texttt{datatable}. How does R send messages to JavaScript?
-
-Shiny is made of input and output. Yet there is a third parameter you can pass to the server function called session. The \href{https://shiny.rstudio.com/reference/shiny/1.4.0/session.html}{session} object contains informations on the current session like clientData, the namespace ns (if working inside modules), as well as methods (yes methods since session is an R6 class). Among those methods, we are interested by 2 of them:
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{sendCustomMessage(type,\ message)}: \textgreater{} Custom messages have no meaning to Shiny itself; they are used soley to convey information to custom JavaScript logic in the browser
-\item
-  \texttt{sendInputMessage()}: \textgreater{} if the input is present and bound on the page at the time the message is received, then the input binding object's receiveMessage(el, message) method will be called
-\end{itemize}
-
-While \texttt{sendInputMessage} is the R side of the input features, \texttt{sendCustomMessage} simply allows to communicate between R and JavaScript.
-Basically a R function :
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{sayHelloToJS <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, session) \{}
-\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\DataTypeTok{type =} \StringTok{'say-hello'}\NormalTok{, }\DataTypeTok{message =}\NormalTok{ text)}
-\NormalTok{\}}
-\end{Highlighting}
-\end{Shaded}
-
-We need a JavaScript receptor, handle by the \texttt{addCustomMessageHandler} method:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\VariableTok{Shiny}\NormalTok{.}\AttributeTok{AddCustomMessageHandler}\NormalTok{(}\StringTok{'say-hello'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
-\AttributeTok{alert}\NormalTok{(}\VerbatimStringTok{`R says }\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{ to you!`}\NormalTok{)}
-\OperatorTok{\}}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-Of course, the type parameter is critical to make the connection between R and JavaScript and 2 different message handlers must have different types to avoid conflicts.
-
-TO DO: picture showing the communication
+The Shiny input binding is too convenient to only use it for input elements.
 
 \hypertarget{utilities-to-quickly-define-new-inputs}{%
 \subsection{Utilities to quickly define new inputs}\label{utilities-to-quickly-define-new-inputs}}
@@ -2249,8 +2216,13 @@ If you ever wondered where the \texttt{Shiny.onInputChange} or \texttt{Shiny.set
 
 Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like \texttt{sliderInput} have their own update function like \texttt{updateSliderInput}, because of the custom input binding system (We will see it very soon)!
 
+\hypertarget{miscellaneous}{%
+\subsection{Miscellaneous}\label{miscellaneous}}
+
+We present here some tools that may be useful\ldots{}TO FINISH
+
 \hypertarget{get-access-to-initial-values}{%
-\subsection{Get access to initial values}\label{get-access-to-initial-values}}
+\subsubsection{Get access to initial values}\label{get-access-to-initial-values}}
 
 Something we may notice when exploring the \texttt{initShiny} function is the existence of a \texttt{Shiny.shinyapp} object, defined as follows:
 
@@ -2319,6 +2291,46 @@ Figure \ref{fig:shiny-initial-inputs} shows how to access Shiny's initial input 
 \end{figure}
 
 I acknowledge, the practical interest might be limited but still good to know for debugging purposes.
+
+\hypertarget{custom-handlers-from-r-to-javascript}{%
+\section{Custom handlers: from R to JavaScript}\label{custom-handlers-from-r-to-javascript}}
+
+Shiny contains tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a \texttt{selectInput} and a \texttt{datatable}. How does R send messages to JavaScript?
+
+Shiny is made of input and output. Yet there is a third parameter you can pass to the server function called session. The \href{https://shiny.rstudio.com/reference/shiny/1.4.0/session.html}{session} object contains informations on the current session like clientData, the namespace ns (if working inside modules), as well as methods (yes methods since session is an R6 class). Among those methods, we are interested by 2 of them:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{sendCustomMessage(type,\ message)}: \textgreater{} Custom messages have no meaning to Shiny itself; they are used soley to convey information to custom JavaScript logic in the browser
+\item
+  \texttt{sendInputMessage()}: \textgreater{} if the input is present and bound on the page at the time the message is received, then the input binding object's receiveMessage(el, message) method will be called
+\end{itemize}
+
+While \texttt{sendInputMessage} is the R side of the input features, \texttt{sendCustomMessage} simply allows to communicate between R and JavaScript.
+Basically a R function :
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sayHelloToJS <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, session) \{}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\DataTypeTok{type =} \StringTok{'say-hello'}\NormalTok{, }\DataTypeTok{message =}\NormalTok{ text)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We need a JavaScript receptor, handle by the \texttt{addCustomMessageHandler} method:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\VariableTok{Shiny}\NormalTok{.}\AttributeTok{AddCustomMessageHandler}\NormalTok{(}\StringTok{'say-hello'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
+\AttributeTok{alert}\NormalTok{(}\VerbatimStringTok{`R says }\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{ to you!`}\NormalTok{)}
+\OperatorTok{\}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+The type parameter is obviously critical to make the connection between R and JavaScript and 2 different message handlers must have different types to avoid conflicts.
+
+TO DO: picture showing the communication
 
 \hypertarget{part-htmltools}{%
 \part*{htmltools}\label{part-htmltools}}

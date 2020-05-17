@@ -4,8 +4,8 @@ In the 2 previous chapters, we quickly introduced HTML and JavaScript. In this c
 We will answer to the following questions:
 
 - What web dependencies is Shiny based on?
-- How does Shiny deal with inputs? 
 - How is R/JavaScript communication achieved?
+- How does Shiny deal with inputs? 
 
 ## Shiny, HTML, CSS and JavaScript
 Shiny allows to develop web applications with R in minutes. Let's face it: this is quite mind blowing! Well, this won't probably be a production app but still a working prototype. Believe me, doing a web application with pure HTML/CSS and JavaScript is more difficult, especially for a non web developer background. 
@@ -52,6 +52,58 @@ jQuery drives the DOM manipulations. Shiny has its own JS and CSS files. Finally
 
 In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny may imply to alter those existing libraries (except the Shiny core JavaScript and json2). In Chapter \@ref(htmltools-dependencies) we will discover better tools to extract HTML dependencies.
 
+## Websocket: R/JS bidirectional communication
+How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted [here](Fast bidirectional communication between the web browser and R using the httpuv package.), leveraging the [httpuv](https://github.com/rstudio/httpuv) and [websocket](https://github.com/rstudio/websocket) packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let's run the following app.
+
+```{r, eval=FALSE}
+shinyApp(
+  ui = fluidPage(
+    selectInput("variable", "Variable:",
+                c("Cylinders" = "cyl",
+                  "Transmission" = "am",
+                  "Gears" = "gear")),
+    tableOutput("data")
+  ),
+  server = function(input, output) {
+    output$data <- renderTable({
+      mtcars[, c("mpg", input$variable), drop = FALSE]
+    }, rownames = TRUE)
+  }
+)
+```
+
+After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js [file](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). The first element received from R is the first message in the list shown in Figure \@ref(fig:shiny-websocket). It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.
+
+```javascript
+socket.send(JSON.stringify({
+  method: 'init',
+  data: self.$initialInput
+}));
+```
+
+The second message received from R is after updating the select input.
+
+```javascript
+this.sendInput = function(values) {
+  var msg = JSON.stringify({
+    method: 'update',
+    data: values
+  });
+  // other things
+};
+```
+
+All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field `error` containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.
+
+Finally, `Shiny.shinyapp.$socket.readyState` returns the state of the socket connection. It should be 1 if your app is running but I've seen some cases where the socket was actually closed (and nothing could happen).
+
+
+```{r shiny-websocket, echo=FALSE, fig.cap='Shiny websocket'}
+knitr::include_graphics("images/survival-kit/shiny-websocket.png")
+```
+
+Understanding how R and JS may communicate will help in the next section about the Shiny input system.
+
 ## Shiny's input system
 The goal of this part is to better understand how Shiny inputs work.
 
@@ -67,13 +119,13 @@ Notice the `_start.js` and `_end.js`. These will be used by the `Gruntfile.js`, 
 
 ```javascript
 grunt.registerTask('default', [
-'concat',
-'string-replace',
-'validateStringReplace',
-'eslint',
-'configureBabel',
-'babel',
-'uglify'
+  'concat',
+  'string-replace',
+  'validateStringReplace',
+  'eslint',
+  'configureBabel',
+  'babel',
+  'uglify'
 ]);
 ```
 
@@ -221,7 +273,7 @@ shinyApp(ui, server)
 ```
 
 ##### Initialize inputs
-`initialize(el)` is called before the input is bound but not all inputs need to be initalized. Some API like [Framework7](https://framework7.io), on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to have an initialize method. Below is an example for the toggle input:
+Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their `initialize` method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. The initialize method is not always defined but some API like [Framework7](https://framework7.io), on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to have it. Below is an example for the toggle input:
 
 ```javascript
 // what is expected
@@ -235,7 +287,7 @@ let toggle = app.toggle.create({
 });
 ```
 
-The corresponding shinyMobile input binding starts as follows. 
+`app.toggle.create` is internal to the API. The corresponding shinyMobile input binding starts as follows. 
 
 ```javascript
 var f7ToggleBinding = new Shiny.InputBinding();
@@ -247,8 +299,10 @@ $.extend(f7ToggleBinding, {
 });
 ```
 
+Once initialized, we may use all specific methods provided by the API. [Framework7](https://framework7.io) is clearly a gold mine, as its API provides a lot of possible options for many inputs/widgets.
+
 ##### Get the value
-`getValue(el)` returns the input value. The way to obtain the value is different for almost all inputs. `el` refers to the element holding the id attribute and recognized by the `find` method. Figure \@ref(fig:shiny-el) shows the result of a `console.log($(el));`.
+`getValue(el)` returns the input value. The way to obtain the value is different for almost all inputs. For instance, the `textInput` is pretty simple since the value is located in the `value` attribute. `el` refers to the element holding the id attribute and recognized by the `find` method. Figure \@ref(fig:shiny-el) shows the result of a `console.log($(el));`.
 
 ```{r shiny-el, echo=FALSE, fig.cap='About el'}
 knitr::include_graphics("images/survival-kit/shiny-el.png")
@@ -348,6 +402,13 @@ server <- function(input, output, session) {
 }
 shinyApp(ui, server)
 ```
+
+Figure \@ref(fig:shiny-update-inputs) illustrates the main mechanisms.
+
+```{r shiny-update-inputs, echo=FALSE, fig.cap='What happens after clickin on the update button?'}
+knitr::include_graphics("images/survival-kit/shiny-update-inputs.png")
+```
+
 
 If we have to pass multiple elements to update, we would have to change the `updateCustomTextInput` function such as:
 
@@ -589,93 +650,9 @@ Shiny.inputBindings.register(myBinding, 'reference');
 
 Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, it is better not to have to use it.
 
+#### Binding other elements
+The Shiny input binding is too convenient to only use it for input elements.
 
-##### Wrap up   
-Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their initialize method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. As shown above, the initialize method is not always defined.
-
-TO DO: picture to add visual representation of an input binding
-
-
-### websocket
-How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted [here](Fast bidirectional communication between the web browser and R using the httpuv package.), leveraging the [httpuv](https://github.com/rstudio/httpuv) and [websocket](https://github.com/rstudio/websocket) packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let's run the following app.
-
-```{r, eval=FALSE}
-shinyApp(
-  ui = fluidPage(
-    selectInput("variable", "Variable:",
-                c("Cylinders" = "cyl",
-                  "Transmission" = "am",
-                  "Gears" = "gear")),
-    tableOutput("data")
-  ),
-  server = function(input, output) {
-    output$data <- renderTable({
-      mtcars[, c("mpg", input$variable), drop = FALSE]
-    }, rownames = TRUE)
-  }
-)
-```
-
-After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js [file](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). The first element received from R is the first message in the list shown in Figure \@ref(fig:shiny-websocket). It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.
-
-```javascript
-socket.send(JSON.stringify({
-method: 'init',
-data: self.$initialInput
-}));
-```
-
-The second message received from R is after updating the select input.
-
-```javascript
-this.sendInput = function(values) {
-var msg = JSON.stringify({
-method: 'update',
-data: values
-});
-
-// other things
-};
-```
-
-All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field `error` containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.
-
-Finally, `Shiny.shinyapp.$socket.readyState` returns the state of the socket connection. It should be 1 if your app is running but I've seen some cases where the socket was actually closed (and nothing could happen).
-
-
-```{r shiny-websocket, echo=FALSE, fig.cap='Shiny websocket'}
-knitr::include_graphics("images/survival-kit/shiny-websocket.png")
-```
-
-### Custom handlers: from R to JavaScript
-Shiny contains tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a `selectInput` and a `datatable`. How does R send messages to JavaScript?
-
-Shiny is made of input and output. Yet there is a third parameter you can pass to the server function called session. The [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object contains informations on the current session like clientData, the namespace ns (if working inside modules), as well as methods (yes methods since session is an R6 class). Among those methods, we are interested by 2 of them:
-
-- `sendCustomMessage(type, message)`: > Custom messages have no meaning to Shiny itself; they are used soley to convey information to custom JavaScript logic in the browser
-- `sendInputMessage()`: > if the input is present and bound on the page at the time the message is received, then the input binding object's receiveMessage(el, message) method will be called
-
-
-While `sendInputMessage` is the R side of the input features, `sendCustomMessage` simply allows to communicate between R and JavaScript. 
-Basically a R function :
-
-```{r, eval=FALSE}
-sayHelloToJS <- function(text, session) {
-  session$sendCustomMessage(type = 'say-hello', message = text)
-}
-```
-
-We need a JavaScript receptor, handle by the `addCustomMessageHandler` method:
-
-```javascript
-Shiny.AddCustomMessageHandler('say-hello', function(message) {
-alert(`R says ${message} to you!`)
-})
-```
-
-Of course, the type parameter is critical to make the connection between R and JavaScript and 2 different message handlers must have different types to avoid conflicts.
-
-TO DO: picture showing the communication
 
 ### Utilities to quickly define new inputs
 If you ever wondered where the `Shiny.onInputChange` or `Shiny.setInputValue` comes from (see  [article](https://shiny.rstudio.com/articles/communicating-with-js.html)), it is actually defined in the `initShiny` function. 
@@ -689,7 +666,11 @@ inputs.setInput(name, value, opts);
 
 Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like `sliderInput` have their own update function like `updateSliderInput`, because of the custom input binding system (We will see it very soon)!
 
-### Get access to initial values 
+
+### Miscellaneous
+We present here some tools that may be useful...TO FINISH
+
+#### Get access to initial values 
 Something we may notice when exploring the `initShiny` function is the existence of a `Shiny.shinyapp` object, defined as follows:
 
 ```javascript
@@ -755,5 +736,32 @@ knitr::include_graphics("images/survival-kit/shiny-init-input.png")
 I acknowledge, the practical interest might be limited but still good to know for debugging purposes. 
 
 
+## Custom handlers: from R to JavaScript
+Shiny contains tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a `selectInput` and a `datatable`. How does R send messages to JavaScript?
+
+Shiny is made of input and output. Yet there is a third parameter you can pass to the server function called session. The [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object contains informations on the current session like clientData, the namespace ns (if working inside modules), as well as methods (yes methods since session is an R6 class). Among those methods, we are interested by 2 of them:
+
+- `sendCustomMessage(type, message)`: > Custom messages have no meaning to Shiny itself; they are used soley to convey information to custom JavaScript logic in the browser
+- `sendInputMessage()`: > if the input is present and bound on the page at the time the message is received, then the input binding object's receiveMessage(el, message) method will be called
 
 
+While `sendInputMessage` is the R side of the input features, `sendCustomMessage` simply allows to communicate between R and JavaScript. 
+Basically a R function :
+
+```{r, eval=FALSE}
+sayHelloToJS <- function(text, session) {
+  session$sendCustomMessage(type = 'say-hello', message = text)
+}
+```
+
+We need a JavaScript receptor, handle by the `addCustomMessageHandler` method:
+
+```javascript
+Shiny.AddCustomMessageHandler('say-hello', function(message) {
+alert(`R says ${message} to you!`)
+})
+```
+
+The type parameter is obviously critical to make the connection between R and JavaScript and 2 different message handlers must have different types to avoid conflicts.
+
+TO DO: picture showing the communication
