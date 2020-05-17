@@ -1541,14 +1541,14 @@ Notice the \texttt{\_start.js} and \texttt{\_end.js}. These will be used by the 
 \begin{Shaded}
 \begin{Highlighting}[]
 \VariableTok{grunt}\NormalTok{.}\AttributeTok{registerTask}\NormalTok{(}\StringTok{'default'}\OperatorTok{,}\NormalTok{ [}
-    \StringTok{'concat'}\OperatorTok{,}
-    \StringTok{'string-replace'}\OperatorTok{,}
-    \StringTok{'validateStringReplace'}\OperatorTok{,}
-    \StringTok{'eslint'}\OperatorTok{,}
-    \StringTok{'configureBabel'}\OperatorTok{,}
-    \StringTok{'babel'}\OperatorTok{,}
-    \StringTok{'uglify'}
-\NormalTok{  ])}\OperatorTok{;}
+\StringTok{'concat'}\OperatorTok{,}
+\StringTok{'string-replace'}\OperatorTok{,}
+\StringTok{'validateStringReplace'}\OperatorTok{,}
+\StringTok{'eslint'}\OperatorTok{,}
+\StringTok{'configureBabel'}\OperatorTok{,}
+\StringTok{'babel'}\OperatorTok{,}
+\StringTok{'uglify'}
+\NormalTok{])}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1589,7 +1589,7 @@ When we run our app, most of the time it works and it is just fine! But what hap
 \begin{Highlighting}[]
 \NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
   \KeywordTok{sliderInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Number of observations:"}\NormalTok{,}
-    \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
+              \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
 \NormalTok{  ),}
   \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"distPlot"}\NormalTok{)}
 \NormalTok{)}
@@ -1658,22 +1658,78 @@ On the R side, we define an input, with a specific attribute that will serve as 
 \includegraphics[width=20in]{images/survival-kit/shiny-find-inputs} \caption{How to find inputs?}\label{fig:shiny-find-inputs}
 \end{figure}
 
+Below, we are going to create a new binding for the \texttt{textInput}, with only 2 methods mentionned in the previous section, that is \texttt{find} and \texttt{getValue}. For that, we need to create a customized textInput, \texttt{customTextInput} so that it is not recognized by the classic Shiny text input binding. We add the input-text class and make our own input binding pointing to that specific class.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{customTextInput <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{ (inputId, label, }\DataTypeTok{value =} \StringTok{""}\NormalTok{, }\DataTypeTok{width =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{placeholder =} \OtherTok{NULL}\NormalTok{) \{}
+\NormalTok{  value <-}\StringTok{ }\KeywordTok{restoreInput}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ inputId, }\DataTypeTok{default =}\NormalTok{ value)}
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \StringTok{"form-group shiny-input-container"}\NormalTok{, }
+    \DataTypeTok{style =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(width)) \{}
+      \KeywordTok{paste0}\NormalTok{(}\StringTok{"width: "}\NormalTok{, }\KeywordTok{validateCssUnit}\NormalTok{(width), }\StringTok{";"}\NormalTok{)}
+\NormalTok{    \},}
+\NormalTok{    shiny}\OperatorTok{:::}\KeywordTok{shinyInputLabel}\NormalTok{(inputId, label), }
+\NormalTok{    tags}\OperatorTok{$}\KeywordTok{input}\NormalTok{(}
+      \DataTypeTok{id =}\NormalTok{ inputId, }
+      \DataTypeTok{type =} \StringTok{"text"}\NormalTok{, }
+      \DataTypeTok{class =} \StringTok{"form-control input-text"}\NormalTok{, }
+      \DataTypeTok{value =}\NormalTok{ value,}
+      \DataTypeTok{placeholder =}\NormalTok{ placeholder}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We put everything in a Shiny app and invit the reader to open the HTML inspector and look at the \texttt{console.log} result.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+    \StringTok{"$(function() \{}
+\StringTok{      // Input binding}
+\StringTok{      let customTextBinding = new Shiny.InputBinding();}
+
+\StringTok{      $.extend(customTextBinding, \{}
+\StringTok{        find: function(scope) \{}
+\StringTok{          console.log($(scope).find('.input-text'));}
+\StringTok{          return $(scope).find('.input-text');}
+\StringTok{        \}}
+\StringTok{      \});}
+\StringTok{      }
+\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
+\StringTok{    \});}
+\StringTok{    "}
+\NormalTok{  ),}
+  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
+  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
+\NormalTok{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
 \hypertarget{initialize-inputs}{%
 \paragraph{Initialize inputs}\label{initialize-inputs}}
 
-\texttt{initialize(el)} is called before the input is bound but not all input need to be initalized. Some API like \href{https://framework7.io}{Framework7} require to have an initialize method. Below is an example for the toggle input:
+\texttt{initialize(el)} is called before the input is bound but not all inputs need to be initalized. Some API like \href{https://framework7.io}{Framework7}, on top of which \href{https://github.com/RinteRface/shinyMobile}{shinyMobile} is built, require to have an initialize method. Below is an example for the toggle input:
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{// what is expected}
-\KeywordTok{var}\NormalTok{ toggle }\OperatorTok{=} \VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}
+\KeywordTok{let}\NormalTok{ toggle }\OperatorTok{=} \VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}
   \DataTypeTok{el}\OperatorTok{:} \StringTok{'.toggle'}\OperatorTok{,}
   \DataTypeTok{on}\OperatorTok{:} \OperatorTok{\{}
     \DataTypeTok{change}\OperatorTok{:} \KeywordTok{function}\NormalTok{ () }\OperatorTok{\{}
       \VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(}\StringTok{'Toggle changed'}\NormalTok{)}
     \OperatorTok{\}}
   \OperatorTok{\}}
-\OperatorTok{\}}\NormalTok{)}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1682,21 +1738,61 @@ The corresponding shinyMobile input binding starts as follows.
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{var}\NormalTok{ f7ToggleBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{InputBinding}\NormalTok{()}\OperatorTok{;}
-
 \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(f7ToggleBinding}\OperatorTok{,} \OperatorTok{\{}
-
   \DataTypeTok{initialize}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
     \VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}\DataTypeTok{el}\OperatorTok{:}\NormalTok{ el}\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
   \OperatorTok{\},}
-  \CommentTok{// other methods}
-\OperatorTok{\}}
+\CommentTok{// other methods}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
 
 \hypertarget{get-the-value}{%
 \paragraph{Get the value}\label{get-the-value}}
 
-\texttt{getValue(el)} returns the input value. The way to obtain the value is different for almost all inputs.
+\texttt{getValue(el)} returns the input value. The way to obtain the value is different for almost all inputs. \texttt{el} refers to the element holding the id attribute and recognized by the \texttt{find} method. Figure \ref{fig:shiny-el} shows the result of a \texttt{console.log(\$(el));}.
+
+\begin{figure}
+\includegraphics[width=35.5in]{images/survival-kit/shiny-el} \caption{About el}\label{fig:shiny-el}
+\end{figure}
+
+To get the value, we apply the jQuery method \texttt{val} on the \texttt{\$(el)} element and return the result.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+    \StringTok{"$(function() \{}
+\StringTok{      // Input binding}
+\StringTok{      let customTextBinding = new Shiny.InputBinding();}
+
+\StringTok{      $.extend(customTextBinding, \{}
+\StringTok{        find: function(scope) \{}
+\StringTok{          return $(scope).find('.input-text');}
+\StringTok{        \},}
+\StringTok{        // Given the DOM element for the input, return the value}
+\StringTok{        getValue: function(el) \{}
+\StringTok{          console.log($(el));}
+\StringTok{          return $(el).val();}
+\StringTok{        \}}
+\StringTok{      \});}
+\StringTok{      }
+\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
+\StringTok{    \});}
+\StringTok{    "}
+\NormalTok{  ),}
+  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
+  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
+\NormalTok{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working.
 
 \hypertarget{set-the-value}{%
 \paragraph{Set the value}\label{set-the-value}}
@@ -1710,14 +1806,10 @@ The corresponding shinyMobile input binding starts as follows.
 \tightlist
 \item
   receiveMessage(el, data): This method is the JavaScript part of all the \texttt{updateInput} functions. We usually call the setValue method inside.
-
-  \begin{itemize}
-  \tightlist
-  \item
-    subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
-  \item
-    getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
-  \end{itemize}
+\item
+  subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
+\item
+  getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
 \end{itemize}
 
 \hypertarget{register-an-input-binding}{%
@@ -1729,7 +1821,7 @@ At the end of the input binding definition, we register it for Shiny.
 \begin{Highlighting}[]
 \KeywordTok{let}\NormalTok{ myBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{inputBinding}\NormalTok{()}\OperatorTok{;}
 \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(myBinding}\OperatorTok{,} \OperatorTok{\{}
-  \CommentTok{// methods go here}
+\CommentTok{// methods go here}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 
 \VariableTok{Shiny}\NormalTok{.}\VariableTok{inputBindings}\NormalTok{.}\AttributeTok{register}\NormalTok{(myBinding}\OperatorTok{,} \StringTok{'reference'}\NormalTok{)}\OperatorTok{;}
@@ -1774,8 +1866,8 @@ After opening the HTML inspector, we select the network tab and search for webso
 \begin{Shaded}
 \begin{Highlighting}[]
 \VariableTok{socket}\NormalTok{.}\AttributeTok{send}\NormalTok{(}\VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
-  \DataTypeTok{method}\OperatorTok{:} \StringTok{'init'}\OperatorTok{,}
-  \DataTypeTok{data}\OperatorTok{:} \VariableTok{self}\NormalTok{.}\AttributeTok{$initialInput}
+\DataTypeTok{method}\OperatorTok{:} \StringTok{'init'}\OperatorTok{,}
+\DataTypeTok{data}\OperatorTok{:} \VariableTok{self}\NormalTok{.}\AttributeTok{$initialInput}
 \OperatorTok{\}}\NormalTok{))}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -1785,12 +1877,12 @@ The second message received from R is after updating the select input.
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{this}\NormalTok{.}\AttributeTok{sendInput} \OperatorTok{=} \KeywordTok{function}\NormalTok{(values) }\OperatorTok{\{}
-  \KeywordTok{var}\NormalTok{ msg }\OperatorTok{=} \VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
-    \DataTypeTok{method}\OperatorTok{:} \StringTok{'update'}\OperatorTok{,}
-    \DataTypeTok{data}\OperatorTok{:}\NormalTok{ values}
-  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\KeywordTok{var}\NormalTok{ msg }\OperatorTok{=} \VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
+\DataTypeTok{method}\OperatorTok{:} \StringTok{'update'}\OperatorTok{,}
+\DataTypeTok{data}\OperatorTok{:}\NormalTok{ values}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 
-  \CommentTok{// other things}
+\CommentTok{// other things}
 \OperatorTok{\};}
 \end{Highlighting}
 \end{Shaded}
@@ -1834,7 +1926,7 @@ We need a JavaScript receptor, handle by the \texttt{addCustomMessageHandler} me
 \begin{Shaded}
 \begin{Highlighting}[]
 \VariableTok{Shiny}\NormalTok{.}\AttributeTok{AddCustomMessageHandler}\NormalTok{(}\StringTok{'say-hello'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
-  \AttributeTok{alert}\NormalTok{(}\VerbatimStringTok{`R says }\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{ to you!`}\NormalTok{)}
+\AttributeTok{alert}\NormalTok{(}\VerbatimStringTok{`R says }\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{ to you!`}\NormalTok{)}
 \OperatorTok{\}}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
@@ -1851,8 +1943,8 @@ If you ever wondered where the \texttt{Shiny.onInputChange} or \texttt{Shiny.set
 \begin{Shaded}
 \begin{Highlighting}[]
 \VariableTok{exports}\NormalTok{.}\AttributeTok{setInputValue} \OperatorTok{=} \VariableTok{exports}\NormalTok{.}\AttributeTok{onInputChange} \OperatorTok{=} \KeywordTok{function}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts) }\OperatorTok{\{}
-\NormalTok{  opts }\OperatorTok{=} \AttributeTok{addDefaultInputOpts}\NormalTok{(opts)}\OperatorTok{;}
-  \VariableTok{inputs}\NormalTok{.}\AttributeTok{setInput}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts)}\OperatorTok{;}
+\NormalTok{opts }\OperatorTok{=} \AttributeTok{addDefaultInputOpts}\NormalTok{(opts)}\OperatorTok{;}
+\VariableTok{inputs}\NormalTok{.}\AttributeTok{setInput}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts)}\OperatorTok{;}
 \OperatorTok{\};}
 \end{Highlighting}
 \end{Shaded}
@@ -1875,29 +1967,29 @@ Let's explore what \texttt{shinyApp} contains. The definition is located in the 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{var}\NormalTok{ ShinyApp }\OperatorTok{=} \KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$socket} \OperatorTok{=} \KeywordTok{null}\OperatorTok{;}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$socket} \OperatorTok{=} \KeywordTok{null}\OperatorTok{;}
 
-  \CommentTok{// Cached input values}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$inputValues} \OperatorTok{=} \OperatorTok{\{\};}
+\CommentTok{// Cached input values}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$inputValues} \OperatorTok{=} \OperatorTok{\{\};}
 
-  \CommentTok{// Input values at initialization (and reconnect)}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$initialInput} \OperatorTok{=} \OperatorTok{\{\};}
+\CommentTok{// Input values at initialization (and reconnect)}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$initialInput} \OperatorTok{=} \OperatorTok{\{\};}
 
-  \CommentTok{// Output bindings}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$bindings} \OperatorTok{=} \OperatorTok{\{\};}
+\CommentTok{// Output bindings}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$bindings} \OperatorTok{=} \OperatorTok{\{\};}
 
-  \CommentTok{// Cached values/errors}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$values} \OperatorTok{=} \OperatorTok{\{\};}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$errors} \OperatorTok{=} \OperatorTok{\{\};}
+\CommentTok{// Cached values/errors}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$values} \OperatorTok{=} \OperatorTok{\{\};}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$errors} \OperatorTok{=} \OperatorTok{\{\};}
 
-  \CommentTok{// Conditional bindings (show/hide element based on expression)}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$conditionals} \OperatorTok{=} \OperatorTok{\{\};}
+\CommentTok{// Conditional bindings (show/hide element based on expression)}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$conditionals} \OperatorTok{=} \OperatorTok{\{\};}
 
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$pendingMessages} \OperatorTok{=}\NormalTok{ []}\OperatorTok{;}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$activeRequests} \OperatorTok{=} \OperatorTok{\{\};}
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$nextRequestId} \OperatorTok{=} \DecValTok{0}\OperatorTok{;}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$pendingMessages} \OperatorTok{=}\NormalTok{ []}\OperatorTok{;}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$activeRequests} \OperatorTok{=} \OperatorTok{\{\};}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$nextRequestId} \OperatorTok{=} \DecValTok{0}\OperatorTok{;}
 
-  \KeywordTok{this}\NormalTok{.}\AttributeTok{$allowReconnect} \OperatorTok{=} \KeywordTok{false}\OperatorTok{;}
+\KeywordTok{this}\NormalTok{.}\AttributeTok{$allowReconnect} \OperatorTok{=} \KeywordTok{false}\OperatorTok{;}
 \OperatorTok{\};}
 \end{Highlighting}
 \end{Shaded}
@@ -1908,7 +2000,7 @@ It creates several properties, some of them are easy to guess like \texttt{input
 \begin{Highlighting}[]
 \NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
   \KeywordTok{sliderInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Number of observations:"}\NormalTok{,}
-    \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
+              \DataTypeTok{min =} \DecValTok{0}\NormalTok{, }\DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }\DataTypeTok{value =} \DecValTok{500}
 \NormalTok{  ),}
   \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"distPlot"}\NormalTok{)}
 \NormalTok{)}
