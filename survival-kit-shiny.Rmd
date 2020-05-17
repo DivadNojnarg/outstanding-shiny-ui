@@ -352,8 +352,8 @@ shinyApp(ui, server)
 If we have to pass multiple elements to update, we would have to change the `updateCustomTextInput` function such as:
 
 ```{r}
-updateCustomTextInput <- function(inputId, value = NULL, session = getDefaultReactiveDomain()) {
-  message <- shiny::dropNulls(
+updateCustomTextInput <- function(inputId, value = NULL, placeholder = NULL, session = getDefaultReactiveDomain()) {
+  message <- shiny:::dropNulls(
     list(
       value = value,
       placeholder = placeholder
@@ -363,7 +363,7 @@ updateCustomTextInput <- function(inputId, value = NULL, session = getDefaultRea
 }
 ```
 
-On the JS side, we would have to update the `receiveMessage` method. We send a list from R, which is then serialized to a JSON object. Properties like `value` may be accessed using the . notation:
+`dropNulls` is an internal function ensuring that the list does not contain NULL elements. On the JS side, we would have to update the `receiveMessage` method. We send a list from R, which is then serialized to a JSON object. Properties like `value` may be accessed using the . notation:
 
 ```javascript
 receiveMessage: function(el, data) {
@@ -380,12 +380,200 @@ So far so good! We managed to update the text input value. Yet, the output value
 
 ##### Subscribe
 `subscribe(el, callback)` listens to events telling under which circumstances to tell Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...).
+Going back to our custom text input, what event would make it change?
+
+   - After a key is release on the keyboard. We may listen to `keyup`
+   - After copying and pasting any text in the input field or dictating text. The `input` event may be helpful
+   
+We may add those event to our binding using an event listener seen at the end of Chapter \@ref(survival-kit-javascript).
+
+```javascript
+$(el).on('keyup.customTextBinding input.customTextBinding', function(event) {
+  callback(true);
+});
+```
+
+`callback` ensures that the new value is captured by Shiny. We will come back later on the callback parameter.
 
 
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+    "$(function() {
+      // Input binding
+      let customTextBinding = new Shiny.InputBinding();
+
+      $.extend(customTextBinding, {
+        find: function(scope) {
+          return $(scope).find('.input-text');
+        },
+        // Given the DOM element for the input, return the value
+        getValue: function(el) {
+          return $(el).val();
+        },
+        setValue: function(el, value) {
+          $(el).val(value);
+        },
+        receiveMessage: function(el, data) {
+          if (data.hasOwnProperty('value')) {
+            this.setValue(el, data.value);
+            $(el).trigger('change');
+          }
+        },
+        subscribe: function(el, callback) {
+          $(el).on('keyup.customTextBinding input.customTextBinding', function(event) {
+            console.log(event);
+            callback();
+          });
+        }
+      });
+      
+      Shiny.inputBindings.register(customTextBinding, 'text');
+    });
+    "
+  ),
+  customTextInput("caption", "Caption", "Data Summary"),
+  actionButton("update", "Update text!", class = "btn-success"),
+  uiOutput("customText")
+)
+
+server <- function(input, output, session) {
+  output$customText <- renderText(input$caption)
+  observeEvent(input$update, {
+    updateCustomTextInput("caption", value = "new text")
+  })
+}
+shinyApp(ui, server)
+```
+
+Hurray! The output result is successfuly changed when the input value is manually changed. But nothing happens when we click on the update button. What did we miss? Looking back at the `receiveMessage` method, we change the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a `console.log(event);` in the `subscribe` method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the `subscribe` method. We may choose the `change` event, that triggers when an element has finished changing.
+
+```javascript
+$(el).on('change.customTextBinding', function(event) {
+  callback(false);
+});
+```
+
+Let's try again.
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+    "$(function() {
+      // Input binding
+      let customTextBinding = new Shiny.InputBinding();
+
+      $.extend(customTextBinding, {
+        find: function(scope) {
+          return $(scope).find('.input-text');
+        },
+        // Given the DOM element for the input, return the value
+        getValue: function(el) {
+          return $(el).val();
+        },
+        setValue: function(el, value) {
+          $(el).val(value);
+        },
+        receiveMessage: function(el, data) {
+          if (data.hasOwnProperty('value')) {
+            this.setValue(el, data.value);
+            $(el).trigger('change');
+          }
+        },
+        subscribe: function(el, callback) {
+          $(el).on('keyup.customTextBinding input.textInputBinding', function(event) {
+            callback();
+          });
+
+          $(el).on('change.customTextBinding', function(event) {
+            callback(false);
+          });
+        }
+      });
+      
+      Shiny.inputBindings.register(customTextBinding, 'text');
+    });
+    "
+  ),
+  customTextInput("caption", "Caption", "Data Summary"),
+  actionButton("update", "Update text!", class = "btn-success"),
+  uiOutput("customText")
+)
+
+server <- function(input, output, session) {
+  output$customText <- renderText(input$caption)
+  observeEvent(input$update, {
+    updateCustomTextInput("caption", value = "new text")
+  })
+}
+shinyApp(ui, server)
+```
+
+Perfect? Not exactly. Wouldn't is be better to only change the input value once the keyboard is completly released for some time (and not each time a key is released). This is what we call debouncing. This implies to set a delay before telling Shiny to get the new value and the `getRatePolicy` method is exactly what we need. Additionally, we must also pass true to the `callback` in the subscribe method, in order to apply our specific rate policy ([debounce](https://davidwalsh.name/javascript-debounce-function), throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined [here](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js).
 
 
-- getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy ([debounce](https://davidwalsh.name/javascript-debounce-function), throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined [here](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js).
+Run the app below and try to manually change the text input value by adding a couple of letters as fast as you can. What do you notice? We see that output value only updates when we release the keyboard.
 
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+    "$(function() {
+      // Input binding
+      let customTextBinding = new Shiny.InputBinding();
+
+      $.extend(customTextBinding, {
+        find: function(scope) {
+          return $(scope).find('.input-text');
+        },
+        // Given the DOM element for the input, return the value
+        getValue: function(el) {
+          return $(el).val();
+        },
+        setValue: function(el, value) {
+          $(el).val(value);
+        },
+        receiveMessage: function(el, data) {
+          if (data.hasOwnProperty('value')) {
+            this.setValue(el, data.value);
+            $(el).trigger('change');
+          }
+        },
+        subscribe: function(el, callback) {
+          $(el).on('keyup.customTextBinding input.textInputBinding', function(event) {
+            callback(true);
+          });
+
+          $(el).on('change.customTextBinding', function(event) {
+            callback();
+          });
+        },
+        getRatePolicy: function() {
+          return {
+            policy: 'debounce',
+            delay: 250
+          };
+        }
+      });
+      
+      Shiny.inputBindings.register(customTextBinding, 'text');
+    });
+    "
+  ),
+  customTextInput("caption", "Caption", "Data Summary"),
+  actionButton("update", "Update text!", class = "btn-success"),
+  uiOutput("customText")
+)
+
+server <- function(input, output, session) {
+  output$customText <- renderText(input$caption)
+  observeEvent(input$update, {
+    updateCustomTextInput("caption", value = "new text")
+  })
+}
+shinyApp(ui, server)
+```
+
+You may adjust the delay according to your needs, but a too high delay would not feel very natural.
 
 ##### Register an input binding
 At the end of the input binding definition, we register it for Shiny.
