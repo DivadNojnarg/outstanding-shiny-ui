@@ -76,8 +76,8 @@ After opening the HTML inspector, we select the network tab and search for webso
 
 ```javascript
 socket.send(JSON.stringify({
-  method: 'init',
-  data: self.$initialInput
+method: 'init',
+data: self.$initialInput
 }));
 ```
 
@@ -85,11 +85,11 @@ The second message received from R is after updating the select input.
 
 ```javascript
 this.sendInput = function(values) {
-  var msg = JSON.stringify({
-    method: 'update',
-    data: values
-  });
-  // other things
+var msg = JSON.stringify({
+method: 'update',
+data: values
+});
+// other things
 };
 ```
 
@@ -119,13 +119,13 @@ Notice the `_start.js` and `_end.js`. These will be used by the `Gruntfile.js`, 
 
 ```javascript
 grunt.registerTask('default', [
-  'concat',
-  'string-replace',
-  'validateStringReplace',
-  'eslint',
-  'configureBabel',
-  'babel',
-  'uglify'
+'concat',
+'string-replace',
+'validateStringReplace',
+'eslint',
+'configureBabel',
+'babel',
+'uglify'
 ]);
 ```
 
@@ -278,12 +278,12 @@ Upon initialization, Shiny calls the `initializeInputs` function that takes all 
 ```javascript
 // what is expected
 let toggle = app.toggle.create({
-  el: '.toggle',
-  on: {
-    change: function () {
-      console.log('Toggle changed')
-    }
-  }
+el: '.toggle',
+on: {
+change: function () {
+console.log('Toggle changed')
+}
+}
 });
 ```
 
@@ -292,9 +292,9 @@ let toggle = app.toggle.create({
 ```javascript
 var f7ToggleBinding = new Shiny.InputBinding();
 $.extend(f7ToggleBinding, {
-  initialize: function(el) {
-    app.toggle.create({el: el});
-  },
+initialize: function(el) {
+app.toggle.create({el: el});
+},
 // other methods
 });
 ```
@@ -349,9 +349,9 @@ This time, the input value is returned. Notice that when you try to change the t
 
 Let's create a function to update our custom text input. Call it `updateCustomTextInput`. It requires at least 3 parameters:
 
-  - inputId tells which input to update.
-  - value is the new value. This will be taken by the `setValue ` JS method in the input binding
-  - session is the Shiny session object. session is an [R6](https://r6.r-lib.org) class having methods like `sendInputMessage` to send values from R to JavaScript. The `receiveMessage` method will apply `setValue` with the data received from R
+- inputId tells which input to update.
+- value is the new value. This will be taken by the `setValue ` JS method in the input binding
+- session is the Shiny session object. session is an [R6](https://r6.r-lib.org) class having methods like `sendInputMessage` to send values from R to JavaScript. The `receiveMessage` method will apply `setValue` with the data received from R
 
 ```{r}
 updateCustomTextInput <- function(inputId, value = NULL, session = getDefaultReactiveDomain()) {
@@ -428,12 +428,12 @@ updateCustomTextInput <- function(inputId, value = NULL, placeholder = NULL, ses
 
 ```javascript
 receiveMessage: function(el, data) {
-  console.log(data);
-  if (data.hasOwnProperty('value')) {
-    this.setValue(el, data.value);
-  }
-  
-  // other parameters to update...
+console.log(data);
+if (data.hasOwnProperty('value')) {
+this.setValue(el, data.value);
+}
+
+// other parameters to update...
 }
 ```
 
@@ -443,14 +443,14 @@ So far so good! We managed to update the text input value. Yet, the output value
 `subscribe(el, callback)` listens to events telling under which circumstances to tell Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...).
 Going back to our custom text input, what event would make it change?
 
-   - After a key is release on the keyboard. We may listen to `keyup`
-   - After copying and pasting any text in the input field or dictating text. The `input` event may be helpful
-   
+- After a key is release on the keyboard. We may listen to `keyup`
+- After copying and pasting any text in the input field or dictating text. The `input` event may be helpful
+
 We may add those [events](https://javascript.info/events-change-input) to our binding using an event listener seen at the end of Chapter \@ref(survival-kit-javascript).
 
 ```javascript
 $(el).on('keyup.customTextBinding input.customTextBinding', function(event) {
-  callback(true);
+callback(true);
 });
 ```
 
@@ -511,7 +511,7 @@ Hurray! The output result is successfuly changed when the input value is manuall
 
 ```javascript
 $(el).on('change.customTextBinding', function(event) {
-  callback(false);
+callback(false);
 });
 ```
 
@@ -613,6 +613,9 @@ ui <- fluidPage(
             policy: 'debounce',
             delay: 250
           };
+        },
+        unsubscribe: function(el) {
+          $(el).off('.customTextBinding');
         }
       });
       
@@ -651,8 +654,197 @@ Shiny.inputBindings.register(myBinding, 'reference');
 Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, it is better not to have to use it.
 
 #### Binding other elements
-The Shiny input binding is too convenient to only use it for input elements.
+The Shiny input binding system is too convenient to only use it for input elements. In shinydashboard, you may know the `box` function. Boxes are containers with a title, body and footer as well as optional elements. Interestingly we may collapse/uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
 
+```{r}
+"%OR%" <- function(a, b) if (!is.null(a)) a else b
+
+box2 <- function (..., inputId = NULL, title = NULL, footer = NULL, status = NULL, solidHeader = FALSE, 
+                 background = NULL, width = 6, height = NULL, collapsible = FALSE, 
+                 collapsed = FALSE) 
+{
+  boxClass <- "box"
+  if (solidHeader || !is.null(background)) {
+    boxClass <- paste(boxClass, "box-solid")
+  }
+  if (!is.null(status)) {
+    boxClass <- paste0(boxClass, " box-", status)
+  }
+  if (collapsible && collapsed) {
+    boxClass <- paste(boxClass, "collapsed-box")
+  }
+  if (!is.null(background)) {
+    boxClass <- paste0(boxClass, " bg-", background)
+  }
+  style <- NULL
+  if (!is.null(height)) {
+    style <- paste0("height: ", validateCssUnit(height))
+  }
+  titleTag <- NULL
+  if (!is.null(title)) {
+    titleTag <- h3(class = "box-title", title)
+  }
+  collapseTag <- NULL
+  if (collapsible) {
+    buttonStatus <- status %OR% "default"
+    collapseIcon <- if (collapsed) 
+      "plus"
+    else "minus"
+    collapseTag <- div(class = "box-tools pull-right", tags$button(class = paste0("btn btn-box-tool"), 
+                                                                   `data-widget` = "collapse", shiny::icon(collapseIcon)))
+  }
+  headerTag <- NULL
+  if (!is.null(titleTag) || !is.null(collapseTag)) {
+    headerTag <- div(class = "box-header", titleTag, collapseTag)
+  }
+  
+  div(
+    class = if (!is.null(width)) paste0("col-sm-", width), 
+    div(
+      id = inputId, 
+      class = boxClass, 
+      style = if (!is.null(style)) 
+        style, 
+      headerTag, 
+      div(class = "box-body", ...),
+      if (!is.null(footer)) div(class = "box-footer", footer)
+    )
+  )
+}
+```
+
+Besides, we create the `updateBox` function, which will collapse the box:
+
+```{r}
+updateBox <- function(inputId, session = getDefaultReactiveDomain()) {
+  session$sendInputMessage(inputId, message = NULL)
+}
+```
+
+When collapsed, a box gets the `collapsed-box` class. This will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the `subscribe` method. Most of the time, the change event might suit but as shinydashboard is built on top of [AdminLTE2](https://adminlte.io/docs/2.4/js-box-widget), it has an API to control box behaviour. We identify 2 events corresponding to the collapsible action: 
+  
+  - expanded.boxwidget (Triggered after the box is expanded)
+  - collapsed.boxwidget (Triggered after the box is collapsed)
+  
+There is also a plug and play `toggle` method. However, this won't work out of the box?
+
+```javascript
+let boxBinding = new Shiny.InputBinding();
+$.extend(boxBinding, {
+  find: function(scope) {
+    return $(scope).find('.box');
+  },
+  getValue: function(el) {
+    let isCollapsed = $(el).hasClass('collapsed-box')
+    return {collapsed: isCollapsed}; // this will be a list in R
+  },
+  setValue: function(el, value) {
+    $('#mybox')
+      .find('[data-widget="collapse"]')
+      .click();
+  }, 
+  receiveMessage: function(el, data) {
+    this.setValue(el, data);
+  },
+  subscribe: function(el, callback) {
+    let collapsedBtn = $('#mybox').find('[data-widget="collapse"]');
+    $(collapsedBtn).on('click', function(event) {
+      setTimeout(function() {
+        callback();
+      }, 550);
+    });
+  },
+  unsubscribe: function(el) {
+    $(el).off('.boxBinding');
+  }
+});
+
+Shiny.inputBindings.register(boxBinding, 'box-input');
+```
+
+Some comments about the binding:
+
+  - `getValue` returns an object which will give a list in R. This is in case we add other elements like the remove action available in AdminLTE
+  - `setValue` search for a children of our box that holds the `[data-widget="collapse"]` attribute (in other words, this is the collapse button) and triggers a click on it
+  - `subscribe` listens to the `click` event and delays the `callback` call by a
+value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
+  - We don't need extra listener for the `updateBox` function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
+
+Let's try our new toy in a simple dashboard:
+
+```{r, eval=FALSE}
+shinyApp(
+  ui = dashboardPage(
+    dashboardHeader(),
+    dashboardSidebar(),
+    dashboardBody(
+      tags$script(
+        "$(function() {
+          let boxBinding = new Shiny.InputBinding();
+          $.extend(boxBinding, {
+            find: function(scope) {
+              return $(scope).find('.box');
+            },
+            getValue: function(el) {
+              let isCollapsed = $(el).hasClass('collapsed-box');
+              return {collapsed: isCollapsed}; // this will be a list in R
+            },
+            setValue: function(el, value) {
+              $('#mybox')
+                .find('[data-widget=\"collapse\"]')
+                .click();
+            }, 
+            receiveMessage: function(el, data) {
+              this.setValue(el, data);
+            },
+            subscribe: function(el, callback) {
+              let collapsedBtn = $('#mybox').find('[data-widget=\"collapse\"]');
+              $(collapsedBtn).on('click', function(event) {
+                setTimeout(function() {
+                  callback();
+                }, 550);
+              }); 
+            },
+            unsubscribe: function(el) {
+              $(el).off('.boxBinding');
+            }
+          });
+          
+          Shiny.inputBindings.register(boxBinding, 'box-input');
+        });
+        "
+      ),
+      
+      box2(
+        title = textOutput("box_state"),
+        "Box body",
+        inputId = "mybox",
+        collapsible = TRUE,
+        plotOutput("plot")
+      ),
+      actionButton("toggle_box", "Toggle Box")
+    ),
+    title = "Dashboard example"
+  ),
+  server = function(input, output) {
+    
+    output$plot <- renderPlot({
+      req(!input$mybox$collapsed)
+      plot(rnorm(200))
+    })
+    
+    output$box_state <- renderText({
+      state <- if (input$mybox$collapsed) "collapsed" else "uncollapsed"
+      paste("My box is", state)
+    })
+    
+    observeEvent(input$toggle_box, {
+      updateBox("mybox")
+    })
+    
+  }
+)
+```
 
 ### Utilities to quickly define new inputs
 If you ever wondered where the `Shiny.onInputChange` or `Shiny.setInputValue` comes from (see  [article](https://shiny.rstudio.com/articles/communicating-with-js.html)), it is actually defined in the `initShiny` function. 
