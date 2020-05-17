@@ -1794,20 +1794,116 @@ To get the value, we apply the jQuery method \texttt{val} on the \texttt{\$(el)}
 
 This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working.
 
-\hypertarget{set-the-value}{%
-\paragraph{Set the value}\label{set-the-value}}
+\hypertarget{set-and-update}{%
+\paragraph{Set and update}\label{set-and-update}}
 
-\texttt{setValue(el,\ value)} is used to set the value of the current input.
+\texttt{setValue(el,\ value)} is used to set the value of the current input. This method is necessary so that the input value can be updated. It has to be used in combination with \texttt{receiveMessage(el,\ data)}, which is the JavaScript part of all the R \texttt{updateInput} functions. We usually call the \texttt{setValue} method inside.
 
-\hypertarget{update}{%
-\paragraph{Update}\label{update}}
+Let's create a function to update our custom text input. Call it \texttt{updateCustomTextInput}. It requires at least 3 parameters:
 
 \begin{itemize}
 \tightlist
 \item
-  receiveMessage(el, data): This method is the JavaScript part of all the \texttt{updateInput} functions. We usually call the setValue method inside.
+  inputId tells which input to update.
 \item
-  subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
+  value is the new value. This will be taken by the \texttt{setValue} JS method in the input binding
+\item
+  session is the Shiny session object. session is an \href{https://r6.r-lib.org}{R6} class having methods like \texttt{sendInputMessage} to send values from R to JavaScript. The \texttt{receiveMessage} method will apply \texttt{setValue} with the data received from R
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{updateCustomTextInput <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(inputId, }\DataTypeTok{value =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendInputMessage}\NormalTok{(inputId, }\DataTypeTok{message =}\NormalTok{ value)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We add \texttt{setValue} and \texttt{receiveMessage} to custom input binding:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+    \StringTok{"$(function() \{}
+\StringTok{      // Input binding}
+\StringTok{      let customTextBinding = new Shiny.InputBinding();}
+
+\StringTok{      $.extend(customTextBinding, \{}
+\StringTok{        find: function(scope) \{}
+\StringTok{          return $(scope).find('.input-text');}
+\StringTok{        \},}
+\StringTok{        // Given the DOM element for the input, return the value}
+\StringTok{        getValue: function(el) \{}
+\StringTok{          return $(el).val();}
+\StringTok{        \},}
+\StringTok{        setValue: function(el, value) \{}
+\StringTok{          $(el).val(value);}
+\StringTok{        \},}
+\StringTok{        receiveMessage: function(el, data) \{}
+\StringTok{          this.setValue(el, data);}
+\StringTok{        \}}
+\StringTok{      \});}
+\StringTok{      }
+\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
+\StringTok{    \});}
+\StringTok{    "}
+\NormalTok{  ),}
+  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
+  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"update"}\NormalTok{, }\StringTok{"Update text!"}\NormalTok{, }\DataTypeTok{class =} \StringTok{"btn-success"}\NormalTok{),}
+  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{update, \{}
+    \KeywordTok{updateCustomTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\DataTypeTok{value =} \StringTok{"new text"}\NormalTok{)}
+\NormalTok{  \})}
+\NormalTok{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+If we have to pass multiple elements to update, we would have to change the \texttt{updateCustomTextInput} function such as:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{updateCustomTextInput <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(inputId, }\DataTypeTok{value =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
+\NormalTok{  message <-}\StringTok{ }\NormalTok{shiny}\OperatorTok{::}\KeywordTok{dropNulls}\NormalTok{(}
+    \KeywordTok{list}\NormalTok{(}
+      \DataTypeTok{value =}\NormalTok{ value,}
+      \DataTypeTok{placeholder =}\NormalTok{ placeholder}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendInputMessage}\NormalTok{(inputId, message)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+On the JS side, we would have to update the \texttt{receiveMessage} method. We send a list from R, which is then serialized to a JSON object. Properties like \texttt{value} may be accessed using the . notation:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{receiveMessage}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data) }\OperatorTok{\{}
+  \VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(data)}\OperatorTok{;}
+  \ControlFlowTok{if}\NormalTok{ (}\VariableTok{data}\NormalTok{.}\AttributeTok{hasOwnProperty}\NormalTok{(}\StringTok{'value'}\NormalTok{)) }\OperatorTok{\{}
+    \KeywordTok{this}\NormalTok{.}\AttributeTok{setValue}\NormalTok{(el}\OperatorTok{,} \VariableTok{data}\NormalTok{.}\AttributeTok{value}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\}}
+  
+  \CommentTok{// other parameters to update...}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+So far so good! We managed to update the text input value. Yet, the output value does not change. We are going to fix this missing step in the next section.
+
+\hypertarget{subscribe}{%
+\paragraph{Subscribe}\label{subscribe}}
+
+\texttt{subscribe(el,\ callback)} listens to events telling under which circumstances to tell Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
+
+\begin{itemize}
+\tightlist
 \item
   getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
 \end{itemize}

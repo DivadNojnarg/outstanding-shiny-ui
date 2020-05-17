@@ -290,13 +290,100 @@ shinyApp(ui, server)
 
 This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working. 
 
-##### Set the value
-`setValue(el, value)` is used to set the value of the current input.
+##### Set and update 
+`setValue(el, value)` is used to set the value of the current input. This method is necessary so that the input value can be updated. It has to be used in combination with `receiveMessage(el, data)`, which is the JavaScript part of all the R `updateInput` functions. We usually call the `setValue` method inside.
+
+Let's create a function to update our custom text input. Call it `updateCustomTextInput`. It requires at least 3 parameters:
+
+  - inputId tells which input to update.
+  - value is the new value. This will be taken by the `setValue ` JS method in the input binding
+  - session is the Shiny session object. session is an [R6](https://r6.r-lib.org) class having methods like `sendInputMessage` to send values from R to JavaScript. The `receiveMessage` method will apply `setValue` with the data received from R
+
+```{r}
+updateCustomTextInput <- function(inputId, value = NULL, session = getDefaultReactiveDomain()) {
+  session$sendInputMessage(inputId, message = value)
+}
+```
+
+We add `setValue` and `receiveMessage` to custom input binding:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+    "$(function() {
+      // Input binding
+      let customTextBinding = new Shiny.InputBinding();
+
+      $.extend(customTextBinding, {
+        find: function(scope) {
+          return $(scope).find('.input-text');
+        },
+        // Given the DOM element for the input, return the value
+        getValue: function(el) {
+          return $(el).val();
+        },
+        setValue: function(el, value) {
+          $(el).val(value);
+        },
+        receiveMessage: function(el, data) {
+          console.log(data);
+          this.setValue(el, data);
+        }
+      });
+      
+      Shiny.inputBindings.register(customTextBinding, 'text');
+    });
+    "
+  ),
+  customTextInput("caption", "Caption", "Data Summary"),
+  actionButton("update", "Update text!", class = "btn-success"),
+  uiOutput("customText")
+)
+
+server <- function(input, output, session) {
+  output$customText <- renderText(input$caption)
+  observeEvent(input$update, {
+    updateCustomTextInput("caption", value = "new text")
+  })
+}
+shinyApp(ui, server)
+```
+
+If we have to pass multiple elements to update, we would have to change the `updateCustomTextInput` function such as:
+
+```{r}
+updateCustomTextInput <- function(inputId, value = NULL, session = getDefaultReactiveDomain()) {
+  message <- shiny::dropNulls(
+    list(
+      value = value,
+      placeholder = placeholder
+    )
+  )
+  session$sendInputMessage(inputId, message)
+}
+```
+
+On the JS side, we would have to update the `receiveMessage` method. We send a list from R, which is then serialized to a JSON object. Properties like `value` may be accessed using the . notation:
+
+```javascript
+receiveMessage: function(el, data) {
+  console.log(data);
+  if (data.hasOwnProperty('value')) {
+    this.setValue(el, data.value);
+  }
+  
+  // other parameters to update...
+}
+```
+
+So far so good! We managed to update the text input value. Yet, the output value does not change. We are going to fix this missing step in the next section.
+
+##### Subscribe
+`subscribe(el, callback)` listens to events telling under which circumstances to tell Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...).
 
 
-##### Update 
-- receiveMessage(el, data): This method is the JavaScript part of all the `updateInput` functions. We usually call the setValue method inside.
-- subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...). 
+
+
 - getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy ([debounce](https://davidwalsh.name/javascript-debounce-function), throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined [here](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js).
 
 

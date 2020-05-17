@@ -517,27 +517,94 @@ Figure 4.5: About el
 <a class="sourceLine" id="cb76-29" data-line-number="29"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
 <p>This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working.</p>
 </div>
-<div id="set-the-value" class="section level5">
-<h5><span class="header-section-number">4.3.4.2.4</span> Set the value</h5>
-<p><code>setValue(el, value)</code> is used to set the value of the current input.</p>
-</div>
-<div id="update" class="section level5">
-<h5><span class="header-section-number">4.3.4.2.5</span> Update</h5>
+<div id="set-and-update" class="section level5">
+<h5><span class="header-section-number">4.3.4.2.4</span> Set and update</h5>
+<p><code>setValue(el, value)</code> is used to set the value of the current input. This method is necessary so that the input value can be updated. It has to be used in combination with <code>receiveMessage(el, data)</code>, which is the JavaScript part of all the R <code>updateInput</code> functions. We usually call the <code>setValue</code> method inside.</p>
+<p>Let’s create a function to update our custom text input. Call it <code>updateCustomTextInput</code>. It requires at least 3 parameters:</p>
 <ul>
-<li>receiveMessage(el, data): This method is the JavaScript part of all the <code>updateInput</code> functions. We usually call the setValue method inside.</li>
-<li>subscribe(el, callback): We listen to events telling under which circumstances to change the input value. Some API like Bootstrap explicitly mention those events (like <code>hide.bs.tab</code>, <code>shown.bs.tab</code>, …).</li>
+<li>inputId tells which input to update.</li>
+<li>value is the new value. This will be taken by the <code>setValue</code> JS method in the input binding</li>
+<li>session is the Shiny session object. session is an <a href="https://r6.r-lib.org">R6</a> class having methods like <code>sendInputMessage</code> to send values from R to JavaScript. The <code>receiveMessage</code> method will apply <code>setValue</code> with the data received from R</li>
+</ul>
+<div class="sourceCode" id="cb77"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb77-1" data-line-number="1">updateCustomTextInput &lt;-<span class="st"> </span><span class="cf">function</span>(inputId, <span class="dt">value =</span> <span class="ot">NULL</span>, <span class="dt">session =</span> <span class="kw">getDefaultReactiveDomain</span>()) {</a>
+<a class="sourceLine" id="cb77-2" data-line-number="2">  session<span class="op">$</span><span class="kw">sendInputMessage</span>(inputId, <span class="dt">message =</span> value)</a>
+<a class="sourceLine" id="cb77-3" data-line-number="3">}</a></code></pre></div>
+<p>We add <code>setValue</code> and <code>receiveMessage</code> to custom input binding:</p>
+<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" data-line-number="1">ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</a>
+<a class="sourceLine" id="cb78-2" data-line-number="2">  tags<span class="op">$</span><span class="kw">script</span>(</a>
+<a class="sourceLine" id="cb78-3" data-line-number="3">    <span class="st">&quot;$(function() {</span></a>
+<a class="sourceLine" id="cb78-4" data-line-number="4"><span class="st">      // Input binding</span></a>
+<a class="sourceLine" id="cb78-5" data-line-number="5"><span class="st">      let customTextBinding = new Shiny.InputBinding();</span></a>
+<a class="sourceLine" id="cb78-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb78-7" data-line-number="7"><span class="st">      $.extend(customTextBinding, {</span></a>
+<a class="sourceLine" id="cb78-8" data-line-number="8"><span class="st">        find: function(scope) {</span></a>
+<a class="sourceLine" id="cb78-9" data-line-number="9"><span class="st">          return $(scope).find(&#39;.input-text&#39;);</span></a>
+<a class="sourceLine" id="cb78-10" data-line-number="10"><span class="st">        },</span></a>
+<a class="sourceLine" id="cb78-11" data-line-number="11"><span class="st">        // Given the DOM element for the input, return the value</span></a>
+<a class="sourceLine" id="cb78-12" data-line-number="12"><span class="st">        getValue: function(el) {</span></a>
+<a class="sourceLine" id="cb78-13" data-line-number="13"><span class="st">          return $(el).val();</span></a>
+<a class="sourceLine" id="cb78-14" data-line-number="14"><span class="st">        },</span></a>
+<a class="sourceLine" id="cb78-15" data-line-number="15"><span class="st">        setValue: function(el, value) {</span></a>
+<a class="sourceLine" id="cb78-16" data-line-number="16"><span class="st">          $(el).val(value);</span></a>
+<a class="sourceLine" id="cb78-17" data-line-number="17"><span class="st">        },</span></a>
+<a class="sourceLine" id="cb78-18" data-line-number="18"><span class="st">        receiveMessage: function(el, data) {</span></a>
+<a class="sourceLine" id="cb78-19" data-line-number="19"><span class="st">          this.setValue(el, data);</span></a>
+<a class="sourceLine" id="cb78-20" data-line-number="20"><span class="st">        }</span></a>
+<a class="sourceLine" id="cb78-21" data-line-number="21"><span class="st">      });</span></a>
+<a class="sourceLine" id="cb78-22" data-line-number="22"><span class="st">      </span></a>
+<a class="sourceLine" id="cb78-23" data-line-number="23"><span class="st">      Shiny.inputBindings.register(customTextBinding, &#39;text&#39;);</span></a>
+<a class="sourceLine" id="cb78-24" data-line-number="24"><span class="st">    });</span></a>
+<a class="sourceLine" id="cb78-25" data-line-number="25"><span class="st">    &quot;</span></a>
+<a class="sourceLine" id="cb78-26" data-line-number="26">  ),</a>
+<a class="sourceLine" id="cb78-27" data-line-number="27">  <span class="kw">customTextInput</span>(<span class="st">&quot;caption&quot;</span>, <span class="st">&quot;Caption&quot;</span>, <span class="st">&quot;Data Summary&quot;</span>),</a>
+<a class="sourceLine" id="cb78-28" data-line-number="28">  <span class="kw">actionButton</span>(<span class="st">&quot;update&quot;</span>, <span class="st">&quot;Update text!&quot;</span>, <span class="dt">class =</span> <span class="st">&quot;btn-success&quot;</span>),</a>
+<a class="sourceLine" id="cb78-29" data-line-number="29">  <span class="kw">uiOutput</span>(<span class="st">&quot;customText&quot;</span>)</a>
+<a class="sourceLine" id="cb78-30" data-line-number="30">)</a>
+<a class="sourceLine" id="cb78-31" data-line-number="31"></a>
+<a class="sourceLine" id="cb78-32" data-line-number="32">server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</a>
+<a class="sourceLine" id="cb78-33" data-line-number="33">  output<span class="op">$</span>customText &lt;-<span class="st"> </span><span class="kw">renderText</span>(input<span class="op">$</span>caption)</a>
+<a class="sourceLine" id="cb78-34" data-line-number="34">  <span class="kw">observeEvent</span>(input<span class="op">$</span>update, {</a>
+<a class="sourceLine" id="cb78-35" data-line-number="35">    <span class="kw">updateCustomTextInput</span>(<span class="st">&quot;caption&quot;</span>, <span class="dt">value =</span> <span class="st">&quot;new text&quot;</span>)</a>
+<a class="sourceLine" id="cb78-36" data-line-number="36">  })</a>
+<a class="sourceLine" id="cb78-37" data-line-number="37">}</a>
+<a class="sourceLine" id="cb78-38" data-line-number="38"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
+<p>If we have to pass multiple elements to update, we would have to change the <code>updateCustomTextInput</code> function such as:</p>
+<div class="sourceCode" id="cb79"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb79-1" data-line-number="1">updateCustomTextInput &lt;-<span class="st"> </span><span class="cf">function</span>(inputId, <span class="dt">value =</span> <span class="ot">NULL</span>, <span class="dt">session =</span> <span class="kw">getDefaultReactiveDomain</span>()) {</a>
+<a class="sourceLine" id="cb79-2" data-line-number="2">  message &lt;-<span class="st"> </span>shiny<span class="op">::</span><span class="kw">dropNulls</span>(</a>
+<a class="sourceLine" id="cb79-3" data-line-number="3">    <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb79-4" data-line-number="4">      <span class="dt">value =</span> value,</a>
+<a class="sourceLine" id="cb79-5" data-line-number="5">      <span class="dt">placeholder =</span> placeholder</a>
+<a class="sourceLine" id="cb79-6" data-line-number="6">    )</a>
+<a class="sourceLine" id="cb79-7" data-line-number="7">  )</a>
+<a class="sourceLine" id="cb79-8" data-line-number="8">  session<span class="op">$</span><span class="kw">sendInputMessage</span>(inputId, message)</a>
+<a class="sourceLine" id="cb79-9" data-line-number="9">}</a></code></pre></div>
+<p>On the JS side, we would have to update the <code>receiveMessage</code> method. We send a list from R, which is then serialized to a JSON object. Properties like <code>value</code> may be accessed using the . notation:</p>
+<div class="sourceCode" id="cb80"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb80-1" data-line-number="1">receiveMessage<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> data) <span class="op">{</span></a>
+<a class="sourceLine" id="cb80-2" data-line-number="2">  <span class="va">console</span>.<span class="at">log</span>(data)<span class="op">;</span></a>
+<a class="sourceLine" id="cb80-3" data-line-number="3">  <span class="cf">if</span> (<span class="va">data</span>.<span class="at">hasOwnProperty</span>(<span class="st">&#39;value&#39;</span>)) <span class="op">{</span></a>
+<a class="sourceLine" id="cb80-4" data-line-number="4">    <span class="kw">this</span>.<span class="at">setValue</span>(el<span class="op">,</span> <span class="va">data</span>.<span class="at">value</span>)<span class="op">;</span></a>
+<a class="sourceLine" id="cb80-5" data-line-number="5">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb80-6" data-line-number="6">  </a>
+<a class="sourceLine" id="cb80-7" data-line-number="7">  <span class="co">// other parameters to update...</span></a>
+<a class="sourceLine" id="cb80-8" data-line-number="8"><span class="op">}</span></a></code></pre></div>
+<p>So far so good! We managed to update the text input value. Yet, the output value does not change. We are going to fix this missing step in the next section.</p>
+</div>
+<div id="subscribe" class="section level5">
+<h5><span class="header-section-number">4.3.4.2.5</span> Subscribe</h5>
+<p><code>subscribe(el, callback)</code> listens to events telling under which circumstances to tell Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like <code>hide.bs.tab</code>, <code>shown.bs.tab</code>, …).</p>
+<ul>
 <li>getRatePolicy: when callback is true in the subscribe method, we apply a specific rate policy (<a href="https://davidwalsh.name/javascript-debounce-function">debounce</a>, throttle). This is useful for instance when we don’t want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined <a href="https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js">here</a>.</li>
 </ul>
 </div>
 <div id="register-an-input-binding" class="section level5">
 <h5><span class="header-section-number">4.3.4.2.6</span> Register an input binding</h5>
 <p>At the end of the input binding definition, we register it for Shiny.</p>
-<div class="sourceCode" id="cb77"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb77-1" data-line-number="1"><span class="kw">let</span> myBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">inputBinding</span>()<span class="op">;</span></a>
-<a class="sourceLine" id="cb77-2" data-line-number="2"><span class="va">$</span>.<span class="at">extend</span>(myBinding<span class="op">,</span> <span class="op">{</span></a>
-<a class="sourceLine" id="cb77-3" data-line-number="3"><span class="co">// methods go here</span></a>
-<a class="sourceLine" id="cb77-4" data-line-number="4"><span class="op">}</span>)<span class="op">;</span></a>
-<a class="sourceLine" id="cb77-5" data-line-number="5"></a>
-<a class="sourceLine" id="cb77-6" data-line-number="6"><span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">register</span>(myBinding<span class="op">,</span> <span class="st">&#39;reference&#39;</span>)<span class="op">;</span></a></code></pre></div>
+<div class="sourceCode" id="cb81"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb81-1" data-line-number="1"><span class="kw">let</span> myBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">inputBinding</span>()<span class="op">;</span></a>
+<a class="sourceLine" id="cb81-2" data-line-number="2"><span class="va">$</span>.<span class="at">extend</span>(myBinding<span class="op">,</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb81-3" data-line-number="3"><span class="co">// methods go here</span></a>
+<a class="sourceLine" id="cb81-4" data-line-number="4"><span class="op">}</span>)<span class="op">;</span></a>
+<a class="sourceLine" id="cb81-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb81-6" data-line-number="6"><span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">register</span>(myBinding<span class="op">,</span> <span class="st">&#39;reference&#39;</span>)<span class="op">;</span></a></code></pre></div>
 <p>Although the Shiny <a href="https://shiny.rstudio.com/articles/building-inputs.html">documentation</a> mentions a <code>Shiny.inputBindings.setPriority</code> method to handle conflicting bindings, it is better not to have to use it.</p>
 </div>
 <div id="wrap-up" class="section level5">
@@ -550,34 +617,34 @@ Figure 4.5: About el
 <div id="websocket" class="section level3">
 <h3><span class="header-section-number">4.3.5</span> websocket</h3>
 <p>How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted <a href="Fast%20bidirectional%20communication%20between%20the%20web%20browser%20and%20R%20using%20the%20httpuv%20package.">here</a>, leveraging the <a href="https://github.com/rstudio/httpuv">httpuv</a> and <a href="https://github.com/rstudio/websocket">websocket</a> packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let’s run the following app.</p>
-<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" data-line-number="1"><span class="kw">shinyApp</span>(</a>
-<a class="sourceLine" id="cb78-2" data-line-number="2">  <span class="dt">ui =</span> <span class="kw">fluidPage</span>(</a>
-<a class="sourceLine" id="cb78-3" data-line-number="3">    <span class="kw">selectInput</span>(<span class="st">&quot;variable&quot;</span>, <span class="st">&quot;Variable:&quot;</span>,</a>
-<a class="sourceLine" id="cb78-4" data-line-number="4">                <span class="kw">c</span>(<span class="st">&quot;Cylinders&quot;</span> =<span class="st"> &quot;cyl&quot;</span>,</a>
-<a class="sourceLine" id="cb78-5" data-line-number="5">                  <span class="st">&quot;Transmission&quot;</span> =<span class="st"> &quot;am&quot;</span>,</a>
-<a class="sourceLine" id="cb78-6" data-line-number="6">                  <span class="st">&quot;Gears&quot;</span> =<span class="st"> &quot;gear&quot;</span>)),</a>
-<a class="sourceLine" id="cb78-7" data-line-number="7">    <span class="kw">tableOutput</span>(<span class="st">&quot;data&quot;</span>)</a>
-<a class="sourceLine" id="cb78-8" data-line-number="8">  ),</a>
-<a class="sourceLine" id="cb78-9" data-line-number="9">  <span class="dt">server =</span> <span class="cf">function</span>(input, output) {</a>
-<a class="sourceLine" id="cb78-10" data-line-number="10">    output<span class="op">$</span>data &lt;-<span class="st"> </span><span class="kw">renderTable</span>({</a>
-<a class="sourceLine" id="cb78-11" data-line-number="11">      mtcars[, <span class="kw">c</span>(<span class="st">&quot;mpg&quot;</span>, input<span class="op">$</span>variable), drop =<span class="st"> </span><span class="ot">FALSE</span>]</a>
-<a class="sourceLine" id="cb78-12" data-line-number="12">    }, <span class="dt">rownames =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb78-13" data-line-number="13">  }</a>
-<a class="sourceLine" id="cb78-14" data-line-number="14">)</a></code></pre></div>
+<div class="sourceCode" id="cb82"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb82-1" data-line-number="1"><span class="kw">shinyApp</span>(</a>
+<a class="sourceLine" id="cb82-2" data-line-number="2">  <span class="dt">ui =</span> <span class="kw">fluidPage</span>(</a>
+<a class="sourceLine" id="cb82-3" data-line-number="3">    <span class="kw">selectInput</span>(<span class="st">&quot;variable&quot;</span>, <span class="st">&quot;Variable:&quot;</span>,</a>
+<a class="sourceLine" id="cb82-4" data-line-number="4">                <span class="kw">c</span>(<span class="st">&quot;Cylinders&quot;</span> =<span class="st"> &quot;cyl&quot;</span>,</a>
+<a class="sourceLine" id="cb82-5" data-line-number="5">                  <span class="st">&quot;Transmission&quot;</span> =<span class="st"> &quot;am&quot;</span>,</a>
+<a class="sourceLine" id="cb82-6" data-line-number="6">                  <span class="st">&quot;Gears&quot;</span> =<span class="st"> &quot;gear&quot;</span>)),</a>
+<a class="sourceLine" id="cb82-7" data-line-number="7">    <span class="kw">tableOutput</span>(<span class="st">&quot;data&quot;</span>)</a>
+<a class="sourceLine" id="cb82-8" data-line-number="8">  ),</a>
+<a class="sourceLine" id="cb82-9" data-line-number="9">  <span class="dt">server =</span> <span class="cf">function</span>(input, output) {</a>
+<a class="sourceLine" id="cb82-10" data-line-number="10">    output<span class="op">$</span>data &lt;-<span class="st"> </span><span class="kw">renderTable</span>({</a>
+<a class="sourceLine" id="cb82-11" data-line-number="11">      mtcars[, <span class="kw">c</span>(<span class="st">&quot;mpg&quot;</span>, input<span class="op">$</span>variable), drop =<span class="st"> </span><span class="ot">FALSE</span>]</a>
+<a class="sourceLine" id="cb82-12" data-line-number="12">    }, <span class="dt">rownames =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb82-13" data-line-number="13">  }</a>
+<a class="sourceLine" id="cb82-14" data-line-number="14">)</a></code></pre></div>
 <p>After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">file</a>. The first element received from R is the first message in the list shown in Figure <a href="survival-kit-shiny.html#fig:shiny-websocket">4.6</a>. It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.</p>
-<div class="sourceCode" id="cb79"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb79-1" data-line-number="1"><span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></a>
-<a class="sourceLine" id="cb79-2" data-line-number="2"><span class="dt">method</span><span class="op">:</span> <span class="st">&#39;init&#39;</span><span class="op">,</span></a>
-<a class="sourceLine" id="cb79-3" data-line-number="3"><span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></a>
-<a class="sourceLine" id="cb79-4" data-line-number="4"><span class="op">}</span>))<span class="op">;</span></a></code></pre></div>
+<div class="sourceCode" id="cb83"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb83-1" data-line-number="1"><span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></a>
+<a class="sourceLine" id="cb83-2" data-line-number="2"><span class="dt">method</span><span class="op">:</span> <span class="st">&#39;init&#39;</span><span class="op">,</span></a>
+<a class="sourceLine" id="cb83-3" data-line-number="3"><span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></a>
+<a class="sourceLine" id="cb83-4" data-line-number="4"><span class="op">}</span>))<span class="op">;</span></a></code></pre></div>
 <p>The second message received from R is after updating the select input.</p>
-<div class="sourceCode" id="cb80"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb80-1" data-line-number="1"><span class="kw">this</span>.<span class="at">sendInput</span> <span class="op">=</span> <span class="kw">function</span>(values) <span class="op">{</span></a>
-<a class="sourceLine" id="cb80-2" data-line-number="2"><span class="kw">var</span> msg <span class="op">=</span> <span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></a>
-<a class="sourceLine" id="cb80-3" data-line-number="3"><span class="dt">method</span><span class="op">:</span> <span class="st">&#39;update&#39;</span><span class="op">,</span></a>
-<a class="sourceLine" id="cb80-4" data-line-number="4"><span class="dt">data</span><span class="op">:</span> values</a>
-<a class="sourceLine" id="cb80-5" data-line-number="5"><span class="op">}</span>)<span class="op">;</span></a>
-<a class="sourceLine" id="cb80-6" data-line-number="6"></a>
-<a class="sourceLine" id="cb80-7" data-line-number="7"><span class="co">// other things</span></a>
-<a class="sourceLine" id="cb80-8" data-line-number="8"><span class="op">};</span></a></code></pre></div>
+<div class="sourceCode" id="cb84"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb84-1" data-line-number="1"><span class="kw">this</span>.<span class="at">sendInput</span> <span class="op">=</span> <span class="kw">function</span>(values) <span class="op">{</span></a>
+<a class="sourceLine" id="cb84-2" data-line-number="2"><span class="kw">var</span> msg <span class="op">=</span> <span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></a>
+<a class="sourceLine" id="cb84-3" data-line-number="3"><span class="dt">method</span><span class="op">:</span> <span class="st">&#39;update&#39;</span><span class="op">,</span></a>
+<a class="sourceLine" id="cb84-4" data-line-number="4"><span class="dt">data</span><span class="op">:</span> values</a>
+<a class="sourceLine" id="cb84-5" data-line-number="5"><span class="op">}</span>)<span class="op">;</span></a>
+<a class="sourceLine" id="cb84-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb84-7" data-line-number="7"><span class="co">// other things</span></a>
+<a class="sourceLine" id="cb84-8" data-line-number="8"><span class="op">};</span></a></code></pre></div>
 <p>All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field <code>error</code> containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.</p>
 <p>Finally, <code>Shiny.shinyapp.$socket.readyState</code> returns the state of the socket connection. It should be 1 if your app is running but I’ve seen some cases where the socket was actually closed (and nothing could happen).</p>
 <div class="figure"><span id="fig:shiny-websocket"></span>
@@ -597,69 +664,69 @@ Figure 4.6: Shiny websocket
 </ul>
 <p>While <code>sendInputMessage</code> is the R side of the input features, <code>sendCustomMessage</code> simply allows to communicate between R and JavaScript.
 Basically a R function :</p>
-<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb81-1" data-line-number="1">sayHelloToJS &lt;-<span class="st"> </span><span class="cf">function</span>(text, session) {</a>
-<a class="sourceLine" id="cb81-2" data-line-number="2">  session<span class="op">$</span><span class="kw">sendCustomMessage</span>(<span class="dt">type =</span> <span class="st">&#39;say-hello&#39;</span>, <span class="dt">message =</span> text)</a>
-<a class="sourceLine" id="cb81-3" data-line-number="3">}</a></code></pre></div>
+<div class="sourceCode" id="cb85"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb85-1" data-line-number="1">sayHelloToJS &lt;-<span class="st"> </span><span class="cf">function</span>(text, session) {</a>
+<a class="sourceLine" id="cb85-2" data-line-number="2">  session<span class="op">$</span><span class="kw">sendCustomMessage</span>(<span class="dt">type =</span> <span class="st">&#39;say-hello&#39;</span>, <span class="dt">message =</span> text)</a>
+<a class="sourceLine" id="cb85-3" data-line-number="3">}</a></code></pre></div>
 <p>We need a JavaScript receptor, handle by the <code>addCustomMessageHandler</code> method:</p>
-<div class="sourceCode" id="cb82"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb82-1" data-line-number="1"><span class="va">Shiny</span>.<span class="at">AddCustomMessageHandler</span>(<span class="st">&#39;say-hello&#39;</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></a>
-<a class="sourceLine" id="cb82-2" data-line-number="2"><span class="at">alert</span>(<span class="vs">`R says </span><span class="sc">${</span>message<span class="sc">}</span><span class="vs"> to you!`</span>)</a>
-<a class="sourceLine" id="cb82-3" data-line-number="3"><span class="op">}</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb86"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb86-1" data-line-number="1"><span class="va">Shiny</span>.<span class="at">AddCustomMessageHandler</span>(<span class="st">&#39;say-hello&#39;</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></a>
+<a class="sourceLine" id="cb86-2" data-line-number="2"><span class="at">alert</span>(<span class="vs">`R says </span><span class="sc">${</span>message<span class="sc">}</span><span class="vs"> to you!`</span>)</a>
+<a class="sourceLine" id="cb86-3" data-line-number="3"><span class="op">}</span>)</a></code></pre></div>
 <p>Of course, the type parameter is critical to make the connection between R and JavaScript and 2 different message handlers must have different types to avoid conflicts.</p>
 <p>TO DO: picture showing the communication</p>
 </div>
 <div id="utilities-to-quickly-define-new-inputs" class="section level3">
 <h3><span class="header-section-number">4.3.7</span> Utilities to quickly define new inputs</h3>
 <p>If you ever wondered where the <code>Shiny.onInputChange</code> or <code>Shiny.setInputValue</code> comes from (see <a href="https://shiny.rstudio.com/articles/communicating-with-js.html">article</a>), it is actually defined in the <code>initShiny</code> function.</p>
-<div class="sourceCode" id="cb83"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb83-1" data-line-number="1"><span class="va">exports</span>.<span class="at">setInputValue</span> <span class="op">=</span> <span class="va">exports</span>.<span class="at">onInputChange</span> <span class="op">=</span> <span class="kw">function</span>(name<span class="op">,</span> value<span class="op">,</span> opts) <span class="op">{</span></a>
-<a class="sourceLine" id="cb83-2" data-line-number="2">opts <span class="op">=</span> <span class="at">addDefaultInputOpts</span>(opts)<span class="op">;</span></a>
-<a class="sourceLine" id="cb83-3" data-line-number="3"><span class="va">inputs</span>.<span class="at">setInput</span>(name<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></a>
-<a class="sourceLine" id="cb83-4" data-line-number="4"><span class="op">};</span></a></code></pre></div>
+<div class="sourceCode" id="cb87"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb87-1" data-line-number="1"><span class="va">exports</span>.<span class="at">setInputValue</span> <span class="op">=</span> <span class="va">exports</span>.<span class="at">onInputChange</span> <span class="op">=</span> <span class="kw">function</span>(name<span class="op">,</span> value<span class="op">,</span> opts) <span class="op">{</span></a>
+<a class="sourceLine" id="cb87-2" data-line-number="2">opts <span class="op">=</span> <span class="at">addDefaultInputOpts</span>(opts)<span class="op">;</span></a>
+<a class="sourceLine" id="cb87-3" data-line-number="3"><span class="va">inputs</span>.<span class="at">setInput</span>(name<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></a>
+<a class="sourceLine" id="cb87-4" data-line-number="4"><span class="op">};</span></a></code></pre></div>
 <p>Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like <code>sliderInput</code> have their own update function like <code>updateSliderInput</code>, because of the custom input binding system (We will see it very soon)!</p>
 </div>
 <div id="get-access-to-initial-values" class="section level3">
 <h3><span class="header-section-number">4.3.8</span> Get access to initial values</h3>
 <p>Something we may notice when exploring the <code>initShiny</code> function is the existence of a <code>Shiny.shinyapp</code> object, defined as follows:</p>
-<div class="sourceCode" id="cb84"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb84-1" data-line-number="1"><span class="kw">var</span> shinyapp <span class="op">=</span> <span class="va">exports</span>.<span class="at">shinyapp</span> <span class="op">=</span> <span class="kw">new</span> <span class="at">ShinyApp</span>()<span class="op">;</span></a></code></pre></div>
+<div class="sourceCode" id="cb88"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb88-1" data-line-number="1"><span class="kw">var</span> shinyapp <span class="op">=</span> <span class="va">exports</span>.<span class="at">shinyapp</span> <span class="op">=</span> <span class="kw">new</span> <span class="at">ShinyApp</span>()<span class="op">;</span></a></code></pre></div>
 <p>Let’s explore what <code>shinyApp</code> contains. The definition is located in the shinyapps.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">script</a>.</p>
-<div class="sourceCode" id="cb85"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb85-1" data-line-number="1"><span class="kw">var</span> ShinyApp <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></a>
-<a class="sourceLine" id="cb85-2" data-line-number="2"><span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></a>
-<a class="sourceLine" id="cb85-3" data-line-number="3"></a>
-<a class="sourceLine" id="cb85-4" data-line-number="4"><span class="co">// Cached input values</span></a>
-<a class="sourceLine" id="cb85-5" data-line-number="5"><span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb85-6" data-line-number="6"></a>
-<a class="sourceLine" id="cb85-7" data-line-number="7"><span class="co">// Input values at initialization (and reconnect)</span></a>
-<a class="sourceLine" id="cb85-8" data-line-number="8"><span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb85-9" data-line-number="9"></a>
-<a class="sourceLine" id="cb85-10" data-line-number="10"><span class="co">// Output bindings</span></a>
-<a class="sourceLine" id="cb85-11" data-line-number="11"><span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb85-12" data-line-number="12"></a>
-<a class="sourceLine" id="cb85-13" data-line-number="13"><span class="co">// Cached values/errors</span></a>
-<a class="sourceLine" id="cb85-14" data-line-number="14"><span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb85-15" data-line-number="15"><span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb85-16" data-line-number="16"></a>
-<a class="sourceLine" id="cb85-17" data-line-number="17"><span class="co">// Conditional bindings (show/hide element based on expression)</span></a>
-<a class="sourceLine" id="cb85-18" data-line-number="18"><span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb85-19" data-line-number="19"></a>
-<a class="sourceLine" id="cb85-20" data-line-number="20"><span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></a>
-<a class="sourceLine" id="cb85-21" data-line-number="21"><span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb85-22" data-line-number="22"><span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></a>
-<a class="sourceLine" id="cb85-23" data-line-number="23"></a>
-<a class="sourceLine" id="cb85-24" data-line-number="24"><span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></a>
-<a class="sourceLine" id="cb85-25" data-line-number="25"><span class="op">};</span></a></code></pre></div>
+<div class="sourceCode" id="cb89"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb89-1" data-line-number="1"><span class="kw">var</span> ShinyApp <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></a>
+<a class="sourceLine" id="cb89-2" data-line-number="2"><span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></a>
+<a class="sourceLine" id="cb89-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb89-4" data-line-number="4"><span class="co">// Cached input values</span></a>
+<a class="sourceLine" id="cb89-5" data-line-number="5"><span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb89-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb89-7" data-line-number="7"><span class="co">// Input values at initialization (and reconnect)</span></a>
+<a class="sourceLine" id="cb89-8" data-line-number="8"><span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb89-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb89-10" data-line-number="10"><span class="co">// Output bindings</span></a>
+<a class="sourceLine" id="cb89-11" data-line-number="11"><span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb89-12" data-line-number="12"></a>
+<a class="sourceLine" id="cb89-13" data-line-number="13"><span class="co">// Cached values/errors</span></a>
+<a class="sourceLine" id="cb89-14" data-line-number="14"><span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb89-15" data-line-number="15"><span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb89-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb89-17" data-line-number="17"><span class="co">// Conditional bindings (show/hide element based on expression)</span></a>
+<a class="sourceLine" id="cb89-18" data-line-number="18"><span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb89-19" data-line-number="19"></a>
+<a class="sourceLine" id="cb89-20" data-line-number="20"><span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></a>
+<a class="sourceLine" id="cb89-21" data-line-number="21"><span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb89-22" data-line-number="22"><span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></a>
+<a class="sourceLine" id="cb89-23" data-line-number="23"></a>
+<a class="sourceLine" id="cb89-24" data-line-number="24"><span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></a>
+<a class="sourceLine" id="cb89-25" data-line-number="25"><span class="op">};</span></a></code></pre></div>
 <p>It creates several properties, some of them are easy to guess like <code>inputValues</code> or <code>initialInput</code>. Let’s run the example below and open the HTML inspector. Notice that the <code>sliderInput</code> is set to 500 at <code>t0</code> (initialization).</p>
-<div class="sourceCode" id="cb86"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb86-1" data-line-number="1">ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</a>
-<a class="sourceLine" id="cb86-2" data-line-number="2">  <span class="kw">sliderInput</span>(<span class="st">&quot;obs&quot;</span>, <span class="st">&quot;Number of observations:&quot;</span>,</a>
-<a class="sourceLine" id="cb86-3" data-line-number="3">              <span class="dt">min =</span> <span class="dv">0</span>, <span class="dt">max =</span> <span class="dv">1000</span>, <span class="dt">value =</span> <span class="dv">500</span></a>
-<a class="sourceLine" id="cb86-4" data-line-number="4">  ),</a>
-<a class="sourceLine" id="cb86-5" data-line-number="5">  <span class="kw">plotOutput</span>(<span class="st">&quot;distPlot&quot;</span>)</a>
-<a class="sourceLine" id="cb86-6" data-line-number="6">)</a>
-<a class="sourceLine" id="cb86-7" data-line-number="7"></a>
-<a class="sourceLine" id="cb86-8" data-line-number="8">server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</a>
-<a class="sourceLine" id="cb86-9" data-line-number="9">  output<span class="op">$</span>distPlot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</a>
-<a class="sourceLine" id="cb86-10" data-line-number="10">    <span class="kw">hist</span>(<span class="kw">rnorm</span>(input<span class="op">$</span>obs))</a>
-<a class="sourceLine" id="cb86-11" data-line-number="11">  })</a>
-<a class="sourceLine" id="cb86-12" data-line-number="12">}</a>
-<a class="sourceLine" id="cb86-13" data-line-number="13"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
+<div class="sourceCode" id="cb90"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb90-1" data-line-number="1">ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</a>
+<a class="sourceLine" id="cb90-2" data-line-number="2">  <span class="kw">sliderInput</span>(<span class="st">&quot;obs&quot;</span>, <span class="st">&quot;Number of observations:&quot;</span>,</a>
+<a class="sourceLine" id="cb90-3" data-line-number="3">              <span class="dt">min =</span> <span class="dv">0</span>, <span class="dt">max =</span> <span class="dv">1000</span>, <span class="dt">value =</span> <span class="dv">500</span></a>
+<a class="sourceLine" id="cb90-4" data-line-number="4">  ),</a>
+<a class="sourceLine" id="cb90-5" data-line-number="5">  <span class="kw">plotOutput</span>(<span class="st">&quot;distPlot&quot;</span>)</a>
+<a class="sourceLine" id="cb90-6" data-line-number="6">)</a>
+<a class="sourceLine" id="cb90-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb90-8" data-line-number="8">server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</a>
+<a class="sourceLine" id="cb90-9" data-line-number="9">  output<span class="op">$</span>distPlot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</a>
+<a class="sourceLine" id="cb90-10" data-line-number="10">    <span class="kw">hist</span>(<span class="kw">rnorm</span>(input<span class="op">$</span>obs))</a>
+<a class="sourceLine" id="cb90-11" data-line-number="11">  })</a>
+<a class="sourceLine" id="cb90-12" data-line-number="12">}</a>
+<a class="sourceLine" id="cb90-13" data-line-number="13"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
 <p>Figure <a href="survival-kit-shiny.html#fig:shiny-initial-inputs">4.7</a> shows how to access Shiny’s initial input value with <code>Shiny.shinyapp.$initialInput.obs</code>. After changing the slider position, its value is given by <code>Shiny.shinyapp.$inputValues.obs</code>. <code>$initialInput</code> and <code>$inputValues</code> contains way more elements but we are only interested by the slider in this example.</p>
 <div class="figure"><span id="fig:shiny-initial-inputs"></span>
 <img src="images/survival-kit/shiny-init-input.png" alt="Explore initial input values" width="994" />
