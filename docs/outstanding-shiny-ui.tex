@@ -2282,12 +2282,17 @@ When collapsed, a box gets the \texttt{collapsed-box} class. This will be useful
   collapsed.boxwidget (Triggered after the box is collapsed)
 \end{itemize}
 
-There is also a plug and play \texttt{toggle} method. However, this won't work out of the box?
+Those events are unfortunately not possible to use since the AdminLTE code forget to trigger them in the main JS \href{https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js}{code} (see the collapse method line 577-612). There are other solutions, as shown below with the \texttt{click} event.
+
+There is also a plug and play \texttt{toggleBox} method. To unleash the power of our box, we need to activate it with \texttt{\$(\textquotesingle{}\#\textless{}box\_id\textgreater{}\textquotesingle{}).activateBox();} before the binding step. If you remember, the \texttt{initialize} method is exactly doing this:
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{let}\NormalTok{ boxBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{InputBinding}\NormalTok{()}\OperatorTok{;}
 \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(boxBinding}\OperatorTok{,} \OperatorTok{\{}
+  \DataTypeTok{initialize}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+    \AttributeTok{$}\NormalTok{(el).}\AttributeTok{activateBox}\NormalTok{()}\OperatorTok{;} \CommentTok{// box activation}
+  \OperatorTok{\},}
   \DataTypeTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
     \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{'.box'}\NormalTok{)}\OperatorTok{;}
   \OperatorTok{\},}
@@ -2296,16 +2301,20 @@ There is also a plug and play \texttt{toggle} method. However, this won't work o
     \ControlFlowTok{return} \OperatorTok{\{}\DataTypeTok{collapsed}\OperatorTok{:}\NormalTok{ isCollapsed}\OperatorTok{\};} \CommentTok{// this will be a list in R}
   \OperatorTok{\},}
   \DataTypeTok{setValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ value) }\OperatorTok{\{}
-    \AttributeTok{$}\NormalTok{(}\StringTok{'#mybox'}\NormalTok{)}
-\NormalTok{      .}\AttributeTok{find}\NormalTok{(}\StringTok{'[data-widget="collapse"]'}\NormalTok{)}
-\NormalTok{      .}\AttributeTok{click}\NormalTok{()}\OperatorTok{;}
+    \AttributeTok{$}\NormalTok{(el).}\AttributeTok{toggleBox}\NormalTok{()}\OperatorTok{;}
   \OperatorTok{\},} 
   \DataTypeTok{receiveMessage}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data) }\OperatorTok{\{}
     \KeywordTok{this}\NormalTok{.}\AttributeTok{setValue}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data)}\OperatorTok{;}
+    \AttributeTok{$}\NormalTok{(el).}\AttributeTok{trigger}\NormalTok{(}\StringTok{'change'}\NormalTok{)}\OperatorTok{;}
   \OperatorTok{\},}
   \DataTypeTok{subscribe}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ callback) }\OperatorTok{\{}
-    \KeywordTok{let}\NormalTok{ collapsedBtn }\OperatorTok{=} \AttributeTok{$}\NormalTok{(}\StringTok{'#mybox'}\NormalTok{).}\AttributeTok{find}\NormalTok{(}\StringTok{'[data-widget="collapse"]'}\NormalTok{)}\OperatorTok{;}
-    \AttributeTok{$}\NormalTok{(collapsedBtn).}\AttributeTok{on}\NormalTok{(}\StringTok{'click'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(event) }\OperatorTok{\{}
+    \AttributeTok{$}\NormalTok{(el).}\AttributeTok{on}\NormalTok{(}\StringTok{'click'}\OperatorTok{,} \StringTok{'[data-widget="collapse"]'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(event) }\OperatorTok{\{}
+      \AttributeTok{setTimeout}\NormalTok{(}\KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
+        \AttributeTok{callback}\NormalTok{()}\OperatorTok{;}
+      \OperatorTok{\},} \DecValTok{550}\NormalTok{)}\OperatorTok{;}
+    \OperatorTok{\}}\NormalTok{)}\OperatorTok{;} 
+    
+    \AttributeTok{$}\NormalTok{(el).}\AttributeTok{on}\NormalTok{(}\StringTok{'change'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(event) }\OperatorTok{\{}
       \AttributeTok{setTimeout}\NormalTok{(}\KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
         \AttributeTok{callback}\NormalTok{()}\OperatorTok{;}
       \OperatorTok{\},} \DecValTok{550}\NormalTok{)}\OperatorTok{;}
@@ -2327,10 +2336,11 @@ Some comments about the binding:
 \item
   \texttt{getValue} returns an object which will give a list in R. This is in case we add other elements like the remove action available in AdminLTE
 \item
-  \texttt{setValue} search for a children of our box that holds the \texttt{{[}data-widget="collapse"{]}} attribute (in other words, this is the collapse button) and triggers a click on it
+  \texttt{setValue} calls the plug and play \texttt{toggleBox} method
 \item
-  \texttt{subscribe} listens to the \texttt{click} event and delays the \texttt{callback} call by a
-  value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
+  \texttt{receiveMessage} must trigger a change event so that Shiny knows when the value needs to be updated
+\item
+  \texttt{subscribe} listens to the \texttt{click} event on the \texttt{{[}data-widget="collapse"{]}} element and delays the \texttt{callback} call by a value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
 \item
   We don't need extra listener for the \texttt{updateBox} function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
 \end{itemize}
@@ -2348,6 +2358,9 @@ Let's try our new toy in a simple dashboard:
         \StringTok{"$(function() \{}
 \StringTok{          let boxBinding = new Shiny.InputBinding();}
 \StringTok{          $.extend(boxBinding, \{}
+\StringTok{            initialize: function(el) \{}
+\StringTok{              $(el).activateBox();}
+\StringTok{            \},}
 \StringTok{            find: function(scope) \{}
 \StringTok{              return $(scope).find('.box');}
 \StringTok{            \},}
@@ -2356,20 +2369,23 @@ Let's try our new toy in a simple dashboard:
 \StringTok{              return \{collapsed: isCollapsed\}; // this will be a list in R}
 \StringTok{            \},}
 \StringTok{            setValue: function(el, value) \{}
-\StringTok{              $('#mybox')}
-\StringTok{                .find('[data-widget=}\CharTok{\textbackslash{}"}\StringTok{collapse}\CharTok{\textbackslash{}"}\StringTok{]')}
-\StringTok{                .click();}
+\StringTok{              $(el).toggleBox();}
 \StringTok{            \}, }
 \StringTok{            receiveMessage: function(el, data) \{}
 \StringTok{              this.setValue(el, data);}
+\StringTok{              $(el).trigger('change');}
 \StringTok{            \},}
 \StringTok{            subscribe: function(el, callback) \{}
-\StringTok{              let collapsedBtn = $('#mybox').find('[data-widget=}\CharTok{\textbackslash{}"}\StringTok{collapse}\CharTok{\textbackslash{}"}\StringTok{]');}
-\StringTok{              $(collapsedBtn).on('click', function(event) \{}
+\StringTok{              $(el).on('click', '[data-widget=}\CharTok{\textbackslash{}"}\StringTok{collapse}\CharTok{\textbackslash{}"}\StringTok{]', function(event) \{}
 \StringTok{                setTimeout(function() \{}
 \StringTok{                  callback();}
 \StringTok{                \}, 550);}
 \StringTok{              \}); }
+\StringTok{              $(el).on('change', function(event) \{}
+\StringTok{                setTimeout(function() \{}
+\StringTok{                  callback();}
+\StringTok{                \}, 550);}
+\StringTok{              \});}
 \StringTok{            \},}
 \StringTok{            unsubscribe: function(el) \{}
 \StringTok{              $(el).off('.boxBinding');}

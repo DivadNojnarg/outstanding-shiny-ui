@@ -726,11 +726,16 @@ When collapsed, a box gets the `collapsed-box` class. This will be useful for th
   - expanded.boxwidget (Triggered after the box is expanded)
   - collapsed.boxwidget (Triggered after the box is collapsed)
   
-There is also a plug and play `toggle` method. However, this won't work out of the box?
+Those events are unfortunately not possible to use since the AdminLTE code forget to trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. 
+  
+There is also a plug and play `toggleBox` method. To unleash the power of our box, we need to activate it with `$('#<box_id>').activateBox();` before the binding step. If you remember, the `initialize` method is exactly doing this:
 
 ```javascript
 let boxBinding = new Shiny.InputBinding();
 $.extend(boxBinding, {
+  initialize: function(el) {
+    $(el).activateBox(); // box activation
+  },
   find: function(scope) {
     return $(scope).find('.box');
   },
@@ -739,16 +744,20 @@ $.extend(boxBinding, {
     return {collapsed: isCollapsed}; // this will be a list in R
   },
   setValue: function(el, value) {
-    $('#mybox')
-      .find('[data-widget="collapse"]')
-      .click();
+    $(el).toggleBox();
   }, 
   receiveMessage: function(el, data) {
     this.setValue(el, data);
+    $(el).trigger('change');
   },
   subscribe: function(el, callback) {
-    let collapsedBtn = $('#mybox').find('[data-widget="collapse"]');
-    $(collapsedBtn).on('click', function(event) {
+    $(el).on('click', '[data-widget="collapse"]', function(event) {
+      setTimeout(function() {
+        callback();
+      }, 550);
+    }); 
+    
+    $(el).on('change', function(event) {
       setTimeout(function() {
         callback();
       }, 550);
@@ -765,9 +774,9 @@ Shiny.inputBindings.register(boxBinding, 'box-input');
 Some comments about the binding:
 
   - `getValue` returns an object which will give a list in R. This is in case we add other elements like the remove action available in AdminLTE
-  - `setValue` search for a children of our box that holds the `[data-widget="collapse"]` attribute (in other words, this is the collapse button) and triggers a click on it
-  - `subscribe` listens to the `click` event and delays the `callback` call by a
-value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
+  - `setValue` calls the plug and play `toggleBox` method
+  - `receiveMessage` must trigger a change event so that Shiny knows when the value needs to be updated
+  - `subscribe` listens to the `click` event on the `[data-widget="collapse"]` element and delays the `callback` call by a value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
   - We don't need extra listener for the `updateBox` function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
 
 Let's try our new toy in a simple dashboard:
@@ -782,6 +791,9 @@ shinyApp(
         "$(function() {
           let boxBinding = new Shiny.InputBinding();
           $.extend(boxBinding, {
+            initialize: function(el) {
+              $(el).activateBox();
+            },
             find: function(scope) {
               return $(scope).find('.box');
             },
@@ -790,20 +802,23 @@ shinyApp(
               return {collapsed: isCollapsed}; // this will be a list in R
             },
             setValue: function(el, value) {
-              $('#mybox')
-                .find('[data-widget=\"collapse\"]')
-                .click();
+              $(el).toggleBox();
             }, 
             receiveMessage: function(el, data) {
               this.setValue(el, data);
+              $(el).trigger('change');
             },
             subscribe: function(el, callback) {
-              let collapsedBtn = $('#mybox').find('[data-widget=\"collapse\"]');
-              $(collapsedBtn).on('click', function(event) {
+              $(el).on('click', '[data-widget=\"collapse\"]', function(event) {
                 setTimeout(function() {
                   callback();
                 }, 550);
               }); 
+              $(el).on('change', function(event) {
+                setTimeout(function() {
+                  callback();
+                }, 550);
+              });
             },
             unsubscribe: function(el) {
               $(el).off('.boxBinding');
