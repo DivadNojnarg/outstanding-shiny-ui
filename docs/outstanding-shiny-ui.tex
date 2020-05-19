@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-18}
+\date{2020-05-19}
 
 \begin{document}
 \maketitle
@@ -4240,13 +4240,13 @@ When the app starts, the action button has the value 0 and each click will incre
 \begin{Highlighting}[]
 \KeywordTok{var}\NormalTok{ actionButtonInputBinding }\OperatorTok{=} \KeywordTok{new} \AttributeTok{InputBinding}\NormalTok{()}\OperatorTok{;}
 \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(actionButtonInputBinding}\OperatorTok{,} \OperatorTok{\{}
-\DataTypeTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
-\ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{".action-button"}\NormalTok{)}\OperatorTok{;}
-\OperatorTok{\},}
-\DataTypeTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
-\ControlFlowTok{return} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{data}\NormalTok{(}\StringTok{'val'}\NormalTok{) }\OperatorTok{||} \DecValTok{0}\OperatorTok{;}
-\OperatorTok{\},}
-\CommentTok{// ... other methods}
+  \DataTypeTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
+    \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{".action-button"}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\},}
+  \DataTypeTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+    \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{data}\NormalTok{(}\StringTok{'val'}\NormalTok{) }\OperatorTok{||} \DecValTok{0}\OperatorTok{;}
+  \OperatorTok{\},}
+  \CommentTok{// ... other methods}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -4417,10 +4417,27 @@ Et voilà! 2 inputs in few minutes.
 \hypertarget{custom-templates-interactivity}{%
 \chapter{Adding more interactivity}\label{custom-templates-interactivity}}
 
-In this part, we are going to add more life to the template element.
+In this part, we are going to add more life to the template element. We first see how
+to enhance an existing static HTML component. Then we will explore complex feedback mechanisms to provide more interactivity to your app.
 
 \hypertarget{custom-progress-bars}{%
 \section{Custom progress bars}\label{custom-progress-bars}}
+
+Progress bars are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those
+elements are static HTML. Hence, it would be interesting to be able to update the current
+value from the server side. Since it is not an input, implementing an input binding is inaprioprioate, so we decide to proceed with the \texttt{sendCustomMessage}/\texttt{addCustomMessageHandler} pair. We first create the \texttt{tabler\_progress}
+tag which is mainly composed of:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{style} gives the current value of the progress. This is the main element
+\item
+  \texttt{min} and \texttt{max} are bounds, in general between 0 and 100
+\item
+  \texttt{id} ensure that our progress bar is unique so that we may update it without
+  conflict
+\end{itemize}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4447,7 +4464,18 @@ In this part, we are going to add more life to the template element.
 \end{Highlighting}
 \end{Shaded}
 
-On the JS side, we have:
+The next element is the \texttt{update\_tabler\_progress} function which send 2 elements from R to JS:
+
+\begin{itemize}
+\tightlist
+\item
+  The progress \texttt{id}
+\item
+  The new value
+\end{itemize}
+
+On the JS side, we have a basic \texttt{addCustomMessageHandler}. As mentionned in Chapter \ref{survival-kit-javascript}, \texttt{sendCustomMessage} and \texttt{addCustomMessageHandler} are connected by the same \texttt{type}. This is crucial! Moreover, as the sent message is a R list,
+it becomes an JSON, meaning that elements must be accessed with a \texttt{.}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4458,6 +4486,8 @@ On the JS side, we have:
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
+
+We finally test these components in a simple app:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4493,6 +4523,24 @@ On the JS side, we have:
 \NormalTok{  \})}
 \NormalTok{\}}
 \KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+NOTE: How to handle custom messages in shiny modules? Well, it is pretty straightforward: we wrap any id with the module namespace given by \texttt{session\$ns()} before sending it to JS. You may even do it by default (without modules) like I did in the previous example since \texttt{session\$ns()} will be \texttt{""}.
+
+\hypertarget{tab-events}{%
+\section{Tab events}\label{tab-events}}
+
+Do you remember about the navbar element and the tabsetpanel (also called navs) system of Chapter \ref{custom-templates-skeleton}? Navs allow to organize any app into several tabs, acting like pages. This is a powerful tool for Shiny since it is currently not straightforward to create \href{https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698}{multi-pages} Shiny apps like anyone would do with a website. Navs relies on the Bootstrap4 API but we only used few JS functions. There exist \href{https://getbootstrap.com/docs/4.0/components/navs/\#events}{events} that trigger after/before showing/hiding a tabs, that is \texttt{hidden.bs.tab} and \texttt{shown.bs.tab} (\texttt{hide.bs.tab} and \texttt{show.bs.tab} are triggers before). For instance, we may recover
+the previously selected tab, namely \texttt{e.relatedTarget}, and store it in a shiny input with \texttt{Shiny.setInputValue}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{$}\NormalTok{(}\KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
+  \AttributeTok{$}\NormalTok{(}\StringTok{'a[data-toggle="tab"]'}\NormalTok{).}\AttributeTok{on}\NormalTok{(}\StringTok{'shown.bs.tab'}\OperatorTok{,} \KeywordTok{function}\NormalTok{ (e) }\OperatorTok{\{}
+    \VariableTok{Shiny}\NormalTok{.}\AttributeTok{setInputValue}\NormalTok{(}\StringTok{'previous_tab'}\OperatorTok{,} \VariableTok{e}\NormalTok{.}\AttributeTok{relatedTarget}\NormalTok{)}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
 

@@ -1,7 +1,17 @@
 # Adding more interactivity {#custom-templates-interactivity}
-In this part, we are going to add more life to the template element.
+In this part, we are going to add more life to the template element. We first see how
+to enhance an existing static HTML component. Then we will explore complex feedback mechanisms to provide more interactivity to your app.
 
 ## Custom progress bars
+Progress bars are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those 
+elements are static HTML. Hence, it would be interesting to be able to update the current
+value from the server side. Since it is not an input, implementing an input binding is inaprioprioate, so we decide to proceed with the `sendCustomMessage`/`addCustomMessageHandler` pair. We first create the `tabler_progress`
+tag which is mainly composed of:
+
+  - `style` gives the current value of the progress. This is the main element
+  - `min` and `max` are bounds, in general between 0 and 100
+  - `id` ensure that our progress bar is unique so that we may update it without
+  conflict
 
 ```{r}
 tabler_progress <- function(id = NULL, value) {
@@ -26,7 +36,13 @@ update_tabler_progress <- function(id, value, session = shiny::getDefaultReactiv
 }
 ```
 
-On the JS side, we have:
+The next element is the `update_tabler_progress` function which send 2 elements from R to JS:
+
+  - The progress `id`
+  - The new value
+
+On the JS side, we have a basic `addCustomMessageHandler`. As mentionned in Chapter \@ref(survival-kit-javascript), `sendCustomMessage` and `addCustomMessageHandler` are connected by the same `type`. This is crucial! Moreover, as the sent message is a R list, 
+it becomes an JSON, meaning that elements must be accessed with a `.`:
 
 ```javascript
 $(function () {
@@ -36,6 +52,7 @@ $(function () {
 });
 ```
 
+We finally test these components in a simple app:
 
 ```{r, eval=FALSE}
 ui <- tabler_page(
@@ -71,3 +88,24 @@ server <- function(input, output, session) {
 }
 shinyApp(ui, server)
 ```
+
+
+<br>
+<div class="callout callout-info">
+NOTE: How to handle custom messages in shiny modules? Well, it is pretty straightforward: we wrap any id with the module namespace given by `session$ns()` before sending it to JS. You may even do it by default (without modules) like I did in the previous example since `session$ns()` will be `""`.
+</div>
+<br>
+
+
+## Tab events
+Do you remember about the navbar element and the tabsetpanel (also called navs) system of Chapter \@ref(custom-templates-skeleton)? Navs allow to organize any app into several tabs, acting like pages. This is a powerful tool for Shiny since it is currently not straightforward to create [multi-pages](https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698) Shiny apps like anyone would do with a website. Navs relies on the Bootstrap4 API but we only used few JS functions. There exist [events](https://getbootstrap.com/docs/4.0/components/navs/#events) that trigger after/before showing/hiding a tabs, that is `hidden.bs.tab` and `shown.bs.tab` (`hide.bs.tab` and `show.bs.tab` are triggers before). For instance, we may recover
+the previously selected tab, namely `e.relatedTarget`, and store it in a shiny input with `Shiny.setInputValue`:
+
+```javascript
+$(function() {
+  $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+    Shiny.setInputValue('previous_tab', e.relatedTarget)
+  });
+});
+```
+
