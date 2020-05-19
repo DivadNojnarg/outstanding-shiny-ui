@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-19}
+\date{2020-05-20}
 
 \begin{document}
 \maketitle
@@ -3930,7 +3930,7 @@ What about testing this in a shiny app?
 \hypertarget{fine-tune-tabs-behavior}{%
 \subsubsection{Fine tune tabs behavior}\label{fine-tune-tabs-behavior}}
 
-Quite good isn't it? However, you will notice that even if the first tab was selected by default, its content is not shown! To fix this, we will apply our jQuery skills. According to the Bootstrap documentation, we must trigger the show event on the active tab at start, as well as add the classes show and active to the associated tab panel in the dashboard body. We therefore target the nav item that has the active class and if no item is found, we select the first item by default and activate its tab.
+Quite good isn't it? However, you will notice that even if the first tab is selected by default, its content is not shown! To fix this, we will apply our jQuery skills. According to the Bootstrap documentation, we must trigger the show event on the active tab at start, as well as add the classes show and active to the associated tab panel in the dashboard body. We therefore target the nav item that has the active class and if no item is found, we select the first item by default and activate its tab. We will explore another alternative in Chapter \ref{custom-templates-inputs}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4328,8 +4328,8 @@ We implement the toggle \href{https://preview-dev.tabler.io/docs/form-elements.h
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{<label}\OtherTok{ class=}\StringTok{"form-check form-switch"}\KeywordTok{>}
-\KeywordTok{<input}\OtherTok{ class=}\StringTok{"form-check-input"}\OtherTok{ type=}\StringTok{"checkbox"}\OtherTok{ checked}\KeywordTok{>}
-\KeywordTok{<span}\OtherTok{ class=}\StringTok{"form-check-label"}\KeywordTok{>}\NormalTok{Option 1}\KeywordTok{</span>}
+  \KeywordTok{<input}\OtherTok{ class=}\StringTok{"form-check-input"}\OtherTok{ type=}\StringTok{"checkbox"}\OtherTok{ checked}\KeywordTok{>}
+  \KeywordTok{<span}\OtherTok{ class=}\StringTok{"form-check-label"}\KeywordTok{>}\NormalTok{Option 1}\KeywordTok{</span>}
 \KeywordTok{</label>}
 \end{Highlighting}
 \end{Shaded}
@@ -4413,6 +4413,325 @@ In the following example, the action button toggles the switch input value when 
 \end{Shaded}
 
 Et voilà! 2 inputs in few minutes.
+
+\hypertarget{navbar-menu-input}{%
+\section{Navbar menu input}\label{navbar-menu-input}}
+
+We saw in Chapter \ref{survival-kit-shiny} that it is quite easy to bind other elements than pure inputs (HTML elements with the input tag) to Shiny. As a reminder, we created a custom input binding to detect the state of a shinydashboard box (collapsed/uncollapsed).
+In chapter \ref{custom-templates-skeleton}, we created the \texttt{tabler\_navbar} as well as the \texttt{tabler\_navbar\_menu} and \texttt{tabler\_navbar\_menu\_item}. As in shinydashboard, it would be nice to capture the currently selected tab to be able to perform actions on the server side, updating the selected tab based on a button click.
+
+Where do we start? First of all, the first thing is to add an id attribute to the \texttt{tabler\_navbar\_menu} so that it holds the corresponding \texttt{input\$id}. Whether to use \texttt{inputId} or \texttt{id} as a parameter name is up to you, but keep in mind that \texttt{inputId} does not exist in HTML.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_navbar_menu <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{inputId =} \OtherTok{NULL}\NormalTok{) \{}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{ul}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ inputId, }\DataTypeTok{class =} \StringTok{"nav nav-pills navbar-nav"}\NormalTok{, ...)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+The next step is the \texttt{navbarMenuBinding} creation. We decide to look for the \texttt{navbar-nav} class in the \texttt{find} method. Below, we describe the binding step by step. You may find the whole working code at the end of this example.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
+  \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{'.navbar-nav'}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+In the \texttt{initialize} method, we ensure that if no tab is selected at start, the first tab will be by default. Otherwise, we select the activated tab. We use the string interpolation to ease the insertion of JS code in strings (\texttt{\$\{menuId\}\ .nav-link.active}).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{initialize}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+  \KeywordTok{let}\NormalTok{ menuId }\OperatorTok{=} \StringTok{'#'} \OperatorTok{+} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{attr}\NormalTok{(}\StringTok{'id'}\NormalTok{)}\OperatorTok{;}
+  \KeywordTok{let}\NormalTok{ activeTab }\OperatorTok{=} \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`}\SpecialCharTok{$\{}\NormalTok{menuId}\SpecialCharTok{\}}\VerbatimStringTok{ .nav-link.active`}\NormalTok{)}\OperatorTok{;}
+  \CommentTok{// if multiple items are found}
+  \ControlFlowTok{if}\NormalTok{ (}\VariableTok{activeTab}\NormalTok{.}\AttributeTok{length} \OperatorTok{>} \DecValTok{0}\NormalTok{) }\OperatorTok{\{}
+    \KeywordTok{let}\NormalTok{ tabId }\OperatorTok{=} \AttributeTok{$}\NormalTok{(activeTab).}\AttributeTok{attr}\NormalTok{(}\StringTok{'data-value'}\NormalTok{)}\OperatorTok{;}
+    \AttributeTok{$}\NormalTok{(activeTab).}\AttributeTok{tab}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
+    \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`#}\SpecialCharTok{$\{}\NormalTok{tabId}\SpecialCharTok{\}}\VerbatimStringTok{`}\NormalTok{).}\AttributeTok{addClass}\NormalTok{(}\StringTok{'show active'}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\}} \ControlFlowTok{else} \OperatorTok{\{}
+    \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`}\SpecialCharTok{$\{}\NormalTok{menuId}\SpecialCharTok{\}}\VerbatimStringTok{ .nav-link`}\NormalTok{)}
+\NormalTok{      .}\AttributeTok{first}\NormalTok{()}
+\NormalTok{      .}\AttributeTok{tab}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+The role of \texttt{getValue} is to return the currently selected tab. As a reminder, here is the \texttt{tabler\_navbar\_menu\_item} function:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_navbar_menu_item <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, tabName, }\DataTypeTok{icon =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{selected =} \OtherTok{FALSE}\NormalTok{) \{}
+  
+\NormalTok{  item_cl <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}\StringTok{"nav-link"}\NormalTok{, }\ControlFlowTok{if}\NormalTok{(selected) }\StringTok{" active"}\NormalTok{)}
+  
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{li}\NormalTok{(}
+    \DataTypeTok{class =} \StringTok{"nav-item"}\NormalTok{,}
+    \KeywordTok{a}\NormalTok{(}
+      \DataTypeTok{class =}\NormalTok{ item_cl,}
+      \DataTypeTok{href =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"#"}\NormalTok{, tabName),}
+      \StringTok{`}\DataTypeTok{data-toggle}\StringTok{`}\NormalTok{ =}\StringTok{ "pill"}\NormalTok{, }\CommentTok{# see https://getbootstrap.com/docs/4.0/components/navs/}
+      \StringTok{`}\DataTypeTok{data-value}\StringTok{`}\NormalTok{ =}\StringTok{ }\NormalTok{tabName,}
+      \DataTypeTok{role =} \StringTok{"tab"}\NormalTok{,}
+      \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"nav-link-icon d-md-none d-lg-inline-block"}\NormalTok{, icon),}
+      \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"nav-link-title"}\NormalTok{, text)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+From that function, the active item has is the \texttt{a} element with the classes \texttt{nav-link\ active}. We recover the tab value stored in the \texttt{data-value} attribute. A bit of jQuery will do the trick!
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+  \KeywordTok{let}\NormalTok{ activeTab }\OperatorTok{=} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{find}\NormalTok{(}\StringTok{'a'}\NormalTok{).}\AttributeTok{filter}\NormalTok{(}\StringTok{'nav-link active'}\NormalTok{)}\OperatorTok{;}
+  \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(activeTab).}\AttributeTok{attr}\NormalTok{(}\StringTok{'data-value'}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\texttt{setValue} is the function allowing to update the active tab. Bootstrap 4 already has
+predefined methods to \href{https://getbootstrap.com/docs/4.0/components/navs/\#via-javascript}{activate} tabs. The easiest way is to select the tab by name like \texttt{\$(\textquotesingle{}\#tabMenu\ a{[}href="\#tab1"{]}\textquotesingle{}).tab(\textquotesingle{}show\textquotesingle{})}. The \texttt{receiveMessage} is simply applying the \texttt{setValue} method.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{setValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ value) }\OperatorTok{\{}
+  \KeywordTok{let}\NormalTok{ hrefVal }\OperatorTok{=} \StringTok{'#'} \OperatorTok{+}\NormalTok{ value}\OperatorTok{;}
+  \KeywordTok{let}\NormalTok{ menuId }\OperatorTok{=} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{attr}\NormalTok{(}\StringTok{'id'}\NormalTok{)}\OperatorTok{;}
+  \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`#}\SpecialCharTok{$\{}\NormalTok{menuId}\SpecialCharTok{\}}\VerbatimStringTok{ a[href="}\SpecialCharTok{$\{}\NormalTok{hrefVal}\SpecialCharTok{\}}\VerbatimStringTok{"]`}\NormalTok{).}\AttributeTok{tab}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}
+
+\NormalTok{receiveMessage}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data) }\OperatorTok{\{}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{setValue}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data)}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Besides, we have to create the \texttt{update\_tabler\_tab\_item} function.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{update_tabler_tab_item <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(inputId, value, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendInputMessage}\NormalTok{(inputId, }\DataTypeTok{message =}\NormalTok{ value)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\texttt{subscribe} will tell Shiny when to change the current input value and made it available
+in the whole app. We may listen to multiple events, keeping in mind that events occur in the following order:
+
+\begin{itemize}
+\tightlist
+\item
+  hide.bs.tab (on the current active tab)
+\item
+  show.bs.tab (on the to-be-shown tab)
+\item
+  hidden.bs.tab (on the previous active tab, the same one as for the hide.bs.tab event)
+\item
+  shown.bs.tab (on the newly-active just-shown tab, the same one as for the show.bs.tab event)
+\end{itemize}
+
+Hence, it makes more sense to listen to \texttt{shown.bs.tab} (wait the current tab to be shown).
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{subscribe}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ callback) }\OperatorTok{\{}
+  \CommentTok{// important to use shown.bs.tab and not show.bs.tab!}
+  \AttributeTok{$}\NormalTok{(el).}\AttributeTok{on}\NormalTok{(}\StringTok{'shown.bs.tab.navbarMenuBinding'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(e) }\OperatorTok{\{}
+    \AttributeTok{callback}\NormalTok{()}\OperatorTok{;}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\},}
+  
+\NormalTok{unsubscribe}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+  \AttributeTok{$}\NormalTok{(el).}\AttributeTok{off}\NormalTok{(}\StringTok{'.navbarMenuBinding'}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Below is a recap of the binding with the creation and registration included:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{$}\NormalTok{(}\KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
+  \CommentTok{// Input binding}
+  \KeywordTok{let}\NormalTok{ navbarMenuBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{InputBinding}\NormalTok{()}
+  \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(navbarMenuBinding}\OperatorTok{,} \OperatorTok{\{}
+    \DataTypeTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
+      \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{'.navbar-nav'}\NormalTok{)}\OperatorTok{;}
+    \OperatorTok{\},}
+    \DataTypeTok{initialize}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+      \KeywordTok{let}\NormalTok{ menuId }\OperatorTok{=} \StringTok{'#'} \OperatorTok{+} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{attr}\NormalTok{(}\StringTok{'id'}\NormalTok{)}\OperatorTok{;}
+      \KeywordTok{let}\NormalTok{ activeTab }\OperatorTok{=} \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`}\SpecialCharTok{$\{}\NormalTok{menuId}\SpecialCharTok{\}}\VerbatimStringTok{ .nav-link.active`}\NormalTok{)}\OperatorTok{;}
+      \CommentTok{// if multiple items are found}
+      \ControlFlowTok{if}\NormalTok{ (}\VariableTok{activeTab}\NormalTok{.}\AttributeTok{length} \OperatorTok{>} \DecValTok{0}\NormalTok{) }\OperatorTok{\{}
+        \KeywordTok{let}\NormalTok{ tabId }\OperatorTok{=} \AttributeTok{$}\NormalTok{(activeTab).}\AttributeTok{attr}\NormalTok{(}\StringTok{'data-value'}\NormalTok{)}\OperatorTok{;}
+        \AttributeTok{$}\NormalTok{(activeTab).}\AttributeTok{tab}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
+        \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`#}\SpecialCharTok{$\{}\NormalTok{tabId}\SpecialCharTok{\}}\VerbatimStringTok{`}\NormalTok{).}\AttributeTok{addClass}\NormalTok{(}\StringTok{'show active'}\NormalTok{)}\OperatorTok{;}
+      \OperatorTok{\}} \ControlFlowTok{else} \OperatorTok{\{}
+        \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`}\SpecialCharTok{$\{}\NormalTok{menuId}\SpecialCharTok{\}}\VerbatimStringTok{ .nav-link`}\NormalTok{)}
+\NormalTok{          .}\AttributeTok{first}\NormalTok{()}
+\NormalTok{          .}\AttributeTok{tab}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
+      \OperatorTok{\}}
+    \OperatorTok{\},}
+    \CommentTok{// Given the DOM element for the input, return the value}
+    \DataTypeTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+      \KeywordTok{let}\NormalTok{ activeTab }\OperatorTok{=} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{find}\NormalTok{(}\StringTok{'a'}\NormalTok{).}\AttributeTok{filter}\NormalTok{(}\StringTok{'nav-link active'}\NormalTok{)}\OperatorTok{;}
+      \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(activeTab).}\AttributeTok{attr}\NormalTok{(}\StringTok{'data-value'}\NormalTok{)}\OperatorTok{;}
+    \OperatorTok{\},}
+    \DataTypeTok{setValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ value) }\OperatorTok{\{}
+      \KeywordTok{let}\NormalTok{ hrefVal }\OperatorTok{=} \StringTok{'#'} \OperatorTok{+}\NormalTok{ value}\OperatorTok{;}
+      \KeywordTok{let}\NormalTok{ menuId }\OperatorTok{=} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{attr}\NormalTok{(}\StringTok{'id'}\NormalTok{)}\OperatorTok{;}
+      \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`#}\SpecialCharTok{$\{}\NormalTok{menuId}\SpecialCharTok{\}}\VerbatimStringTok{ a[href="}\SpecialCharTok{$\{}\NormalTok{hrefVal}\SpecialCharTok{\}}\VerbatimStringTok{"]`}\NormalTok{).}\AttributeTok{tab}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
+    \OperatorTok{\},}
+    \DataTypeTok{receiveMessage}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data) }\OperatorTok{\{}
+      \KeywordTok{this}\NormalTok{.}\AttributeTok{setValue}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data)}\OperatorTok{;}
+    \OperatorTok{\},}
+    \DataTypeTok{subscribe}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ callback) }\OperatorTok{\{}
+      \AttributeTok{$}\NormalTok{(el).}\AttributeTok{on}\NormalTok{(}\StringTok{'shown.bs.tab.navbarMenuBinding'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(event) }\OperatorTok{\{}
+        \AttributeTok{callback}\NormalTok{()}\OperatorTok{;}
+      \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+    \OperatorTok{\},}
+    \DataTypeTok{unsubscribe}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+      \AttributeTok{$}\NormalTok{(el).}\AttributeTok{off}\NormalTok{(}\StringTok{'.navbarMenuBinding'}\NormalTok{)}\OperatorTok{;}
+    \OperatorTok{\}}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+  
+  \VariableTok{Shiny}\NormalTok{.}\VariableTok{inputBindings}\NormalTok{.}\AttributeTok{register}\NormalTok{(navbarMenuBinding}\OperatorTok{,} \StringTok{'text'}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+We test the new \texttt{navbar\_menu} binding below.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{head}\NormalTok{(}
+\NormalTok{    tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+      \KeywordTok{HTML}\NormalTok{(}
+        \StringTok{"$(function() \{}
+\StringTok{          // Input binding}
+\StringTok{          let navbarMenuBinding = new Shiny.InputBinding()}
+\StringTok{          $.extend(navbarMenuBinding, \{}
+\StringTok{            find: function(scope) \{}
+\StringTok{              return $(scope).find('.navbar-nav');}
+\StringTok{            \},}
+\StringTok{            initialize: function(el) \{}
+\StringTok{              let menuId = '#' + $(el).attr('id');}
+\StringTok{              let activeTab = $(`$\{menuId\} .nav-link.active`);}
+\StringTok{              // if multiple items are found}
+\StringTok{              if (activeTab.length > 0) \{}
+\StringTok{                let tabId = $(activeTab).attr('data-value');}
+\StringTok{                $(activeTab).tab('show');}
+\StringTok{                $(`#$\{tabId\}`).addClass('show active');}
+\StringTok{              \} else \{}
+\StringTok{                $(`$\{menuId\} .nav-link`)}
+\StringTok{                  .first()}
+\StringTok{                  .tab('show');}
+\StringTok{              \}}
+\StringTok{            \},}
+\StringTok{            // Given the DOM element for the input, return the value}
+\StringTok{            getValue: function(el) \{}
+\StringTok{              let currentTab = $(el).find('a').filter('.nav-link.active');}
+\StringTok{              return $(currentTab).attr('data-value');}
+\StringTok{            \},}
+\StringTok{            setValue: function(el, value) \{}
+\StringTok{              let hrefVal = '#' + value;}
+\StringTok{              let menuId = $(el).attr('id');}
+\StringTok{              $(`#$\{menuId\} a[href=}\CharTok{\textbackslash{}"}\StringTok{$\{hrefVal\}}\CharTok{\textbackslash{}"}\StringTok{]`).tab('show');}
+\StringTok{            \},}
+\StringTok{            receiveMessage: function(el, data) \{}
+\StringTok{              this.setValue(el, data);}
+\StringTok{            \},}
+\StringTok{            subscribe: function(el, callback) \{}
+\StringTok{              $(el).on('shown.bs.tab.navbarMenuBinding', function(event) \{}
+\StringTok{                callback();}
+\StringTok{              \});}
+\StringTok{            \},}
+\StringTok{            unsubscribe: function(el) \{}
+\StringTok{              $(el).off('.navbarMenuBinding');}
+\StringTok{            \}}
+\StringTok{          \});}
+\StringTok{          }
+\StringTok{          Shiny.inputBindings.register(navbarMenuBinding, 'text');}
+\StringTok{        \});}
+\StringTok{        "}
+\NormalTok{      )}
+\NormalTok{    )}
+\NormalTok{  ),}
+  \KeywordTok{tabler_navbar}\NormalTok{(}
+    \DataTypeTok{brand_url =} \StringTok{"https://preview-dev.tabler.io"}\NormalTok{, }
+    \DataTypeTok{brand_image =} \StringTok{"https://preview-dev.tabler.io/static/logo.svg"}\NormalTok{, }
+    \DataTypeTok{nav_menu =} \KeywordTok{tabler_navbar_menu}\NormalTok{(}
+      \DataTypeTok{id =} \StringTok{"current_tab"}\NormalTok{,}
+      \KeywordTok{tabler_navbar_menu_item}\NormalTok{(}
+        \DataTypeTok{text =} \StringTok{"Tab 1"}\NormalTok{,}
+        \DataTypeTok{icon =} \OtherTok{NULL}\NormalTok{,}
+        \DataTypeTok{tabName =} \StringTok{"tab1"}\NormalTok{,}
+        \DataTypeTok{selected =} \OtherTok{TRUE}
+\NormalTok{      ),}
+      \KeywordTok{tabler_navbar_menu_item}\NormalTok{(}
+        \DataTypeTok{text =} \StringTok{"Tab 2"}\NormalTok{,}
+        \DataTypeTok{icon =} \OtherTok{NULL}\NormalTok{,}
+        \DataTypeTok{tabName =} \StringTok{"tab2"}
+\NormalTok{      )}
+\NormalTok{    ),}
+    \KeywordTok{tabler_button}\NormalTok{(}\StringTok{"update"}\NormalTok{, }\StringTok{"Change tab"}\NormalTok{, }\DataTypeTok{icon =} \KeywordTok{icon}\NormalTok{(}\StringTok{"exchange-alt"}\NormalTok{))}
+\NormalTok{  ),}
+  \KeywordTok{tabler_body}\NormalTok{(}
+    \KeywordTok{tabler_tab_items}\NormalTok{(}
+      \KeywordTok{tabler_tab_item}\NormalTok{(}
+        \DataTypeTok{tabName =} \StringTok{"tab1"}\NormalTok{,}
+        \KeywordTok{sliderInput}\NormalTok{(}
+          \StringTok{"obs"}\NormalTok{, }
+          \StringTok{"Number of observations:"}\NormalTok{,}
+          \DataTypeTok{min =} \DecValTok{0}\NormalTok{,}
+          \DataTypeTok{max =} \DecValTok{1000}\NormalTok{, }
+          \DataTypeTok{value =} \DecValTok{500}
+\NormalTok{        ),}
+        \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"distPlot"}\NormalTok{)}
+\NormalTok{      ),}
+      \KeywordTok{tabler_tab_item}\NormalTok{(}
+        \DataTypeTok{tabName =} \StringTok{"tab2"}\NormalTok{,}
+        \KeywordTok{p}\NormalTok{(}\StringTok{"Second Tab"}\NormalTok{)}
+\NormalTok{      )}
+\NormalTok{    ),}
+    \DataTypeTok{footer =} \KeywordTok{tabler_footer}\NormalTok{(}
+      \DataTypeTok{left =} \StringTok{"Rstats, 2020"}\NormalTok{, }
+      \DataTypeTok{right =} \KeywordTok{a}\NormalTok{(}\DataTypeTok{href =} \StringTok{"https://www.google.com"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{)}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{distPlot <-}\StringTok{ }\KeywordTok{renderPlot}\NormalTok{(\{}
+    \KeywordTok{hist}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(input}\OperatorTok{$}\NormalTok{obs))}
+\NormalTok{  \})}
+  
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{current_tab, \{}
+    \KeywordTok{showNotification}\NormalTok{(}
+      \KeywordTok{paste}\NormalTok{(}\StringTok{"Hello"}\NormalTok{, input}\OperatorTok{$}\NormalTok{current_tab), }
+      \DataTypeTok{type =} \StringTok{"message"}\NormalTok{,}
+      \DataTypeTok{duration =} \DecValTok{1}
+\NormalTok{    )}
+\NormalTok{  \})}
+  
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{update, \{}
+\NormalTok{    newTab <-}\StringTok{ }\ControlFlowTok{if}\NormalTok{ (input}\OperatorTok{$}\NormalTok{current_tab }\OperatorTok{==}\StringTok{ "tab1"}\NormalTok{) }\StringTok{"tab2"} \ControlFlowTok{else} \StringTok{"tab1"}
+    \KeywordTok{update_tabler_tab_item}\NormalTok{(}\StringTok{"current_tab"}\NormalTok{, newTab)}
+\NormalTok{  \})}
+\NormalTok{\}}
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Here we are!
 
 \hypertarget{custom-templates-interactivity}{%
 \chapter{Adding more interactivity}\label{custom-templates-interactivity}}

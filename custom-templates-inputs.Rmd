@@ -109,8 +109,8 @@ We implement the toggle [switch](https://preview-dev.tabler.io/docs/form-element
 
 ```html
 <label class="form-check form-switch">
-<input class="form-check-input" type="checkbox" checked>
-<span class="form-check-label">Option 1</span>
+  <input class="form-check-input" type="checkbox" checked>
+  <span class="form-check-label">Option 1</span>
 </label>
 ```
 
@@ -183,3 +183,298 @@ shinyApp(ui, server)
 ```
 
 Et voilà! 2 inputs in few minutes. 
+
+
+## Navbar menu input
+We saw in Chapter \@ref(survival-kit-shiny) that it is quite easy to bind other elements than pure inputs (HTML elements with the input tag) to Shiny. As a reminder, we created a custom input binding to detect the state of a shinydashboard box (collapsed/uncollapsed).
+In chapter \@ref(custom-templates-skeleton), we created the `tabler_navbar` as well as the `tabler_navbar_menu` and `tabler_navbar_menu_item`. As in shinydashboard, it would be nice to capture the currently selected tab to be able to perform actions on the server side, updating the selected tab based on a button click.
+
+Where do we start? First of all, the first thing is to add an id attribute to the `tabler_navbar_menu` so that it holds the corresponding `input$id`. Whether to use `inputId` or `id` as a parameter name is up to you, but keep in mind that `inputId` does not exist in HTML. 
+
+```{r}
+tabler_navbar_menu <- function(..., inputId = NULL) {
+  tags$ul(id = inputId, class = "nav nav-pills navbar-nav", ...)
+}
+```
+
+The next step is the `navbarMenuBinding` creation. We decide to look for the `navbar-nav` class in the `find` method. Below, we describe the binding step by step. You may find the whole working code at the end of this example.
+
+```javascript
+find: function(scope) {
+  return $(scope).find('.navbar-nav');
+}
+```
+
+In the `initialize` method, we ensure that if no tab is selected at start, the first tab will be by default. Otherwise, we select the activated tab. We use the string interpolation to ease the insertion of JS code in strings (``${menuId} .nav-link.active``).
+
+```javascript
+initialize: function(el) {
+  let menuId = '#' + $(el).attr('id');
+  let activeTab = $(`${menuId} .nav-link.active`);
+  // if multiple items are found
+  if (activeTab.length > 0) {
+    let tabId = $(activeTab).attr('data-value');
+    $(activeTab).tab('show');
+    $(`#${tabId}`).addClass('show active');
+  } else {
+    $(`${menuId} .nav-link`)
+      .first()
+      .tab('show');
+  }
+}
+```
+
+The role of `getValue` is to return the currently selected tab. As a reminder, here is the `tabler_navbar_menu_item` function:
+
+```{r}
+tabler_navbar_menu_item <- function(text, tabName, icon = NULL, selected = FALSE) {
+  
+  item_cl <- paste0("nav-link", if(selected) " active")
+  
+  tags$li(
+    class = "nav-item",
+    a(
+      class = item_cl,
+      href = paste0("#", tabName),
+      `data-toggle` = "pill", # see https://getbootstrap.com/docs/4.0/components/navs/
+      `data-value` = tabName,
+      role = "tab",
+      span(class = "nav-link-icon d-md-none d-lg-inline-block", icon),
+      span(class = "nav-link-title", text)
+    )
+  )
+}
+```
+
+From that function, the active item has is the `a` element with the classes `nav-link active`. We recover the tab value stored in the `data-value` attribute. A bit of jQuery will do the trick!
+
+
+```javascript
+getValue: function(el) {
+  let activeTab = $(el).find('a').filter('nav-link active');
+  return $(activeTab).attr('data-value');
+}
+```
+
+
+`setValue` is the function allowing to update the active tab. Bootstrap 4 already has
+predefined methods to [activate](https://getbootstrap.com/docs/4.0/components/navs/#via-javascript) tabs. The easiest way is to select the tab by name like `$('#tabMenu a[href="#tab1"]').tab('show')`. The `receiveMessage` is simply applying the `setValue` method.
+
+```javascript
+setValue: function(el, value) {
+  let hrefVal = '#' + value;
+  let menuId = $(el).attr('id');
+  $(`#${menuId} a[href="${hrefVal}"]`).tab('show');
+}
+
+receiveMessage: function(el, data) {
+  this.setValue(el, data);
+}
+```
+
+Besides, we have to create the `update_tabler_tab_item` function.
+
+```{r}
+update_tabler_tab_item <- function(inputId, value, session = getDefaultReactiveDomain()) {
+  session$sendInputMessage(inputId, message = value)
+}
+```
+
+`subscribe` will tell Shiny when to change the current input value and made it available
+in the whole app. We may listen to multiple events, keeping in mind that events occur in the following order:
+
+  - hide.bs.tab (on the current active tab)
+  - show.bs.tab (on the to-be-shown tab)
+  - hidden.bs.tab (on the previous active tab, the same one as for the hide.bs.tab event)
+  - shown.bs.tab (on the newly-active just-shown tab, the same one as for the show.bs.tab event)
+  
+Hence, it makes more sense to listen to `shown.bs.tab` (wait the current tab to be shown).
+
+```javascript
+subscribe: function(el, callback) {
+  // important to use shown.bs.tab and not show.bs.tab!
+  $(el).on('shown.bs.tab.navbarMenuBinding', function(e) {
+    callback();
+  });
+},
+  
+unsubscribe: function(el) {
+  $(el).off('.navbarMenuBinding');
+}
+```
+
+Below is a recap of the binding with the creation and registration included:
+
+```javascript
+$(function() {
+  // Input binding
+  let navbarMenuBinding = new Shiny.InputBinding()
+  $.extend(navbarMenuBinding, {
+    find: function(scope) {
+      return $(scope).find('.navbar-nav');
+    },
+    initialize: function(el) {
+      let menuId = '#' + $(el).attr('id');
+      let activeTab = $(`${menuId} .nav-link.active`);
+      // if multiple items are found
+      if (activeTab.length > 0) {
+        let tabId = $(activeTab).attr('data-value');
+        $(activeTab).tab('show');
+        $(`#${tabId}`).addClass('show active');
+      } else {
+        $(`${menuId} .nav-link`)
+          .first()
+          .tab('show');
+      }
+    },
+    // Given the DOM element for the input, return the value
+    getValue: function(el) {
+      let activeTab = $(el).find('a').filter('nav-link active');
+      return $(activeTab).attr('data-value');
+    },
+    setValue: function(el, value) {
+      let hrefVal = '#' + value;
+      let menuId = $(el).attr('id');
+      $(`#${menuId} a[href="${hrefVal}"]`).tab('show');
+    },
+    receiveMessage: function(el, data) {
+      this.setValue(el, data);
+    },
+    subscribe: function(el, callback) {
+      $(el).on('shown.bs.tab.navbarMenuBinding', function(event) {
+        callback();
+      });
+    },
+    unsubscribe: function(el) {
+      $(el).off('.navbarMenuBinding');
+    }
+  });
+  
+  Shiny.inputBindings.register(navbarMenuBinding, 'text');
+});
+```
+
+We test the new `navbar_menu` binding below.
+
+
+```{r, eval=FALSE}
+
+ui <- tabler_page(
+  tags$head(
+    tags$script(
+      HTML(
+        "$(function() {
+          // Input binding
+          let navbarMenuBinding = new Shiny.InputBinding()
+          $.extend(navbarMenuBinding, {
+            find: function(scope) {
+              return $(scope).find('.navbar-nav');
+            },
+            initialize: function(el) {
+              let menuId = '#' + $(el).attr('id');
+              let activeTab = $(`${menuId} .nav-link.active`);
+              // if multiple items are found
+              if (activeTab.length > 0) {
+                let tabId = $(activeTab).attr('data-value');
+                $(activeTab).tab('show');
+                $(`#${tabId}`).addClass('show active');
+              } else {
+                $(`${menuId} .nav-link`)
+                  .first()
+                  .tab('show');
+              }
+            },
+            // Given the DOM element for the input, return the value
+            getValue: function(el) {
+              let currentTab = $(el).find('a').filter('.nav-link.active');
+              return $(currentTab).attr('data-value');
+            },
+            setValue: function(el, value) {
+              let hrefVal = '#' + value;
+              let menuId = $(el).attr('id');
+              $(`#${menuId} a[href=\"${hrefVal}\"]`).tab('show');
+            },
+            receiveMessage: function(el, data) {
+              this.setValue(el, data);
+            },
+            subscribe: function(el, callback) {
+              $(el).on('shown.bs.tab.navbarMenuBinding', function(event) {
+                callback();
+              });
+            },
+            unsubscribe: function(el) {
+              $(el).off('.navbarMenuBinding');
+            }
+          });
+          
+          Shiny.inputBindings.register(navbarMenuBinding, 'text');
+        });
+        "
+      )
+    )
+  ),
+  tabler_navbar(
+    brand_url = "https://preview-dev.tabler.io", 
+    brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
+    nav_menu = tabler_navbar_menu(
+      id = "current_tab",
+      tabler_navbar_menu_item(
+        text = "Tab 1",
+        icon = NULL,
+        tabName = "tab1",
+        selected = TRUE
+      ),
+      tabler_navbar_menu_item(
+        text = "Tab 2",
+        icon = NULL,
+        tabName = "tab2"
+      )
+    ),
+    tabler_button("update", "Change tab", icon = icon("exchange-alt"))
+  ),
+  tabler_body(
+    tabler_tab_items(
+      tabler_tab_item(
+        tabName = "tab1",
+        sliderInput(
+          "obs", 
+          "Number of observations:",
+          min = 0,
+          max = 1000, 
+          value = 500
+        ),
+        plotOutput("distPlot")
+      ),
+      tabler_tab_item(
+        tabName = "tab2",
+        p("Second Tab")
+      )
+    ),
+    footer = tabler_footer(
+      left = "Rstats, 2020", 
+      right = a(href = "https://www.google.com")
+    )
+  )
+)
+server <- function(input, output, session) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+  
+  observeEvent(input$current_tab, {
+    showNotification(
+      paste("Hello", input$current_tab), 
+      type = "message",
+      duration = 1
+    )
+  })
+  
+  observeEvent(input$update, {
+    newTab <- if (input$current_tab == "tab1") "tab2" else "tab1"
+    update_tabler_tab_item("current_tab", newTab)
+  })
+}
+shinyApp(ui, server)
+```
+
+Here we are! 
