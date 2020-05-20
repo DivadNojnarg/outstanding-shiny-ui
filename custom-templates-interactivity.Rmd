@@ -8,10 +8,10 @@ elements are static HTML. Hence, it would be interesting to be able to update th
 value from the server side. Since it is not an input, implementing an input binding is inaprioprioate, so we decide to proceed with the `sendCustomMessage`/`addCustomMessageHandler` pair. We first create the `tabler_progress`
 tag which is mainly composed of:
 
-  - `style` gives the current value of the progress. This is the main element
-  - `min` and `max` are bounds, in general between 0 and 100
-  - `id` ensure that our progress bar is unique so that we may update it without
-  conflict
+- `style` gives the current value of the progress. This is the main element
+- `min` and `max` are bounds, in general between 0 and 100
+- `id` ensure that our progress bar is unique so that we may update it without
+conflict
 
 ```{r}
 tabler_progress <- function(id = NULL, value) {
@@ -38,17 +38,17 @@ update_tabler_progress <- function(id, value, session = shiny::getDefaultReactiv
 
 The next element is the `update_tabler_progress` function which send 2 elements from R to JS:
 
-  - The progress `id`
-  - The new value
+- The progress `id`
+- The new value
 
 On the JS side, we have a basic `addCustomMessageHandler`. As mentionned in Chapter \@ref(survival-kit-javascript), `sendCustomMessage` and `addCustomMessageHandler` are connected by the same `type`. This is crucial! Moreover, as the sent message is a R list, 
 it becomes an JSON, meaning that elements must be accessed with a `.`:
 
 ```javascript
 $(function () {
-  Shiny.addCustomMessageHandler('update-progress', function(message) {
-    $('#' + message.id).css('width', message.value +'%');
-  });
+Shiny.addCustomMessageHandler('update-progress', function(message) {
+$('#' + message.id).css('width', message.value +'%');
+});
 });
 ```
 
@@ -103,9 +103,165 @@ the previously selected tab, namely `e.relatedTarget`, and store it in a shiny i
 
 ```javascript
 $(function() {
-  $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-    Shiny.setInputValue('previous_tab', e.relatedTarget)
+$('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+Shiny.setInputValue('previous_tab', e.relatedTarget)
+});
+});
+```
+
+TO FINISH
+
+
+
+## User feedback: toasts
+Toasts are components to send discrete user feedback, contrary to modals which open in the middle of the page. Toasts may open on all sides of the window and are similar to the Shiny notifications (see [here](https://shiny.rstudio.com/reference/shiny/0.14/showNotification.html)). The tabler toast components is built on top of [Bootstrap 4](https://getbootstrap.com/docs/4.3/components/toasts/). Therefore, we will rely on this documentation.
+
+### Toast skeleton
+The skeleton is the HTML structure of the toast:
+
+```html
+<div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" data-autohide="false" data-toggle="toast">
+  <div class="toast-header">
+    <span class="avatar mr-2" style="background-image: url(...)"></span>
+    <strong class="mr-auto">Mallory Hulme</strong>
+    <small>11 mins ago</small>
+    <button type="button" class="ml-2 close" data-dismiss="toast" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="toast-body">
+    Hello, world! This is a toast message.
+  </div>
+</div>
+```
+
+Toasts are mainly composed of a header and a body, wrapped together. There might be a close button in case the toast does not hide itself. If multiple toasts appear one after each others, they are stacked, the latest being at the bottom of the stack. The position is controled with the style attribute like `style="position: absolute; top: 0; right: 0;"` for a top-right placement. Accessibility parameters like `aria-live` are detailed [here](https://getbootstrap.com/docs/4.3/components/toasts/#accessibility).
+
+### The toast API
+Toasts have a JS API to control their behaviour, `$('<toast_selector>').toast(option)`, where option stend for:
+
+- animation applies a CSS fade transition to the toast and is TRUE by default 
+- autohide hide automatically the toast (TRUE by default)
+- delay is the delay to hide the toast (500 ms)
+
+There are 3 methods: hide, show and dispose (it ensures the toast does not appear anymore). Finally, we may fine tune the toast behavior with 4 events: show.bs.toast, shown.bs.toast, hide.bs.toast, hide.bs.toast, hidden.bs.toast (like for tabs).
+
+
+### R implementation
+We first create the toast skeleton. We assume our toast will hide automatically, so that we may remove the delete button as well as the `data-autohide="false` attribute. All parameters are optional except the toast id, which is required to toggle the toast:
+
+```{r}
+tabler_toast <- function(id, title = NULL, subtitle = NULL, ..., img = NULL) {
+  div(
+    id = id,
+    class = "toast",
+    role = "alert",
+    style = "position: absolute; top: 0; right: 0;",
+    `aria-live` = "assertive",
+    `aria-atomic` = "true",
+    `data-toggle` = "toast",
+    div(
+      class = "toast-header",
+      if (!is.null(img)) {
+        span(
+          class = "avatar mr-2", 
+          style = sprintf("background-image: url(%s)", img)
+        )
+      },
+      if (!is.null(title)) strong(class = "mr-auto", title),
+      if (!is.null(subtitle)) tags$small(subtitle)
+    ),
+    div(class = "toast-body", ...)
+  )
+}
+```
+
+We create the `show_tabler_toast` function. Since the toast automatically hides, it does not make sense to create the hide function, as well as the dispose.
+
+```{r}
+show_tabler_toast <- function(id, options = NULL, session = getDefaultReactiveDomain()) {
+  message <- shiny:::dropNulls(
+    list(
+      id = id,
+      options = options
+    )
+  )
+  session$sendCustomMessage(type = "tabler-toast", message)
+}
+```
+
+The corresponding JS handler is given by:
+
+```javascript
+$(function() {
+  Shiny.addCustomMessageHandler('tabler-toast', function(message) {
+    $(`#${message.id}`)
+      .toast(message.options)
+      .toast('show');
+    
+    // add custom Shiny input to listen to the toast state
+    $(`#${message.id}`).on('hidden.bs.toast', function() {
+      Shiny.setInputValue(message.id, true, {priority: 'event'});
+    })
   });
 });
 ```
 
+We first configure the toast and ask him to show. We optionally add an event listener to capture the `hidden.bs.toast` event, so that we may trigger an action when the toast is closed. The `input$id` will be used for that purpose in combination with the `Shiny.setInputValue`. Notice the extra parameter `{priority: 'event'}`: basically, once the toast is closed, `input$id` will always be TRUE and the reactivity is broken. Adding this extra parameter forces the evaluation of the input, although constant over time.
+
+
+### Wrap up
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tags$head(
+    tags$script(
+      "$(function() {
+        Shiny.addCustomMessageHandler('tabler-toast', function(message) {
+          $(`#${message.id}`)
+            .toast(message.options)
+            .toast('show');
+          
+          // add custom Shiny input to listen to the toast state
+          $(`#${message.id}`).on('hidden.bs.toast', function() {
+            Shiny.setInputValue(message.id, true, {priority: 'event'});
+          })
+        });
+      });
+      "
+    )
+  ),
+  tabler_toast(
+    id = "toast", 
+    title = "Hello", 
+    subtitle = "now", 
+    "Toast body",
+    img = "https://preview-dev.tabler.io/static/logo.svg"
+  ),
+  tabler_button("launch", "Go!", width = "25%")
+)
+
+server <- function(input, output, session) {
+  observe(print(input$toast))
+  observeEvent(input$launch, {
+    show_tabler_toast(
+      "toast", 
+      options = list(
+        animation = FALSE,
+        delay = 2000
+      )
+    )
+  })
+  
+  observeEvent(input$toast, {
+    showNotification(
+      "Toast was closed", 
+      type = "warning",
+      duration = 1,
+      
+    )
+  })
+}
+
+shinyApp(ui, server)
+```
