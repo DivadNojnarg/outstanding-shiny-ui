@@ -8,9 +8,9 @@ elements are static HTML. Hence, it would be interesting to be able to update th
 value from the server side. Since it is not an proper input element, implementing an input binding is inapropriate and we decide to proceed with the `sendCustomMessage`/`addCustomMessageHandler` pair. We first create the `tabler_progress`
 tag which is mainly composed of:
 
-  - `style` gives the current progress value. This is the main element
-  - `min` and `max` are bounds, in general between 0 and 100
-  - `id` ensures the progress bar uniqueness, thereby avoiding conflicts
+- `style` gives the current progress value. This is the main element
+- `min` and `max` are bounds, in general between 0 and 100
+- `id` ensures the progress bar uniqueness, thereby avoiding conflicts
 
 ```{r}
 tabler_progress <- function(id = NULL, value) {
@@ -196,11 +196,11 @@ $(function() {
     $(`#${message.id}`)
       .toast(message.options)
       .toast('show');
-    
+
     // add custom Shiny input to listen to the toast state
     $(`#${message.id}`).on('hidden.bs.toast', function() {
       Shiny.setInputValue(message.id, true, {priority: 'event'});
-    })
+    });
   });
 });
 ```
@@ -266,4 +266,121 @@ shinyApp(ui, server)
 
 
 ## Transform an element in a custom action button
-As seen in Chapter \@ref(custom-templates-inputs), 
+As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The tabler template has dropdown menus in the navbar and we would like to transform dropdown items in action buttons. The `tabler_dropdown` functions takes the following parameters:
+
+  - id is required by the `show_tabler_dropdown` (see below) function which opens the menu
+  - title is the dropdown menu name
+  - subtitle is optional text
+  - img is an optional image
+  - ... hosts the `tabler_dropdown_item` (see below)
+
+```{r}
+tabler_dropdown <- function(..., id = NULL, title, subtitle = NULL, img = NULL) {
+  
+  div(
+    class = "nav-item dropdown",
+    a(
+      href = "#",
+      id = id, 
+      class = "nav-link d-flex lh-1 text-reset p-0",
+      `data-toggle` = "dropdown",
+      `aria-expanded` = "false",
+      if (!is.null(img)) {
+        span(class = "avatar", style = sprintf("background-image: url(%s)", img))
+      },
+      div(
+        class = "d-none d-xl-block pl-2",
+        div(title),
+        if (!is.null(subtitle)) {
+          div(class = "mt-1 small text-muted", subtitle)
+        }
+      )
+    ),
+    div(class = "dropdown-menu dropdown-menu-right", `aria-labelledby` = id, ...)
+  )
+}
+```
+
+To convert a dropdown item in an action button , we add the `action-button` class as well
+as the `id` parameter to recover the corresponding input id.
+
+```{r}
+tabler_dropdown_item <- function(..., id = NULL) {
+  a(id = id, class = "dropdown-item action-button", href = "#", ...)
+}
+```
+
+We finally create the `show_tabler_dropdown` as well as the corresponding Shiny message handler.
+
+```{r}
+show_tabler_dropdown <- function(id, session = getDefaultReactiveDomain()) {
+  session$sendCustomMessage(type = "show-dropdown", message = id)
+}
+```
+
+To show the dropdown, we use the `dropdown` method which is linked to the `data-toggle="dropdown"` of `tabler_dropdown`. 
+
+```javascript
+$(function() {
+  Shiny.addCustomMessageHandler('show-dropdown', function(message) {
+    $(`#${message}`).dropdown('show');
+  });
+});
+```
+
+Let's play with it!
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tags$head(
+    tags$script(
+      "$(function() {
+        Shiny.addCustomMessageHandler('show-dropdown', function(message) {
+          $(`#${message}`).dropdown('show');
+        });
+      });
+      "
+    )
+  ),
+  tabler_navbar(
+    brand_url = "https://preview-dev.tabler.io", 
+    brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
+    nav_menu = NULL, 
+    tabler_dropdown(
+      id = "mydropdown",
+      title = "Dropdown",
+      subtitle = "click me",
+      tabler_dropdown_item(
+        id = "item1",
+        "Show Notification"
+      ),
+      tabler_dropdown_item(
+        "Do nothing"
+      )
+    )
+  ),
+  tabler_body(
+    tabler_button("show", "Open dropdown", width = "25%"),
+    footer = tabler_footer(
+      left = "Rstats, 2020", 
+      right = a(href = "https://www.google.com")
+    )
+  )
+)
+server <- function(input, output, session) {
+  
+  observeEvent(input$show, {
+    show_tabler_dropdown("mydropdown")
+  })
+  
+  observeEvent(input$item1, {
+    showNotification(
+      "Success", 
+      type = "message",
+      duration = 2,
+      
+    )
+  })
+}
+shinyApp(ui, server)
+```

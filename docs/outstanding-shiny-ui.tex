@@ -4968,11 +4968,11 @@ The corresponding JS handler is given by:
     \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`#}\SpecialCharTok{$\{}\VariableTok{message}\NormalTok{.}\AttributeTok{id}\SpecialCharTok{\}}\VerbatimStringTok{`}\NormalTok{)}
 \NormalTok{      .}\AttributeTok{toast}\NormalTok{(}\VariableTok{message}\NormalTok{.}\AttributeTok{options}\NormalTok{)}
 \NormalTok{      .}\AttributeTok{toast}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
-    
+
     \CommentTok{// add custom Shiny input to listen to the toast state}
     \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`#}\SpecialCharTok{$\{}\VariableTok{message}\NormalTok{.}\AttributeTok{id}\SpecialCharTok{\}}\VerbatimStringTok{`}\NormalTok{).}\AttributeTok{on}\NormalTok{(}\StringTok{'hidden.bs.toast'}\OperatorTok{,} \KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
       \VariableTok{Shiny}\NormalTok{.}\AttributeTok{setInputValue}\NormalTok{(}\VariableTok{message}\NormalTok{.}\AttributeTok{id}\OperatorTok{,} \KeywordTok{true}\OperatorTok{,} \OperatorTok{\{}\DataTypeTok{priority}\OperatorTok{:} \StringTok{'event'}\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
-    \OperatorTok{\}}\NormalTok{)}
+    \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
   \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
@@ -5035,6 +5035,146 @@ We first configure the toast and ask him to show. Notice how we chained jQuery m
 \NormalTok{  \})}
 \NormalTok{\}}
 
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{transform-an-element-in-a-custom-action-button}{%
+\section{Transform an element in a custom action button}\label{transform-an-element-in-a-custom-action-button}}
+
+As seen in Chapter \ref{custom-templates-inputs}, any \texttt{\textless{}button\textgreater{}}, \texttt{\textless{}a\textgreater{}} element holding the \texttt{action-button} class may eventually become an action button. The tabler template has dropdown menus in the navbar and we would like to transform dropdown items in action buttons. The \texttt{tabler\_dropdown} functions takes the following parameters:
+
+\begin{itemize}
+\tightlist
+\item
+  id is required by the \texttt{show\_tabler\_dropdown} (see below) function which opens the menu
+\item
+  title is the dropdown menu name
+\item
+  subtitle is optional text
+\item
+  img is an optional image
+\item
+  \ldots{} hosts the \texttt{tabler\_dropdown\_item} (see below)
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_dropdown <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{id =} \OtherTok{NULL}\NormalTok{, title, }\DataTypeTok{subtitle =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{img =} \OtherTok{NULL}\NormalTok{) \{}
+  
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \StringTok{"nav-item dropdown"}\NormalTok{,}
+    \KeywordTok{a}\NormalTok{(}
+      \DataTypeTok{href =} \StringTok{"#"}\NormalTok{,}
+      \DataTypeTok{id =}\NormalTok{ id, }
+      \DataTypeTok{class =} \StringTok{"nav-link d-flex lh-1 text-reset p-0"}\NormalTok{,}
+      \StringTok{`}\DataTypeTok{data-toggle}\StringTok{`}\NormalTok{ =}\StringTok{ "dropdown"}\NormalTok{,}
+      \StringTok{`}\DataTypeTok{aria-expanded}\StringTok{`}\NormalTok{ =}\StringTok{ "false"}\NormalTok{,}
+      \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(img)) \{}
+        \KeywordTok{span}\NormalTok{(}\DataTypeTok{class =} \StringTok{"avatar"}\NormalTok{, }\DataTypeTok{style =} \KeywordTok{sprintf}\NormalTok{(}\StringTok{"background-image: url(%s)"}\NormalTok{, img))}
+\NormalTok{      \},}
+      \KeywordTok{div}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"d-none d-xl-block pl-2"}\NormalTok{,}
+        \KeywordTok{div}\NormalTok{(title),}
+        \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(subtitle)) \{}
+          \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"mt-1 small text-muted"}\NormalTok{, subtitle)}
+\NormalTok{        \}}
+\NormalTok{      )}
+\NormalTok{    ),}
+    \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"dropdown-menu dropdown-menu-right"}\NormalTok{, }\StringTok{`}\DataTypeTok{aria-labelledby}\StringTok{`}\NormalTok{ =}\StringTok{ }\NormalTok{id, ...)}
+\NormalTok{  )}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+To convert a dropdown item in an action button , we add the \texttt{action-button} class as well
+as the \texttt{id} parameter to recover the corresponding input id.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_dropdown_item <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{id =} \OtherTok{NULL}\NormalTok{) \{}
+  \KeywordTok{a}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ id, }\DataTypeTok{class =} \StringTok{"dropdown-item action-button"}\NormalTok{, }\DataTypeTok{href =} \StringTok{"#"}\NormalTok{, ...)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We finally create the \texttt{show\_tabler\_dropdown} as well as the corresponding Shiny message handler.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{show_tabler_dropdown <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(id, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
+\NormalTok{  session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\DataTypeTok{type =} \StringTok{"show-dropdown"}\NormalTok{, }\DataTypeTok{message =}\NormalTok{ id)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+To show the dropdown, we use the \texttt{dropdown} method which is linked to the \texttt{data-toggle="dropdown"} of \texttt{tabler\_dropdown}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{$}\NormalTok{(}\KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
+  \VariableTok{Shiny}\NormalTok{.}\AttributeTok{addCustomMessageHandler}\NormalTok{(}\StringTok{'show-dropdown'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
+    \AttributeTok{$}\NormalTok{(}\VerbatimStringTok{`#}\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{`}\NormalTok{).}\AttributeTok{dropdown}\NormalTok{(}\StringTok{'show'}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+Let's play with it!
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{head}\NormalTok{(}
+\NormalTok{    tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+      \StringTok{"$(function() \{}
+\StringTok{        Shiny.addCustomMessageHandler('show-dropdown', function(message) \{}
+\StringTok{          $(`#$\{message\}`).dropdown('show');}
+\StringTok{        \});}
+\StringTok{      \});}
+\StringTok{      "}
+\NormalTok{    )}
+\NormalTok{  ),}
+  \KeywordTok{tabler_navbar}\NormalTok{(}
+    \DataTypeTok{brand_url =} \StringTok{"https://preview-dev.tabler.io"}\NormalTok{, }
+    \DataTypeTok{brand_image =} \StringTok{"https://preview-dev.tabler.io/static/logo.svg"}\NormalTok{, }
+    \DataTypeTok{nav_menu =} \OtherTok{NULL}\NormalTok{, }
+    \KeywordTok{tabler_dropdown}\NormalTok{(}
+      \DataTypeTok{id =} \StringTok{"mydropdown"}\NormalTok{,}
+      \DataTypeTok{title =} \StringTok{"Dropdown"}\NormalTok{,}
+      \DataTypeTok{subtitle =} \StringTok{"click me"}\NormalTok{,}
+      \KeywordTok{tabler_dropdown_item}\NormalTok{(}
+        \DataTypeTok{id =} \StringTok{"item1"}\NormalTok{,}
+        \StringTok{"Show Notification"}
+\NormalTok{      ),}
+      \KeywordTok{tabler_dropdown_item}\NormalTok{(}
+        \StringTok{"Do nothing"}
+\NormalTok{      )}
+\NormalTok{    )}
+\NormalTok{  ),}
+  \KeywordTok{tabler_body}\NormalTok{(}
+    \KeywordTok{tabler_button}\NormalTok{(}\StringTok{"show"}\NormalTok{, }\StringTok{"Open dropdown"}\NormalTok{, }\DataTypeTok{width =} \StringTok{"25%"}\NormalTok{),}
+    \DataTypeTok{footer =} \KeywordTok{tabler_footer}\NormalTok{(}
+      \DataTypeTok{left =} \StringTok{"Rstats, 2020"}\NormalTok{, }
+      \DataTypeTok{right =} \KeywordTok{a}\NormalTok{(}\DataTypeTok{href =} \StringTok{"https://www.google.com"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{)}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+  
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{show, \{}
+    \KeywordTok{show_tabler_dropdown}\NormalTok{(}\StringTok{"mydropdown"}\NormalTok{)}
+\NormalTok{  \})}
+  
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{item1, \{}
+    \KeywordTok{showNotification}\NormalTok{(}
+      \StringTok{"Success"}\NormalTok{, }
+      \DataTypeTok{type =} \StringTok{"message"}\NormalTok{,}
+      \DataTypeTok{duration =} \DecValTok{2}\NormalTok{,}
+      
+\NormalTok{    )}
+\NormalTok{  \})}
+\NormalTok{\}}
 \KeywordTok{shinyApp}\NormalTok{(ui, server)}
 \end{Highlighting}
 \end{Shaded}
