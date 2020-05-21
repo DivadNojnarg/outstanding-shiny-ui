@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-21}
+\date{2020-05-22}
 
 \begin{document}
 \maketitle
@@ -1520,7 +1520,7 @@ We see in the head section that Shiny has 4 dependencies:
 
 jQuery drives the DOM manipulations. Shiny has its own JS and CSS files. Finally, json2 is a library to handle the \href{https://www.json.org/json-en.html}{JSON} data format (JavaScript Object Notation). In the following chapters we will use it a lot, through the \href{https://cran.r-project.org/web/packages/jsonlite/index.html}{jsonlite} package that allows to transform JSON objects in R objects and inversely.
 
-In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny may imply to alter those existing libraries (except the Shiny core JavaScript and json2). In Chapter \ref{htmltools-dependencies} we will discover better tools to extract HTML dependencies.
+In summary, all those libraries are necessary to make Shiny what it is! Customizing Shiny may imply to alter those existing libraries (except the Shiny core JavaScript and json2). In Chapter \ref{htmltools-dependencies} we will discover better tools to extract HTML dependencies. Finally, in Chapter \ref{insert-tabs}, we will see a special case to insert dependencies during the app runtime.
 
 \hypertarget{websocket-rjs-bidirectional-communication}{%
 \section{Websocket: R/JS bidirectional communication}\label{websocket-rjs-bidirectional-communication}}
@@ -1551,8 +1551,8 @@ After opening the HTML inspector, we select the network tab and search for webso
 \begin{Shaded}
 \begin{Highlighting}[]
 \VariableTok{socket}\NormalTok{.}\AttributeTok{send}\NormalTok{(}\VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
-\DataTypeTok{method}\OperatorTok{:} \StringTok{'init'}\OperatorTok{,}
-\DataTypeTok{data}\OperatorTok{:} \VariableTok{self}\NormalTok{.}\AttributeTok{$initialInput}
+  \DataTypeTok{method}\OperatorTok{:} \StringTok{'init'}\OperatorTok{,}
+  \DataTypeTok{data}\OperatorTok{:} \VariableTok{self}\NormalTok{.}\AttributeTok{$initialInput}
 \OperatorTok{\}}\NormalTok{))}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -1562,10 +1562,10 @@ The second message received from R is after updating the select input.
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{this}\NormalTok{.}\AttributeTok{sendInput} \OperatorTok{=} \KeywordTok{function}\NormalTok{(values) }\OperatorTok{\{}
-\KeywordTok{var}\NormalTok{ msg }\OperatorTok{=} \VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
-\DataTypeTok{method}\OperatorTok{:} \StringTok{'update'}\OperatorTok{,}
-\DataTypeTok{data}\OperatorTok{:}\NormalTok{ values}
-\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+  \KeywordTok{var}\NormalTok{ msg }\OperatorTok{=} \VariableTok{JSON}\NormalTok{.}\AttributeTok{stringify}\NormalTok{(}\OperatorTok{\{}
+    \DataTypeTok{method}\OperatorTok{:} \StringTok{'update'}\OperatorTok{,}
+    \DataTypeTok{data}\OperatorTok{:}\NormalTok{ values}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \CommentTok{// other things}
 \OperatorTok{\};}
 \end{Highlighting}
@@ -1579,7 +1579,66 @@ Finally, \texttt{Shiny.shinyapp.\$socket.readyState} returns the state of the so
 \includegraphics[width=27.69in]{images/survival-kit/shiny-websocket} \caption{Shiny websocket}\label{fig:shiny-websocket}
 \end{figure}
 
-Understanding how R and JS may communicate will help in the next section about the Shiny input system.
+Understanding how R and JS may communicate will help in the next section about the Shiny input system. Note that the R option \texttt{options(shiny.trace\ =\ TRUE)} allows to display the websocket messages.
+
+\hypertarget{the-shiny-session-object}{%
+\section{The Shiny session object}\label{the-shiny-session-object}}
+
+We won't be able to go anywhere without giving some reminders about the Shiny \href{https://shiny.rstudio.com/reference/shiny/1.4.0/session.html}{session} object.
+Why do we say object? \texttt{session} is actually an instance of the \href{https://github.com/rstudio/shiny/blob/master/R/shiny.R}{\texttt{ShinySession}} R6 class.
+The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{sendCustomMessage} sends messages from R to JS. It calls the private \texttt{sendMessage} method, which itself calls \texttt{write}. The message is sent only when the session is opened, throught the websocket \texttt{private\$websocket\$send(json)}. If the \texttt{shiny.trace} \href{https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html}{option} is TRUE, a message showing the sent JSON is displayed, useful for debugging.
+\item
+  \texttt{sendInputMessage} is used to update inputs from the server
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sendCustomMessage =}\StringTok{ }\ControlFlowTok{function}\NormalTok{(type, message) \{}
+\NormalTok{  data <-}\StringTok{ }\KeywordTok{list}\NormalTok{()}
+\NormalTok{  data[[type]] <-}\StringTok{ }\NormalTok{message}
+\NormalTok{  private}\OperatorTok{$}\KeywordTok{sendMessage}\NormalTok{(}\DataTypeTok{custom =}\NormalTok{ data)}
+\NormalTok{\}}
+
+\NormalTok{sendInputMessage =}\StringTok{ }\ControlFlowTok{function}\NormalTok{(inputId, message) \{}
+\NormalTok{  data <-}\StringTok{ }\KeywordTok{list}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ inputId, }\DataTypeTok{message =}\NormalTok{ message)}
+  
+  \CommentTok{# Add to input message queue}
+\NormalTok{  private}\OperatorTok{$}\NormalTok{inputMessageQueue[[}\KeywordTok{length}\NormalTok{(private}\OperatorTok{$}\NormalTok{inputMessageQueue) }\OperatorTok{+}\StringTok{ }\DecValTok{1}\NormalTok{]] <-}\StringTok{ }\NormalTok{data}
+  \CommentTok{# Needed so that Shiny knows to actually flush the input message queue}
+\NormalTok{  self}\OperatorTok{$}\KeywordTok{requestFlush}\NormalTok{()}
+\NormalTok{\}}
+
+
+\NormalTok{sendMessage =}\StringTok{ }\ControlFlowTok{function}\NormalTok{(...) \{}
+  \CommentTok{# This function is a wrapper for $write}
+\NormalTok{  msg <-}\StringTok{ }\KeywordTok{list}\NormalTok{(...)}
+  \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{anyUnnamed}\NormalTok{(msg)) \{}
+    \KeywordTok{stop}\NormalTok{(}\StringTok{"All arguments to sendMessage must be named."}\NormalTok{)}
+\NormalTok{  \}}
+\NormalTok{  private}\OperatorTok{$}\KeywordTok{write}\NormalTok{(}\KeywordTok{toJSON}\NormalTok{(msg))}
+\NormalTok{\}}
+
+
+\NormalTok{write =}\StringTok{ }\ControlFlowTok{function}\NormalTok{(json) \{}
+  \ControlFlowTok{if}\NormalTok{ (self}\OperatorTok{$}\NormalTok{closed)\{}
+    \KeywordTok{return}\NormalTok{()}
+\NormalTok{  \}}
+\NormalTok{  traceOption <-}\StringTok{ }\KeywordTok{getOption}\NormalTok{(}\StringTok{'shiny.trace'}\NormalTok{, }\OtherTok{FALSE}\NormalTok{)}
+  \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{isTRUE}\NormalTok{(traceOption) }\OperatorTok{||}\StringTok{ }\NormalTok{traceOption }\OperatorTok{==}\StringTok{ "send"}\NormalTok{)}
+    \KeywordTok{message}\NormalTok{(}\StringTok{'SEND '}\NormalTok{,}
+            \KeywordTok{gsub}\NormalTok{(}\StringTok{'(?m)base64,[a-zA-Z0-9+/=]+'}\NormalTok{,}\StringTok{'[base64 data]'}\NormalTok{,json,}\DataTypeTok{perl=}\OtherTok{TRUE}\NormalTok{))}
+\NormalTok{  private}\OperatorTok{$}\NormalTok{websocket}\OperatorTok{$}\KeywordTok{send}\NormalTok{(json)}
+\NormalTok{\}}
+\CommentTok{# ...}
+\end{Highlighting}
+\end{Shaded}
+
+No worry if it is not clear at the moment. We will discuss those elements in the following sections.
 
 \hypertarget{shinys-input-system}{%
 \section{Shiny's input system}\label{shinys-input-system}}
@@ -1782,12 +1841,12 @@ Upon initialization, Shiny calls the \texttt{initializeInputs} function that tak
 \begin{Highlighting}[]
 \CommentTok{// what is expected}
 \KeywordTok{let}\NormalTok{ toggle }\OperatorTok{=} \VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}
-\DataTypeTok{el}\OperatorTok{:} \StringTok{'.toggle'}\OperatorTok{,}
-\DataTypeTok{on}\OperatorTok{:} \OperatorTok{\{}
-\DataTypeTok{change}\OperatorTok{:} \KeywordTok{function}\NormalTok{ () }\OperatorTok{\{}
-\VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(}\StringTok{'Toggle changed'}\NormalTok{)}
-\OperatorTok{\}}
-\OperatorTok{\}}
+  \DataTypeTok{el}\OperatorTok{:} \StringTok{'.toggle'}\OperatorTok{,}
+  \DataTypeTok{on}\OperatorTok{:} \OperatorTok{\{}
+    \DataTypeTok{change}\OperatorTok{:} \KeywordTok{function}\NormalTok{ () }\OperatorTok{\{}
+      \VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(}\StringTok{'Toggle changed'}\NormalTok{)}
+    \OperatorTok{\}}
+  \OperatorTok{\}}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -1797,11 +1856,11 @@ Upon initialization, Shiny calls the \texttt{initializeInputs} function that tak
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{var}\NormalTok{ f7ToggleBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{InputBinding}\NormalTok{()}\OperatorTok{;}
-\VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(f7ToggleBinding}\OperatorTok{,} \OperatorTok{\{}
-\DataTypeTok{initialize}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
-\VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}\DataTypeTok{el}\OperatorTok{:}\NormalTok{ el}\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
-\OperatorTok{\},}
-\CommentTok{// other methods}
+  \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(f7ToggleBinding}\OperatorTok{,} \OperatorTok{\{}
+    \DataTypeTok{initialize}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+      \VariableTok{app}\NormalTok{.}\VariableTok{toggle}\NormalTok{.}\AttributeTok{create}\NormalTok{(}\OperatorTok{\{}\DataTypeTok{el}\OperatorTok{:}\NormalTok{ el}\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+    \OperatorTok{\},}
+    \CommentTok{// other methods}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -1869,7 +1928,7 @@ Let's create a function to update our custom text input. Call it \texttt{updateC
 \item
   value is the new value. This will be taken by the \texttt{setValue} JS method in the input binding
 \item
-  session is the Shiny session object. session is an \href{https://r6.r-lib.org}{R6} class having methods like \texttt{sendInputMessage} to send values from R to JavaScript. The \texttt{receiveMessage} method will apply \texttt{setValue} with the data received from R
+  session is the Shiny session object mentionned earlier. We will use the \texttt{sendInputMessage} to send values from R to JavaScript. The \texttt{receiveMessage} method will apply \texttt{setValue} with the data received from R
 \end{itemize}
 
 \begin{Shaded}
@@ -2526,38 +2585,58 @@ I acknowledge, the practical interest might be limited but still good to know fo
 
 Shiny contains tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a \texttt{selectInput} and a \texttt{datatable}. How does R send messages to JavaScript?
 
-Shiny is made of input and output. Yet there is a third parameter you can pass to the server function called session. The \href{https://shiny.rstudio.com/reference/shiny/1.4.0/session.html}{session} object contains informations on the current session like clientData, the namespace ns (if working inside modules), as well as methods (yes methods since session is an R6 class). Among those methods, we are interested by 2 of them:
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{sendCustomMessage(type,\ message)}: \textgreater{} Custom messages have no meaning to Shiny itself; they are used soley to convey information to custom JavaScript logic in the browser
-\item
-  \texttt{sendInputMessage()}: \textgreater{} if the input is present and bound on the page at the time the message is received, then the input binding object's receiveMessage(el, message) method will be called
-\end{itemize}
-
-While \texttt{sendInputMessage} is the R side of the input features, \texttt{sendCustomMessage} simply allows to communicate between R and JavaScript.
-Basically a R function :
+We already discussed the usage of \texttt{sendInputMessage()} in the input binding section. The other important method is \texttt{sendCustomMessage(type,\ message)}. It works by pair with the JS method \texttt{Shiny.AddCustomMessageHandler}, linked with the type parameter.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{sayHelloToJS <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, session) \{}
+\NormalTok{sayHelloToJS <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
 \NormalTok{  session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\DataTypeTok{type =} \StringTok{'say-hello'}\NormalTok{, }\DataTypeTok{message =}\NormalTok{ text)}
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
 
-We need a JavaScript receptor, handle by the \texttt{addCustomMessageHandler} method:
+The JavaScript receptor is defined below:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\VariableTok{Shiny}\NormalTok{.}\AttributeTok{AddCustomMessageHandler}\NormalTok{(}\StringTok{'say-hello'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
-\AttributeTok{alert}\NormalTok{(}\VerbatimStringTok{`R says }\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{ to you!`}\NormalTok{)}
-\OperatorTok{\}}\NormalTok{)}
+\AttributeTok{$}\NormalTok{(}\KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
+  \VariableTok{Shiny}\NormalTok{.}\AttributeTok{AddCustomMessageHandler}\NormalTok{(}\StringTok{'say-hello'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(message) }\OperatorTok{\{}
+    \AttributeTok{alert}\NormalTok{(}\VerbatimStringTok{`R says }\SpecialCharTok{$\{}\NormalTok{message}\SpecialCharTok{\}}\VerbatimStringTok{ to you!`}\NormalTok{)}
+  \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
 
-The type parameter is obviously critical to make the connection between R and JavaScript and 2 different message handlers must have different types to avoid conflicts.
+The shiny app below will simply print a welcome message. We obviously set \texttt{options(shiny.trace\ =\ TRUE)}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{options}\NormalTok{(}\DataTypeTok{shiny.trace =} \OtherTok{TRUE}\NormalTok{)}
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{head}\NormalTok{(}
+\NormalTok{    tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+      \StringTok{"$(function() \{}
+\StringTok{        Shiny.addCustomMessageHandler('say-hello', function(message) \{}
+\StringTok{          alert(`R says $\{message\} to you!`);}
+\StringTok{        \});}
+\StringTok{      \});}
+\StringTok{      "}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+  \KeywordTok{observe}\NormalTok{(\{}
+    \KeywordTok{invalidateLater}\NormalTok{(}\DecValTok{5000}\NormalTok{)}
+    \KeywordTok{sayHelloToJS}\NormalTok{(}\StringTok{"hello"}\NormalTok{)}
+\NormalTok{  \})}
+\NormalTok{\}}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+You will find a whole chapter dedicated to custom handlers here \ref{custom-templates-interactivity}.
 
 TO DO: picture showing the communication
 
@@ -5166,8 +5245,8 @@ Let's play with it!
 
 Do you remember about the navbar element and the tabsetpanel system of Chapter \ref{custom-templates-skeleton}? Navs allow to organize any app into several tabs, acting like pages. This is a powerful tool for Shiny since it is currently not straightforward to create \href{https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698}{multi-pages} Shiny apps like anyone would do with a website. Navs relie on the Bootstrap4 API but we only used few JS functions.
 
-\hypertarget{insertremove-tabs-in-tabsetpanel}{%
-\subsection{Insert/Remove tabs in tabsetpanel}\label{insertremove-tabs-in-tabsetpanel}}
+\hypertarget{insert-tabs}{%
+\subsection{Insert/Remove tabs in tabsetpanel}\label{insert-tabs}}
 
 How about dynamically inserting/removing tabs from a \texttt{tabler\_navbar}? I chose this example since it involves extra technical details about Shiny.
 
