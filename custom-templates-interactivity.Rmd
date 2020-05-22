@@ -44,9 +44,9 @@ On the JS side, we have a basic `addCustomMessageHandler`. As mentionned in Chap
 
 ```javascript
 $(function () {
-  Shiny.addCustomMessageHandler('update-progress', function(message) {
-    $('#' + message.id).css('width', message.value +'%');
-  });
+Shiny.addCustomMessageHandler('update-progress', function(message) {
+$('#' + message.id).css('width', message.value +'%');
+});
 });
 ```
 
@@ -103,17 +103,17 @@ The skeleton is the HTML structure of the toast:
 
 ```html
 <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" data-autohide="false" data-toggle="toast">
-  <div class="toast-header">
-    <span class="avatar mr-2" style="background-image: url(...)"></span>
-    <strong class="mr-auto">Mallory Hulme</strong>
-    <small>11 mins ago</small>
-    <button type="button" class="ml-2 close" data-dismiss="toast" aria-label="Close">
-      <span aria-hidden="true">&times;</span>
-    </button>
-  </div>
-  <div class="toast-body">
-    Hello, world! This is a toast message.
-  </div>
+<div class="toast-header">
+<span class="avatar mr-2" style="background-image: url(...)"></span>
+<strong class="mr-auto">Mallory Hulme</strong>
+<small>11 mins ago</small>
+<button type="button" class="ml-2 close" data-dismiss="toast" aria-label="Close">
+<span aria-hidden="true">&times;</span>
+</button>
+</div>
+<div class="toast-body">
+Hello, world! This is a toast message.
+</div>
 </div>
 ```
 
@@ -176,16 +176,16 @@ The corresponding JS handler is given by:
 
 ```javascript
 $(function() {
-  Shiny.addCustomMessageHandler('tabler-toast', function(message) {
-    $(`#${message.id}`)
-      .toast(message.options)
-      .toast('show');
+Shiny.addCustomMessageHandler('tabler-toast', function(message) {
+$(`#${message.id}`)
+.toast(message.options)
+.toast('show');
 
-    // add custom Shiny input to listen to the toast state
-    $(`#${message.id}`).on('hidden.bs.toast', function() {
-      Shiny.setInputValue(message.id, true, {priority: 'event'});
-    });
-  });
+// add custom Shiny input to listen to the toast state
+$(`#${message.id}`).on('hidden.bs.toast', function() {
+Shiny.setInputValue(message.id, true, {priority: 'event'});
+});
+});
 });
 ```
 
@@ -252,11 +252,11 @@ shinyApp(ui, server)
 ## Transform an element in a custom action button
 As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The tabler template has dropdown menus in the navbar and we would like to transform dropdown items in action buttons. The `tabler_dropdown` functions takes the following parameters:
 
-  - id is required by the `show_tabler_dropdown` (see below) function which opens the menu
-  - title is the dropdown menu name
-  - subtitle is optional text
-  - img is an optional image
-  - ... hosts the `tabler_dropdown_item` (see below)
+- id is required by the `show_tabler_dropdown` (see below) function which opens the menu
+- title is the dropdown menu name
+- subtitle is optional text
+- img is an optional image
+- ... hosts the `tabler_dropdown_item` (see below)
 
 ```{r}
 tabler_dropdown <- function(..., id = NULL, title, subtitle = NULL, img = NULL) {
@@ -306,9 +306,9 @@ To show the dropdown, we use the `dropdown` method which is linked to the `data-
 
 ```javascript
 $(function() {
-  Shiny.addCustomMessageHandler('show-dropdown', function(message) {
-    $(`#${message}`).dropdown('show');
-  });
+Shiny.addCustomMessageHandler('show-dropdown', function(message) {
+$(`#${message}`).dropdown('show');
+});
 });
 ```
 
@@ -374,9 +374,182 @@ shinyApp(ui, server)
 Do you remember about the navbar element and the tabsetpanel system of Chapter \@ref(custom-templates-skeleton)? Navs allow to organize any app into several tabs, acting like pages. This is a powerful tool for Shiny since it is currently not straightforward to create [multi-pages](https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698) Shiny apps like anyone would do with a website. Navs relie on the Bootstrap4 API but we only used few JS functions.
 
 ### Insert/Remove tabs in tabsetpanel {#insert-tabs}
-How about dynamically inserting/removing tabs from a `tabler_navbar`? I chose this example since it involves extra technical details about Shiny.
+How about dynamically inserting/removing tabs from a `tabler_navbar`? I chose this example since it involves extra technical details about Shiny. 
 
-TO DO: start with a naive approach, show it does not work and introduce `Shiny.renderContent`, `processDeps` ...
+How do we proceed? if you remember about the `tabler_navbar_menu_item` and `tabler_tab_item` coupling, inserting a tab implies to insert the trigger in the navigation menu as well as the content in the dashboard body. Therefore, we need to know the structure of what we insert. Below is a reminder:
+
+- `tabler_navbar_menu_item` are `<li>` elements
+- `tabler_navbar_menu_item` is a `<div>` element with specific classes
+
+```html
+<li class="nav-item">
+<a class="nav-link" href="#ww" data-toggle="pill" data-value="ww" role="tab">
+<span class="nav-link-icon d-md-none d-lg-inline-block"></span>
+<span class="nav-link-title">ww</span>
+</a>
+</li>
+
+<div role="tabpanel" class="tab-pane fade container-fluid" id="ww"></div>
+```
+
+We design the `insert_tabler_tab` function similar to the Shiny `insertTab`. 
+To handle shiny modules, we wrap the inputId in the session namespace. We create the menu item element based on the provided new tab.
+
+```{r}
+insert_tabler_tab <- function(inputId, tab, target, position = c("before", "after"),
+                              select = FALSE, session = shiny::getDefaultReactiveDomain()) {
+  
+  inputId <- session$ns(inputId)
+  position <- match.arg(position)
+  navbar_menu_item <- tags$li(
+    class = "nav-item",
+    a(
+      class = "nav-link",
+      href = paste0("#", session$ns(tab$attribs$id)),
+      `data-toggle` = "pill",
+      `data-value` = tab$attribs$id,
+      role = "tab",
+      tab$attribs$id
+    )
+  )
+  
+  tab <- force(as.character(tab))
+  navbar_menu_item <- force(as.character(navbar_menu_item))
+  
+  message <- shiny:::dropNulls(
+    list(
+      inputId = inputId,
+      content = tab,
+      link = navbar_menu_item,
+      target = target,
+      position = position,
+      select = select
+    )
+  )
+  session$sendCustomMessage(type = "insert-tab", message)
+}
+```
+
+
+```javascript
+$(function() {
+  Shiny.addCustomMessageHandler('insert-tab', function(message) {
+    // define div and li targets
+    let $divTag = $(message.content);
+    let $liTag = $(message.link);
+    
+    if (message.position === 'after') {
+      $divTag.insertAfter($('#' + message.target));
+      $liTag.insertAfter($('[href ="#' + message.target + '"]').parent());
+    } else if (message.position === 'before') {
+      $divTag.insertBefore($('#' + message.target));
+      $liTag.insertBefore($('[href ="#' + message.target + '"]').parent());
+    }
+    
+    if (message.select) {
+      // trigger a click on corresponding the new tab button. 
+      let newTabId = $divTag.attr('id');
+      $('#' + message.inputId + ' a[href="#' + newTabId +'"]').tab('show');
+    }
+  });
+});
+```
+
+If the tab is well inserted, we notice that none of the slider nor the plot are properly shown? How could we explain that? It is a dependency issue: the slider input relies on a specific JS [library](http://ionden.com/a/plugins/ion.rangeSlider/). If you open the HTML inspector, it is yet not shown in the page. This is because we did not tell Shiny to include this new dependency
+
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tags$head(
+    tags$script(
+      HTML(
+        "$(function() {
+          Shiny.addCustomMessageHandler('insert-tab', function(message) {
+            // define div and li targets
+            let $divTag = $(message.content);
+            let $liTag = $(message.link);
+            
+            if (message.position === 'after') {
+              $divTag.insertAfter($('#' + message.target));
+              $liTag.insertAfter($('[href =\"#' + message.target + '\"]').parent());
+            } else if (message.position === 'before') {
+              $divTag.insertBefore($('#' + message.target));
+              $liTag.insertBefore($('[href =\"#' + message.target + '\"]').parent());
+            }
+            
+            if (message.select) {
+              // trigger a click on corresponding the new tab button. 
+              let newTabId = $divTag.attr('id');
+              $('#' + message.inputId + ' a[href=\"#' + newTabId +'\"]').tab('show');
+            }
+          });
+        });
+        "
+      )
+    )
+  ),
+  tabler_navbar(
+    brand_url = "https://preview-dev.tabler.io", 
+    brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
+    nav_menu = tabler_navbar_menu(
+      inputId = "tabmenu",
+      tabler_navbar_menu_item(
+        text = "Tab 1",
+        icon = NULL,
+        tabName = "tab1",
+        selected = TRUE
+      ),
+      tabler_navbar_menu_item(
+        text = "Tab 2",
+        icon = NULL,
+        tabName = "tab2"
+      )
+    ),
+    tabler_button("insert", "Insert Tab")
+  ),
+  tabler_body(
+    tabler_tab_items(
+      tabler_tab_item(
+        tabName = "tab1",
+        p("Hello World")
+      ),
+      tabler_tab_item(
+        tabName = "tab2",
+        p("Second Tab")
+      )
+    ),
+    footer = tabler_footer(
+      left = "Rstats, 2020", 
+      right = a(href = "https://www.google.com")
+    )
+  )
+)
+server <- function(input, output, session) {
+  
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+  
+  observeEvent(input$insert, {
+    insert_tabler_tab(
+      inputId = "tabmenu",
+      tab = tabler_tab_item(
+        tabName = "tab3",
+        sliderInput("obs", "Number of observations:",
+                    min = 0, max = 1000, value = 500
+        ),
+        plotOutput("distPlot")
+      ),
+      target = "tab2",
+      position = "before",
+      select = TRUE
+    )
+  })
+}
+shinyApp(ui, server)
+```
+
+Fortunately, Shiny provides tools such as `processDeps` (R side) and `Shiny.renderContent` (JS side) to handle newly inserted dependencies, on app runtime.
 
 ### More events
 There exists [events](https://getbootstrap.com/docs/4.0/components/navs/#events) that trigger after/before showing/hiding a tabs, that is `hidden.bs.tab` and `shown.bs.tab` (`hide.bs.tab` and `show.bs.tab` are triggered before). For instance, we may recover
@@ -384,9 +557,9 @@ the previously selected tab, namely `e.relatedTarget`, and store it in a shiny i
 
 ```javascript
 $(function() {
-  $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-    Shiny.setInputValue('previous_tab', e.relatedTarget)
-  });
+$('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+Shiny.setInputValue('previous_tab', e.relatedTarget)
+});
 });
 ```
 
