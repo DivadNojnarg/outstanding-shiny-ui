@@ -176,6 +176,7 @@ See the \href{https://rstudio.cloud}{RStudio Cloud} dedicated project.
 \KeywordTok{library}\NormalTok{(ggplot2)}
 \KeywordTok{library}\NormalTok{(thematic)}
 \KeywordTok{library}\NormalTok{(fresh)}
+\KeywordTok{library}\NormalTok{(testthat)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -5782,11 +5783,11 @@ It is therefore pretty straightforward to validate the card width: it must be nu
 \end{Highlighting}
 \end{Shaded}
 
-To check the status parameter, we save the valid statuses in a vector and take the \texttt{validStatuses} function from shinydashboard \href{https://github.com/rstudio/shinydashboard/blob/master/R/utils.R}{utils}. It also make sense to create a function since this parameter is widely used among template components.
+To check the status parameter, we save the valid statuses in a vector and take the \texttt{validStatuses} function from shinydashboard \href{https://github.com/rstudio/shinydashboard/blob/master/R/utils.R}{utils}. It also make sense to create a function since this parameter is widely used among template components. Contrary to the shinydashboard function, our custom \texttt{valid\_status} does not fail if the status is NULL since it is not a mandatory parameter.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{validStatuses <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}
+\NormalTok{valid_statuses <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}
   \StringTok{"primary"}\NormalTok{, }
   \StringTok{"secondary"}\NormalTok{,}
   \StringTok{"success"}\NormalTok{, }
@@ -5799,8 +5800,12 @@ To check the status parameter, we save the valid statuses in a vector and take t
 
 \NormalTok{validate_status <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(status) \{}
 
-  \ControlFlowTok{if}\NormalTok{ (status }\OperatorTok{%in%}\StringTok{ }\NormalTok{valid_statuses) \{}
-    \KeywordTok{return}\NormalTok{(}\OtherTok{TRUE}\NormalTok{)}
+  \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{is.null}\NormalTok{(status)) \{}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{TRUE}\NormalTok{) }
+\NormalTok{  \} }\ControlFlowTok{else}\NormalTok{ \{}
+    \ControlFlowTok{if}\NormalTok{ (status }\OperatorTok{%in%}\StringTok{ }\NormalTok{valid_statuses) \{}
+      \KeywordTok{return}\NormalTok{(}\OtherTok{TRUE}\NormalTok{)}
+\NormalTok{    \}}
 \NormalTok{  \}}
 
   \KeywordTok{stop}\NormalTok{(}\StringTok{"Invalid status: "}\NormalTok{, status, }\StringTok{". Valid statuses are: "}\NormalTok{,}
@@ -5870,6 +5875,85 @@ We recommand to be reasonable and not to validate every single parameter.
 
 \hypertarget{testing-templates-elements}{%
 \section{Testing templates elements}\label{testing-templates-elements}}
+
+Imagine if one day, someone or yourself accidentaly remove the width validation function, after a significant refactoring. Later, you receive a new message from github, stating that someome opened a new issue. According to the report, the card is not properly displayed altough no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes, so is your end user, which is even worse.
+
+With a proper testing pipeline, this problem could have been avoided. Ironically, writing the corresponding test takes only 2 minutes.
+
+A reference for testing functions is the \href{https://testthat.r-lib.org/index.html}{\{testthat\}} package. In short, a unit test consists in setting expectations about our function and check weither they fail or pass. For instance, with our \texttt{tabler\_card} example, the \texttt{validate\_width} must fail if the given width is not in the expected bounds or not numeric. We apply the \texttt{test\_that} function with a description of the test context, followed by the expectations inside the curly brackets.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{test_that}\NormalTok{(}\StringTok{"validate width works"}\NormalTok{, \{}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{width =} \DecValTok{-1}\NormalTok{))}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{width =} \DecValTok{13}\NormalTok{))}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{width =} \StringTok{"hello world"}\NormalTok{))}
+\NormalTok{\})}
+\end{Highlighting}
+\end{Shaded}
+
+We then test \texttt{validate\_status} and \texttt{validate\_padding}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{test_that}\NormalTok{(}\StringTok{"validate status works"}\NormalTok{, \{}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{status =} \StringTok{"toto"}\NormalTok{))}
+\NormalTok{\})}
+
+\KeywordTok{test_that}\NormalTok{(}\StringTok{"validate padding works"}\NormalTok{, \{}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{width =} \StringTok{"xs"}\NormalTok{))}
+\NormalTok{\})}
+\end{Highlighting}
+\end{Shaded}
+
+So far so good. In few lines of code, we substantially increased the robustness of our function without increasing its complexity. Now, let's try to remove the \texttt{validate\_width} step from the \texttt{tabler\_card}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_card <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{title =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{status =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{width =} \DecValTok{6}\NormalTok{, }\DataTypeTok{stacked =} \OtherTok{FALSE}\NormalTok{, }\DataTypeTok{padding =} \OtherTok{NULL}\NormalTok{) \{}
+  
+  \KeywordTok{validate_status}\NormalTok{(status)}
+  \KeywordTok{validate_padding}\NormalTok{(padding)}
+  
+\NormalTok{  card_cl <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}
+    \StringTok{"card"}\NormalTok{, }
+    \ControlFlowTok{if}\NormalTok{ (stacked) }\StringTok{" card-stacked"}\NormalTok{,}
+    \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(padding)) }\KeywordTok{paste0}\NormalTok{(}\StringTok{" card-"}\NormalTok{, padding)}
+\NormalTok{  )}
+  
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"col-md-"}\NormalTok{, width),}
+    \KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{class =}\NormalTok{ card_cl,}
+      \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(status)) \{}
+        \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"card-status-top bg-"}\NormalTok{, status))}
+\NormalTok{      \},}
+      \KeywordTok{div}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"card-body"}\NormalTok{,}
+        \CommentTok{# we could have a smaller title like h4 or h5...}
+        \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(title)) \{}
+          \KeywordTok{h3}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-title"}\NormalTok{, title)}
+\NormalTok{        \},}
+\NormalTok{        ...}
+\NormalTok{      )}
+\NormalTok{    )}
+\NormalTok{  )}
+  
+\NormalTok{\}}
+
+
+\KeywordTok{test_that}\NormalTok{(}\StringTok{"validate width works"}\NormalTok{, \{}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{width =} \DecValTok{-1}\NormalTok{))}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{width =} \DecValTok{13}\NormalTok{))}
+  \KeywordTok{expect_error}\NormalTok{(}\KeywordTok{tabler_card}\NormalTok{(}\DataTypeTok{width =} \StringTok{"hello world"}\NormalTok{))}
+\NormalTok{\})}
+\end{Highlighting}
+\end{Shaded}
+
+Notice how the 3 above tests elegantly fail. The provided context (``validate width works'') immediately indicates the culprit, which is a game changer for debugging.
+
+\hypertarget{testing-javascript}{%
+\section{Testing JavaScript}\label{testing-javascript}}
 
 \hypertarget{part-beautify-with-css-and-sass}{%
 \part*{Beautify with CSS and SASS}\label{part-beautify-with-css-and-sass}}
