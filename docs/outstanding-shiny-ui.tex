@@ -5782,6 +5782,92 @@ It is therefore pretty straightforward to validate the card width: it must be nu
 \end{Highlighting}
 \end{Shaded}
 
+To check the status parameter, we save the valid statuses in a vector and take the \texttt{validStatuses} function from shinydashboard \href{https://github.com/rstudio/shinydashboard/blob/master/R/utils.R}{utils}. It also make sense to create a function since this parameter is widely used among template components.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{validStatuses <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}
+  \StringTok{"primary"}\NormalTok{, }
+  \StringTok{"secondary"}\NormalTok{,}
+  \StringTok{"success"}\NormalTok{, }
+  \StringTok{"info"}\NormalTok{, }
+  \StringTok{"warning"}\NormalTok{, }
+  \StringTok{"danger"}\NormalTok{,}
+  \StringTok{"light"}\NormalTok{,}
+  \StringTok{"dark"}
+\NormalTok{)}
+
+\NormalTok{validate_status <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(status) \{}
+
+  \ControlFlowTok{if}\NormalTok{ (status }\OperatorTok{%in%}\StringTok{ }\NormalTok{valid_statuses) \{}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{TRUE}\NormalTok{)}
+\NormalTok{  \}}
+
+  \KeywordTok{stop}\NormalTok{(}\StringTok{"Invalid status: "}\NormalTok{, status, }\StringTok{". Valid statuses are: "}\NormalTok{,}
+       \KeywordTok{paste}\NormalTok{(valid_statuses, }\DataTypeTok{collapse =} \StringTok{", "}\NormalTok{), }\StringTok{"."}\NormalTok{)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We finish by the padding validation. According to the tabler documentation, there are three possible choices, namely \texttt{sm}, \texttt{md} or \texttt{lg}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{valid_paddings <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}\StringTok{"sm"}\NormalTok{, }\StringTok{"md"}\NormalTok{, }\StringTok{"lg"}\NormalTok{)}
+
+\NormalTok{validate_padding <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(padding) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(padding)) \{}
+    \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\NormalTok{(padding }\OperatorTok{%in%}\StringTok{ }\NormalTok{valid_paddings)) \{}
+      \KeywordTok{stop}\NormalTok{(}\StringTok{"Invalid status: "}\NormalTok{, padding, }\StringTok{". Valid choices are: "}\NormalTok{,}
+       \KeywordTok{paste}\NormalTok{(valid_paddings, }\DataTypeTok{collapse =} \StringTok{", "}\NormalTok{), }\StringTok{"."}\NormalTok{)}
+\NormalTok{    \}}
+\NormalTok{  \}}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+We apply all these validation to our card element.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_card <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{title =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{status =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{width =} \DecValTok{6}\NormalTok{, }\DataTypeTok{stacked =} \OtherTok{FALSE}\NormalTok{, }\DataTypeTok{padding =} \OtherTok{NULL}\NormalTok{) \{}
+  
+  \KeywordTok{validate_status}\NormalTok{(status)}
+  \KeywordTok{validate_width}\NormalTok{(width)}
+  \KeywordTok{validate_padding}\NormalTok{(padding)}
+  
+\NormalTok{  card_cl <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}
+    \StringTok{"card"}\NormalTok{, }
+    \ControlFlowTok{if}\NormalTok{ (stacked) }\StringTok{" card-stacked"}\NormalTok{,}
+    \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(padding)) }\KeywordTok{paste0}\NormalTok{(}\StringTok{" card-"}\NormalTok{, padding)}
+\NormalTok{  )}
+  
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"col-md-"}\NormalTok{, width),}
+    \KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{class =}\NormalTok{ card_cl,}
+      \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(status)) \{}
+        \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"card-status-top bg-"}\NormalTok{, status))}
+\NormalTok{      \},}
+      \KeywordTok{div}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"card-body"}\NormalTok{,}
+        \CommentTok{# we could have a smaller title like h4 or h5...}
+        \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(title)) \{}
+          \KeywordTok{h3}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-title"}\NormalTok{, title)}
+\NormalTok{        \},}
+\NormalTok{        ...}
+\NormalTok{      )}
+\NormalTok{    )}
+\NormalTok{  )}
+  
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+As of R 4.0.0, the \texttt{stopifnot} function may be a good alternative to \texttt{stop}.
+
+We recommand to be reasonable and not to validate every single parameter.
+
 \hypertarget{testing-templates-elements}{%
 \section{Testing templates elements}\label{testing-templates-elements}}
 

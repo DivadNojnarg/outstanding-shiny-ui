@@ -343,6 +343,72 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <a class="sourceLine" id="cb210-11" data-line-number="11"><span class="co"># validate_width(-1)</span></a>
 <a class="sourceLine" id="cb210-12" data-line-number="12"><span class="co"># validate_width(13)</span></a>
 <a class="sourceLine" id="cb210-13" data-line-number="13"><span class="co"># validate_width(&quot;string&quot;)</span></a></code></pre></div>
+<p>To check the status parameter, we save the valid statuses in a vector and take the <code>validStatuses</code> function from shinydashboard <a href="https://github.com/rstudio/shinydashboard/blob/master/R/utils.R">utils</a>. It also make sense to create a function since this parameter is widely used among template components.</p>
+<div class="sourceCode" id="cb211"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb211-1" data-line-number="1">validStatuses &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb211-2" data-line-number="2">  <span class="st">&quot;primary&quot;</span>, </a>
+<a class="sourceLine" id="cb211-3" data-line-number="3">  <span class="st">&quot;secondary&quot;</span>,</a>
+<a class="sourceLine" id="cb211-4" data-line-number="4">  <span class="st">&quot;success&quot;</span>, </a>
+<a class="sourceLine" id="cb211-5" data-line-number="5">  <span class="st">&quot;info&quot;</span>, </a>
+<a class="sourceLine" id="cb211-6" data-line-number="6">  <span class="st">&quot;warning&quot;</span>, </a>
+<a class="sourceLine" id="cb211-7" data-line-number="7">  <span class="st">&quot;danger&quot;</span>,</a>
+<a class="sourceLine" id="cb211-8" data-line-number="8">  <span class="st">&quot;light&quot;</span>,</a>
+<a class="sourceLine" id="cb211-9" data-line-number="9">  <span class="st">&quot;dark&quot;</span></a>
+<a class="sourceLine" id="cb211-10" data-line-number="10">)</a>
+<a class="sourceLine" id="cb211-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb211-12" data-line-number="12">validate_status &lt;-<span class="st"> </span><span class="cf">function</span>(status) {</a>
+<a class="sourceLine" id="cb211-13" data-line-number="13"></a>
+<a class="sourceLine" id="cb211-14" data-line-number="14">  <span class="cf">if</span> (status <span class="op">%in%</span><span class="st"> </span>valid_statuses) {</a>
+<a class="sourceLine" id="cb211-15" data-line-number="15">    <span class="kw">return</span>(<span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb211-16" data-line-number="16">  }</a>
+<a class="sourceLine" id="cb211-17" data-line-number="17"></a>
+<a class="sourceLine" id="cb211-18" data-line-number="18">  <span class="kw">stop</span>(<span class="st">&quot;Invalid status: &quot;</span>, status, <span class="st">&quot;. Valid statuses are: &quot;</span>,</a>
+<a class="sourceLine" id="cb211-19" data-line-number="19">       <span class="kw">paste</span>(valid_statuses, <span class="dt">collapse =</span> <span class="st">&quot;, &quot;</span>), <span class="st">&quot;.&quot;</span>)</a>
+<a class="sourceLine" id="cb211-20" data-line-number="20">}</a></code></pre></div>
+<p>We finish by the padding validation. According to the tabler documentation, there are three possible choices, namely <code>sm</code>, <code>md</code> or <code>lg</code>.</p>
+<div class="sourceCode" id="cb212"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb212-1" data-line-number="1">valid_paddings &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;sm&quot;</span>, <span class="st">&quot;md&quot;</span>, <span class="st">&quot;lg&quot;</span>)</a>
+<a class="sourceLine" id="cb212-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb212-3" data-line-number="3">validate_padding &lt;-<span class="st"> </span><span class="cf">function</span>(padding) {</a>
+<a class="sourceLine" id="cb212-4" data-line-number="4">  <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(padding)) {</a>
+<a class="sourceLine" id="cb212-5" data-line-number="5">    <span class="cf">if</span> (<span class="op">!</span>(padding <span class="op">%in%</span><span class="st"> </span>valid_paddings)) {</a>
+<a class="sourceLine" id="cb212-6" data-line-number="6">      <span class="kw">stop</span>(<span class="st">&quot;Invalid status: &quot;</span>, padding, <span class="st">&quot;. Valid choices are: &quot;</span>,</a>
+<a class="sourceLine" id="cb212-7" data-line-number="7">       <span class="kw">paste</span>(valid_paddings, <span class="dt">collapse =</span> <span class="st">&quot;, &quot;</span>), <span class="st">&quot;.&quot;</span>)</a>
+<a class="sourceLine" id="cb212-8" data-line-number="8">    }</a>
+<a class="sourceLine" id="cb212-9" data-line-number="9">  }</a>
+<a class="sourceLine" id="cb212-10" data-line-number="10">}</a></code></pre></div>
+<p>We apply all these validation to our card element.</p>
+<div class="sourceCode" id="cb213"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb213-1" data-line-number="1">tabler_card &lt;-<span class="st"> </span><span class="cf">function</span>(..., <span class="dt">title =</span> <span class="ot">NULL</span>, <span class="dt">status =</span> <span class="ot">NULL</span>, <span class="dt">width =</span> <span class="dv">6</span>, <span class="dt">stacked =</span> <span class="ot">FALSE</span>, <span class="dt">padding =</span> <span class="ot">NULL</span>) {</a>
+<a class="sourceLine" id="cb213-2" data-line-number="2">  </a>
+<a class="sourceLine" id="cb213-3" data-line-number="3">  <span class="kw">validate_status</span>(status)</a>
+<a class="sourceLine" id="cb213-4" data-line-number="4">  <span class="kw">validate_width</span>(width)</a>
+<a class="sourceLine" id="cb213-5" data-line-number="5">  <span class="kw">validate_padding</span>(padding)</a>
+<a class="sourceLine" id="cb213-6" data-line-number="6">  </a>
+<a class="sourceLine" id="cb213-7" data-line-number="7">  card_cl &lt;-<span class="st"> </span><span class="kw">paste0</span>(</a>
+<a class="sourceLine" id="cb213-8" data-line-number="8">    <span class="st">&quot;card&quot;</span>, </a>
+<a class="sourceLine" id="cb213-9" data-line-number="9">    <span class="cf">if</span> (stacked) <span class="st">&quot; card-stacked&quot;</span>,</a>
+<a class="sourceLine" id="cb213-10" data-line-number="10">    <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(padding)) <span class="kw">paste0</span>(<span class="st">&quot; card-&quot;</span>, padding)</a>
+<a class="sourceLine" id="cb213-11" data-line-number="11">  )</a>
+<a class="sourceLine" id="cb213-12" data-line-number="12">  </a>
+<a class="sourceLine" id="cb213-13" data-line-number="13">  <span class="kw">div</span>(</a>
+<a class="sourceLine" id="cb213-14" data-line-number="14">    <span class="dt">class =</span> <span class="kw">paste0</span>(<span class="st">&quot;col-md-&quot;</span>, width),</a>
+<a class="sourceLine" id="cb213-15" data-line-number="15">    <span class="kw">div</span>(</a>
+<a class="sourceLine" id="cb213-16" data-line-number="16">      <span class="dt">class =</span> card_cl,</a>
+<a class="sourceLine" id="cb213-17" data-line-number="17">      <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(status)) {</a>
+<a class="sourceLine" id="cb213-18" data-line-number="18">        <span class="kw">div</span>(<span class="dt">class =</span> <span class="kw">paste0</span>(<span class="st">&quot;card-status-top bg-&quot;</span>, status))</a>
+<a class="sourceLine" id="cb213-19" data-line-number="19">      },</a>
+<a class="sourceLine" id="cb213-20" data-line-number="20">      <span class="kw">div</span>(</a>
+<a class="sourceLine" id="cb213-21" data-line-number="21">        <span class="dt">class =</span> <span class="st">&quot;card-body&quot;</span>,</a>
+<a class="sourceLine" id="cb213-22" data-line-number="22">        <span class="co"># we could have a smaller title like h4 or h5...</span></a>
+<a class="sourceLine" id="cb213-23" data-line-number="23">        <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(title)) {</a>
+<a class="sourceLine" id="cb213-24" data-line-number="24">          <span class="kw">h3</span>(<span class="dt">class =</span> <span class="st">&quot;card-title&quot;</span>, title)</a>
+<a class="sourceLine" id="cb213-25" data-line-number="25">        },</a>
+<a class="sourceLine" id="cb213-26" data-line-number="26">        ...</a>
+<a class="sourceLine" id="cb213-27" data-line-number="27">      )</a>
+<a class="sourceLine" id="cb213-28" data-line-number="28">    )</a>
+<a class="sourceLine" id="cb213-29" data-line-number="29">  )</a>
+<a class="sourceLine" id="cb213-30" data-line-number="30">  </a>
+<a class="sourceLine" id="cb213-31" data-line-number="31">}</a></code></pre></div>
+<p>As of R 4.0.0, the <code>stopifnot</code> function may be a good alternative to <code>stop</code>.</p>
+<p>We recommand to be reasonable and not to validate every single parameter.</p>
 </div>
 <div id="testing-templates-elements" class="section level2">
 <h2><span class="header-section-number">13.2</span> Testing templates elements</h2>

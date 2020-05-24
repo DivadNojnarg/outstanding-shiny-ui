@@ -66,4 +66,86 @@ validate_width <- function(width) {
 # validate_width("string")
 ```
 
+To check the status parameter, we save the valid statuses in a vector and take the `validStatuses` function from shinydashboard [utils](https://github.com/rstudio/shinydashboard/blob/master/R/utils.R). It also make sense to create a function since this parameter is widely used among template components.
+
+```{r}
+validStatuses <- c(
+  "primary", 
+  "secondary",
+  "success", 
+  "info", 
+  "warning", 
+  "danger",
+  "light",
+  "dark"
+)
+
+validate_status <- function(status) {
+
+  if (status %in% valid_statuses) {
+    return(TRUE)
+  }
+
+  stop("Invalid status: ", status, ". Valid statuses are: ",
+       paste(valid_statuses, collapse = ", "), ".")
+}
+```
+
+We finish by the padding validation. According to the tabler documentation, there are three possible choices, namely `sm`, `md` or `lg`.
+
+```{r}
+
+valid_paddings <- c("sm", "md", "lg")
+
+validate_padding <- function(padding) {
+  if (!is.null(padding)) {
+    if (!(padding %in% valid_paddings)) {
+      stop("Invalid status: ", padding, ". Valid choices are: ",
+       paste(valid_paddings, collapse = ", "), ".")
+    }
+  }
+}
+```
+
+We apply all these validation to our card element.
+
+```{r}
+tabler_card <- function(..., title = NULL, status = NULL, width = 6, stacked = FALSE, padding = NULL) {
+  
+  validate_status(status)
+  validate_width(width)
+  validate_padding(padding)
+  
+  card_cl <- paste0(
+    "card", 
+    if (stacked) " card-stacked",
+    if (!is.null(padding)) paste0(" card-", padding)
+  )
+  
+  div(
+    class = paste0("col-md-", width),
+    div(
+      class = card_cl,
+      if (!is.null(status)) {
+        div(class = paste0("card-status-top bg-", status))
+      },
+      div(
+        class = "card-body",
+        # we could have a smaller title like h4 or h5...
+        if (!is.null(title)) {
+          h3(class = "card-title", title)
+        },
+        ...
+      )
+    )
+  )
+  
+}
+```
+
+As of R 4.0.0, the `stopifnot` function may be a good alternative to `stop`. 
+
+We recommand to be reasonable and not to validate every single parameter.
+
+
 ## Testing templates elements
