@@ -5714,6 +5714,74 @@ Until now, we have been building the template boilerplates, that is the main ske
 \hypertarget{validate-template-functions}{%
 \section{Validate template functions}\label{validate-template-functions}}
 
+Below, we will show some examples to validate user inputs. We first consider the \texttt{tabler\_card} element from Chapter \ref{custom-templates-skeleton}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tabler_card <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(..., }\DataTypeTok{title =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{status =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{width =} \DecValTok{6}\NormalTok{, }\DataTypeTok{stacked =} \OtherTok{FALSE}\NormalTok{, }\DataTypeTok{padding =} \OtherTok{NULL}\NormalTok{) \{}
+  
+\NormalTok{  card_cl <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}
+    \StringTok{"card"}\NormalTok{, }
+    \ControlFlowTok{if}\NormalTok{ (stacked) }\StringTok{" card-stacked"}\NormalTok{,}
+    \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(padding)) }\KeywordTok{paste0}\NormalTok{(}\StringTok{" card-"}\NormalTok{, padding)}
+\NormalTok{  )}
+  
+  \KeywordTok{div}\NormalTok{(}
+    \DataTypeTok{class =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"col-md-"}\NormalTok{, width),}
+    \KeywordTok{div}\NormalTok{(}
+      \DataTypeTok{class =}\NormalTok{ card_cl,}
+      \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(status)) \{}
+        \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"card-status-top bg-"}\NormalTok{, status))}
+\NormalTok{      \},}
+      \KeywordTok{div}\NormalTok{(}
+        \DataTypeTok{class =} \StringTok{"card-body"}\NormalTok{,}
+        \CommentTok{# we could have a smaller title like h4 or h5...}
+        \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(title)) \{}
+          \KeywordTok{h3}\NormalTok{(}\DataTypeTok{class =} \StringTok{"card-title"}\NormalTok{, title)}
+\NormalTok{        \},}
+\NormalTok{        ...}
+\NormalTok{      )}
+\NormalTok{    )}
+\NormalTok{  )}
+  
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+The first thing is to think about what to validate. Here, I see at least 3 test:
+
+\begin{itemize}
+\tightlist
+\item
+  checking the status value
+\item
+  checking the width value
+\item
+  checking the padding value
+\end{itemize}
+
+Writing validation tests requires knowledge about the underlying mechanisms. In our case, we must know the Bootstrap 4 grid rules and valid color statuses. The Bootstrap 4 \href{https://getbootstrap.com/docs/4.0/layout/grid/}{grid} ranges from 1 to 12. In other words, a card having a width of 12 will take the full page wherease, we may align 3 cards or width 4. Valid \href{https://getbootstrap.com/docs/4.0/utilities/colors/}{statuses} are primary, secondary, success, info, danger, warning, light and dark.
+
+It is therefore pretty straightforward to validate the card width: it must be numeric and between 1 and 12. Moreover, since the template has other containers including the width parameter, we will create a function
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{validate_width <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(width) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{is.numeric}\NormalTok{(width)) \{}
+    \ControlFlowTok{if}\NormalTok{ (width }\OperatorTok{<}\StringTok{ }\DecValTok{1} \OperatorTok{||}\StringTok{ }\NormalTok{width }\OperatorTok{>}\StringTok{ }\DecValTok{12}\NormalTok{) \{}
+      \KeywordTok{stop}\NormalTok{(}\StringTok{"width must belong to [1, 12], as per Bootstrap 4 grid documentation. See more at https://getbootstrap.com/docs/4.0/layout/grid/"}\NormalTok{)}
+\NormalTok{    \}}
+\NormalTok{  \} }\ControlFlowTok{else}\NormalTok{ \{}
+    \KeywordTok{stop}\NormalTok{(}\StringTok{"width must be numeric"}\NormalTok{)}
+\NormalTok{  \}}
+\NormalTok{\}}
+
+\CommentTok{# validate_width(-1)}
+\CommentTok{# validate_width(13)}
+\CommentTok{# validate_width("string")}
+\end{Highlighting}
+\end{Shaded}
+
 \hypertarget{testing-templates-elements}{%
 \section{Testing templates elements}\label{testing-templates-elements}}
 

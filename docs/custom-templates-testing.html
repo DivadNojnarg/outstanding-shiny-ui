@@ -294,6 +294,55 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </ul>
 <div id="validate-template-functions" class="section level2">
 <h2><span class="header-section-number">13.1</span> Validate template functions</h2>
+<p>Below, we will show some examples to validate user inputs. We first consider the <code>tabler_card</code> element from Chapter <a href="custom-templates-skeleton.html#custom-templates-skeleton">10</a>.</p>
+<div class="sourceCode" id="cb209"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb209-1" data-line-number="1">tabler_card &lt;-<span class="st"> </span><span class="cf">function</span>(..., <span class="dt">title =</span> <span class="ot">NULL</span>, <span class="dt">status =</span> <span class="ot">NULL</span>, <span class="dt">width =</span> <span class="dv">6</span>, <span class="dt">stacked =</span> <span class="ot">FALSE</span>, <span class="dt">padding =</span> <span class="ot">NULL</span>) {</a>
+<a class="sourceLine" id="cb209-2" data-line-number="2">  </a>
+<a class="sourceLine" id="cb209-3" data-line-number="3">  card_cl &lt;-<span class="st"> </span><span class="kw">paste0</span>(</a>
+<a class="sourceLine" id="cb209-4" data-line-number="4">    <span class="st">&quot;card&quot;</span>, </a>
+<a class="sourceLine" id="cb209-5" data-line-number="5">    <span class="cf">if</span> (stacked) <span class="st">&quot; card-stacked&quot;</span>,</a>
+<a class="sourceLine" id="cb209-6" data-line-number="6">    <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(padding)) <span class="kw">paste0</span>(<span class="st">&quot; card-&quot;</span>, padding)</a>
+<a class="sourceLine" id="cb209-7" data-line-number="7">  )</a>
+<a class="sourceLine" id="cb209-8" data-line-number="8">  </a>
+<a class="sourceLine" id="cb209-9" data-line-number="9">  <span class="kw">div</span>(</a>
+<a class="sourceLine" id="cb209-10" data-line-number="10">    <span class="dt">class =</span> <span class="kw">paste0</span>(<span class="st">&quot;col-md-&quot;</span>, width),</a>
+<a class="sourceLine" id="cb209-11" data-line-number="11">    <span class="kw">div</span>(</a>
+<a class="sourceLine" id="cb209-12" data-line-number="12">      <span class="dt">class =</span> card_cl,</a>
+<a class="sourceLine" id="cb209-13" data-line-number="13">      <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(status)) {</a>
+<a class="sourceLine" id="cb209-14" data-line-number="14">        <span class="kw">div</span>(<span class="dt">class =</span> <span class="kw">paste0</span>(<span class="st">&quot;card-status-top bg-&quot;</span>, status))</a>
+<a class="sourceLine" id="cb209-15" data-line-number="15">      },</a>
+<a class="sourceLine" id="cb209-16" data-line-number="16">      <span class="kw">div</span>(</a>
+<a class="sourceLine" id="cb209-17" data-line-number="17">        <span class="dt">class =</span> <span class="st">&quot;card-body&quot;</span>,</a>
+<a class="sourceLine" id="cb209-18" data-line-number="18">        <span class="co"># we could have a smaller title like h4 or h5...</span></a>
+<a class="sourceLine" id="cb209-19" data-line-number="19">        <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(title)) {</a>
+<a class="sourceLine" id="cb209-20" data-line-number="20">          <span class="kw">h3</span>(<span class="dt">class =</span> <span class="st">&quot;card-title&quot;</span>, title)</a>
+<a class="sourceLine" id="cb209-21" data-line-number="21">        },</a>
+<a class="sourceLine" id="cb209-22" data-line-number="22">        ...</a>
+<a class="sourceLine" id="cb209-23" data-line-number="23">      )</a>
+<a class="sourceLine" id="cb209-24" data-line-number="24">    )</a>
+<a class="sourceLine" id="cb209-25" data-line-number="25">  )</a>
+<a class="sourceLine" id="cb209-26" data-line-number="26">  </a>
+<a class="sourceLine" id="cb209-27" data-line-number="27">}</a></code></pre></div>
+<p>The first thing is to think about what to validate. Here, I see at least 3 test:</p>
+<ul>
+<li>checking the status value</li>
+<li>checking the width value</li>
+<li>checking the padding value</li>
+</ul>
+<p>Writing validation tests requires knowledge about the underlying mechanisms. In our case, we must know the Bootstrap 4 grid rules and valid color statuses. The Bootstrap 4 <a href="https://getbootstrap.com/docs/4.0/layout/grid/">grid</a> ranges from 1 to 12. In other words, a card having a width of 12 will take the full page wherease, we may align 3 cards or width 4. Valid <a href="https://getbootstrap.com/docs/4.0/utilities/colors/">statuses</a> are primary, secondary, success, info, danger, warning, light and dark.</p>
+<p>It is therefore pretty straightforward to validate the card width: it must be numeric and between 1 and 12. Moreover, since the template has other containers including the width parameter, we will create a function</p>
+<div class="sourceCode" id="cb210"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb210-1" data-line-number="1">validate_width &lt;-<span class="st"> </span><span class="cf">function</span>(width) {</a>
+<a class="sourceLine" id="cb210-2" data-line-number="2">  <span class="cf">if</span> (<span class="kw">is.numeric</span>(width)) {</a>
+<a class="sourceLine" id="cb210-3" data-line-number="3">    <span class="cf">if</span> (width <span class="op">&lt;</span><span class="st"> </span><span class="dv">1</span> <span class="op">||</span><span class="st"> </span>width <span class="op">&gt;</span><span class="st"> </span><span class="dv">12</span>) {</a>
+<a class="sourceLine" id="cb210-4" data-line-number="4">      <span class="kw">stop</span>(<span class="st">&quot;width must belong to [1, 12], as per Bootstrap 4 grid documentation. See more at https://getbootstrap.com/docs/4.0/layout/grid/&quot;</span>)</a>
+<a class="sourceLine" id="cb210-5" data-line-number="5">    }</a>
+<a class="sourceLine" id="cb210-6" data-line-number="6">  } <span class="cf">else</span> {</a>
+<a class="sourceLine" id="cb210-7" data-line-number="7">    <span class="kw">stop</span>(<span class="st">&quot;width must be numeric&quot;</span>)</a>
+<a class="sourceLine" id="cb210-8" data-line-number="8">  }</a>
+<a class="sourceLine" id="cb210-9" data-line-number="9">}</a>
+<a class="sourceLine" id="cb210-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb210-11" data-line-number="11"><span class="co"># validate_width(-1)</span></a>
+<a class="sourceLine" id="cb210-12" data-line-number="12"><span class="co"># validate_width(13)</span></a>
+<a class="sourceLine" id="cb210-13" data-line-number="13"><span class="co"># validate_width(&quot;string&quot;)</span></a></code></pre></div>
 </div>
 <div id="testing-templates-elements" class="section level2">
 <h2><span class="header-section-number">13.2</span> Testing templates elements</h2>
