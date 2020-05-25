@@ -300,6 +300,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li>How is R/JavaScript communication achieved?</li>
 <li>How does Shiny deal with inputs?</li>
 </ul>
+<p>In Chapter <a href="htmltools-dependencies.html#htmltools-dependencies">6</a> we will explore tools to manage HTML dependencies. In Chapter <a href="custom-templates-interactivity.html#insert-tabs">12.4.1</a>, we will see a special case to insert dependencies during the app runtime. FInally, in the last part of this book, we will be designing custom inputs and knowing how to debug them is priceless.</p>
 <div id="shiny-html-css-and-javascript" class="section level2">
 <h2><span class="header-section-number">4.1</span> Shiny, HTML, CSS and JavaScript</h2>
 <p>Shiny allows the development of web applications with R in minutes. Let’s face it: this is quite mind blowing! While this may not be a production ready app, it will still be a fully functional, working prototype. Believe me, doing a web application with pure HTML/CSS and JavaScript is more difficult, especially for someone with a non-web developer background.</p>
@@ -340,7 +341,7 @@ Figure 4.1: Shiny dependencies
 </div>
 <div id="websocket-rjs-bidirectional-communication" class="section level2">
 <h2><span class="header-section-number">4.3</span> Websocket: R/JS bidirectional communication</h2>
-<p>How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted <a href="Fast%20bidirectional%20communication%20between%20the%20web%20browser%20and%20R%20using%20the%20httpuv%20package.">here</a>, leveraging the <a href="https://github.com/rstudio/httpuv">httpuv</a> and <a href="https://github.com/rstudio/websocket">websocket</a> packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let’s run the following app.</p>
+<p>How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted <a href="https://github.com/rstudio/shiny">here</a>, which leverages the <a href="https://github.com/rstudio/httpuv">httpuv</a> and <a href="https://github.com/rstudio/websocket">websocket</a> packages. Before going further let’s define what is a websocket! It is an advanced technology allowing bidirectional communication between a client and a server. For instance, a chat system may be built on top of a websocket. In the following, we will show how to inspect the websocket in a web browser. Let’s run the following app (see <a href="survival-kit-shiny.html#fig:shiny-websocket">4.2</a>, left panel)</p>
 <div class="sourceCode" id="cb72"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb72-1" data-line-number="1"><span class="kw">shinyApp</span>(</a>
 <a class="sourceLine" id="cb72-2" data-line-number="2">  <span class="dt">ui =</span> <span class="kw">fluidPage</span>(</a>
 <a class="sourceLine" id="cb72-3" data-line-number="3">    <span class="kw">selectInput</span>(<span class="st">&quot;variable&quot;</span>, <span class="st">&quot;Variable:&quot;</span>,</a>
@@ -355,7 +356,7 @@ Figure 4.1: Shiny dependencies
 <a class="sourceLine" id="cb72-12" data-line-number="12">    }, <span class="dt">rownames =</span> <span class="ot">TRUE</span>)</a>
 <a class="sourceLine" id="cb72-13" data-line-number="13">  }</a>
 <a class="sourceLine" id="cb72-14" data-line-number="14">)</a></code></pre></div>
-<p>After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">file</a>. The first element received from R is the first message in the list shown in Figure <a href="survival-kit-shiny.html#fig:shiny-websocket">4.2</a>. It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.</p>
+<p>After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">file</a>. The first element received from R is the first message in the list shown in Figure <a href="survival-kit-shiny.html#fig:shiny-websocket">4.2</a>. It is a JSON object containing the method used as well as passed data. In the meantime, you may change the select input value.</p>
 <div class="sourceCode" id="cb73"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb73-1" data-line-number="1"><span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></a>
 <a class="sourceLine" id="cb73-2" data-line-number="2">  <span class="dt">method</span><span class="op">:</span> <span class="st">&#39;init&#39;</span><span class="op">,</span></a>
 <a class="sourceLine" id="cb73-3" data-line-number="3">  <span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></a>
@@ -368,25 +369,24 @@ Figure 4.1: Shiny dependencies
 <a class="sourceLine" id="cb74-5" data-line-number="5">  <span class="op">}</span>)<span class="op">;</span></a>
 <a class="sourceLine" id="cb74-6" data-line-number="6"><span class="co">// other things</span></a>
 <a class="sourceLine" id="cb74-7" data-line-number="7"><span class="op">};</span></a></code></pre></div>
-<p>All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field <code>error</code> containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.</p>
-<p>Finally, <code>Shiny.shinyapp.$socket.readyState</code> returns the state of the socket connection. It should be 1 if your app is running but I’ve seen some cases where the socket was actually closed (and nothing could happen).</p>
+<p>Although complex, it is extremely useful to check whether the input / output communication are working properly. If not, we would see the error field identifying the issue.</p>
+<p>Finally, <code>Shiny.shinyapp.$socket.readyState</code> returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, nothing would be shown. Note that the R option <code>options(shiny.trace = TRUE)</code> allows the websocket messages to be displayed directly in the R console.</p>
 <div class="figure"><span id="fig:shiny-websocket"></span>
 <img src="images/survival-kit/shiny-websocket.png" alt="Shiny websocket" width="997" />
 <p class="caption">
 Figure 4.2: Shiny websocket
 </p>
 </div>
-<p>Understanding how R and JS may communicate will help in the next section about the Shiny input system. Note that the R option <code>options(shiny.trace = TRUE)</code> allows to display the websocket messages.</p>
 </div>
 <div id="the-shiny-session-object" class="section level2">
 <h2><span class="header-section-number">4.4</span> The Shiny session object</h2>
-<p>We won’t be able to go anywhere without giving some reminders about the Shiny <a href="https://shiny.rstudio.com/reference/shiny/1.4.0/session.html">session</a> object.
-Why do we say object? <code>session</code> is actually an instance of the <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R"><code>ShinySession</code></a> R6 class.
-The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS:</p>
+<p>We won’t be able to go anywhere without giving some reminders about the Shiny <a href="https://shiny.rstudio.com/reference/shiny/1.4.0/session.html">session</a> object. Why do we say object? <code>session</code> is actually an instance of the <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R"><code>ShinySession</code></a> R6 class.
+The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. Understanding how R and JS communicate allows us to discuss the Shiny input system.</p>
 <ul>
-<li><code>sendCustomMessage</code> sends messages from R to JS. It calls the private <code>sendMessage</code> method, which itself calls <code>write</code>. The message is sent only when the session is opened, throught the websocket <code>private$websocket$send(json)</code>. If the <code>shiny.trace</code> <a href="https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html">option</a> is TRUE, a message showing the sent JSON is displayed, useful for debugging.</li>
+<li><code>sendCustomMessage</code> sends messages from R to JS. It calls the private <code>sendMessage</code> method which itself calls <code>write</code>. The message is sent only when the session is opened, throught the websocket <code>private$websocket$send(json)</code>. If the <code>shiny.trace</code> <a href="https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html">option</a> is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.</li>
 <li><code>sendInputMessage</code> is used to update inputs from the server</li>
 </ul>
+<p>The below code is extracted from the <code>shiny.R</code> <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R">file</a>.</p>
 <div class="sourceCode" id="cb75"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb75-1" data-line-number="1">sendCustomMessage =<span class="st"> </span><span class="cf">function</span>(type, message) {</a>
 <a class="sourceLine" id="cb75-2" data-line-number="2">  data &lt;-<span class="st"> </span><span class="kw">list</span>()</a>
 <a class="sourceLine" id="cb75-3" data-line-number="3">  data[[type]] &lt;-<span class="st"> </span>message</a>
@@ -428,14 +428,21 @@ The initialization takes one parameter, namely the websocket. As shown in the la
 </div>
 <div id="shinys-input-system" class="section level2">
 <h2><span class="header-section-number">4.5</span> Shiny’s input system</h2>
-<p>The goal of this part is to better understand how Shiny inputs work.</p>
+<p>Shiny inputs are key elements of Shiny apps since they are a way for the end-user to interact with the app. You may know <code>sliderInput</code>, <code>numericInput</code>, <code>checkboxInput</code> but sometimes you may need fancier elements like <code>knobInput</code> from <a href="https://github.com/dreamRs/shinyWidgets/blob/master/R/input-knob.R">shinyWidgets</a>, as depicted on Figure <a href="survival-kit-shiny.html#fig:fancy-inputs">4.3</a> or even more sofisticated inputs like the <code>smartSelect</code> of <a href="https://github.com/RinteRface/shinyMobile/blob/master/R/f7-inputs.R">shinyMobile</a> (Figure <a href="survival-kit-shiny.html#fig:fancy-inputs">4.3</a>, right panel). Have you ever wondered what are the mechanisms behind inputs? Have you ever dreamt to develop your own?</p>
+<p>The goal of this section is to understand how Shiny inputs work.</p>
+<div class="figure"><span id="fig:fancy-inputs"></span>
+<img src="images/survival-kit/jquery-knobs.png" alt="Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile" width="50%" /><img src="images/survival-kit/smart-select.png" alt="Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile" width="50%" />
+<p class="caption">
+Figure 4.3: Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile
+</p>
+</div>
 <div id="shiny-javascript-sources" class="section level3">
 <h3><span class="header-section-number">4.5.1</span> Shiny JavaScript sources</h3>
-<p>The Shiny input system relies on the Shiny JavaScript sources. They are located in the srcjs folder shown in Figure <a href="survival-kit-shiny.html#fig:shiny-js-sources">4.3</a>.</p>
+<p>The Shiny input system relies on the Shiny JavaScript sources. They are located in the srcjs folder shown in Figure <a href="survival-kit-shiny.html#fig:shiny-js-sources">4.4</a>.</p>
 <div class="figure"><span id="fig:shiny-js-sources"></span>
 <img src="images/survival-kit/shiny-js-sources.png" alt="Shiny JavaScript sources" width="1155" />
 <p class="caption">
-Figure 4.3: Shiny JavaScript sources
+Figure 4.4: Shiny JavaScript sources
 </p>
 </div>
 <p>Notice the <code>_start.js</code> and <code>_end.js</code>. These will be used by the <code>Gruntfile.js</code>, that is a <a href="https://gruntjs.com">grunt-based</a> tool to run different tasks such as concatenate multiple JavaScript files, lint the code, minify it … See <a href="https://github.com/rstudio/shiny/tree/master/tools">here</a> for a summary.</p>
@@ -463,11 +470,11 @@ Figure 4.3: Shiny JavaScript sources
 <a class="sourceLine" id="cb77-8" data-line-number="8">)</a>
 <a class="sourceLine" id="cb77-9" data-line-number="9">server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {}</a>
 <a class="sourceLine" id="cb77-10" data-line-number="10"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
-<p>This object contains many properties and methods as shown in Figure <a href="survival-kit-shiny.html#fig:shiny-object">4.4</a>. We will discuss some of them later, like <code>Shiny.setInputValue</code>, <code>Shiny.addCustomMessageHandler</code>, <code>Shiny.shinyapps</code>, <code>Shiny.bindAll</code>, …</p>
+<p>This object contains many properties and methods as shown in Figure <a href="survival-kit-shiny.html#fig:shiny-object">4.5</a>. We will discuss some of them later, like <code>Shiny.setInputValue</code>, <code>Shiny.addCustomMessageHandler</code>, <code>Shiny.shinyapps</code>, <code>Shiny.bindAll</code>, …</p>
 <div class="figure"><span id="fig:shiny-object"></span>
 <img src="images/survival-kit/shiny-object.png" alt="The Shiny JavaScript object" width="628" />
 <p class="caption">
-Figure 4.4: The Shiny JavaScript object
+Figure 4.5: The Shiny JavaScript object
 </p>
 </div>
 </div>
@@ -517,11 +524,11 @@ Figure 4.4: The Shiny JavaScript object
 <div id="find-the-input" class="section level5">
 <h5><span class="header-section-number">4.5.4.2.1</span> Find the input</h5>
 <p>The first step, is critical and consists in locating the input in the DOM. We could compare this to the receptor/ligand reaction.
-On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, the <code>type</code> attribute will suit. Sometimes it may also be the class, like for the <code>actionButton</code>. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance <code>radioButton</code> and <code>selectInput</code>) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the <code>find</code> method of the <code>InputBinding</code> class. This method must be applied on a scope, that is the <code>document</code>. <code>find</code> accepts any valid jQuery selector. Figure <a href="survival-kit-shiny.html#fig:shiny-find-inputs">4.5</a> summarizes this important step.</p>
+On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, the <code>type</code> attribute will suit. Sometimes it may also be the class, like for the <code>actionButton</code>. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance <code>radioButton</code> and <code>selectInput</code>) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the <code>find</code> method of the <code>InputBinding</code> class. This method must be applied on a scope, that is the <code>document</code>. <code>find</code> accepts any valid jQuery selector. Figure <a href="survival-kit-shiny.html#fig:shiny-find-inputs">4.6</a> summarizes this important step.</p>
 <div class="figure"><span id="fig:shiny-find-inputs"></span>
 <img src="images/survival-kit/shiny-find-inputs.png" alt="How to find inputs?" width="720" />
 <p class="caption">
-Figure 4.5: How to find inputs?
+Figure 4.6: How to find inputs?
 </p>
 </div>
 <p>Below, we are going to create a new binding for the <code>textInput</code>, with only 2 methods mentionned in the previous section, that is <code>find</code> and <code>getValue</code>. For that, we need to create a customized textInput, <code>customTextInput</code> so that it is not recognized by the classic Shiny text input binding. We add the input-text class and make our own input binding pointing to that specific class.</p>
@@ -593,11 +600,11 @@ Figure 4.5: How to find inputs?
 </div>
 <div id="get-the-value" class="section level5">
 <h5><span class="header-section-number">4.5.4.2.3</span> Get the value</h5>
-<p><code>getValue(el)</code> returns the input value. The way to obtain the value is different for almost all inputs. For instance, the <code>textInput</code> is pretty simple since the value is located in the <code>value</code> attribute. <code>el</code> refers to the element holding the id attribute and recognized by the <code>find</code> method. Figure <a href="survival-kit-shiny.html#fig:shiny-el">4.6</a> shows the result of a <code>console.log($(el));</code>.</p>
+<p><code>getValue(el)</code> returns the input value. The way to obtain the value is different for almost all inputs. For instance, the <code>textInput</code> is pretty simple since the value is located in the <code>value</code> attribute. <code>el</code> refers to the element holding the id attribute and recognized by the <code>find</code> method. Figure <a href="survival-kit-shiny.html#fig:shiny-el">4.7</a> shows the result of a <code>console.log($(el));</code>.</p>
 <div class="figure"><span id="fig:shiny-el"></span>
 <img src="images/survival-kit/shiny-el.png" alt="About el" width="1278" />
 <p class="caption">
-Figure 4.6: About el
+Figure 4.7: About el
 </p>
 </div>
 <p>To get the value, we apply the jQuery method <code>val</code> on the <code>$(el)</code> element and return the result.</p>
@@ -684,11 +691,11 @@ Figure 4.6: About el
 <a class="sourceLine" id="cb87-37" data-line-number="37">  })</a>
 <a class="sourceLine" id="cb87-38" data-line-number="38">}</a>
 <a class="sourceLine" id="cb87-39" data-line-number="39"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
-<p>Figure <a href="survival-kit-shiny.html#fig:shiny-update-inputs">4.7</a> illustrates the main mechanisms.</p>
+<p>Figure <a href="survival-kit-shiny.html#fig:shiny-update-inputs">4.8</a> illustrates the main mechanisms.</p>
 <div class="figure"><span id="fig:shiny-update-inputs"></span>
 <img src="images/survival-kit/shiny-update-inputs.png" alt="What happens after clickin on the update button?" width="720" />
 <p class="caption">
-Figure 4.7: What happens after clickin on the update button?
+Figure 4.8: What happens after clickin on the update button?
 </p>
 </div>
 <p>If we have to pass multiple elements to update, we would have to change the <code>updateCustomTextInput</code> function such as:</p>
@@ -1152,11 +1159,11 @@ Going back to our custom text input, what event would make it change?</p>
 <a class="sourceLine" id="cb103-11" data-line-number="11">  })</a>
 <a class="sourceLine" id="cb103-12" data-line-number="12">}</a>
 <a class="sourceLine" id="cb103-13" data-line-number="13"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
-<p>Figure <a href="survival-kit-shiny.html#fig:shiny-initial-inputs">4.8</a> shows how to access Shiny’s initial input value with <code>Shiny.shinyapp.$initialInput.obs</code>. After changing the slider position, its value is given by <code>Shiny.shinyapp.$inputValues.obs</code>. <code>$initialInput</code> and <code>$inputValues</code> contains way more elements but we are only interested by the slider in this example.</p>
+<p>Figure <a href="survival-kit-shiny.html#fig:shiny-initial-inputs">4.9</a> shows how to access Shiny’s initial input value with <code>Shiny.shinyapp.$initialInput.obs</code>. After changing the slider position, its value is given by <code>Shiny.shinyapp.$inputValues.obs</code>. <code>$initialInput</code> and <code>$inputValues</code> contains way more elements but we are only interested by the slider in this example.</p>
 <div class="figure"><span id="fig:shiny-initial-inputs"></span>
 <img src="images/survival-kit/shiny-init-input.png" alt="Explore initial input values" width="994" />
 <p class="caption">
-Figure 4.8: Explore initial input values
+Figure 4.9: Explore initial input values
 </p>
 </div>
 <p>I acknowledge, the practical interest might be limited but still good to know for debugging purposes.</p>

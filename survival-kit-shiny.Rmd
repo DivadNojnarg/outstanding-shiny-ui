@@ -7,6 +7,8 @@ We will answer to the following questions:
 - How is R/JavaScript communication achieved?
 - How does Shiny deal with inputs? 
 
+In Chapter \@ref(htmltools-dependencies) we will explore tools to manage HTML dependencies. In Chapter \@ref(insert-tabs), we will see a special case to insert dependencies during the app runtime. FInally, in the last part of this book, we will be designing custom inputs and knowing how to debug them is priceless.
+
 ## Shiny, HTML, CSS and JavaScript
 Shiny allows the development of web applications with R in minutes. Let's face it: this is quite mind blowing! While this may not be a production ready app, it will still be a fully functional, working prototype. Believe me, doing a web application with pure HTML/CSS and JavaScript is more difficult, especially for someone with a non-web developer background. 
 
@@ -57,7 +59,7 @@ Finally, json2 is a library to handle the [JSON](https://www.json.org/json-en.ht
 In summary, all these libraries are necessary to make Shiny what it is! 
 
 ## Websocket: R/JS bidirectional communication
-How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted [here](Fast bidirectional communication between the web browser and R using the httpuv package.), leveraging the [httpuv](https://github.com/rstudio/httpuv) and [websocket](https://github.com/rstudio/websocket) packages. We will not detail how they work but rather how to inspect the websocket in a web browser. Let's run the following app.
+How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted [here](https://github.com/rstudio/shiny), which leverages the [httpuv](https://github.com/rstudio/httpuv) and [websocket](https://github.com/rstudio/websocket) packages. Before going further let's define what is a websocket! It is an advanced technology allowing bidirectional communication between a client and a server. For instance, a chat system may be built on top of a websocket. In the following, we will show how to inspect the websocket in a web browser. Let's run the following app (see  \@ref(fig:shiny-websocket), left panel)
 
 ```{r, eval=FALSE}
 shinyApp(
@@ -76,7 +78,7 @@ shinyApp(
 )
 ```
 
-After opening the HTML inspector, we select the network tab and search for websocket in the list. We also choose the message tab to inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js [file](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). The first element received from R is the first message in the list shown in Figure \@ref(fig:shiny-websocket). It is a JSON containing the method used as well as passed data. In the meantime, you may change the select input value.
+After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js [file](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). The first element received from R is the first message in the list shown in Figure \@ref(fig:shiny-websocket). It is a JSON object containing the method used as well as passed data. In the meantime, you may change the select input value.
 
 ```javascript
 socket.send(JSON.stringify({
@@ -97,26 +99,23 @@ this.sendInput = function(values) {
 };
 ```
 
-All of this is quite complex but extremely useful to check wether input/output work properly. In case of error, we would see the field `error` containing some elements. In the last part of this book, we will be designing custom inputs and knowing how to debug them outside R is priceless.
+Although complex, it is extremely useful to check whether the input / output communication are working properly. If not, we would see the error field identifying the issue. 
 
-Finally, `Shiny.shinyapp.$socket.readyState` returns the state of the socket connection. It should be 1 if your app is running but I've seen some cases where the socket was actually closed (and nothing could happen).
+Finally, `Shiny.shinyapp.$socket.readyState` returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, nothing would be shown. Note that the R option `options(shiny.trace = TRUE)` allows the websocket messages to be displayed directly in the R console.
 
 
 ```{r shiny-websocket, echo=FALSE, fig.cap='Shiny websocket'}
 knitr::include_graphics("images/survival-kit/shiny-websocket.png")
 ```
 
-Understanding how R and JS may communicate will help in the next section about the Shiny input system. Note that the R option `options(shiny.trace = TRUE)` allows to display the websocket messages.
-
-
 ## The Shiny session object
-We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. 
-Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 
-The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS:
+We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 
+The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. Understanding how R and JS communicate allows us to discuss the Shiny input system.
 
-  - `sendCustomMessage` sends messages from R to JS. It calls the private `sendMessage` method, which itself calls `write`. The message is sent only when the session is opened, throught the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, useful for debugging.
+  - `sendCustomMessage` sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, throught the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.
   - `sendInputMessage` is used to update inputs from the server
   
+The below code is extracted from the `shiny.R` [file](https://github.com/rstudio/shiny/blob/master/R/shiny.R).
 
 ```{r}
 sendCustomMessage = function(type, message) {
@@ -156,14 +155,19 @@ write = function(json) {
   private$websocket$send(json)
 }
 # ...
-
-
 ```
 
 No worry if it is not clear at the moment. We will discuss those elements in the following sections.
 
 ## Shiny's input system
-The goal of this part is to better understand how Shiny inputs work.
+Shiny inputs are key elements of Shiny apps since they are a way for the end-user to interact with the app. You may know `sliderInput`, `numericInput`, `checkboxInput` but sometimes you may need fancier elements like `knobInput` from [shinyWidgets](https://github.com/dreamRs/shinyWidgets/blob/master/R/input-knob.R), as depicted on Figure \@ref(fig:fancy-inputs) or even more sofisticated inputs like the `smartSelect` of [shinyMobile](https://github.com/RinteRface/shinyMobile/blob/master/R/f7-inputs.R) (Figure \@ref(fig:fancy-inputs), right panel). Have you ever wondered what are the mechanisms behind inputs? Have you ever dreamt to develop your own?
+
+The goal of this section is to understand how Shiny inputs work.
+
+```{r fancy-inputs, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap='Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile'}
+knitr::include_graphics("images/survival-kit/jquery-knobs.png")
+knitr::include_graphics("images/survival-kit/smart-select.png")
+```
 
 ### Shiny JavaScript sources
 The Shiny input system relies on the Shiny JavaScript sources. They are located in the srcjs folder shown in Figure \@ref(fig:shiny-js-sources).
