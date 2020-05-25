@@ -914,7 +914,7 @@ Going back to our custom text input, what event would make it change?</p>
 </div>
 <div id="binding-other-elements" class="section level4">
 <h4><span class="header-section-number">4.5.4.3</span> Binding other elements</h4>
-<p>The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the <code>box</code> function. Boxes are containers with a title, body, footer, as well as optional elements. Interestingly we may collapse and uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:</p>
+<p>The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the <code>box</code> function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:</p>
 <div class="sourceCode" id="cb95"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb95-1" data-line-number="1"><span class="st">&quot;%OR%&quot;</span> &lt;-<span class="st"> </span><span class="cf">function</span>(a, b) <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(a)) a <span class="cf">else</span> b</a>
 <a class="sourceLine" id="cb95-2" data-line-number="2"></a>
 <a class="sourceLine" id="cb95-3" data-line-number="3">box2 &lt;-<span class="st"> </span><span class="cf">function</span> (..., <span class="dt">inputId =</span> <span class="ot">NULL</span>, <span class="dt">title =</span> <span class="ot">NULL</span>, <span class="dt">footer =</span> <span class="ot">NULL</span>, <span class="dt">status =</span> <span class="ot">NULL</span>, <span class="dt">solidHeader =</span> <span class="ot">FALSE</span>, </a>
@@ -969,16 +969,16 @@ Going back to our custom text input, what event would make it change?</p>
 <a class="sourceLine" id="cb95-52" data-line-number="52">    )</a>
 <a class="sourceLine" id="cb95-53" data-line-number="53">  )</a>
 <a class="sourceLine" id="cb95-54" data-line-number="54">}</a></code></pre></div>
-<p>Besides, we create the <code>updateBox</code> function, which will collapse the box:</p>
+<p>Since we may collapse and uncollapse the box, we create the <code>updateBox</code> function, which will toggle it:</p>
 <div class="sourceCode" id="cb96"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb96-1" data-line-number="1">updateBox &lt;-<span class="st"> </span><span class="cf">function</span>(inputId, <span class="dt">session =</span> <span class="kw">getDefaultReactiveDomain</span>()) {</a>
 <a class="sourceLine" id="cb96-2" data-line-number="2">  session<span class="op">$</span><span class="kw">sendInputMessage</span>(inputId, <span class="dt">message =</span> <span class="ot">NULL</span>)</a>
 <a class="sourceLine" id="cb96-3" data-line-number="3">}</a></code></pre></div>
-<p>When collapsed, a box gets the <code>collapsed-box</code> class. This will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the <code>subscribe</code> method. Most of the time, the change event might suit but as shinydashboard is built on top of <a href="https://adminlte.io/docs/2.4/js-box-widget">AdminLTE2</a>, it has an API to control box behaviour. We identify 2 events corresponding to the collapsible action:</p>
+<p>When collapsed, a box gets the <code>collapsed-box</code> class. Note: this will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the <code>subscribe</code> method. Most of the time, the change event might be sufficient, but as shinydashboard is built on top of <a href="https://adminlte.io/docs/2.4/js-box-widget">AdminLTE2</a>, it has an API to control the box behaviour. We identify 2 events corresponding to the collapsible action:</p>
 <ul>
 <li>expanded.boxwidget (Triggered after the box is expanded)</li>
 <li>collapsed.boxwidget (Triggered after the box is collapsed)</li>
 </ul>
-<p>Those events are unfortunately not possible to use since the AdminLTE code forget to trigger them in the main JS <a href="https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js">code</a> (see the collapse method line 577-612). There are other solutions, as shown below with the <code>click</code> event.</p>
+<p>Unfortunatly, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS <a href="https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js">code</a> (see the collapse method line 577-612). There are other solutions, as shown below with the <code>click</code> event.</p>
 <p>There is also a plug and play <code>toggleBox</code> method. To unleash the power of our box, we need to activate it with <code>$('#&lt;box_id&gt;').activateBox();</code> before the binding step. If you remember, the <code>initialize</code> method is exactly doing this:</p>
 <div class="sourceCode" id="cb97"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb97-1" data-line-number="1"><span class="kw">let</span> boxBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">InputBinding</span>()<span class="op">;</span></a>
 <a class="sourceLine" id="cb97-2" data-line-number="2"><span class="va">$</span>.<span class="at">extend</span>(boxBinding<span class="op">,</span> <span class="op">{</span></a>
@@ -1024,7 +1024,7 @@ Going back to our custom text input, what event would make it change?</p>
 <li><code>setValue</code> calls the plug and play <code>toggleBox</code> method</li>
 <li><code>receiveMessage</code> must trigger a change event so that Shiny knows when the value needs to be updated</li>
 <li><code>subscribe</code> listens to the <code>click</code> event on the <code>[data-widget=&quot;collapse&quot;]</code> element and delays the <code>callback</code> call by a value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!</li>
-<li>We don’t need extra listener for the <code>updateBox</code> function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener</li>
+<li>We don’t need an extra listener for the <code>updateBox</code> function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener</li>
 </ul>
 <p>Let’s try our new toy in a simple dashboard:</p>
 <div class="sourceCode" id="cb98"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb98-1" data-line-number="1"><span class="kw">shinyApp</span>(</a>
@@ -1110,43 +1110,43 @@ Going back to our custom text input, what event would make it change?</p>
 <h3><span class="header-section-number">4.5.5</span> Utilities to quickly define new inputs</h3>
 <p>If you ever wondered where the <code>Shiny.onInputChange</code> or <code>Shiny.setInputValue</code> comes from (see <a href="https://shiny.rstudio.com/articles/communicating-with-js.html">article</a>), it is actually defined in the <code>initShiny</code> function.</p>
 <div class="sourceCode" id="cb99"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb99-1" data-line-number="1"><span class="va">exports</span>.<span class="at">setInputValue</span> <span class="op">=</span> <span class="va">exports</span>.<span class="at">onInputChange</span> <span class="op">=</span> <span class="kw">function</span>(name<span class="op">,</span> value<span class="op">,</span> opts) <span class="op">{</span></a>
-<a class="sourceLine" id="cb99-2" data-line-number="2">opts <span class="op">=</span> <span class="at">addDefaultInputOpts</span>(opts)<span class="op">;</span></a>
-<a class="sourceLine" id="cb99-3" data-line-number="3"><span class="va">inputs</span>.<span class="at">setInput</span>(name<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></a>
+<a class="sourceLine" id="cb99-2" data-line-number="2">  opts <span class="op">=</span> <span class="at">addDefaultInputOpts</span>(opts)<span class="op">;</span></a>
+<a class="sourceLine" id="cb99-3" data-line-number="3">  <span class="va">inputs</span>.<span class="at">setInput</span>(name<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></a>
 <a class="sourceLine" id="cb99-4" data-line-number="4"><span class="op">};</span></a></code></pre></div>
-<p>Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like <code>sliderInput</code> have their own update function like <code>updateSliderInput</code>, because of the custom input binding system (We will see it very soon)!</p>
+<p>Briefly, this function avoids creating an input binding. It is faster to code but there is a price to pay: losing the ability to easily update the new input. Indeed, all input functions like <code>sliderInput</code> have their own update function like <code>updateSliderInput</code>, because of the custom input binding system (We will see it very soon)!</p>
 </div>
 <div id="miscellaneous" class="section level3">
 <h3><span class="header-section-number">4.5.6</span> Miscellaneous</h3>
-<p>We present here some tools that may be useful…TO FINISH</p>
+<p>We present some tools that may be useful…TO FINISH</p>
 <div id="get-access-to-initial-values" class="section level4">
 <h4><span class="header-section-number">4.5.6.1</span> Get access to initial values</h4>
 <p>Something we may notice when exploring the <code>initShiny</code> function is the existence of a <code>Shiny.shinyapp</code> object, defined as follows:</p>
 <div class="sourceCode" id="cb100"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb100-1" data-line-number="1"><span class="kw">var</span> shinyapp <span class="op">=</span> <span class="va">exports</span>.<span class="at">shinyapp</span> <span class="op">=</span> <span class="kw">new</span> <span class="at">ShinyApp</span>()<span class="op">;</span></a></code></pre></div>
 <p>Let’s explore what <code>shinyApp</code> contains. The definition is located in the shinyapps.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">script</a>.</p>
 <div class="sourceCode" id="cb101"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb101-1" data-line-number="1"><span class="kw">var</span> ShinyApp <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></a>
-<a class="sourceLine" id="cb101-2" data-line-number="2"><span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></a>
-<a class="sourceLine" id="cb101-3" data-line-number="3"></a>
-<a class="sourceLine" id="cb101-4" data-line-number="4"><span class="co">// Cached input values</span></a>
-<a class="sourceLine" id="cb101-5" data-line-number="5"><span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb101-6" data-line-number="6"></a>
-<a class="sourceLine" id="cb101-7" data-line-number="7"><span class="co">// Input values at initialization (and reconnect)</span></a>
-<a class="sourceLine" id="cb101-8" data-line-number="8"><span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb101-9" data-line-number="9"></a>
-<a class="sourceLine" id="cb101-10" data-line-number="10"><span class="co">// Output bindings</span></a>
-<a class="sourceLine" id="cb101-11" data-line-number="11"><span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb101-12" data-line-number="12"></a>
-<a class="sourceLine" id="cb101-13" data-line-number="13"><span class="co">// Cached values/errors</span></a>
-<a class="sourceLine" id="cb101-14" data-line-number="14"><span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb101-15" data-line-number="15"><span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb101-16" data-line-number="16"></a>
-<a class="sourceLine" id="cb101-17" data-line-number="17"><span class="co">// Conditional bindings (show/hide element based on expression)</span></a>
-<a class="sourceLine" id="cb101-18" data-line-number="18"><span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb101-19" data-line-number="19"></a>
-<a class="sourceLine" id="cb101-20" data-line-number="20"><span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></a>
-<a class="sourceLine" id="cb101-21" data-line-number="21"><span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></a>
-<a class="sourceLine" id="cb101-22" data-line-number="22"><span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></a>
-<a class="sourceLine" id="cb101-23" data-line-number="23"></a>
-<a class="sourceLine" id="cb101-24" data-line-number="24"><span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></a>
+<a class="sourceLine" id="cb101-2" data-line-number="2">  <span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></a>
+<a class="sourceLine" id="cb101-3" data-line-number="3">  </a>
+<a class="sourceLine" id="cb101-4" data-line-number="4">  <span class="co">// Cached input values</span></a>
+<a class="sourceLine" id="cb101-5" data-line-number="5">  <span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb101-6" data-line-number="6">  </a>
+<a class="sourceLine" id="cb101-7" data-line-number="7">  <span class="co">// Input values at initialization (and reconnect)</span></a>
+<a class="sourceLine" id="cb101-8" data-line-number="8">  <span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb101-9" data-line-number="9">  </a>
+<a class="sourceLine" id="cb101-10" data-line-number="10">  <span class="co">// Output bindings</span></a>
+<a class="sourceLine" id="cb101-11" data-line-number="11">  <span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb101-12" data-line-number="12">  </a>
+<a class="sourceLine" id="cb101-13" data-line-number="13">  <span class="co">// Cached values/errors</span></a>
+<a class="sourceLine" id="cb101-14" data-line-number="14">  <span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb101-15" data-line-number="15">  <span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb101-16" data-line-number="16">  </a>
+<a class="sourceLine" id="cb101-17" data-line-number="17">  <span class="co">// Conditional bindings (show/hide element based on expression)</span></a>
+<a class="sourceLine" id="cb101-18" data-line-number="18">  <span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb101-19" data-line-number="19">  </a>
+<a class="sourceLine" id="cb101-20" data-line-number="20">  <span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></a>
+<a class="sourceLine" id="cb101-21" data-line-number="21">  <span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></a>
+<a class="sourceLine" id="cb101-22" data-line-number="22">  <span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></a>
+<a class="sourceLine" id="cb101-23" data-line-number="23">  </a>
+<a class="sourceLine" id="cb101-24" data-line-number="24">  <span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></a>
 <a class="sourceLine" id="cb101-25" data-line-number="25"><span class="op">};</span></a></code></pre></div>
 <p>It creates several properties, some of them are easy to guess like <code>inputValues</code> or <code>initialInput</code>. Let’s run the example below and open the HTML inspector. Notice that the <code>sliderInput</code> is set to 500 at <code>t0</code> (initialization).</p>
 <div class="sourceCode" id="cb102"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb102-1" data-line-number="1">ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</a>
@@ -1162,14 +1162,13 @@ Going back to our custom text input, what event would make it change?</p>
 <a class="sourceLine" id="cb102-11" data-line-number="11">  })</a>
 <a class="sourceLine" id="cb102-12" data-line-number="12">}</a>
 <a class="sourceLine" id="cb102-13" data-line-number="13"><span class="kw">shinyApp</span>(ui, server)</a></code></pre></div>
-<p>Figure <a href="survival-kit-shiny.html#fig:shiny-initial-inputs">4.10</a> shows how to access Shiny’s initial input value with <code>Shiny.shinyapp.$initialInput.obs</code>. After changing the slider position, its value is given by <code>Shiny.shinyapp.$inputValues.obs</code>. <code>$initialInput</code> and <code>$inputValues</code> contains way more elements but we are only interested by the slider in this example.</p>
+<p>Figure <a href="survival-kit-shiny.html#fig:shiny-initial-inputs">4.10</a> shows how to access Shiny’s initial input value with <code>Shiny.shinyapp.$initialInput.obs</code>. After changing the slider position, its value is given by <code>Shiny.shinyapp.$inputValues.obs</code>. <code>$initialInput</code> and <code>$inputValues</code> contains many more elements, however we are only interested in the slider function in this example.</p>
 <div class="figure"><span id="fig:shiny-initial-inputs"></span>
 <img src="images/survival-kit/shiny-init-input.png" alt="Explore initial input values" width="994" />
 <p class="caption">
 Figure 4.10: Explore initial input values
 </p>
 </div>
-<p>I acknowledge, the practical interest might be limited but still good to know for debugging purposes.</p>
 </div>
 </div>
 </div>
@@ -1177,7 +1176,7 @@ Figure 4.10: Explore initial input values
 <h2><span class="header-section-number">4.6</span> Custom handlers: from R to JavaScript</h2>
 <p>Shiny provides tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a <code>selectInput</code> and a <code>datatable</code>. How does R send messages to JavaScript?</p>
 <p>We already discussed the usage of <code>sendInputMessage()</code> in the input binding section. The other important method is <code>sendCustomMessage(type, message)</code>. It works by pair with the JS method <code>Shiny.AddCustomMessageHandler</code>, linked with the type parameter.</p>
-<div class="sourceCode" id="cb103"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb103-1" data-line-number="1">sayHelloToJS &lt;-<span class="st"> </span><span class="cf">function</span>(text, <span class="dt">session =</span> <span class="kw">getDefaultReactiveDomain</span>()) {</a>
+<div class="sourceCode" id="cb103"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb103-1" data-line-number="1">say_hello_to_js &lt;-<span class="st"> </span><span class="cf">function</span>(text, <span class="dt">session =</span> <span class="kw">getDefaultReactiveDomain</span>()) {</a>
 <a class="sourceLine" id="cb103-2" data-line-number="2">  session<span class="op">$</span><span class="kw">sendCustomMessage</span>(<span class="dt">type =</span> <span class="st">&#39;say-hello&#39;</span>, <span class="dt">message =</span> text)</a>
 <a class="sourceLine" id="cb103-3" data-line-number="3">}</a></code></pre></div>
 <p>The JavaScript receptor is defined below:</p>
@@ -1186,7 +1185,7 @@ Figure 4.10: Explore initial input values
 <a class="sourceLine" id="cb104-3" data-line-number="3">    <span class="at">alert</span>(<span class="vs">`R says </span><span class="sc">${</span>message<span class="sc">}</span><span class="vs"> to you!`</span>)</a>
 <a class="sourceLine" id="cb104-4" data-line-number="4">  <span class="op">}</span>)<span class="op">;</span></a>
 <a class="sourceLine" id="cb104-5" data-line-number="5"><span class="op">}</span>)<span class="op">;</span></a></code></pre></div>
-<p>The shiny app below will simply print a welcome message. We obviously set <code>options(shiny.trace = TRUE)</code>.</p>
+<p>The shiny app below will simply print a welcome message every 5 seconds. We obviously set <code>options(shiny.trace = TRUE)</code>.</p>
 <div class="sourceCode" id="cb105"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb105-1" data-line-number="1"><span class="kw">options</span>(<span class="dt">shiny.trace =</span> <span class="ot">TRUE</span>)</a>
 <a class="sourceLine" id="cb105-2" data-line-number="2">ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</a>
 <a class="sourceLine" id="cb105-3" data-line-number="3">  tags<span class="op">$</span><span class="kw">head</span>(</a>
@@ -1204,7 +1203,7 @@ Figure 4.10: Explore initial input values
 <a class="sourceLine" id="cb105-15" data-line-number="15">server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</a>
 <a class="sourceLine" id="cb105-16" data-line-number="16">  <span class="kw">observe</span>({</a>
 <a class="sourceLine" id="cb105-17" data-line-number="17">    <span class="kw">invalidateLater</span>(<span class="dv">5000</span>)</a>
-<a class="sourceLine" id="cb105-18" data-line-number="18">    <span class="kw">sayHelloToJS</span>(<span class="st">&quot;hello&quot;</span>)</a>
+<a class="sourceLine" id="cb105-18" data-line-number="18">    <span class="kw">say_hello_to_js</span>(<span class="st">&quot;hello&quot;</span>)</a>
 <a class="sourceLine" id="cb105-19" data-line-number="19">  })</a>
 <a class="sourceLine" id="cb105-20" data-line-number="20">}</a>
 <a class="sourceLine" id="cb105-21" data-line-number="21"></a>

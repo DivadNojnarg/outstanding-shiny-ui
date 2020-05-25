@@ -2308,7 +2308,7 @@ Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html
 \hypertarget{binding-other-elements}{%
 \subsubsection{Binding other elements}\label{binding-other-elements}}
 
-The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the \texttt{box} function. Boxes are containers with a title, body, footer, as well as optional elements. Interestingly we may collapse and uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
+The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the \texttt{box} function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2369,7 +2369,7 @@ The Shiny input binding system is too convenient to be only used it for input el
 \end{Highlighting}
 \end{Shaded}
 
-Besides, we create the \texttt{updateBox} function, which will collapse the box:
+Since we may collapse and uncollapse the box, we create the \texttt{updateBox} function, which will toggle it:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2379,7 +2379,7 @@ Besides, we create the \texttt{updateBox} function, which will collapse the box:
 \end{Highlighting}
 \end{Shaded}
 
-When collapsed, a box gets the \texttt{collapsed-box} class. This will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the \texttt{subscribe} method. Most of the time, the change event might suit but as shinydashboard is built on top of \href{https://adminlte.io/docs/2.4/js-box-widget}{AdminLTE2}, it has an API to control box behaviour. We identify 2 events corresponding to the collapsible action:
+When collapsed, a box gets the \texttt{collapsed-box} class. Note: this will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the \texttt{subscribe} method. Most of the time, the change event might be sufficient, but as shinydashboard is built on top of \href{https://adminlte.io/docs/2.4/js-box-widget}{AdminLTE2}, it has an API to control the box behaviour. We identify 2 events corresponding to the collapsible action:
 
 \begin{itemize}
 \tightlist
@@ -2389,7 +2389,7 @@ When collapsed, a box gets the \texttt{collapsed-box} class. This will be useful
   collapsed.boxwidget (Triggered after the box is collapsed)
 \end{itemize}
 
-Those events are unfortunately not possible to use since the AdminLTE code forget to trigger them in the main JS \href{https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js}{code} (see the collapse method line 577-612). There are other solutions, as shown below with the \texttt{click} event.
+Unfortunatly, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS \href{https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js}{code} (see the collapse method line 577-612). There are other solutions, as shown below with the \texttt{click} event.
 
 There is also a plug and play \texttt{toggleBox} method. To unleash the power of our box, we need to activate it with \texttt{\$(\textquotesingle{}\#\textless{}box\_id\textgreater{}\textquotesingle{}).activateBox();} before the binding step. If you remember, the \texttt{initialize} method is exactly doing this:
 
@@ -2449,7 +2449,7 @@ Some comments about the binding:
 \item
   \texttt{subscribe} listens to the \texttt{click} event on the \texttt{{[}data-widget="collapse"{]}} element and delays the \texttt{callback} call by a value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
 \item
-  We don't need extra listener for the \texttt{updateBox} function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
+  We don't need an extra listener for the \texttt{updateBox} function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
 \end{itemize}
 
 Let's try our new toy in a simple dashboard:
@@ -2544,18 +2544,18 @@ If you ever wondered where the \texttt{Shiny.onInputChange} or \texttt{Shiny.set
 \begin{Shaded}
 \begin{Highlighting}[]
 \VariableTok{exports}\NormalTok{.}\AttributeTok{setInputValue} \OperatorTok{=} \VariableTok{exports}\NormalTok{.}\AttributeTok{onInputChange} \OperatorTok{=} \KeywordTok{function}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts) }\OperatorTok{\{}
-\NormalTok{opts }\OperatorTok{=} \AttributeTok{addDefaultInputOpts}\NormalTok{(opts)}\OperatorTok{;}
-\VariableTok{inputs}\NormalTok{.}\AttributeTok{setInput}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts)}\OperatorTok{;}
+\NormalTok{  opts }\OperatorTok{=} \AttributeTok{addDefaultInputOpts}\NormalTok{(opts)}\OperatorTok{;}
+  \VariableTok{inputs}\NormalTok{.}\AttributeTok{setInput}\NormalTok{(name}\OperatorTok{,}\NormalTok{ value}\OperatorTok{,}\NormalTok{ opts)}\OperatorTok{;}
 \OperatorTok{\};}
 \end{Highlighting}
 \end{Shaded}
 
-Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like \texttt{sliderInput} have their own update function like \texttt{updateSliderInput}, because of the custom input binding system (We will see it very soon)!
+Briefly, this function avoids creating an input binding. It is faster to code but there is a price to pay: losing the ability to easily update the new input. Indeed, all input functions like \texttt{sliderInput} have their own update function like \texttt{updateSliderInput}, because of the custom input binding system (We will see it very soon)!
 
 \hypertarget{miscellaneous}{%
 \subsection{Miscellaneous}\label{miscellaneous}}
 
-We present here some tools that may be useful\ldots{}TO FINISH
+We present some tools that may be useful\ldots{}TO FINISH
 
 \hypertarget{get-access-to-initial-values}{%
 \subsubsection{Get access to initial values}\label{get-access-to-initial-values}}
@@ -2573,29 +2573,29 @@ Let's explore what \texttt{shinyApp} contains. The definition is located in the 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{var}\NormalTok{ ShinyApp }\OperatorTok{=} \KeywordTok{function}\NormalTok{() }\OperatorTok{\{}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$socket} \OperatorTok{=} \KeywordTok{null}\OperatorTok{;}
-
-\CommentTok{// Cached input values}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$inputValues} \OperatorTok{=} \OperatorTok{\{\};}
-
-\CommentTok{// Input values at initialization (and reconnect)}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$initialInput} \OperatorTok{=} \OperatorTok{\{\};}
-
-\CommentTok{// Output bindings}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$bindings} \OperatorTok{=} \OperatorTok{\{\};}
-
-\CommentTok{// Cached values/errors}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$values} \OperatorTok{=} \OperatorTok{\{\};}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$errors} \OperatorTok{=} \OperatorTok{\{\};}
-
-\CommentTok{// Conditional bindings (show/hide element based on expression)}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$conditionals} \OperatorTok{=} \OperatorTok{\{\};}
-
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$pendingMessages} \OperatorTok{=}\NormalTok{ []}\OperatorTok{;}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$activeRequests} \OperatorTok{=} \OperatorTok{\{\};}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$nextRequestId} \OperatorTok{=} \DecValTok{0}\OperatorTok{;}
-
-\KeywordTok{this}\NormalTok{.}\AttributeTok{$allowReconnect} \OperatorTok{=} \KeywordTok{false}\OperatorTok{;}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$socket} \OperatorTok{=} \KeywordTok{null}\OperatorTok{;}
+  
+  \CommentTok{// Cached input values}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$inputValues} \OperatorTok{=} \OperatorTok{\{\};}
+  
+  \CommentTok{// Input values at initialization (and reconnect)}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$initialInput} \OperatorTok{=} \OperatorTok{\{\};}
+  
+  \CommentTok{// Output bindings}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$bindings} \OperatorTok{=} \OperatorTok{\{\};}
+  
+  \CommentTok{// Cached values/errors}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$values} \OperatorTok{=} \OperatorTok{\{\};}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$errors} \OperatorTok{=} \OperatorTok{\{\};}
+  
+  \CommentTok{// Conditional bindings (show/hide element based on expression)}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$conditionals} \OperatorTok{=} \OperatorTok{\{\};}
+  
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$pendingMessages} \OperatorTok{=}\NormalTok{ []}\OperatorTok{;}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$activeRequests} \OperatorTok{=} \OperatorTok{\{\};}
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$nextRequestId} \OperatorTok{=} \DecValTok{0}\OperatorTok{;}
+  
+  \KeywordTok{this}\NormalTok{.}\AttributeTok{$allowReconnect} \OperatorTok{=} \KeywordTok{false}\OperatorTok{;}
 \OperatorTok{\};}
 \end{Highlighting}
 \end{Shaded}
@@ -2620,13 +2620,11 @@ It creates several properties, some of them are easy to guess like \texttt{input
 \end{Highlighting}
 \end{Shaded}
 
-Figure \ref{fig:shiny-initial-inputs} shows how to access Shiny's initial input value with \texttt{Shiny.shinyapp.\$initialInput.obs}. After changing the slider position, its value is given by \texttt{Shiny.shinyapp.\$inputValues.obs}. \texttt{\$initialInput} and \texttt{\$inputValues} contains way more elements but we are only interested by the slider in this example.
+Figure \ref{fig:shiny-initial-inputs} shows how to access Shiny's initial input value with \texttt{Shiny.shinyapp.\$initialInput.obs}. After changing the slider position, its value is given by \texttt{Shiny.shinyapp.\$inputValues.obs}. \texttt{\$initialInput} and \texttt{\$inputValues} contains many more elements, however we are only interested in the slider function in this example.
 
 \begin{figure}
 \includegraphics[width=27.61in]{images/survival-kit/shiny-init-input} \caption{Explore initial input values}\label{fig:shiny-initial-inputs}
 \end{figure}
-
-I acknowledge, the practical interest might be limited but still good to know for debugging purposes.
 
 \hypertarget{custom-handlers-from-r-to-javascript}{%
 \section{Custom handlers: from R to JavaScript}\label{custom-handlers-from-r-to-javascript}}
@@ -2637,7 +2635,7 @@ We already discussed the usage of \texttt{sendInputMessage()} in the input bindi
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{sayHelloToJS <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
+\NormalTok{say_hello_to_js <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(text, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
 \NormalTok{  session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\DataTypeTok{type =} \StringTok{'say-hello'}\NormalTok{, }\DataTypeTok{message =}\NormalTok{ text)}
 \NormalTok{\}}
 \end{Highlighting}
@@ -2655,7 +2653,7 @@ The JavaScript receptor is defined below:
 \end{Highlighting}
 \end{Shaded}
 
-The shiny app below will simply print a welcome message. We obviously set \texttt{options(shiny.trace\ =\ TRUE)}.
+The shiny app below will simply print a welcome message every 5 seconds. We obviously set \texttt{options(shiny.trace\ =\ TRUE)}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2676,7 +2674,7 @@ The shiny app below will simply print a welcome message. We obviously set \textt
 \NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
   \KeywordTok{observe}\NormalTok{(\{}
     \KeywordTok{invalidateLater}\NormalTok{(}\DecValTok{5000}\NormalTok{)}
-    \KeywordTok{sayHelloToJS}\NormalTok{(}\StringTok{"hello"}\NormalTok{)}
+    \KeywordTok{say_hello_to_js}\NormalTok{(}\StringTok{"hello"}\NormalTok{)}
 \NormalTok{  \})}
 \NormalTok{\}}
 

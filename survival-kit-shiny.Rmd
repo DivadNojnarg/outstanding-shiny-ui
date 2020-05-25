@@ -714,7 +714,7 @@ Shiny.inputBindings.register(myBinding, 'reference');
 Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, this case almost never happens.
 
 #### Binding other elements
-The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. Interestingly we may collapse and uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
+The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
 
 ```{r}
 "%OR%" <- function(a, b) if (!is.null(a)) a else b
@@ -773,7 +773,7 @@ box2 <- function (..., inputId = NULL, title = NULL, footer = NULL, status = NUL
 }
 ```
 
-Besides, we create the `updateBox` function, which will collapse the box:
+Since we may collapse and uncollapse the box, we create the `updateBox` function, which will toggle it:
 
 ```{r}
 updateBox <- function(inputId, session = getDefaultReactiveDomain()) {
@@ -781,12 +781,12 @@ updateBox <- function(inputId, session = getDefaultReactiveDomain()) {
 }
 ```
 
-When collapsed, a box gets the `collapsed-box` class. This will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the `subscribe` method. Most of the time, the change event might suit but as shinydashboard is built on top of [AdminLTE2](https://adminlte.io/docs/2.4/js-box-widget), it has an API to control box behaviour. We identify 2 events corresponding to the collapsible action: 
+When collapsed, a box gets the `collapsed-box` class. Note: this will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the `subscribe` method. Most of the time, the change event might be sufficient, but as shinydashboard is built on top of [AdminLTE2](https://adminlte.io/docs/2.4/js-box-widget), it has an API to control the box behaviour. We identify 2 events corresponding to the collapsible action: 
   
   - expanded.boxwidget (Triggered after the box is expanded)
   - collapsed.boxwidget (Triggered after the box is collapsed)
   
-Those events are unfortunately not possible to use since the AdminLTE code forget to trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. 
+Unfortunatly, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. 
   
 There is also a plug and play `toggleBox` method. To unleash the power of our box, we need to activate it with `$('#<box_id>').activateBox();` before the binding step. If you remember, the `initialize` method is exactly doing this:
 
@@ -837,7 +837,7 @@ Some comments about the binding:
   - `setValue` calls the plug and play `toggleBox` method
   - `receiveMessage` must trigger a change event so that Shiny knows when the value needs to be updated
   - `subscribe` listens to the `click` event on the `[data-widget="collapse"]` element and delays the `callback` call by a value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
-  - We don't need extra listener for the `updateBox` function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
+  - We don't need an extra listener for the `updateBox` function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
 
 Let's try our new toy in a simple dashboard:
 
@@ -926,16 +926,16 @@ If you ever wondered where the `Shiny.onInputChange` or `Shiny.setInputValue` co
 
 ```javascript
 exports.setInputValue = exports.onInputChange = function(name, value, opts) {
-opts = addDefaultInputOpts(opts);
-inputs.setInput(name, value, opts);
+  opts = addDefaultInputOpts(opts);
+  inputs.setInput(name, value, opts);
 };
 ```
 
-Briefly, this function avoids to create an input binding. It is faster to code but there is a price to pay: you lose the possibility to easily update the new input. Indeed, all input functions like `sliderInput` have their own update function like `updateSliderInput`, because of the custom input binding system (We will see it very soon)!
+Briefly, this function avoids creating an input binding. It is faster to code but there is a price to pay: losing the ability to easily update the new input. Indeed, all input functions like `sliderInput` have their own update function like `updateSliderInput`, because of the custom input binding system (We will see it very soon)!
 
 
 ### Miscellaneous
-We present here some tools that may be useful...TO FINISH
+We present some tools that may be useful...TO FINISH
 
 #### Get access to initial values 
 Something we may notice when exploring the `initShiny` function is the existence of a `Shiny.shinyapp` object, defined as follows:
@@ -949,29 +949,29 @@ Let's explore what `shinyApp` contains. The definition is located in the shinyap
 
 ```javascript
 var ShinyApp = function() {
-this.$socket = null;
-
-// Cached input values
-this.$inputValues = {};
-
-// Input values at initialization (and reconnect)
-this.$initialInput = {};
-
-// Output bindings
-this.$bindings = {};
-
-// Cached values/errors
-this.$values = {};
-this.$errors = {};
-
-// Conditional bindings (show/hide element based on expression)
-this.$conditionals = {};
-
-this.$pendingMessages = [];
-this.$activeRequests = {};
-this.$nextRequestId = 0;
-
-this.$allowReconnect = false;
+  this.$socket = null;
+  
+  // Cached input values
+  this.$inputValues = {};
+  
+  // Input values at initialization (and reconnect)
+  this.$initialInput = {};
+  
+  // Output bindings
+  this.$bindings = {};
+  
+  // Cached values/errors
+  this.$values = {};
+  this.$errors = {};
+  
+  // Conditional bindings (show/hide element based on expression)
+  this.$conditionals = {};
+  
+  this.$pendingMessages = [];
+  this.$activeRequests = {};
+  this.$nextRequestId = 0;
+  
+  this.$allowReconnect = false;
 };
 ```
 
@@ -994,14 +994,11 @@ shinyApp(ui, server)
 ```
 
 
-Figure \@ref(fig:shiny-initial-inputs) shows how to access Shiny's initial input value with `Shiny.shinyapp.$initialInput.obs`. After changing the slider position, its value is given by `Shiny.shinyapp.$inputValues.obs`. `$initialInput` and `$inputValues` contains way more elements but we are only interested by the slider in this example.
+Figure \@ref(fig:shiny-initial-inputs) shows how to access Shiny's initial input value with `Shiny.shinyapp.$initialInput.obs`. After changing the slider position, its value is given by `Shiny.shinyapp.$inputValues.obs`. `$initialInput` and `$inputValues` contains many more elements, however we are only interested in the slider function in this example.
 
 ```{r shiny-initial-inputs, echo=FALSE, fig.cap='Explore initial input values'}
 knitr::include_graphics("images/survival-kit/shiny-init-input.png")
 ```
-
-I acknowledge, the practical interest might be limited but still good to know for debugging purposes. 
-
 
 ## Custom handlers: from R to JavaScript
 Shiny provides tools to ease the communication between R and JavaScript. This is what happens in the last part. If you remember, we were playing with a `selectInput` and a `datatable`. How does R send messages to JavaScript?
@@ -1009,7 +1006,7 @@ Shiny provides tools to ease the communication between R and JavaScript. This is
 We already discussed the usage of `sendInputMessage()` in the input binding section. The other important method is `sendCustomMessage(type, message)`. It works by pair with the JS method `Shiny.AddCustomMessageHandler`, linked with the type parameter.
 
 ```{r, eval=FALSE}
-sayHelloToJS <- function(text, session = getDefaultReactiveDomain()) {
+say_hello_to_js <- function(text, session = getDefaultReactiveDomain()) {
   session$sendCustomMessage(type = 'say-hello', message = text)
 }
 ```
@@ -1024,7 +1021,7 @@ $(function() {
 });
 ```
 
-The shiny app below will simply print a welcome message. We obviously set `options(shiny.trace = TRUE)`.
+The shiny app below will simply print a welcome message every 5 seconds. We obviously set `options(shiny.trace = TRUE)`.
 
 ```{r, eval=FALSE}
 options(shiny.trace = TRUE)
@@ -1044,7 +1041,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   observe({
     invalidateLater(5000)
-    sayHelloToJS("hello")
+    say_hello_to_js("hello")
   })
 }
 
