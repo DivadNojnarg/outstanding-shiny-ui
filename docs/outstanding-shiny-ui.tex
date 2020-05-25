@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-25}
+\date{2020-05-26}
 
 \begin{document}
 \maketitle
@@ -1774,36 +1774,28 @@ Let's see below what is an input binding and how it works.
 \hypertarget{input-bindings}{%
 \subsection{Input bindings}\label{input-bindings}}
 
-\hypertarget{reminders-about-shiny-inputs}{%
-\subsubsection{Reminders about Shiny inputs}\label{reminders-about-shiny-inputs}}
+\hypertarget{input-structure}{%
+\subsubsection{Input structure}\label{input-structure}}
 
-Shiny contains a lot of inputs like \texttt{sliderInput}, \texttt{checkboxInput}, \texttt{radioButtons}, \texttt{numericInput}, \ldots{}Their role is to provide a way for the user to change parameters and update the app state.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{numericInput}\NormalTok{(}\StringTok{"obs"}\NormalTok{, }\StringTok{"Observations:"}\NormalTok{, }\DecValTok{10}\NormalTok{, }\DataTypeTok{min =} \DecValTok{1}\NormalTok{, }\DataTypeTok{max =} \DecValTok{100}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-All input functions have the same common \texttt{inputId} parameter, to guarantee the uniqueness of the given input.
+An input element is given by the \texttt{\textless{}input\textgreater{}} tag as well as several attributes.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-  \KeywordTok{textInput}\NormalTok{(}\StringTok{"text"}\NormalTok{, }\StringTok{"My Text 1"}\NormalTok{),}
-  \KeywordTok{hr}\NormalTok{(),}
-  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"mytext"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
-\NormalTok{  output}\OperatorTok{$}\NormalTok{mytext <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{text)}
-\NormalTok{\}}
-
-\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\KeywordTok{<input}\OtherTok{ id} \OtherTok{=} \StringTok{inputId}\OtherTok{ type} \OtherTok{=} \StringTok{"text"}\OtherTok{ class} \OtherTok{=} \StringTok{"input-text"}\OtherTok{ value} \OtherTok{=} \StringTok{value}\KeywordTok{>}
 \end{Highlighting}
 \end{Shaded}
 
-Now the questions is: how does Shiny recognizes inputs and drives their behavior?
+\begin{itemize}
+\tightlist
+\item
+  id garantees the input uniquess. We will see very soon that all instances of the same input share a unique input binding, therefore id is mandatory.
+\item
+  \href{https://www.w3schools.com/tags/att_input_type.asp}{type}
+\item
+  class is targeted by CSS and JavaScript
+\item
+  value holds the input value
+\end{itemize}
 
 \hypertarget{binding-shiny-inputs}{%
 \subsubsection{Binding Shiny inputs}\label{binding-shiny-inputs}}
@@ -1815,25 +1807,28 @@ Let's describe each method chronologically.
 \hypertarget{find-the-input}{%
 \paragraph{Find the input}\label{find-the-input}}
 
-The first step, is critical and consists in locating the input in the DOM. We could compare this to the receptor/ligand reaction.
-On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, the \texttt{type} attribute will suit. Sometimes it may also be the class, like for the \texttt{actionButton}. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance \texttt{radioButton} and \texttt{selectInput}) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the \texttt{find} method of the \texttt{InputBinding} class. This method must be applied on a scope, that is the \texttt{document}. \texttt{find} accepts any valid jQuery selector. Figure \ref{fig:shiny-find-inputs} summarizes this important step.
+The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the \texttt{actionButton}. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance \texttt{radioButton} and \texttt{selectInput}) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the \texttt{find} method of the \texttt{InputBinding} class. This method must be applied on a scope, that is the \texttt{document}. \texttt{find} accepts any valid jQuery selector. Figure \ref{fig:shiny-find-inputs} summarizes this important step.
 
 \begin{figure}
 \includegraphics[width=20in]{images/survival-kit/shiny-find-inputs} \caption{How to find inputs?}\label{fig:shiny-find-inputs}
 \end{figure}
 
-Below, we are going to create a new binding for the \texttt{textInput}, with only 2 methods mentionned in the previous section, that is \texttt{find} and \texttt{getValue}. For that, we need to create a customized textInput, \texttt{customTextInput} so that it is not recognized by the classic Shiny text input binding. We add the input-text class and make our own input binding pointing to that specific class.
+Below, we are going to create a new binding for the \texttt{textInput}, with only two methods mentionned in the previous section, that is \texttt{find} and \texttt{getValue}. For that, we need to create a customized textInput, \texttt{customTextInput} to make it unique. We now add the \texttt{input-text} class and make our own input binding pointing to that specific class.
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{customTextInput <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{ (inputId, label, }\DataTypeTok{value =} \StringTok{""}\NormalTok{, }\DataTypeTok{width =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{placeholder =} \OtherTok{NULL}\NormalTok{) \{}
-\NormalTok{  value <-}\StringTok{ }\KeywordTok{restoreInput}\NormalTok{(}\DataTypeTok{id =}\NormalTok{ inputId, }\DataTypeTok{default =}\NormalTok{ value)}
+  
+  \CommentTok{# this external wrapper ensure to control the input width}
   \KeywordTok{div}\NormalTok{(}
     \DataTypeTok{class =} \StringTok{"form-group shiny-input-container"}\NormalTok{, }
     \DataTypeTok{style =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(width)) \{}
       \KeywordTok{paste0}\NormalTok{(}\StringTok{"width: "}\NormalTok{, }\KeywordTok{validateCssUnit}\NormalTok{(width), }\StringTok{";"}\NormalTok{)}
 \NormalTok{    \},}
+    \CommentTok{# input label}
 \NormalTok{    shiny}\OperatorTok{:::}\KeywordTok{shinyInputLabel}\NormalTok{(inputId, label), }
+    
+    \CommentTok{# input element}
 \NormalTok{    tags}\OperatorTok{$}\KeywordTok{input}\NormalTok{(}
       \DataTypeTok{id =}\NormalTok{ inputId, }
       \DataTypeTok{type =} \StringTok{"text"}\NormalTok{, }
@@ -1845,6 +1840,8 @@ Below, we are going to create a new binding for the \texttt{textInput}, with onl
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
+
+\texttt{shinyInputLabel} is an internal function of Shiny that creates the numeric input label, in other word the text displayed next to it. The core input element is wrapped by \texttt{tags\$input}. No worry, we will give more details about shiny tags in the next chapter.
 
 We put everything in a Shiny app and invit the reader to open the HTML inspector and look at the \texttt{console.log} result.
 
@@ -1878,10 +1875,16 @@ We put everything in a Shiny app and invit the reader to open the HTML inspector
 \end{Highlighting}
 \end{Shaded}
 
+Results are shown on Figure \ref{fig:shiny-find-inputs-result}. If the corresponding input is found, you should see the corresponding tag element in the HTML inspector console.
+
+\begin{figure}
+\includegraphics[width=35.81in]{images/survival-kit/shiny-find-inputs-result} \caption{find method output}\label{fig:shiny-find-inputs-result}
+\end{figure}
+
 \hypertarget{initialize-inputs}{%
 \paragraph{Initialize inputs}\label{initialize-inputs}}
 
-Upon initialization, Shiny calls the \texttt{initializeInputs} function that takes all input bindings and call their \texttt{initialize} method before binding all inputs. Note that once an input has been initialized it has a \texttt{\_shiny\_initialized} tag to avoid initializing it twice. The initialize method is not always defined but some API like \href{https://framework7.io}{Framework7}, on top of which \href{https://github.com/RinteRface/shinyMobile}{shinyMobile} is built, require to have it. Below is an example for the toggle input:
+Upon initialization, Shiny calls the \texttt{initializeInputs} function that takes all input bindings and call their \texttt{initialize} method before binding all inputs. Note that once an input has been initialized it has a \texttt{\_shiny\_initialized} tag to avoid initializing it twice. The initialize method is not always defined but some elements require to be explicitly initialized or activated. For instance the \href{https://framework7.io}{Framework7} API, on top of which \href{https://github.com/RinteRface/shinyMobile}{shinyMobile} is built, require to instantiate all elements. Below is an example for the \href{https://framework7.io/docs/toggle.html}{toggle} input:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1897,7 +1900,7 @@ Upon initialization, Shiny calls the \texttt{initializeInputs} function that tak
 \end{Highlighting}
 \end{Shaded}
 
-\texttt{app.toggle.create} is internal to the API. The corresponding shinyMobile input binding starts as follows.
+\texttt{el:\ \textquotesingle{}.toggle\textquotesingle{}} means that we are looking at the element(s) having the \texttt{toggle} class. \texttt{app.toggle.create} is internal to the Framework7 API. The corresponding shinyMobile input binding starts as follows.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1911,7 +1914,7 @@ Upon initialization, Shiny calls the \texttt{initializeInputs} function that tak
 \end{Highlighting}
 \end{Shaded}
 
-Once initialized, we may use all specific methods provided by the API. \href{https://framework7.io}{Framework7} is clearly a gold mine, as its API provides a lot of possible options for many inputs/widgets.
+Once initialized, we may use all specific methods provided by the API. \href{https://framework7.io}{Framework7} is clearly a gold mine, as its API provides many possible options for many inputs / widgets. Later in this section, we will demonstrate how to initialize a box element from the \href{https://adminlte.io/docs/2.4/js-box-widget}{AdminLTE2} HTML template.
 
 \hypertarget{get-the-value}{%
 \paragraph{Get the value}\label{get-the-value}}
@@ -1958,12 +1961,12 @@ To get the value, we apply the jQuery method \texttt{val} on the \texttt{\$(el)}
 \end{Highlighting}
 \end{Shaded}
 
-This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working.
+This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working. We will introduce them in the following sections!
 
 \hypertarget{set-and-update}{%
 \paragraph{Set and update}\label{set-and-update}}
 
-\texttt{setValue(el,\ value)} is used to set the value of the current input. This method is necessary so that the input value can be updated. It has to be used in combination with \texttt{receiveMessage(el,\ data)}, which is the JavaScript part of all the R \texttt{updateInput} functions. We usually call the \texttt{setValue} method inside.
+\texttt{setValue(el,\ value)} is used to set the value of the current input. This method is necessary so that the input value may be updated. It has to be used in combination with \texttt{receiveMessage(el,\ data)}, which is the JavaScript part of all the R \texttt{updateInput} functions. We usually call the \texttt{setValue} method inside.
 
 Let's create a function to update our custom text input. Call it \texttt{updateCustomTextInput}. It requires at least 3 parameters:
 
@@ -2034,7 +2037,7 @@ We add \texttt{setValue} and \texttt{receiveMessage} to custom input binding:
 Figure \ref{fig:shiny-update-inputs} illustrates the main mechanisms.
 
 \begin{figure}
-\includegraphics[width=20in]{images/survival-kit/shiny-update-inputs} \caption{What happens after clickin on the update button?}\label{fig:shiny-update-inputs}
+\includegraphics[width=20in]{images/survival-kit/shiny-update-inputs} \caption{Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket.}\label{fig:shiny-update-inputs}
 \end{figure}
 
 If we have to pass multiple elements to update, we would have to change the \texttt{updateCustomTextInput} function such as:
@@ -2058,12 +2061,11 @@ If we have to pass multiple elements to update, we would have to change the \tex
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{receiveMessage}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ data) }\OperatorTok{\{}
-\VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(data)}\OperatorTok{;}
-\ControlFlowTok{if}\NormalTok{ (}\VariableTok{data}\NormalTok{.}\AttributeTok{hasOwnProperty}\NormalTok{(}\StringTok{'value'}\NormalTok{)) }\OperatorTok{\{}
-\KeywordTok{this}\NormalTok{.}\AttributeTok{setValue}\NormalTok{(el}\OperatorTok{,} \VariableTok{data}\NormalTok{.}\AttributeTok{value}\NormalTok{)}\OperatorTok{;}
-\OperatorTok{\}}
-
-\CommentTok{// other parameters to update...}
+  \VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(data)}\OperatorTok{;}
+  \ControlFlowTok{if}\NormalTok{ (}\VariableTok{data}\NormalTok{.}\AttributeTok{hasOwnProperty}\NormalTok{(}\StringTok{'value'}\NormalTok{)) }\OperatorTok{\{}
+    \KeywordTok{this}\NormalTok{.}\AttributeTok{setValue}\NormalTok{(el}\OperatorTok{,} \VariableTok{data}\NormalTok{.}\AttributeTok{value}\NormalTok{)}\OperatorTok{;}
+  \OperatorTok{\}}
+  \CommentTok{// other parameters to update...}
 \OperatorTok{\}}
 \end{Highlighting}
 \end{Shaded}
@@ -2073,7 +2075,7 @@ So far so good! We managed to update the text input value. Yet, the output value
 \hypertarget{subscribe}{%
 \paragraph{Subscribe}\label{subscribe}}
 
-\texttt{subscribe(el,\ callback)} listens to events telling under which circumstances to tell Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
+\texttt{subscribe(el,\ callback)} listens to events defining Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like \texttt{hide.bs.tab}, \texttt{shown.bs.tab}, \ldots{}).
 Going back to our custom text input, what event would make it change?
 
 \begin{itemize}
@@ -2148,12 +2150,12 @@ We may add those \href{https://javascript.info/events-change-input}{events} to o
 \end{Highlighting}
 \end{Shaded}
 
-Hurray! The output result is successfuly changed when the input value is manually changed. But nothing happens when we click on the update button. What did we miss? Looking back at the \texttt{receiveMessage} method, we change the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a \texttt{console.log(event);} in the \texttt{subscribe} method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the \texttt{subscribe} method. We may choose the \texttt{change} event, that triggers when an element has finished changing.
+Hooray! The output result is successfully changed when the input value is manually updated. However, nothing happens when we click on the update button. What did we miss? Looking back at the \texttt{receiveMessage} method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a \texttt{console.log(event);} in the \texttt{subscribe} method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the \texttt{subscribe} method. We may choose the \texttt{change} event, that triggers when an element is updated.
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \AttributeTok{$}\NormalTok{(el).}\AttributeTok{on}\NormalTok{(}\StringTok{'change.customTextBinding'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(event) }\OperatorTok{\{}
-\AttributeTok{callback}\NormalTok{(}\KeywordTok{false}\NormalTok{)}\OperatorTok{;}
+  \AttributeTok{callback}\NormalTok{(}\KeywordTok{false}\NormalTok{)}\OperatorTok{;}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -2215,9 +2217,9 @@ Let's try again.
 \end{Highlighting}
 \end{Shaded}
 
-Perfect? Not exactly. Wouldn't is be better to only change the input value once the keyboard is completly released for some time (and not each time a key is released). This is what we call debouncing. This implies to set a delay before telling Shiny to get the new value and the \texttt{getRatePolicy} method is exactly what we need. Additionally, we must also pass true to the \texttt{callback} in the subscribe method, in order to apply our specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
+Perfect? Not exactly. It would be better to only change the input value once the keyboard is completely released for some time (and not each time a key is released). This is what we call debouncing, which allows a delay before telling Shiny to read the new value, and is achieved using the \texttt{getRatePolicy} method. Additionally, we must also pass \texttt{true} to the \texttt{callback} in the subscribe method, in order to apply our specific rate policy (\href{https://davidwalsh.name/javascript-debounce-function}{debounce}, throttle). This is useful for instance when we don't want to flood the server with useless update requests. For example when using a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js}{here}.
 
-Run the app below and try to manually change the text input value by adding a couple of letters as fast as you can. What do you notice? We see that output value only updates when we release the keyboard.
+Run the app below and try to manually change the text input value by adding a couple of letters as fast as you can. What do you notice? We see the output value only updates when we release the keyboard.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2283,7 +2285,7 @@ Run the app below and try to manually change the text input value by adding a co
 \end{Highlighting}
 \end{Shaded}
 
-You may adjust the delay according to your needs, but a too high delay would not feel very natural.
+You may adjust the delay according to your needs, but we caution to not set the delay too long as this becomes problematic too.
 
 \hypertarget{register-an-input-binding}{%
 \paragraph{Register an input binding}\label{register-an-input-binding}}
@@ -2293,20 +2295,20 @@ At the end of the input binding definition, we register it for Shiny.
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{let}\NormalTok{ myBinding }\OperatorTok{=} \KeywordTok{new} \VariableTok{Shiny}\NormalTok{.}\AttributeTok{inputBinding}\NormalTok{()}\OperatorTok{;}
-\VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(myBinding}\OperatorTok{,} \OperatorTok{\{}
-\CommentTok{// methods go here}
+  \VariableTok{$}\NormalTok{.}\AttributeTok{extend}\NormalTok{(myBinding}\OperatorTok{,} \OperatorTok{\{}
+  \CommentTok{// methods go here}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 
 \VariableTok{Shiny}\NormalTok{.}\VariableTok{inputBindings}\NormalTok{.}\AttributeTok{register}\NormalTok{(myBinding}\OperatorTok{,} \StringTok{'reference'}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
 
-Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting bindings, it is better not to have to use it.
+Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html}{documentation} mentions a \texttt{Shiny.inputBindings.setPriority} method to handle conflicting bindings, this case almost never happens.
 
 \hypertarget{binding-other-elements}{%
 \subsubsection{Binding other elements}\label{binding-other-elements}}
 
-The Shiny input binding system is too convenient to only use it for input elements. In shinydashboard, you may know the \texttt{box} function. Boxes are containers with a title, body and footer as well as optional elements. Interestingly we may collapse/uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
+The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the \texttt{box} function. Boxes are containers with a title, body, footer, as well as optional elements. Interestingly we may collapse and uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
 
 \begin{Shaded}
 \begin{Highlighting}[]

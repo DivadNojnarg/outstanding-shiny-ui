@@ -243,30 +243,17 @@ Let's see below what is an input binding and how it works.
 
 ### Input bindings
 
-#### Reminders about Shiny inputs
-Shiny contains a lot of inputs like `sliderInput`, `checkboxInput`, `radioButtons`, `numericInput`, ...Their role is to provide a way for the user to change parameters and update the app state. 
+#### Input structure
+An input element is given by the `<input>` tag as well as several attributes.
 
-```{r, eval=FALSE}
-numericInput("obs", "Observations:", 10, min = 1, max = 100)
+```html
+<input id = inputId type = "text" class = "input-text" value = value>
 ```
 
-All input functions have the same common `inputId` parameter, to guarantee the uniqueness of the given input. 
-
-```{r, eval=FALSE}
-ui <- fluidPage(
-  textInput("text", "My Text 1"),
-  hr(),
-  uiOutput("mytext")
-)
-
-server <- function(input, output, session) {
-  output$mytext <- renderText(input$text)
-}
-
-shinyApp(ui, server)
-```
-
-Now the questions is: how does Shiny recognizes inputs and drives their behavior?
+  - id garantees the input uniquess. We will see very soon that all instances of the same input share a unique input binding, therefore id is mandatory.
+  - [type](https://www.w3schools.com/tags/att_input_type.asp) 
+  - class is targeted by CSS and JavaScript
+  - value holds the input value
 
 #### Binding Shiny inputs
 An input binding allows Shiny to identify each instance of a given input and what you may do with this input. For instance, a slider input must update whenever the range is dragged or when the left and right arrows of the keyboard are pressed. It relies on a class defined in the `input_binding.js` [file](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js). 
@@ -274,25 +261,28 @@ An input binding allows Shiny to identify each instance of a given input and wha
 Let's describe each method chronologically.
 
 ##### Find the input
-The first step, is critical and consists in locating the input in the DOM. We could compare this to the receptor/ligand reaction. 
-On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, the `type` attribute will suit. Sometimes it may also be the class, like for the `actionButton`. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance `radioButton` and `selectInput`) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the `find` method of the `InputBinding` class. This method must be applied on a scope, that is the `document`.  `find` accepts any valid jQuery selector. Figure \@ref(fig:shiny-find-inputs) summarizes this important step.
+The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the `actionButton`. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance `radioButton` and `selectInput`) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the `find` method of the `InputBinding` class. This method must be applied on a scope, that is the `document`.  `find` accepts any valid jQuery selector. Figure \@ref(fig:shiny-find-inputs) summarizes this important step.
 
 
 ```{r shiny-find-inputs, echo=FALSE, fig.cap='How to find inputs?'}
 knitr::include_graphics("images/survival-kit/shiny-find-inputs.png")
 ```
 
-Below, we are going to create a new binding for the `textInput`, with only 2 methods mentionned in the previous section, that is `find` and `getValue`. For that, we need to create a customized textInput, `customTextInput` so that it is not recognized by the classic Shiny text input binding. We add the input-text class and make our own input binding pointing to that specific class.
+Below, we are going to create a new binding for the `textInput`, with only two methods mentionned in the previous section, that is `find` and `getValue`. For that, we need to create a customized textInput, `customTextInput` to make it unique. We now add the `input-text` class and make our own input binding pointing to that specific class.
 
 ```{r}
 customTextInput <- function (inputId, label, value = "", width = NULL, placeholder = NULL) {
-  value <- restoreInput(id = inputId, default = value)
+  
+  # this external wrapper ensure to control the input width
   div(
     class = "form-group shiny-input-container", 
     style = if (!is.null(width)) {
       paste0("width: ", validateCssUnit(width), ";")
     },
+    # input label
     shiny:::shinyInputLabel(inputId, label), 
+    
+    # input element
     tags$input(
       id = inputId, 
       type = "text", 
@@ -303,6 +293,9 @@ customTextInput <- function (inputId, label, value = "", width = NULL, placehold
   )
 }
 ```
+
+`shinyInputLabel` is an internal function of Shiny that creates the numeric input label, in other word the text displayed next to it. The core input element is wrapped by `tags$input`. No worry, we will give more details about shiny tags in the next chapter.
+
 
 We put everything in a Shiny app and invit the reader to open the HTML inspector and look at the `console.log` result.
 
@@ -334,8 +327,14 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+Results are shown on Figure \@ref(fig:shiny-find-inputs-result). If the corresponding input is found, you should see the corresponding tag element in the HTML inspector console.
+
+```{r shiny-find-inputs-result, echo=FALSE, fig.cap='find method output'}
+knitr::include_graphics("images/survival-kit/shiny-find-inputs-result.png")
+```
+
 ##### Initialize inputs
-Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their `initialize` method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. The initialize method is not always defined but some API like [Framework7](https://framework7.io), on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to have it. Below is an example for the toggle input:
+Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their `initialize` method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. The initialize method is not always defined but some elements require to be explicitly initialized or activated. For instance the  [Framework7](https://framework7.io) API, on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to instantiate all elements. Below is an example for the [toggle](https://framework7.io/docs/toggle.html) input:
 
 ```javascript
 // what is expected
@@ -349,7 +348,7 @@ let toggle = app.toggle.create({
 });
 ```
 
-`app.toggle.create` is internal to the API. The corresponding shinyMobile input binding starts as follows. 
+`el: '.toggle'` means that we are looking at the element(s) having the `toggle` class. `app.toggle.create` is internal to the Framework7 API. The corresponding shinyMobile input binding starts as follows. 
 
 ```javascript
 var f7ToggleBinding = new Shiny.InputBinding();
@@ -361,7 +360,7 @@ var f7ToggleBinding = new Shiny.InputBinding();
 });
 ```
 
-Once initialized, we may use all specific methods provided by the API. [Framework7](https://framework7.io) is clearly a gold mine, as its API provides a lot of possible options for many inputs/widgets.
+Once initialized, we may use all specific methods provided by the API. [Framework7](https://framework7.io) is clearly a gold mine, as its API provides many possible options for many inputs / widgets. Later in this section, we will demonstrate how to initialize a box element from the [AdminLTE2](https://adminlte.io/docs/2.4/js-box-widget) HTML template.
 
 ##### Get the value
 `getValue(el)` returns the input value. The way to obtain the value is different for almost all inputs. For instance, the `textInput` is pretty simple since the value is located in the `value` attribute. `el` refers to the element holding the id attribute and recognized by the `find` method. Figure \@ref(fig:shiny-el) shows the result of a `console.log($(el));`.
@@ -404,10 +403,10 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working. 
+This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working. We will introduce them in the following sections!
 
 ##### Set and update 
-`setValue(el, value)` is used to set the value of the current input. This method is necessary so that the input value can be updated. It has to be used in combination with `receiveMessage(el, data)`, which is the JavaScript part of all the R `updateInput` functions. We usually call the `setValue` method inside.
+`setValue(el, value)` is used to set the value of the current input. This method is necessary so that the input value may be updated. It has to be used in combination with `receiveMessage(el, data)`, which is the JavaScript part of all the R `updateInput` functions. We usually call the `setValue` method inside.
 
 Let's create a function to update our custom text input. Call it `updateCustomTextInput`. It requires at least 3 parameters:
 
@@ -467,7 +466,7 @@ shinyApp(ui, server)
 
 Figure \@ref(fig:shiny-update-inputs) illustrates the main mechanisms.
 
-```{r shiny-update-inputs, echo=FALSE, fig.cap='What happens after clickin on the update button?'}
+```{r shiny-update-inputs, echo=FALSE, fig.cap='Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket.'}
 knitr::include_graphics("images/survival-kit/shiny-update-inputs.png")
 ```
 
@@ -490,19 +489,18 @@ updateCustomTextInput <- function(inputId, value = NULL, placeholder = NULL, ses
 
 ```javascript
 receiveMessage: function(el, data) {
-console.log(data);
-if (data.hasOwnProperty('value')) {
-this.setValue(el, data.value);
-}
-
-// other parameters to update...
+  console.log(data);
+  if (data.hasOwnProperty('value')) {
+    this.setValue(el, data.value);
+  }
+  // other parameters to update...
 }
 ```
 
 So far so good! We managed to update the text input value. Yet, the output value does not change. We are going to fix this missing step in the next section.
 
 ##### Subscribe
-`subscribe(el, callback)` listens to events telling under which circumstances to tell Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...).
+`subscribe(el, callback)` listens to events defining Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...).
 Going back to our custom text input, what event would make it change?
 
 - After a key is release on the keyboard. We may listen to `keyup`
@@ -569,11 +567,11 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-Hurray! The output result is successfuly changed when the input value is manually changed. But nothing happens when we click on the update button. What did we miss? Looking back at the `receiveMessage` method, we change the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a `console.log(event);` in the `subscribe` method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the `subscribe` method. We may choose the `change` event, that triggers when an element has finished changing.
+Hooray! The output result is successfully changed when the input value is manually updated. However, nothing happens when we click on the update button. What did we miss? Looking back at the `receiveMessage` method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a `console.log(event);` in the `subscribe` method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the `subscribe` method. We may choose the `change` event, that triggers when an element is updated.
 
 ```javascript
 $(el).on('change.customTextBinding', function(event) {
-callback(false);
+  callback(false);
 });
 ```
 
@@ -632,10 +630,10 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-Perfect? Not exactly. Wouldn't is be better to only change the input value once the keyboard is completly released for some time (and not each time a key is released). This is what we call debouncing. This implies to set a delay before telling Shiny to get the new value and the `getRatePolicy` method is exactly what we need. Additionally, we must also pass true to the `callback` in the subscribe method, in order to apply our specific rate policy ([debounce](https://davidwalsh.name/javascript-debounce-function), throttle). This is useful for instance when we don't want to flood the server with useless update requests. For a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined [here](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js).
+Perfect? Not exactly. It would be better to only change the input value once the keyboard is completely released for some time (and not each time a key is released). This is what we call debouncing, which allows a delay before telling Shiny to read the new value, and is achieved using the `getRatePolicy` method. Additionally, we must also pass `true` to the `callback` in the subscribe method, in order to apply our specific rate policy ([debounce](https://davidwalsh.name/javascript-debounce-function), throttle). This is useful for instance when we don't want to flood the server with useless update requests. For example when using a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined [here](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js).
 
 
-Run the app below and try to manually change the text input value by adding a couple of letters as fast as you can. What do you notice? We see that output value only updates when we release the keyboard.
+Run the app below and try to manually change the text input value by adding a couple of letters as fast as you can. What do you notice? We see the output value only updates when we release the keyboard.
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -699,24 +697,24 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-You may adjust the delay according to your needs, but a too high delay would not feel very natural.
+You may adjust the delay according to your needs, but we caution to not set the delay too long as this becomes problematic too.
 
 ##### Register an input binding
 At the end of the input binding definition, we register it for Shiny.
 
 ```javascript
 let myBinding = new Shiny.inputBinding();
-$.extend(myBinding, {
-// methods go here
+  $.extend(myBinding, {
+  // methods go here
 });
 
 Shiny.inputBindings.register(myBinding, 'reference');
 ```
 
-Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, it is better not to have to use it.
+Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, this case almost never happens.
 
 #### Binding other elements
-The Shiny input binding system is too convenient to only use it for input elements. In shinydashboard, you may know the `box` function. Boxes are containers with a title, body and footer as well as optional elements. Interestingly we may collapse/uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
+The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. Interestingly we may collapse and uncollapse the box. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
 
 ```{r}
 "%OR%" <- function(a, b) if (!is.null(a)) a else b
