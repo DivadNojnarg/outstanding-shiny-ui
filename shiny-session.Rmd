@@ -1,0 +1,50 @@
+# The Shiny session object {#shiny-session}
+We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 
+The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. Understanding how R and JS communicate allows us to discuss the Shiny input system.
+
+  - `sendCustomMessage` sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, throught the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.
+  - `sendInputMessage` is used to update inputs from the server
+  
+The below code is extracted from the `shiny.R` [file](https://github.com/rstudio/shiny/blob/master/R/shiny.R).
+
+```{r}
+sendCustomMessage = function(type, message) {
+  data <- list()
+  data[[type]] <- message
+  private$sendMessage(custom = data)
+}
+
+sendInputMessage = function(inputId, message) {
+  data <- list(id = inputId, message = message)
+  
+  # Add to input message queue
+  private$inputMessageQueue[[length(private$inputMessageQueue) + 1]] <- data
+  # Needed so that Shiny knows to actually flush the input message queue
+  self$requestFlush()
+}
+
+
+sendMessage = function(...) {
+  # This function is a wrapper for $write
+  msg <- list(...)
+  if (anyUnnamed(msg)) {
+    stop("All arguments to sendMessage must be named.")
+  }
+  private$write(toJSON(msg))
+}
+
+
+write = function(json) {
+  if (self$closed){
+    return()
+  }
+  traceOption <- getOption('shiny.trace', FALSE)
+  if (isTRUE(traceOption) || traceOption == "send")
+    message('SEND ',
+            gsub('(?m)base64,[a-zA-Z0-9+/=]+','[base64 data]',json,perl=TRUE))
+  private$websocket$send(json)
+}
+# ...
+```
+
+No worry if it is not clear at the moment. We will discuss those elements in the following sections.

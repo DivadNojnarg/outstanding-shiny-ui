@@ -1,0 +1,49 @@
+# Websocket: R/JS bidirectional communication {#shiny-websocket}
+How does R (server) and JavaScript (client) communicate? This is a builtin Shiny feature highlighted [here](https://github.com/rstudio/shiny), which leverages the [httpuv](https://github.com/rstudio/httpuv) and [websocket](https://github.com/rstudio/websocket) packages. Before going further let's define what is a websocket! It is an advanced technology allowing bidirectional communication between a client and a server. For instance, a chat system may be built on top of a websocket. In the following, we will show how to inspect the websocket in a web browser. Let's run the following app (see  \@ref(fig:shiny-websocket), left panel)
+
+```{r, eval=FALSE}
+shinyApp(
+  ui = fluidPage(
+    selectInput("variable", "Variable:",
+                c("Cylinders" = "cyl",
+                  "Transmission" = "am",
+                  "Gears" = "gear")),
+    tableOutput("data")
+  ),
+  server = function(input, output) {
+    output$data <- renderTable({
+      mtcars[, c("mpg", input$variable), drop = FALSE]
+    }, rownames = TRUE)
+  }
+)
+```
+
+After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js [file](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). The first element received from R is the first message in the list shown in Figure \@ref(fig:shiny-websocket). It is a JSON object containing the method used as well as passed data. In the meantime, you may change the select input value.
+
+```javascript
+socket.send(JSON.stringify({
+  method: 'init',
+  data: self.$initialInput
+}));
+```
+
+The second message received from R is after updating the select input.
+
+```javascript
+this.sendInput = function(values) {
+  var msg = JSON.stringify({
+    method: 'update',
+    data: values
+  });
+// other things
+};
+```
+
+Although complex, it is extremely useful to check whether the input / output communication are working properly. If not, we would see the error field identifying the issue. 
+
+Finally, `Shiny.shinyapp.$socket.readyState` returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, nothing would be shown. Note that the R option `options(shiny.trace = TRUE)` allows the websocket messages to be displayed directly in the R console.
+
+
+```{r shiny-websocket, echo=FALSE, fig.cap='Shiny websocket'}
+knitr::include_graphics("images/survival-kit/shiny-websocket.png")
+```
