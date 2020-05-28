@@ -199,6 +199,9 @@ This book will serve as a reference for the e-Rum2020 \href{https://2020.erum.io
 \KeywordTok{library}\NormalTok{(fresh)}
 \KeywordTok{library}\NormalTok{(testthat)}
 \KeywordTok{library}\NormalTok{(jstools)}
+\KeywordTok{library}\NormalTok{(scales)}
+\KeywordTok{library}\NormalTok{(dplyr)}
+\KeywordTok{library}\NormalTok{(apexcharter)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -4290,8 +4293,14 @@ Below is the result. The next step consist in replacing all content by parameter
 \NormalTok{\}}
 
 \CommentTok{# test the card}
+\KeywordTok{data}\NormalTok{(}\StringTok{"economics_long"}\NormalTok{)}
+\NormalTok{economics_long <-}\StringTok{ }\NormalTok{economics_long }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{group_by}\NormalTok{(variable) }\OperatorTok{%>%}
+\StringTok{  }\KeywordTok{slice}\NormalTok{((}\KeywordTok{n}\NormalTok{()}\OperatorTok{-}\DecValTok{100}\NormalTok{)}\OperatorTok{:}\KeywordTok{n}\NormalTok{())}
+
+
 \NormalTok{my_card <-}\StringTok{ }\KeywordTok{tabler_card}\NormalTok{(}
-  \KeywordTok{p}\NormalTok{(}\StringTok{"Hello"}\NormalTok{), }
+  \KeywordTok{apexchartOutput}\NormalTok{(}\StringTok{"my_chart"}\NormalTok{), }
   \DataTypeTok{title =} \StringTok{"My card"}\NormalTok{, }
   \DataTypeTok{status =} \StringTok{"danger"}
 \NormalTok{)}
@@ -4310,19 +4319,44 @@ In the meantime, I'd be also nice to be able to display cards in the same row. L
 
 \begin{Shaded}
 \begin{Highlighting}[]
+\NormalTok{spark_data <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}
+  \DataTypeTok{date =} \KeywordTok{Sys.Date}\NormalTok{() }\OperatorTok{+}\StringTok{ }\DecValTok{1}\OperatorTok{:}\DecValTok{20}\NormalTok{,}
+  \DataTypeTok{var1 =} \KeywordTok{round}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(}\DecValTok{20}\NormalTok{, }\DecValTok{50}\NormalTok{, }\DecValTok{10}\NormalTok{)),}
+  \DataTypeTok{var2 =} \KeywordTok{round}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(}\DecValTok{20}\NormalTok{, }\DecValTok{50}\NormalTok{, }\DecValTok{10}\NormalTok{)),}
+  \DataTypeTok{var3 =} \KeywordTok{round}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(}\DecValTok{20}\NormalTok{, }\DecValTok{50}\NormalTok{, }\DecValTok{10}\NormalTok{))}
+\NormalTok{)}
+
 \NormalTok{ui <-}\StringTok{ }\KeywordTok{tabler_page}\NormalTok{(}
   \KeywordTok{tabler_body}\NormalTok{(}
     \KeywordTok{tabler_row}\NormalTok{(}
 \NormalTok{      my_card,}
       \KeywordTok{tabler_card}\NormalTok{(}
-        \KeywordTok{p}\NormalTok{(}\StringTok{"Hello"}\NormalTok{), }
+        \KeywordTok{apexchartOutput}\NormalTok{(}\StringTok{"spark_box"}\NormalTok{), }
         \DataTypeTok{title =} \StringTok{"My card"}\NormalTok{, }
         \DataTypeTok{status =} \StringTok{"success"}
 \NormalTok{      ) }
 \NormalTok{    )}
 \NormalTok{  )}
 \NormalTok{)}
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output) \{\}}
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{my_chart <-}\StringTok{ }\KeywordTok{renderApexchart}\NormalTok{(\{}
+    \KeywordTok{apex}\NormalTok{(}\DataTypeTok{data =}\NormalTok{ economics_long, }\DataTypeTok{type =} \StringTok{"area"}\NormalTok{, }\DataTypeTok{mapping =} \KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =}\NormalTok{ date, }\DataTypeTok{y =}\NormalTok{ value01, }\DataTypeTok{fill =}\NormalTok{ variable)) }\OperatorTok{%>%}
+\StringTok{      }\KeywordTok{ax_yaxis}\NormalTok{(}\DataTypeTok{decimalsInFloat =} \DecValTok{2}\NormalTok{) }\OperatorTok{%>%}\StringTok{ }\CommentTok{# number of decimals to keep}
+\StringTok{      }\KeywordTok{ax_chart}\NormalTok{(}\DataTypeTok{stacked =} \OtherTok{TRUE}\NormalTok{) }\OperatorTok{%>%}
+\StringTok{      }\KeywordTok{ax_yaxis}\NormalTok{(}\DataTypeTok{max =} \DecValTok{4}\NormalTok{, }\DataTypeTok{tickAmount =} \DecValTok{4}\NormalTok{)}
+\NormalTok{  \})}
+  
+\NormalTok{  output}\OperatorTok{$}\NormalTok{spark_box <-}\StringTok{ }\KeywordTok{renderApexchart}\NormalTok{(\{}
+    \KeywordTok{spark_box}\NormalTok{(}
+      \DataTypeTok{data =}\NormalTok{ spark_data[, }\KeywordTok{c}\NormalTok{(}\StringTok{"date"}\NormalTok{, }\StringTok{"var3"}\NormalTok{)],}
+      \DataTypeTok{title =} \KeywordTok{mean}\NormalTok{(spark_data}\OperatorTok{$}\NormalTok{var3), }
+      \DataTypeTok{subtitle =} \StringTok{"Variable 3"}\NormalTok{,}
+      \DataTypeTok{color =} \StringTok{"#FFF"}\NormalTok{, }\DataTypeTok{background =} \StringTok{"#2E93fA"}\NormalTok{,}
+      \DataTypeTok{title_style =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{color =} \StringTok{"#FFF"}\NormalTok{),}
+      \DataTypeTok{subtitle_style =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{color =} \StringTok{"#FFF"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  \})}
+\NormalTok{\}}
 \KeywordTok{shinyApp}\NormalTok{(ui, server)}
 \end{Highlighting}
 \end{Shaded}
@@ -4330,7 +4364,7 @@ In the meantime, I'd be also nice to be able to display cards in the same row. L
 The code output is also shown in Figure \ref{fig:tabler-card}.
 
 \begin{figure}
-\includegraphics[width=15.04in]{images/practice/tabler-card} \caption{Tabler card component}\label{fig:tabler-card}
+\includegraphics[width=14.85in]{images/practice/tabler-card} \caption{Tabler card component}\label{fig:tabler-card}
 \end{figure}
 
 \hypertarget{ribbons-card-components}{%
