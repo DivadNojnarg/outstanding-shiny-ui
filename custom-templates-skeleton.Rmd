@@ -150,7 +150,7 @@ ui <- tabler_page(
   ),
 title = "Tabler test"
 )
-server <- function(input, output, session) {
+server <- function(input, output) {
   output$distPlot <- renderPlot({
     hist(rnorm(input$obs))
   })
@@ -182,7 +182,7 @@ Let's test it with the previous example.
 
 ```{r, eval=FALSE}
 ui <- tabler_page(tabler_body(h1("Hello World")))
-server <- function(input, output, session) {}
+server <- function(input, output) {}
 shinyApp(ui, server)
 ```
 
@@ -220,7 +220,7 @@ ui <- tabler_page(
     )
   )
 )
-server <- function(input, output, session) {}
+server <- function(input, output) {}
 shinyApp(ui, server)
 ```
 
@@ -326,7 +326,7 @@ Let's see how tabset navigation works. In the menu list, all items must have:
   - a `data-toggle` attribute set to tab 
   - an `href` attribute holding a unique id. This unique id is mandatory since it will point the menu item to the corresponding body content. 
   
-On the body side, tab panels are contained in a tabset panel (simple div container), have a `role` attribute set to tabpanel and an `id` corresponding the `href` passed in the menu item. The exact match between `id` and `href` is mandatory, as shown in Figure \@ref(fig:). 
+On the body side, tab panels are contained in a tabset panel (simple div container), have a `role` attribute set to tabpanel and an `id` corresponding the `href` passed in the menu item. The exact match between `id` and `href` is mandatory, as shown in Figure \@ref(fig:tabler-tabset). 
 
 ```{r tabler-tabset, echo=FALSE, fig.cap='Tabler tabset main principle'}
 knitr::include_graphics("images/practice/tabler-tabset.png")
@@ -409,7 +409,7 @@ ui <- tabler_page(
     )
   )
 )
-server <- function(input, output, session) {}
+server <- function(input, output) {}
 shinyApp(ui, server)
 ```
 
@@ -507,7 +507,7 @@ ui <- tabler_page(
     )
   )
 )
-server <- function(input, output, session) {
+server <- function(input, output) {
   output$distPlot <- renderPlot({
     hist(rnorm(input$obs))
   })
@@ -525,7 +525,7 @@ knitr::include_graphics("images/practice/tabler-nav.png")
 Looks like we are done for the main template elements. Actually, wouldn't it be better to include, at least, card containers?
 
 ### Card containers
-Card are a central piece of template as they may contain visualizations, metrics and much more. Tabler has a large range of card containers. 
+Card are a central piece of template as they may contain visualizations, metrics and much more. Fortunately, Tabler has a large range of card containers. 
 
 
 #### Classic card
@@ -551,35 +551,34 @@ A comprehensive list of all tabler card features may be found [here](https://pre
 </div>
 ```
 
-Below is the result. The next step consist in replacing all content by parameters to the `tabler_card` function, whenever necessary. For instance, the first `<div>` sets the width of the card. The Bootstrap grid ranges from 0 to 12, so why not creating a width parameter to control the card size. We proceed similarly for the title, status, body content. A last comment on parameters default values. It seems reasonable to allow title to be NULL (if so, the title won't be shown), same thing for the status. Regarding the card default width, 6 also makes sense.
+Below is the result. The next step consist in replacing all content by parameters to the `tabler_card` function, whenever necessary. For instance, the first `<div>` sets the width of the card. The Bootstrap grid ranges from 0 to 12, so why not creating a width parameter to control the card size. We proceed similarly for the title, status, body content. It seems reasonable to allow title to be NULL (if so, the title won't be shown), same thing for the status. Regarding the card default width, 6 also makes sense, which would take half of the row.
 
 ```{r}
-tabler_card <- function(..., title = NULL, status = NULL, width = 6, stacked = FALSE, padding = NULL) {
+tabler_card <- function(..., title = NULL, status = NULL, width = 6, padding = NULL) {
   
   card_cl <- paste0(
     "card", 
-    if (stacked) " card-stacked",
     if (!is.null(padding)) paste0(" card-", padding)
   )
   
-  div(
-    class = paste0("col-md-", width),
-    div(
-      class = card_cl,
-      if (!is.null(status)) {
-        div(class = paste0("card-status-top bg-", status))
-      },
-      div(
-        class = "card-body",
-        # we could have a smaller title like h4 or h5...
-        if (!is.null(title)) {
-          h3(class = "card-title", title)
-        },
-        ...
-      )
-    )
+  status_tag <- if (!is.null(status)) {
+    div(class = paste0("card-status-top bg-", status))
+  }
+  
+  body_tag <- div(
+    class = "card-body",
+    # we could have a smaller title like h4 or h5...
+    if (!is.null(title)) {
+      h3(class = "card-title", title)
+    },
+    ...
   )
   
+  main_wrapper <- div(class = paste0("col-md-", width))
+  card_wrapper <- div(class = card_cl)
+  
+  card_wrapper <- card_wrapper %>% tagAppendChildren(status_tag, body_tag)
+  main_wrapper %>% tagAppendChild(card_wrapper)
 }
 
 # test the card
@@ -611,8 +610,14 @@ ui <- tabler_page(
     )
   )
 )
-server <- function(input, output, session) {}
+server <- function(input, output) {}
 shinyApp(ui, server)
+```
+
+The code output is also shown in Figure \@ref(fig:tabler-card).
+
+```{r tabler-card, echo=FALSE, fig.cap='Tabler card component'}
+knitr::include_graphics("images/practice/tabler-card.png")
 ```
 
 ### Ribbons: card components
@@ -635,12 +640,16 @@ Integrating the freshly created ribbon component requires to modify the card str
 
 ```{r}
 # add the ribbon to a card
-my_card <- tabler_card(title = "Ribbon")
+my_card <- tabler_card(title = "Ribbon", status = "info")
+
+str(my_card)
+
 my_card$children[[1]] <- my_card$children[[1]] %>% 
   tagAppendChild(
     tabler_ribbon(
       icon("info-circle", class = "fa-lg"), 
-      bookmark = TRUE
+      bookmark = TRUE,
+      color = "red"
     )
   )
 ```
@@ -653,12 +662,16 @@ ui <- tabler_page(
     my_card
   )
 )
-server <- function(input, output, session) {}
+server <- function(input, output) {}
 shinyApp(ui, server)
 ```
 
+```{r tabler-ribbon, echo=FALSE, fig.cap='Tabler ribbon component'}
+knitr::include_graphics("images/practice/tabler-ribbon.png")
+```
+
 ### Icons
-Not mentionned before but we can use fontawesome icons provided with Shiny, as well as other libraries. Moreover, tabler has a svg library located [here](https://preview-dev.tabler.io/icons.html).
+Not mentionned before but we may include fontawesome icons provided with Shiny, as well as other libraries. Moreover, Tabler has a internal svg library located [here](https://preview-dev.tabler.io/icons.html).
 
 
 ## Exercises
