@@ -10,7 +10,7 @@ knitr::include_graphics("images/practice/tabler-layout-intro.png")
 
 There are 2 main components:
 - the header containing the brand logo, the navigation and dropdown
-- the content containing the dashboard body  as well as the footer
+- the content containing the dashboard body as well as the footer
 
 <br>
 <div class="callout callout-danger">
@@ -40,59 +40,64 @@ Do you remember the structure of a basic html page seen in Chapter \@ref(surviva
 </html>
 ```
 
-We actually don't need to take care of the `<html>` tag. Below we construct a list of tags with `tagList`, including the head and the body. In the head we have `meta` tag that briefly describe the encoding, how to display the app on different devices (For instance `apple-mobile-web-app-status-bar-style` is for mobile support), set the favicon (website icon, the icon you see on the right side of the searchbar. Try twitter for instance). The page title may change, so is the favicon, so we include them as parameters of the function. If you remember, there also should be CSS in the head but nothing here! Actually, the insertion of dependencies will be achieved by our `addDeps` function defined in Chapter \@ref(custom-templates-dependencies). This is what we do to the `<body>` tag that is wrapped by this function. Let's talk about the dark parameter. In short, the only difference between the dark and the light theme is the class applied to the `<body>` tag (respectively "antialiased theme-dark" and "antialiased"). The ... parameter contain other template elements like the header and the dashboard body, that remain to be created.
+We actually don't need to include the `<html>` tag since shiny will automatically do it. Below we construct a list of tags with `tagList`, including the head and the body. In the head we have `meta` tags which have multiple purposes:
+
+  - describe the encoding, 
+  - how to display the app on different devices. For instance `apple-mobile-web-app-status-bar-style` is for iOS devices mobile support. 
+  - Set the favicon, which is an icon representing the website icon, that is the one you may see on the right side of the searchbar. Try [twitter](https://twitter.com/home) for instance. 
+  
+Since the page title and favicon may change, we include them as parameters of the function. If you remember, there also should be CSS in the head but nothing here! Actually, the insertion of dependencies will be achieved by our `addDeps` function defined in Chapter \@ref(custom-templates-dependencies). Tabler comes with 2 main themes, namely white and dark, which may be applied through the `<body>` class attribute (respectively "antialiased theme-dark" and "antialiased"). The ... parameter contain other template elements like the header and the dashboard body, that remain to be created. As shown in Figure \@ref(fig:tabler-dark) of Chapter \@ref(custom-templates-selection), the tabler dashboard template may contain a navigation bar and a footer. As they are not mandatory, we will not create dedicated parameters and pass all elements in the ...slot.
 
 ```{r}
 tabler_page <- function(..., dark = TRUE, title = NULL, favicon = NULL){
   
-  tagList(
-    # Head
-    tags$head(
-      tags$meta(charset = "utf-8"),
-      tags$meta(
-        name = "viewport", 
-        content = "
+  # head
+  head_tag <- tags$head(
+    tags$meta(charset = "utf-8"),
+    tags$meta(
+      name = "viewport", 
+      content = "
         width=device-width, 
         initial-scale=1, 
         viewport-fit=cover"
-      ),
-      tags$meta(`http-equiv` = "X-UA-Compatible", content = "ie=edge"),
-      tags$title(title),
-      tags$link(
-        rel = "preconnect", 
-        href = "https://fonts.gstatic.com/", 
-        crossorigin = NA
-      ),
-      tags$meta(name = "msapplication-TileColor", content = "#206bc4"),
-      tags$meta(name = "theme-color", content = "#206bc4"),
-      tags$meta(name = "apple-mobile-web-app-status-bar-style", content = "black-translucent"),
-      tags$meta(name = "apple-mobile-web-app-capable", content = "yes"),
-      tags$meta(name = "mobile-web-app-capable", content = "yes"),
-      tags$meta(name = "HandheldFriendly", content = "True"),
-      tags$meta(name = "MobileOptimized", content = "320"),
-      tags$meta(name = "robots", content = "noindex,nofollow,noarchive"),
-      tags$link(rel = "icon", href = favicon, type = "image/x-icon"),
-      tags$link(rel = "shortcut icon", href = favicon, type="image/x-icon")
     ),
-    # Body
-    addDeps(
-      tags$body(
-        tags$div(
-          class = paste0("antialiased ", if(dark) "theme-dark"),
-          style = "display: block;",
-          tags$div(class = "page", ...)
-        )
-      )
-    )
+    tags$meta(`http-equiv` = "X-UA-Compatible", content = "ie=edge"),
+    tags$title(title),
+    tags$link(
+      rel = "preconnect", 
+      href = "https://fonts.gstatic.com/", 
+      crossorigin = NA
+    ),
+    tags$meta(name = "msapplication-TileColor", content = "#206bc4"),
+    tags$meta(name = "theme-color", content = "#206bc4"),
+    tags$meta(name = "apple-mobile-web-app-status-bar-style", content = "black-translucent"),
+    tags$meta(name = "apple-mobile-web-app-capable", content = "yes"),
+    tags$meta(name = "mobile-web-app-capable", content = "yes"),
+    tags$meta(name = "HandheldFriendly", content = "True"),
+    tags$meta(name = "MobileOptimized", content = "320"),
+    tags$meta(name = "robots", content = "noindex,nofollow,noarchive"),
+    tags$link(rel = "icon", href = favicon, type = "image/x-icon"),
+    tags$link(rel = "shortcut icon", href = favicon, type="image/x-icon")
   )
+  
+  # body
+  body_tag <- tags$body(
+    tags$div(
+      class = paste0("antialiased ", if(dark) "theme-dark"),
+      style = "display: block;",
+      tags$div(class = "page", ...)
+    )
+  ) %>% addDeps()
+  
+  tagList(head_tag, body_tag)
 }
 ```
 
-Below we quickly test if a tabler element renders well to see whether our dependency system is adequately setup. To that end, we include a random tabler element taken from the demo html page and include it as raw html, using `HTML`. We also ensure that basic Shiny input/output system works as expected with a sliderInput linked to a plot output.
+Below we quickly test if a tabler element renders well to see whether our dependency system is adequately setup. To that end, we include a random tabler element taken from the demo html page, using `HTML`. Let's be clear: you should avoid as much as possible using `HTML` because of security [issues](https://mastering-shiny.org/advanced-ui.html). We also ensure that basic Shiny input/output system works as expected with a sliderInput linked to a plot output.
 
 ```{r, eval=FALSE}
-thematic_on()
-onStop(thematic_off)
+#thematic_on()
+#onStop(thematic_off)
 ui <- tabler_page(
   "test", 
   sliderInput("obs", "Number of observations:",
@@ -153,11 +158,15 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-Ok... The layout is ugly, margins are not correct, the plot background does not match with the overall theme, ... but our info card and the shiny element work like a charm, which is a good start.
-
+The layout looks quite ugly :
+  - margins are not correct
+  - the slider min and max indicators are not enough visible
+  - the plot background does not match with the overall theme
+  
+However, our info card and the shiny element work like a charm, which is a good start.
 
 ### The body content
-In this part, we translate the dashboard body HTML code to R. We create a function called `tabler_body`. The ... parameter holds all the dashboard body elements and the footer is dedicated for the future `tabler_footer` function.
+In this part, we translate the dashboard body HTML code to R. As a reminder, the [html2r](https://alandipert.shinyapps.io/html2r/) by [Alan Dipert](https://github.com/alandipert) substantially speeds up the conversion process. You copy the code in the HTML text area, click on convert and get the R shiny output. We create a function called `tabler_body`. The ... parameter holds all the dashboard body elements and the footer is dedicated for the future `tabler_footer` function.
 
 ```{r}
 tabler_body <- function(..., footer = NULL) {
@@ -172,7 +181,7 @@ tabler_body <- function(..., footer = NULL) {
 Let's test it with the previous example.
 
 ```{r, eval=FALSE}
-ui <- tabler_page(tabler_body(p("Hello World")))
+ui <- tabler_page(tabler_body(h1("Hello World")))
 server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
@@ -180,10 +189,9 @@ shinyApp(ui, server)
 Way better!
 
 
-
 ### The footer
 
-The footer is composed of a left and right containers. We decide to create parameters left and right in which the user will be able to pass any elements.
+The footer is composed of a left and right containers. We decide to create parameters left and right in which the user will be able to pass any elements. 
 
 ```{r}
 tabler_footer <- function(left = NULL, right = NULL) {
@@ -198,6 +206,8 @@ tabler_footer <- function(left = NULL, right = NULL) {
 }
 ```
 
+All the class attributes are taken from the original HTML template. If you are already familiar with Bootstrap 4, you may easily customize the style. In short, `row` means that all elements will be aligned on a row, `text-center` amd `align-items-center` handle the text and content centering. `flex-row-reverse` display elements in a reversed order. Notice also that a `row` element contains columns created with the `col` class. The Bootstrap grid system relies on the Flexible Box Module, also known as [flexbox](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout/Basic_Concepts_of_Flexbox). 
+
 As above, let's check our brand new element.
 
 ```{r, eval=FALSE}
@@ -206,7 +216,7 @@ ui <- tabler_page(
     p("Hello World"),
     footer = tabler_footer(
       left = "Rstats, 2020", 
-      right = a(href = "https://www.google.com")
+      right = a(href = "https://www.google.com", "More")
     )
   )
 )
@@ -215,84 +225,88 @@ shinyApp(ui, server)
 ```
 
 ### The navbar (or header)
-This function is called `tabler_header`. In the tabler template, the header has the classes "navbar navbar-expand-md navbar-light". We don't need the navbar-light classe since we are interested in the dark theme. As shown in Figure \@ref(fig:tabler-header), the navbar is composed of 4 elements:
+This function is called `tabler_header`. In the tabler template, the header has the `navbar navbar-expand-md navbar-light` classes. We don't need the navbar-light classe since we are only interested in the dark theme. As shown in Figure \@ref(fig:tabler-header), the navbar is composed of 4 elements:
 
-- the navbar toggler is only visible when we reduce the screen width (like on mobile devices)
-- the brand image
-- the navigation
-- the dropdown menu (this is not mandatory)
-
-You may have a look at the [Bootstrap 4](https://getbootstrap.com/docs/4.0/components/navbar/) documentation for the navbar configuration and layout.
-
-Each of these element will be considered as an input parameter to the `tabler_navbar` function, except the first element which is a default element and should not be removed. Morever, we will only show the brand element when it is provided. The ... parameter is a slot for extra elements (between the menu and dropdowns).
-
+  - the navbar toggler is only visible when we reduce the screen width, like on mobile devices
+  - the brand image
+  - the navigation
+  - the dropdown menus (this is not mandatory)
+  
 ```{r tabler-header, echo=FALSE, fig.cap='Tabler header structure'}
 knitr::include_graphics("images/practice/tabler-header.png")
 ```
 
+You may have a look at the [Bootstrap 4](https://getbootstrap.com/docs/4.0/components/navbar/) documentation for extra configuration and layout.
+
+Each of these element will be considered as an input parameter to the `tabler_navbar` function, except the navbar toggler which is a default element and must not be removed. Morever, we will only show the brand element when it is provided. The ... parameter is a slot for extra elements (between the menu and dropdowns). In the following, we start by creating the main container, that is `header_tag` and its unique child `container_tag`. The latter has 4 children `toggler_tag`, `brand_tag`, `dropdown_tag` and `navmenu_tag`. In this situations, {htmltools} functions like `tagAppendChild` and `tagAppendChildren` are game changers to better organize the code and make it more maintainable. One never knows in advance how much extra feature will be added to that component. Hence being cautious at the very beginning is crucial! 
 
 
 ```{r}
 tabler_navbar <- function(..., brand_url = NULL, brand_image = NULL, nav_menu, nav_right = NULL) {
-  navbar_cl <- "navbar navbar-expand-md"
-  tags$header(
-    class = navbar_cl,
-    tags$div(
-      class = "container-xl",
-      # toggler for small devices (must not be removed)
-      tags$button(
-        class = "navbar-toggler", 
-        type = "button", 
-        `data-toggle` = "collapse", 
-        `data-target` = "#navbar-menu",
-        span(class = "navbar-toggler-icon")
-      ),
-      
-      # brand stuff
-      if (!is.null(brand_url) || !is.null(brand_image)) {
-        a(
-          href = if (!is.null(brand_url)) {
-            brand_url
-          } else {
-            "#"
-          },
-          class = "navbar-brand navbar-brand-autodark d-none-navbar-horizontal pr-0 pr-md-3",
-          if(!is.null(brand_image)) {
-            img(
-              src = brand_image, 
-              alt = "brand Image",
-              class = "navbar-brand-image"
-            )
-          }
-        )
-      },
-      
-      # slot for dropdown element
-      if (!is.null(nav_right)) {
-        div(class = "navbar-nav flex-row order-md-last", nav_right)
-      },
-      
-      # 
-      div(
-        class = "collapse navbar-collapse", 
-        id = "navbar-menu",
-        div(
-          class = "d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center",
-          nav_menu
-        ),
-        if (length(list(...)) > 0) {
-          div(
-            class = "ml-md-auto pl-md-4 py-2 py-md-0 mr-md-4 order-first order-md-last flex-grow-1 flex-md-grow-0", 
-            ...
-          )
-        }
-      )
-    )
+  
+  header_tag <- tags$header(class = "navbar navbar-expand-md")
+  container_tag <- tags$div(class = "container-xl")
+  
+  # toggler for small devices (must not be removed)
+  toggler_tag <- tags$button(
+    class = "navbar-toggler", 
+    type = "button", 
+    `data-toggle` = "collapse", 
+    `data-target` = "#navbar-menu",
+    span(class = "navbar-toggler-icon")
   )
+  
+  # brand elements
+  brand_tag <- if (!is.null(brand_url) || !is.null(brand_image)) {
+    a(
+      href = if (!is.null(brand_url)) {
+        brand_url
+      } else {
+        "#"
+      },
+      class = "navbar-brand navbar-brand-autodark d-none-navbar-horizontal pr-0 pr-md-3",
+      if(!is.null(brand_image)) {
+        img(
+          src = brand_image, 
+          alt = "brand Image",
+          class = "navbar-brand-image"
+        )
+      }
+    )
+  }
+  
+  dropdown_tag <- if (!is.null(nav_right)) {
+    div(class = "navbar-nav flex-row order-md-last", nav_right)
+  }
+  
+  navmenu_tag <- div(
+    class = "collapse navbar-collapse", 
+    id = "navbar-menu",
+    div(
+      class = "d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center",
+      nav_menu
+    ),
+    if (length(list(...)) > 0) {
+      div(
+        class = "ml-md-auto pl-md-4 py-2 py-md-0 mr-md-4 order-first order-md-last flex-grow-1 flex-md-grow-0", 
+        ...
+      )
+    }
+  )
+  
+  container_tag <- container_tag %>% tagAppendChildren(
+    toggler_tag,
+    brand_tag,
+    dropdown_tag,
+    navmenu_tag
+  )
+  
+  header_tag %>% tagAppendChild(container_tag)
+  
 }
 ```
 
-Let's create the navbar menu. The ... parameter is a slot for the menu items. Compared to the original tabler dashboard template where there is only the class navbar-nav, we have to add, at least, the nav class to make sure items are correctly activated/inactivated. The nav-pills class is to select pills instead of basic tabs (see [here](https://getbootstrap.com/docs/4.0/components/navs/)).
+The navbar menu is the main component of the navbar. The ... parameter is a slot for the menu items. Compared to the original tabler dashboard template where there is only the class navbar-nav, we have to add at least, the `nav` class to make sure items are correctly activated/inactivated. The `nav-pills` class is to select pills instead of basic tabs (see [here](https://getbootstrap.com/docs/4.0/components/navs/)), which is nothing more than a cosmetic consideration. Notice the `ul` tag that will contain `li` elements, that is the navbar items.
 
 ```{r}
 tabler_navbar_menu <- function(...) {
@@ -300,14 +314,25 @@ tabler_navbar_menu <- function(...) {
 }
 ```
 
-Each navbar menu item could be either a simple button or contain multiple menu sub-items. For now, we only focus on simple items.
+Besides, each navbar menu item could be either a simple button or contain multiple menu sub-items. For now, we only focus on simple items.
 
 #### Navbar navigation
-This part is extremely important since it will drives the navigation of the template. What do we want? We would like to associate each item to a separate page in the body content, so that each time we change item, we go on another page. In brief, it is very similar to the Shiny `tabsetPanel` function.
+This part is extremely important since it will drive the navigation of the template. We would like to associate each item to a separate page in the body content, so that each time we change item, we go on another page. In brief, it is very similar to the Shiny `tabsetPanel` function.
 
 In HTML, menu items are `<a>` tags (links) with a given `href` attribute pointing to a specific page located in the server files. The point with a Shiny app is that we can't decide how to split our content into several pages. We only have app.R generating a simple HTML page. The strategy here is to create a tabbed navigation, to mimic multiple pages.
 
-Let's see how tabset navigation works. In the menu list, all items must have a `data-toggle` attribute set to tab, an `href` attribute holding a unique id. This unique id is mandatory since it will point the menu item to the corresponding body content. On the body side, tab panels are contained in a tabset panel (simple div container), have a `role` attribute set to tabpanel and an `id` corresponding the tabName passed in the menu item. Below, we propose a possible implementation of a menu item, as well as the corresponding body tab panel.
+Let's see how tabset navigation works. In the menu list, all items must have: 
+
+  - a `data-toggle` attribute set to tab 
+  - an `href` attribute holding a unique id. This unique id is mandatory since it will point the menu item to the corresponding body content. 
+  
+On the body side, tab panels are contained in a tabset panel (simple div container), have a `role` attribute set to tabpanel and an `id` corresponding the `href` passed in the menu item. The exact match between `id` and `href` is mandatory, as shown in Figure \@ref(fig:). 
+
+```{r tabler-tabset, echo=FALSE, fig.cap='Tabler tabset main principle'}
+knitr::include_graphics("images/practice/tabler-tabset.png")
+```
+
+Below, we propose a possible implementation of a menu item, as well as the corresponding body tab panel. The text parameter corresponds to the nav item text displayed in the menu. We also added an optional icon and the ability to select the item at start.
 
 ```{r}
 tabler_navbar_menu_item <- function(text, tabName, icon = NULL, selected = FALSE) {
@@ -388,8 +413,15 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
+At this point you might argue that we did not even validated the template elements. For instance, going back to the `tabler_navbar_menu_item` function, we find the following possible issues:
+
+  - What happens if the user provides an invalid tabName, ie a text that is not valid for jQuery like `tab&?++`?
+  - What happens if the user accidentaly activates 2 tabs at start?
+  
+We will see later in Chapter \@ref(custom-templates-testing) how to validate those parameter.
+
 #### Fine tune tabs behavior
-Quite good isn't it? However, you will notice that even if the first tab is selected by default, its content is not shown! To fix this, we will apply our jQuery skills. According to the Bootstrap documentation, we must trigger the show event on the active tab at start, as well as add the classes show and active to the associated tab panel in the dashboard body. We therefore target the nav item that has the active class and if no item is found, we select the first item by default and activate its tab. We will explore another alternative in Chapter \@ref(custom-templates-inputs).
+Quite good isn't it? You will notice however that even if the first tab is selected by default, its content is not shown. To fix this, we will apply our jQuery skills. According to the Bootstrap documentation, we must trigger the show event on the active tab at start, as well as add the classes `show` and `active` to the associated tab panel in the dashboard body. We therefore target the nav item that has the active class and if no item is found, we select the first item by default and activate its body content. We will explore another alternative in Chapter \@ref(custom-templates-inputs).
 
 ```javascript
 $(function() {
@@ -411,8 +443,8 @@ $(function() {
 The script is included in a tag but best practice it to put it in a separate js file (I do it this way because it is more convenient for the demonstration).
 
 ```{r, eval=FALSE}
-thematic_on()
-onStop(thematic_off)
+#thematic_on()
+#onStop(thematic_off)
 ui <- tabler_page(
   tags$head(
     tags$script(
@@ -471,7 +503,7 @@ ui <- tabler_page(
     ),
     footer = tabler_footer(
       left = "Rstats, 2020", 
-      right = a(href = "https://www.google.com")
+      right = a(href = "https://www.google.com", "More")
     )
   )
 )
