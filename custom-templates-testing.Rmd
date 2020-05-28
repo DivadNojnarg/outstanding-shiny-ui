@@ -8,6 +8,8 @@ Until now, we have been building the template boilerplates, that is the main ske
 
 
 ## Validate template functions
+
+### Create your own validations
 Below, we will show some examples to validate user inputs. We first consider the `tabler_card` element from Chapter \@ref(custom-templates-skeleton).
 
 ```{r}
@@ -151,6 +153,123 @@ As of R 4.0.0, the `stopifnot` function may be a good alternative to `stop`.
 
 We recommand to be reasonable and not to validate every single parameter.
 
+
+### Existing utils functions
+The problem with the above approach is that it may take time to create all validation functions. Fortunately, packages like {shinydashboard} include really powerful validation functions, especially `tagAssert`. It is not exported which means you will have to import it in your own project. Below is the code, where I left the documentation describing all parameters.
+
+```{r}
+# Return TRUE if a shiny.tag object has a CSS class, FALSE otherwise.
+hasCssClass <- function(tag, class) {
+  if (is.null(tag$attribs) || is.null(tag$attribs$class))
+    return(FALSE)
+
+  classes <- strsplit(tag$attribs$class, " +")[[1]]
+  return(class %in% classes)
+}
+
+tagAssert <- function(tag, type = NULL, class = NULL, allowUI = TRUE) {
+  if (!inherits(tag, "shiny.tag")) {
+    print(tag)
+    stop("Expected an object with class 'shiny.tag'.")
+  }
+
+  # Skip dynamic output elements
+  if (allowUI &&
+      (hasCssClass(tag, "shiny-html-output") ||
+       hasCssClass(tag, "shinydashboard-menu-output"))) {
+    return()
+  }
+
+  if (!is.null(type) && tag$name != type) {
+    stop("Expected tag to be of type ", type)
+  }
+
+  if (!is.null(class)) {
+    if (is.null(tag$attribs$class)) {
+      stop("Expected tag to have class '", class, "'")
+
+    } else {
+      tagClasses <- strsplit(tag$attribs$class, " ")[[1]]
+      if (!(class %in% tagClasses)) {
+        stop("Expected tag to have class '", class, "'")
+      }
+    }
+  }
+}
+
+myTag <- div(class = "bg-blue")
+
+tagAssert(myTag, type = "div")
+# tagAssert(myTag, type = "li") # will fail
+tagAssert(myTag, class = "bg-blue")
+```
+
+Importantly, `tagAssert` will raise an error if the condition is not fulfilled. Another function, `tagMatch` simply returns TRUE/FALSE. It looks for `ìd`, `class`, `name` and any other tag attribute like `data-value`.
+
+```{r}
+# This is like a==b, except that if a or b is NULL or an empty vector, it won't
+# return logical(0). If a AND b are NULL/length-0, this will return TRUE; if
+# just one of them is NULL/length-0, this will FALSE. This is for use in
+# conditionals where `if(logical(0))` would cause an error. Similar to using
+# identical(a,b), but less stringent about types: `equals(1, 1L)` is TRUE, but
+# `identical(1, 1L)` is FALSE.
+equals <- function(a, b) {
+  alen <- length(a)
+  blen <- length(b)
+  if (alen==0 && blen==0) {
+    return(TRUE)
+  }
+  if (alen > 1 || blen > 1) {
+    stop("Can only compare objects of length 0 or 1")
+  }
+  if (alen==0 || blen==0) {
+    return(FALSE)
+  }
+
+  a == b
+}
+
+
+# Return TRUE if a tag object matches a specific id, and/or tag name, and/or
+# class, and or other arbitrary tag attributes. Put the args after ... so that
+# caller must use named arguments.
+tagMatches <- function(item, ..., id = NULL, name = NULL, class = NULL) {
+  dots <- list(...)
+  if (!inherits(item, "shiny.tag")) {
+    return(FALSE)
+  }
+  if (!is.null(id) && !equals(item$attribs$id, id)) {
+    return(FALSE)
+  }
+  if (!is.null(name) && !equals(item$name, name)) {
+    return(FALSE)
+  }
+  if (!is.null(class)) {
+    if (is.null(item$attribs$class)) {
+      return(FALSE)
+    }
+    classes <- strsplit(item$attribs$class, " ")[[1]]
+    if (! class %in% classes) {
+      return(FALSE)
+    }
+  }
+
+  for (i in seq_along(dots)) {
+    arg     <- dots[[i]]
+    argName <- names(dots)[[i]]
+    if (!equals(item$attribs[[argName]], arg)) {
+      return(FALSE)
+    }
+  }
+
+  TRUE
+}
+
+tagMatches(myTag, id = "d")
+tagMatches(myTag, class = "bg-blue")
+```
+
+There is no point to reuse what already exists and these tools will help you to be efficient for validating your template elements.
 
 ## Testing templates elements
 Imagine if one day, someone or yourself accidentaly remove the width validation function, after a significant refactoring. Later, you receive a new message from github, stating that someome opened a new issue. According to the report, the card is not properly displayed altough no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes, so is your end user, which is even worse. 

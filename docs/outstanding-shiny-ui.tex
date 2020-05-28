@@ -118,7 +118,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-05-27}
+\date{2020-05-28}
 
 \begin{document}
 \maketitle
@@ -4358,6 +4358,9 @@ Until now, we have been building the template boilerplates, that is the main ske
 \hypertarget{validate-template-functions}{%
 \section{Validate template functions}\label{validate-template-functions}}
 
+\hypertarget{create-your-own-validations}{%
+\subsection{Create your own validations}\label{create-your-own-validations}}
+
 Below, we will show some examples to validate user inputs. We first consider the \texttt{tabler\_card} element from Chapter \ref{custom-templates-skeleton}.
 
 \begin{Shaded}
@@ -4515,6 +4518,142 @@ We apply all these validation to our card element.
 As of R 4.0.0, the \texttt{stopifnot} function may be a good alternative to \texttt{stop}.
 
 We recommand to be reasonable and not to validate every single parameter.
+
+\hypertarget{existing-utils-functions}{%
+\subsection{Existing utils functions}\label{existing-utils-functions}}
+
+The problem with the above approach is that it may take time to create all validation functions. Fortunately, packages like \{shinydashboard\} include really powerful validation functions, especially \texttt{tagAssert}. It is not exported which means you will have to import it in your own project. Below is the code, where I left the documentation describing all parameters.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Return TRUE if a shiny.tag object has a CSS class, FALSE otherwise.}
+\NormalTok{hasCssClass <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(tag, class) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{is.null}\NormalTok{(tag}\OperatorTok{$}\NormalTok{attribs) }\OperatorTok{||}\StringTok{ }\KeywordTok{is.null}\NormalTok{(tag}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class))}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+
+\NormalTok{  classes <-}\StringTok{ }\KeywordTok{strsplit}\NormalTok{(tag}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class, }\StringTok{" +"}\NormalTok{)[[}\DecValTok{1}\NormalTok{]]}
+  \KeywordTok{return}\NormalTok{(class }\OperatorTok{%in%}\StringTok{ }\NormalTok{classes)}
+\NormalTok{\}}
+
+\NormalTok{tagAssert <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(tag, }\DataTypeTok{type =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{class =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{allowUI =} \OtherTok{TRUE}\NormalTok{) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{inherits}\NormalTok{(tag, }\StringTok{"shiny.tag"}\NormalTok{)) \{}
+    \KeywordTok{print}\NormalTok{(tag)}
+    \KeywordTok{stop}\NormalTok{(}\StringTok{"Expected an object with class 'shiny.tag'."}\NormalTok{)}
+\NormalTok{  \}}
+
+  \CommentTok{# Skip dynamic output elements}
+  \ControlFlowTok{if}\NormalTok{ (allowUI }\OperatorTok{&&}
+\StringTok{      }\NormalTok{(}\KeywordTok{hasCssClass}\NormalTok{(tag, }\StringTok{"shiny-html-output"}\NormalTok{) }\OperatorTok{||}
+\StringTok{       }\KeywordTok{hasCssClass}\NormalTok{(tag, }\StringTok{"shinydashboard-menu-output"}\NormalTok{))) \{}
+    \KeywordTok{return}\NormalTok{()}
+\NormalTok{  \}}
+
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(type) }\OperatorTok{&&}\StringTok{ }\NormalTok{tag}\OperatorTok{$}\NormalTok{name }\OperatorTok{!=}\StringTok{ }\NormalTok{type) \{}
+    \KeywordTok{stop}\NormalTok{(}\StringTok{"Expected tag to be of type "}\NormalTok{, type)}
+\NormalTok{  \}}
+
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(class)) \{}
+    \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{is.null}\NormalTok{(tag}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class)) \{}
+      \KeywordTok{stop}\NormalTok{(}\StringTok{"Expected tag to have class '"}\NormalTok{, class, }\StringTok{"'"}\NormalTok{)}
+
+\NormalTok{    \} }\ControlFlowTok{else}\NormalTok{ \{}
+\NormalTok{      tagClasses <-}\StringTok{ }\KeywordTok{strsplit}\NormalTok{(tag}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class, }\StringTok{" "}\NormalTok{)[[}\DecValTok{1}\NormalTok{]]}
+      \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\NormalTok{(class }\OperatorTok{%in%}\StringTok{ }\NormalTok{tagClasses)) \{}
+        \KeywordTok{stop}\NormalTok{(}\StringTok{"Expected tag to have class '"}\NormalTok{, class, }\StringTok{"'"}\NormalTok{)}
+\NormalTok{      \}}
+\NormalTok{    \}}
+\NormalTok{  \}}
+\NormalTok{\}}
+
+\NormalTok{myTag <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"bg-blue"}\NormalTok{)}
+
+\KeywordTok{tagAssert}\NormalTok{(myTag, }\DataTypeTok{type =} \StringTok{"div"}\NormalTok{)}
+\CommentTok{# tagAssert(myTag, type = "li") # will fail}
+\KeywordTok{tagAssert}\NormalTok{(myTag, }\DataTypeTok{class =} \StringTok{"bg-blue"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Importantly, \texttt{tagAssert} will raise an error if the condition is not fulfilled. Another function, \texttt{tagMatch} simply returns TRUE/FALSE. It looks for \texttt{ìd}, \texttt{class}, \texttt{name} and any other tag attribute like \texttt{data-value}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# This is like a==b, except that if a or b is NULL or an empty vector, it won't}
+\CommentTok{# return logical(0). If a AND b are NULL/length-0, this will return TRUE; if}
+\CommentTok{# just one of them is NULL/length-0, this will FALSE. This is for use in}
+\CommentTok{# conditionals where `if(logical(0))` would cause an error. Similar to using}
+\CommentTok{# identical(a,b), but less stringent about types: `equals(1, 1L)` is TRUE, but}
+\CommentTok{# `identical(1, 1L)` is FALSE.}
+\NormalTok{equals <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(a, b) \{}
+\NormalTok{  alen <-}\StringTok{ }\KeywordTok{length}\NormalTok{(a)}
+\NormalTok{  blen <-}\StringTok{ }\KeywordTok{length}\NormalTok{(b)}
+  \ControlFlowTok{if}\NormalTok{ (alen}\OperatorTok{==}\DecValTok{0} \OperatorTok{&&}\StringTok{ }\NormalTok{blen}\OperatorTok{==}\DecValTok{0}\NormalTok{) \{}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{TRUE}\NormalTok{)}
+\NormalTok{  \}}
+  \ControlFlowTok{if}\NormalTok{ (alen }\OperatorTok{>}\StringTok{ }\DecValTok{1} \OperatorTok{||}\StringTok{ }\NormalTok{blen }\OperatorTok{>}\StringTok{ }\DecValTok{1}\NormalTok{) \{}
+    \KeywordTok{stop}\NormalTok{(}\StringTok{"Can only compare objects of length 0 or 1"}\NormalTok{)}
+\NormalTok{  \}}
+  \ControlFlowTok{if}\NormalTok{ (alen}\OperatorTok{==}\DecValTok{0} \OperatorTok{||}\StringTok{ }\NormalTok{blen}\OperatorTok{==}\DecValTok{0}\NormalTok{) \{}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+\NormalTok{  \}}
+
+\NormalTok{  a }\OperatorTok{==}\StringTok{ }\NormalTok{b}
+\NormalTok{\}}
+
+
+\CommentTok{# Return TRUE if a tag object matches a specific id, and/or tag name, and/or}
+\CommentTok{# class, and or other arbitrary tag attributes. Put the args after ... so that}
+\CommentTok{# caller must use named arguments.}
+\NormalTok{tagMatches <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(item, ..., }\DataTypeTok{id =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{name =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{class =} \OtherTok{NULL}\NormalTok{) \{}
+\NormalTok{  dots <-}\StringTok{ }\KeywordTok{list}\NormalTok{(...)}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{inherits}\NormalTok{(item, }\StringTok{"shiny.tag"}\NormalTok{)) \{}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+\NormalTok{  \}}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(id) }\OperatorTok{&&}\StringTok{ }\OperatorTok{!}\KeywordTok{equals}\NormalTok{(item}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{id, id)) \{}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+\NormalTok{  \}}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(name) }\OperatorTok{&&}\StringTok{ }\OperatorTok{!}\KeywordTok{equals}\NormalTok{(item}\OperatorTok{$}\NormalTok{name, name)) \{}
+    \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+\NormalTok{  \}}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(class)) \{}
+    \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{is.null}\NormalTok{(item}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class)) \{}
+      \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+\NormalTok{    \}}
+\NormalTok{    classes <-}\StringTok{ }\KeywordTok{strsplit}\NormalTok{(item}\OperatorTok{$}\NormalTok{attribs}\OperatorTok{$}\NormalTok{class, }\StringTok{" "}\NormalTok{)[[}\DecValTok{1}\NormalTok{]]}
+    \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\StringTok{ }\NormalTok{class }\OperatorTok{%in%}\StringTok{ }\NormalTok{classes) \{}
+      \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+\NormalTok{    \}}
+\NormalTok{  \}}
+
+  \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \KeywordTok{seq_along}\NormalTok{(dots)) \{}
+\NormalTok{    arg     <-}\StringTok{ }\NormalTok{dots[[i]]}
+\NormalTok{    argName <-}\StringTok{ }\KeywordTok{names}\NormalTok{(dots)[[i]]}
+    \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{equals}\NormalTok{(item}\OperatorTok{$}\NormalTok{attribs[[argName]], arg)) \{}
+      \KeywordTok{return}\NormalTok{(}\OtherTok{FALSE}\NormalTok{)}
+\NormalTok{    \}}
+\NormalTok{  \}}
+
+  \OtherTok{TRUE}
+\NormalTok{\}}
+
+\KeywordTok{tagMatches}\NormalTok{(myTag, }\DataTypeTok{id =} \StringTok{"d"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] FALSE
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{tagMatches}\NormalTok{(myTag, }\DataTypeTok{class =} \StringTok{"bg-blue"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] TRUE
+\end{verbatim}
+
+There is no point to reuse what already exists and these tools will help you to be efficient for validating your template elements.
 
 \hypertarget{testing-templates-elements}{%
 \section{Testing templates elements}\label{testing-templates-elements}}
