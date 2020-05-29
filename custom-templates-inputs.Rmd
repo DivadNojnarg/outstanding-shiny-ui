@@ -1,8 +1,8 @@
 # Develop custom input widgets {#custom-templates-inputs}
-In the previous chapter, we built the template dependencies, the page skeleton as well as containers like cards. However, it would be nice to custonize user interactions by bringing new inputs. In this chapter, we will apply knowledge from Chapter \@ref(shiny-input-system) about creating new Shiny input. 
+In the previous chapter, we built template dependencies, the page skeleton, as well as containers like cards. However, it would be nice to customize user interactions by integrating new inputs. In this chapter, we will apply knowledge from Chapter \@ref(shiny-input-system) about creating new Shiny input. 
 
 ## Tabler action button
-Let's start with a simple input: the action button. Tabler has builtin HTML buttons with a substantial amount of custom styles, compared to the classic Shiny action button. 
+Let's start with a simple input: the action button. Tabler has built-in HTML buttons with a substantial amount of custom styles, compared to the classic Shiny action button. 
 
 ### Reminders about the action button
 Below is the code of the `actionButton` input.
@@ -23,7 +23,7 @@ actionButton <- function (inputId, label, icon = NULL, width = NULL, ...)  {
 
 The button tag has some attributes: id, style, type, class, `data-val`, label and children passed via `...`
 
-When the app starts, the action button has the value 0 and each click will increment its value by 1. How is this behaviour created? For each Shiny input element (radio, slider), there is an associated JavaScript magic file, called input binding, which you can find [here](https://github.com/rstudio/shiny/tree/master/srcjs). In our case, we are only interested in the action button binding:
+When the app starts, the action button has the value 0 and each click will increment its value by 1. How is this behaviour created? For each Shiny input element (radio, slider), there is an associated JavaScript file, called input binding, which you can find [here](https://github.com/rstudio/shiny/tree/master/srcjs). In our case, we are only interested in the action button binding:
 
 ```javascript
 var actionButtonInputBinding = new InputBinding();
@@ -38,11 +38,11 @@ $.extend(actionButtonInputBinding, {
 });
 ```
 
-What you see above is **not** the whole script since we focus on the first method, that is `find`. It will look for **all** elements having the class **.action-button**, making it possible to define multiple action buttons at the same time.
+What you see above is **not** the whole script since we focus on the first method, that is `find`. It will look for **all** elements having the class `action-button`, making it possible to define multiple action buttons at the same time.
 
-Consequently, if we go back to the previous section, the `actionButton` has the class **.action-button**, thereby making it visible to the binding. What is interesting is that all elements having the class .action-button will be considered by the same shiny input binding. 
+Consequently, if we go back to the previous section, the `actionButton` has the class `action-button`, thereby making it visible to the binding. Interestingly, all elements having the class `action-button` will be considered by the same shiny input binding. 
 
-### Application to tabler
+### Application to Tabler
 First of all, let's compare the tabler HTML button to the Shiny action button.
 
 ```html
@@ -81,22 +81,33 @@ tabler_button <- function(inputId, label, status = NULL, icon = NULL, width = NU
 }
 ```
 
-In tabler, the button status is mandatory, which is the reason why it is a parameter of the function. Moreover, we need to add an horizontal right margin to the icon, if provided so that the label renders well.
+In Tabler, the button status is mandatory, which is the reason why it is a parameter of the function. Moreover, we need to add an horizontal right margin to the icon, if provided so that the label renders well (`mr-1`, where m stands for margin, r is the right direction and 1 is the margin value). We assume that by default, the button wil have a blue color, that is given by `btn-primary`.
 
 
 ```{r, eval=FALSE}
 ui <- tabler_page(
-  tabler_button("btn", "Click", icon = icon("thumbs-up"), width = "25%")
+  tabler_body(
+    tabler_button(
+      "btn", 
+      HTML(paste("Value", textOutput("val"), sep = ":")), 
+      icon = icon("thumbs-up"), 
+      width = "25%"
+    )
+  )
 )
 
 server <- function(input, output, session) {
-  observe(print(input$btn))
+  output$val <- renderText(input$btn)
 }
 
 shinyApp(ui, server)
 ```
 
-We easily check that clicking on the button increments the related input. In few minutes, we were able to implement a custom tabler input button, built on top of the Shiny action button. 
+We easily check that clicking on the button increments the related input. Thus, one may see how easy it is to implement a custom Tabler input button, built on top of the Shiny action button. The output is shown in Figure \@ref(fig:tabler-button).
+
+```{r tabler-button, echo=FALSE, fig.cap='Tabler action button'}
+knitr::include_graphics("images/practice/tabler-button.png")
+```
 
 <br>
 <div class="callout callout-info">
