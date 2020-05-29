@@ -1,12 +1,8 @@
 # Adding more interactivity {#custom-templates-interactivity}
-In this part, we are going to add more life to the template element. We first see how
-to enhance an existing static HTML component. Then we will explore complex feedback mechanisms to provide more interactivity to your app.
+In this part, we are going to add more life to the template element. We first see how to enhance an existing static HTML component. Then we will explore complex feedback mechanisms to provide more interactivity to your app.
 
 ## Custom progress bars
-Progress bars are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those 
-elements are static HTML. Hence, it would be interesting to be able to update the current
-value from the server side. Since it is not an proper input element, implementing an input binding is inapropriate and we decide to proceed with the `sendCustomMessage`/`addCustomMessageHandler` pair. We first create the `tabler_progress`
-tag which is mainly composed of:
+Progress bars are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those elements are static HTML. Hence, it would be interesting to be able to update the current value from the server side. Since it is not an proper input element, implementing an input binding is inapropriate and we decide to proceed with the `sendCustomMessage`/`addCustomMessageHandler` pair. We first create the `tabler_progress` tag which is mainly composed of:
 
 - `style` gives the current progress value. This is the main element
 - `min` and `max` are bounds, in general between 0 and 100
@@ -35,7 +31,7 @@ update_tabler_progress <- function(id, value, session = shiny::getDefaultReactiv
 }
 ```
 
-The next element is the `update_tabler_progress` function which send 2 elements from R to JS:
+The next element is the `update_tabler_progress` function which sends 2 elements from R to JS:
 
 - The progress `id`
 - The new value
@@ -44,13 +40,13 @@ On the JS side, we have a basic `addCustomMessageHandler`. As mentionned in Chap
 
 ```javascript
 $(function () {
-Shiny.addCustomMessageHandler('update-progress', function(message) {
-$('#' + message.id).css('width', message.value +'%');
-});
+  Shiny.addCustomMessageHandler('update-progress', function(message) {
+    $('#' + message.id).css('width', message.value +'%');
+  });
 });
 ```
 
-We finally test these components in a simple app:
+We finally test these components in a simple app, whom output is depicted in Figure \@ref(fig:tabler-progress):
 
 ```{r, eval=FALSE}
 ui <- tabler_page(
@@ -65,13 +61,13 @@ ui <- tabler_page(
     )
   ),
   tabler_body(
-    sliderInput(
-      "progress_value", 
-      "Progress value:",
-      min = 0, 
-      max = 100, 
-      value = 50
-    ),
+    noUiSliderInput(
+    inputId = "progress_value",
+    label = "Progress value",
+    min = 0, 
+    max = 100,
+    value = 20
+  ),
     tabler_progress(id = "progress1", 12)
   )
 )
@@ -87,6 +83,9 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+```{r tabler-progress, echo=FALSE, fig.cap='Progress bar component updated by a slider'}
+knitr::include_graphics("images/practice/tabler-progress.png")
+```
 
 <br>
 <div class="callout callout-info">
@@ -103,24 +102,24 @@ The skeleton is the HTML structure of the toast:
 
 ```html
 <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" data-autohide="false" data-toggle="toast">
-<div class="toast-header">
-<span class="avatar mr-2" style="background-image: url(...)"></span>
-<strong class="mr-auto">Mallory Hulme</strong>
-<small>11 mins ago</small>
-<button type="button" class="ml-2 close" data-dismiss="toast" aria-label="Close">
-<span aria-hidden="true">&times;</span>
-</button>
-</div>
-<div class="toast-body">
-Hello, world! This is a toast message.
-</div>
+  <div class="toast-header">
+    <span class="avatar mr-2" style="background-image: url(...)"></span>
+    <strong class="mr-auto">Mallory Hulme</strong>
+    <small>11 mins ago</small>
+    <button type="button" class="ml-2 close" data-dismiss="toast" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="toast-body">
+  Hello, world! This is a toast message.
+  </div>
 </div>
 ```
 
 Toasts are mainly composed of a header and a body. There might be a close button in case the toast does not hide itself. If multiple toasts appear one after each others, they are stacked, the latest being at the bottom of the stack. The position is controled with the style attribute like `style="position: absolute; top: 0; right: 0;"` for a top-right placement. Accessibility parameters like `aria-live` are detailed [here](https://getbootstrap.com/docs/4.3/components/toasts/#accessibility).
 
 ### The toast API
-Toasts have a JS API to control their behaviour, `$('<toast_selector>').toast(option)`, where option stend for:
+Toasts have a JS API to control their behaviour, for instance `$('<toast_selector>').toast(option)`, where option is a JSON with the following fields:
 
 - animation applies a CSS fade transition to the toast and is TRUE by default 
 - autohide automatically hides the toast (TRUE by default)
@@ -134,27 +133,32 @@ We first create the toast skeleton. We assume our toast will hide automatically,
 
 ```{r}
 tabler_toast <- function(id, title = NULL, subtitle = NULL, ..., img = NULL) {
-  div(
+  
+  toast_header <- div(
+    class = "toast-header",
+    if (!is.null(img)) {
+      span(
+        class = "avatar mr-2", 
+        style = sprintf("background-image: url(%s)", img)
+      )
+    },
+    if (!is.null(title)) strong(class = "mr-2", title),
+    if (!is.null(subtitle)) tags$small(subtitle)
+  )
+  
+  toast_body <- div(class = "toast-body", ...)
+  
+  toast_wrapper <- div(
     id = id,
     class = "toast",
     role = "alert",
     style = "position: absolute; top: 0; right: 0;",
     `aria-live` = "assertive",
     `aria-atomic` = "true",
-    `data-toggle` = "toast",
-    div(
-      class = "toast-header",
-      if (!is.null(img)) {
-        span(
-          class = "avatar mr-2", 
-          style = sprintf("background-image: url(%s)", img)
-        )
-      },
-      if (!is.null(title)) strong(class = "mr-auto", title),
-      if (!is.null(subtitle)) tags$small(subtitle)
-    ),
-    div(class = "toast-body", ...)
+    `data-toggle` = "toast"
   )
+  
+  toast_wrapper %>% tagAppendChildren(toast_header, toast_body)
 }
 ```
 
@@ -176,20 +180,20 @@ The corresponding JS handler is given by:
 
 ```javascript
 $(function() {
-Shiny.addCustomMessageHandler('tabler-toast', function(message) {
-$(`#${message.id}`)
-.toast(message.options)
-.toast('show');
+  Shiny.addCustomMessageHandler('tabler-toast', function(message) {
+    $(`#${message.id}`)
+      .toast(message.options)
+      .toast('show');
 
-// add custom Shiny input to listen to the toast state
-$(`#${message.id}`).on('hidden.bs.toast', function() {
-Shiny.setInputValue(message.id, true, {priority: 'event'});
-});
-});
+    // add custom Shiny input to listen to the toast state
+    $(`#${message.id}`).on('hidden.bs.toast', function() {
+      Shiny.setInputValue(message.id, true, {priority: 'event'});
+    });
+  });
 });
 ```
 
-We first configure the toast and ask him to show. Notice how we chained jQuery methods! We optionally add an event listener to capture the `hidden.bs.toast` event, so that we may trigger an action when the toast is closed. The `input$id` will be used for that purpose in combination with the `Shiny.setInputValue`. Notice the extra parameter `{priority: 'event'}`: basically, once the toast is closed, `input$id` will always be TRUE, thereby breaking the reactivity. Adding this extra parameter forces the evaluation of the input, although constant over time.
+We first configure the toast and show it. Notice how we chained jQuery methods (see Chapter \@ref(survival-kit-javascript))! We optionally add an event listener to capture the `hidden.bs.toast` event, so that we may trigger an action when the toast is closed. The `input$id` will be used for that purpose in combination with the `Shiny.setInputValue`. Notice the extra parameter `{priority: 'event'}`: basically, once the toast is closed, `input$id` will always be TRUE, thereby breaking the reactivity. Adding this extra parameter forces the evaluation of the input, although constant over time.
 
 
 ### Wrap up
@@ -226,17 +230,19 @@ ui <- tabler_page(
 server <- function(input, output, session) {
   observe(print(input$toast))
   observeEvent(input$launch, {
+    removeNotification("notif")
     show_tabler_toast(
       "toast", 
       options = list(
         animation = FALSE,
-        delay = 2000
+        delay = 3000
       )
     )
   })
   
   observeEvent(input$toast, {
     showNotification(
+      id = "notif",
       "Toast was closed", 
       type = "warning",
       duration = 1,
@@ -248,45 +254,60 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+```{r tabler-toast, echo=FALSE, fig.cap='Tabler toast element'}
+knitr::include_graphics("images/practice/tabler-toast.png")
+```
 
 ## Transform an element in a custom action button
-As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The tabler template has dropdown menus in the navbar and we would like to transform dropdown items in action buttons. The `tabler_dropdown` functions takes the following parameters:
+As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The tabler template has dropdown menus in the navbar and we would like to transform those dropdown items in action buttons. The `tabler_dropdown` functions takes the following parameters:
 
-- id is required by the `show_tabler_dropdown` (see below) function which opens the menu
-- title is the dropdown menu name
-- subtitle is optional text
-- img is an optional image
-- ... hosts the `tabler_dropdown_item` (see below)
+  - id is required by the `show_tabler_dropdown` (see below) function which opens the menu
+  - title is the dropdown menu name
+  - subtitle is optional text
+  - img is an optional image
+  - ... hosts the `tabler_dropdown_item` (see below)
 
 ```{r}
 tabler_dropdown <- function(..., id = NULL, title, subtitle = NULL, img = NULL) {
   
-  div(
-    class = "nav-item dropdown",
-    a(
-      href = "#",
-      id = id, 
-      class = "nav-link d-flex lh-1 text-reset p-0",
-      `data-toggle` = "dropdown",
-      `aria-expanded` = "false",
-      if (!is.null(img)) {
-        span(class = "avatar", style = sprintf("background-image: url(%s)", img))
-      },
-      div(
-        class = "d-none d-xl-block pl-2",
-        div(title),
-        if (!is.null(subtitle)) {
-          div(class = "mt-1 small text-muted", subtitle)
-        }
-      )
-    ),
-    div(class = "dropdown-menu dropdown-menu-right", `aria-labelledby` = id, ...)
+  img_tag <- if (!is.null(img)) {
+    span(
+      class = "avatar", 
+      style = sprintf("background-image: url(%s)", img)
+    )
+  }
+  
+  titles_tag <- div(
+    class = "d-none d-xl-block pl-2",
+    div(title),
+    if (!is.null(subtitle)) {
+      div(class = "mt-1 small text-muted", subtitle)
+    }
+  )
+  
+  link_tag <- a(
+    href = "#",
+    id = id, 
+    class = "nav-link d-flex lh-1 text-reset p-0",
+    `data-toggle` = "dropdown",
+    `aria-expanded` = "false"
+  ) %>% 
+    tagAppendChildren(img_tag, titles_tag)
+  
+  dropdown_tag <- div(
+    class = "dropdown-menu dropdown-menu-right", 
+    `aria-labelledby` = id, 
+    ...
+  )
+  
+  div(class = "nav-item dropdown") %>% tagAppendChildren(
+    link_tag,
+    dropdown_tag
   )
 }
 ```
 
-To convert a dropdown item in an action button , we add the `action-button` class as well
-as the `id` parameter to recover the corresponding input id.
+To convert a dropdown item in an action button , we add the `action-button` class as well as the `id` parameter to recover the corresponding input id.
 
 ```{r}
 tabler_dropdown_item <- function(..., id = NULL) {
@@ -306,13 +327,13 @@ To show the dropdown, we use the `dropdown` method which is linked to the `data-
 
 ```javascript
 $(function() {
-Shiny.addCustomMessageHandler('show-dropdown', function(message) {
-$(`#${message}`).dropdown('show');
-});
+  Shiny.addCustomMessageHandler('show-dropdown', function(message) {
+    $(`#${message}`).dropdown('show');
+  });
 });
 ```
 
-Let's play with it!
+Let's play with it! (See Figure \@ref(fig:tabler-dropdown))
 
 ```{r, eval=FALSE}
 ui <- tabler_page(
@@ -369,6 +390,9 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+```{r tabler-dropdown, echo=FALSE, fig.cap='Tabler dropdown element'}
+knitr::include_graphics("images/practice/tabler-dropdown.png")
+```
 
 ## Tab events
 Do you remember about the navbar element and the tabsetpanel system of Chapter \@ref(custom-templates-skeleton)? Navs allow to organize any app into several tabs, acting like pages. This is a powerful tool for Shiny since it is currently not straightforward to create [multi-pages](https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698) Shiny apps like anyone would do with a website. Navs relie on the Bootstrap4 API but we only used few JS functions.
@@ -383,21 +407,21 @@ How do we proceed? if you remember about the `tabler_navbar_menu_item` and `tabl
 
 ```html
 <li class="nav-item">
-<a class="nav-link" href="#ww" data-toggle="pill" data-value="ww" role="tab">
-<span class="nav-link-icon d-md-none d-lg-inline-block"></span>
-<span class="nav-link-title">ww</span>
-</a>
+  <a class="nav-link" href="#ww" data-toggle="pill" data-value="ww" role="tab">
+    <span class="nav-link-icon d-md-none d-lg-inline-block"></span>
+    <span class="nav-link-title">ww</span>
+  </a>
 </li>
 
 <div role="tabpanel" class="tab-pane fade container-fluid" id="ww"></div>
 ```
 
 We design the `insert_tabler_tab` function similar to the Shiny `insertTab`. 
-To handle shiny modules, we wrap the inputId in the session namespace. We create the menu item element based on the provided new tab.
+To handle shiny modules, we wrap the inputId in the session namespace `session$ns`. We create the menu item element based on the provided new tab.
 
 ```{r}
 insert_tabler_tab <- function(inputId, tab, target, position = c("before", "after"),
-                              select = FALSE, session = shiny::getDefaultReactiveDomain()) {
+                              select = FALSE, session = getDefaultReactiveDomain()) {
   
   inputId <- session$ns(inputId)
   position <- match.arg(position)
@@ -430,32 +454,37 @@ insert_tabler_tab <- function(inputId, tab, target, position = c("before", "afte
 }
 ```
 
+On the JS side, we capture the R message (list) in two elements:
+
+  - `$divTag` contains the tab content
+  - `$liTag` contains the tab link, ie the navigation part
+
+Depending on the position parameter, we use the `insertAfter` and `insertBefore` jQuery methods. Finally, if the newly inserted tab has to be
+selected, we activate the corresponding tab element with `$(tablink).tab('show')`. 
 
 ```javascript
 $(function() {
-Shiny.addCustomMessageHandler('insert-tab', function(message) {
-// define div and li targets
-let $divTag = $(message.content);
-let $liTag = $(message.link);
-
-if (message.position === 'after') {
-$divTag.insertAfter($('#' + message.target));
-$liTag.insertAfter($('[href ="#' + message.target + '"]').parent());
-} else if (message.position === 'before') {
-$divTag.insertBefore($('#' + message.target));
-$liTag.insertBefore($('[href ="#' + message.target + '"]').parent());
-}
-
-if (message.select) {
-// trigger a click on corresponding the new tab button. 
-let newTabId = $divTag.attr('id');
-$('#' + message.inputId + ' a[href="#' + newTabId +'"]').tab('show');
-}
-});
+  Shiny.addCustomMessageHandler('insert-tab', function(message) {
+    // define div and li targets
+    let $divTag = $(message.content);
+    let $liTag = $(message.link);
+    
+    if (message.position === 'after') {
+      $divTag.insertAfter($('#' + message.target));
+      $liTag.insertAfter($('[href ="#' + message.target + '"]').parent());
+    } else if (message.position === 'before') {
+      $divTag.insertBefore($('#' + message.target));
+      $liTag.insertBefore($('[href ="#' + message.target + '"]').parent());
+    }
+    
+    if (message.select) {
+    // trigger a click on corresponding the new tab button. 
+      let newTabId = $divTag.attr('id');
+      $('#' + message.inputId + ' a[href="#' + newTabId +'"]').tab('show');
+    }
+  });
 });
 ```
-
-
 
 
 ```{r, eval=FALSE}
@@ -549,7 +578,13 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-If the tab is well inserted, we notice that the slider and the plot are not properly shown. How could we explain that? It is a dependency issue: the slider input relies on a specific JS [library](http://ionden.com/a/plugins/ion.rangeSlider/) as depicted in Figure \@ref(fig:slider-deps). In our previous example, If you open the HTML inspector, the dependency is not included in the page. 
+If the tab is well inserted, we notice that the slider and the plot are not properly shown, as illustrated in Figure \@ref(fig:tabler-insert-tab-fail). 
+
+```{r tabler-insert-tab-fail, echo=FALSE, fig.cap='The newly inserted tab fails to render its content!'}
+knitr::include_graphics("images/practice/tabler-insert-tab-fail.png")
+```
+
+How could we explain that? It is a dependency issue: the slider input relies on a specific JS [library](http://ionden.com/a/plugins/ion.rangeSlider/), namely ionRangesSlider, as depicted in Figure \@ref(fig:slider-deps). In our previous example, if you open the HTML inspector, the dependency is not included in the page. 
 
 ```{r slider-deps, echo=FALSE, fig.cap='Slider dependencies.'}
 knitr::include_graphics("images/practice/slider-deps.png")
@@ -560,7 +595,7 @@ Even stranger, when we use `renderUI` to conditionally render the slider (note: 
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
-  actionButton("go", "Go!", class = "btn-success"),
+  shiny::actionButton("go", "Go!", class = "btn-success"),
   uiOutput("slider"),
   plotOutput("distPlot")
 )
@@ -604,8 +639,7 @@ renderUI <- function (expr, env = parent.frame(), quoted = FALSE, outputArgs = l
 }
 ```
 
-The last line returned is `processDeps(result, shinysession)`. This function is responsible to handle dependencies during runtime.  `processDeps` (R side) works with `Shiny.renderContent` (JS side).
-The latter takes a tag element as well as an object containing its HTML code and dependencies, for instance:
+The last line returned is `processDeps(result, shinysession)`. This function is responsible to handle dependencies during runtime.  `processDeps` (R side) works with `Shiny.renderContent` (JS side). The latter takes a tag element as well as an object containing its HTML code and dependencies, for instance:
 
 ```javascript
 exports.renderContent($tag[0], {
@@ -787,16 +821,5 @@ knitr::include_graphics("images/practice/process-deps.png")
 
 Et voila! As shown in Figure \@ref(fig:process-deps), everything is properly displayed.
 
-### More events
-There exists [events](https://getbootstrap.com/docs/4.0/components/navs/#events) that trigger after/before showing/hiding a tabs, that is `hidden.bs.tab` and `shown.bs.tab` (`hide.bs.tab` and `show.bs.tab` are triggered before). For instance, we may recover
-the previously selected tab, namely `e.relatedTarget`, and store it in a shiny input with `Shiny.setInputValue`:
-
-```javascript
-$(function() {
-$('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-Shiny.setInputValue('previous_tab', e.relatedTarget)
-});
-});
-```
-
-TO FINISH
+## Exercises
+1. Taking inspiration on the `insert_tabler_tab` function, write the `remove_tabler_tab` function.
