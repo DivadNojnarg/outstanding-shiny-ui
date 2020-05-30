@@ -1,5 +1,5 @@
 # Testing and validating templates elements {#custom-templates-testing}
-Until now, we have been building the template boilerplates, that is the main skeleton functions (page, navbar, navbar menu, ...) as well as some components such as cards, ribbons, progress bars. We also exposed some techniques to substantially give more interactivity to the template, leveraging our freshly adquired JavaScript skills. Does this mean we are ready to make the template public? Not yet since some essentials steps are missing:
+Until now, we have been building the template boilerplate, that is the main skeleton functions (page, navbar, navbar menu, ...) as well as some components such as cards, ribbons, progress bars. We also exposed some techniques to substantially give more interactivity to the template, leveraging our freshly acquired JavaScript skills. Does this mean we are ready to make the template public? Not yet since some essentials steps are missing:
 
 
   - Input validation is a crucial step toward success. Briefly, it consists in checking user inputs so that your functions fail safely and elegantly by providing meaningful error messages or warnings. This concept has already been covered in R for Data Science, Advanced R and a lot of other resources. Hence, I am not trying to reinvent the wheel and we will rely on already existing patterns, whose effectiveness is no longer to be demonstrated. Welcome to the defensive programming world! 
@@ -97,7 +97,7 @@ validate_status <- function(status) {
 }
 ```
 
-We finish by the padding validation. According to the tabler documentation, there are three possible choices, namely `sm`, `md` or `lg`.
+We finish by the padding validation. According to the Tabler documentation, there are three possible choices, namely `sm`, `md` or `lg`.
 
 ```{r}
 
@@ -151,7 +151,7 @@ tabler_card <- function(..., title = NULL, status = NULL, width = 6, stacked = F
 
 As of R 4.0.0, the `stopifnot` function may be a good alternative to `stop`. 
 
-We recommand to be reasonable and not to validate every single parameter.
+We recommend to be reasonable and not to validate every single parameter.
 
 
 ### Existing utils functions
@@ -276,12 +276,159 @@ The `validateCssUnit` belongs to the Shiny exported function. It is useful to va
 
 There is no point to reuse what already exists and these tools will help you to be efficient for validating your template elements.
 
+
+### Example: refine navbar menu items
+
+#### Avoid wrong jQuery selectors
+In Chapter \@ref(custom-templates-skeleton), we developed the `tabler_navbar_menu_item` function. The tabName parameter is critical since it is responsible for driving the navigation. We must ensure that the value provided by the user is compatible with jQuery selectors [conventions](https://api.jquery.com/category/selectors/). To illustrate the problem, we consider the example below, where the second tab name is `hello%%&1`:
+
+```{r, eval=FALSE}
+ui <- tabler_page(
+  tags$head(
+    tags$script(
+      HTML(
+        "$(function() {
+          // this makes sure to trigger the show event on the active tab at start
+          const activeTab = $('#navbar-menu .nav-link.active');
+          if (activeTab.length > 0) {
+            const tabId = $(activeTab).attr('data-value');
+            $(activeTab).tab('show');
+            $(`#${tabId}`).addClass('show active');
+          } else {
+            $('#navbar-menu .nav-link')
+              .first()
+              .tab('show');
+          }
+        });
+        "
+      )
+    )
+  ),
+  tabler_navbar(
+    brand_url = "https://preview-dev.tabler.io", 
+    brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
+    nav_menu = tabler_navbar_menu(
+      tabler_navbar_menu_item(
+        text = "Tab 1",
+        icon = NULL,
+        tabName = "tab1",
+        selected = TRUE
+      ),
+      tabler_navbar_menu_item(
+        text = "Tab 2",
+        icon = NULL,
+        tabName = "hello%%&1"
+      )
+    )
+  ),
+  tabler_body(
+    tabler_tab_items(
+      tabler_tab_item(
+        tabName = "tab1",
+        sliderInput(
+          "obs", 
+          "Number of observations:",
+          min = 0,
+          max = 1000, 
+          value = 500
+        ),
+        plotOutput("distPlot")
+      ),
+      tabler_tab_item(
+        tabName = "hello%%&1",
+        p("Second Tab")
+      )
+    ),
+    footer = tabler_footer(
+      left = "Rstats, 2020", 
+      right = a(href = "https://www.google.com", "More")
+    )
+  )
+)
+server <- function(input, output) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
+shinyApp(ui, server)
+```
+
+Notice that we cannot see the second tab content. Below is a proposal for the `validate_tab` function. We first detect any punctuation in the provided input. Although not mandatory, we extract it to send a meaningful error message.
+We finally raise an error if any punctuation is found.
+
+```{r}
+validate_tabName <- function(tabName) {
+  temp <- grepl("[[:punct:]]", tabName)
+  wrong_selector <- stringr::str_extract_all(tabName, "[[:punct:]]")[[1]] %>% 
+    stringr::str_c(collapse = "")
+  if (temp) stop(paste("Please do not use punctuation characters like",  wrong_selector,"in tabNames. This might cause JavaScript issues."))
+}
+# validate_tabName("test%") # fails
+validate_tabName("plop")
+```
+
+`validate_tabName` must be then inserted at the beginning of `tabler_navbar_menu_item` as well as in `tabler_tab_item`, the latter also relying on tabName.
+
+#### Checking for multiple selected items
+Another issue is the possibility to have multiple selected tab items at start. Looking back at `tabler_navbar_menu`, this is not surprising since there are absolutely no checks!
+
+```{r}
+tabler_navbar_menu <- function(...) {
+  tags$ul(class = "nav nav-pills navbar-nav", ...)
+}
+```
+
+A classic method to inspect items provided to `tabler_navbar_menu` is to capture them in a list. We extract the children of those items `lapply(list(...) , "[", 3)` (A shiny tag is a structure where the first position holds the tag name, the second is a named list of attributes and the third slot is for children). For each children we apply the shinydashboard internal function `findAttribute`, that allows to search for a specific attribute value in a given tag. We use the `vapply` to return an atomic vector (like `c(1, 2`), lists are vectors but recursive!) and compute the sum of the vector. Each TRUE occurrence is counted as 1 and FALSE 0. Therefore, if the latter is higher than 1, it means that the user provided more than 1 selected tab, which should subsequently raise an error.
+
+```{r, eval=FALSE}
+findAttribute <- function(x, attr, val) {
+  if (is.atomic(x)) return(FALSE) # exhausted this branch of the tree
+
+  if (!is.null(x$attribs[[attr]])) { # found attribute called `attr`
+    if (identical(x$attribs[[attr]], val)) return(TRUE)
+    else return(FALSE)
+  }
+
+  if (length(x$children) > 0) { # recursion
+    return(any(unlist(lapply(x$children, findAttribute, attr, val))))
+  }
+
+  return(FALSE) # found no attribute called `attr`
+}
+
+tabler_navbar_menu <- function(...) {
+  
+  items <- lapply(list(...) , `[`, 3)
+  res <- sum(vapply(items, findAttribute, "class", "nav-link active", FUN.VALUE = logical(1)))
+  if (res > 1) stop("Cannot have multiple selected items at start!")
+  
+  tags$ul(class = "nav nav-pills navbar-nav", ...)
+}
+
+# the code below must fail
+menu <- tabler_navbar_menu(
+  tabler_navbar_menu_item(
+    text = "Tab 1",
+    icon = NULL,
+    tabName = "tab1",
+    selected = TRUE
+  ),
+  tabler_navbar_menu_item(
+    text = "Tab 2",
+    icon = NULL,
+    tabName = "tab2",
+    selected = TRUE
+  )
+)
+```
+
+
 ## Testing templates elements
-Imagine if one day, someone or yourself accidentaly remove the width validation function, after a significant refactoring. Later, you receive a new message from github, stating that someome opened a new issue. According to the report, the card is not properly displayed altough no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes, so is your end user, which is even worse. 
+Imagine if one day, someone or yourself accidentally remove the width validation function, after a significant refactoring. Later, you receive a new message from github, stating that someone opened a new issue. According to the report, the card is not properly displayed although no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes, so is your end user, which is even worse. 
 
 With a proper testing pipeline, this problem could have been avoided. Ironically, writing the corresponding test takes only 2 minutes.
 
-A reference for testing functions is the [{testthat}](https://testthat.r-lib.org/index.html) package. In short, a unit test consists in setting expectations about our function and check weither they fail or pass. For instance, with our `tabler_card` example, the `validate_width` must fail if the given width is not in the expected bounds or not numeric. We apply the `test_that` function with a description of the test context, followed by the expectations inside the curly brackets.
+A reference for testing functions is the [{testthat}](https://testthat.r-lib.org/index.html) package. In short, a unit test consists in setting expectations about our function and check whether they fail or pass. For instance, with our `tabler_card` example, the `validate_width` must fail if the given width is not in the expected bounds or not numeric. We apply the `test_that` function with a description of the test context, followed by the expectations inside the curly brackets.
 
 ```{r}
 test_that("validate width works", {
