@@ -231,9 +231,49 @@ This book is organized into five parts.
   Part 5 present some tools of the R community, like \texttt{\{fresh\}}, to beautify apps with only few lines of code
 \end{itemize}
 
+\hypertarget{about-the-code}{%
+\section{About the code}\label{about-the-code}}
+
+This book has a side package containing all the necessary material to run the code without having to reload each previous snippet.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{remotes}\OperatorTok{::}\KeywordTok{install_github}\NormalTok{(}\StringTok{"DivadNojnarg/outstanding-shiny-ui-code}
+\StringTok{"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+It covers Chapters \ref{shiny-input-system}, \ref{shiny-custom-handler} and the whole Practice section.
+
+There is another good reason for this package: provide a robust method to bundle JavaScript/CSS code along side any shiny app. Indeed, it is quite tempting to proceed as below:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+    \StringTok{"$(function() \{}
+\StringTok{      Shiny.addCustomMessageHandler('hello', function(message) \{     alert(message); }
+\StringTok{      \});}
+\StringTok{    \});}
+\StringTok{    "}
+\NormalTok{  ),}
+  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"go"}\NormalTok{, }\StringTok{"Send"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{go, \{}
+\NormalTok{    session}\OperatorTok{$}\KeywordTok{sendCustomMessage}\NormalTok{(}\StringTok{"hello"}\NormalTok{, }\DataTypeTok{message =} \StringTok{"plop"}\NormalTok{)}
+\NormalTok{  \})}
+\NormalTok{\}}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+It is fine if the app purpose is a simple demonstration. In our case, since we aim at providing reusable template elements, we need a better approach, that will be described later.
+
 \hypertarget{preliminary-exercices}{%
-\section*{Preliminary exercices}\label{preliminary-exercices}}
-\addcontentsline{toc}{section}{Preliminary exercices}
+\section{Preliminary exercices}\label{preliminary-exercices}}
 
 Before starting with technical details, we propose to play a little game. Among all the images shown, what are the ones corresponding to shiny apps? Images are numbered from A to F (left to right, top to bottom).
 
@@ -1768,12 +1808,23 @@ An input element is given by the \texttt{\textless{}input\textgreater{}} tag as 
 
 An input binding allows Shiny to identify each instance of a given input and what you may do with this input. For instance, a slider input must update whenever the range is dragged or when the left and right arrows of the keyboard are pressed. It relies on a class defined in the \texttt{input\_binding.js} \href{https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js}{file}.
 
-Let's describe each method chronologically.
+Let's describe each method chronologically. For better convenience, the book side package contains step by step demonstrations which may be found \href{https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/inputs.R}{here}. Each example is called by the \texttt{customTextInputExample}, which takes the input binding step as only parameter. For instance \texttt{customTextInputExample(1)} will invoke the first step.
 
 \hypertarget{find-the-input}{%
 \subsubsection{Find the input}\label{find-the-input}}
 
-The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the \texttt{actionButton}. On the JS side, we need a method that will indentify this receptor. Moreover, two different types of inputs (for instance \texttt{radioButton} and \texttt{selectInput}) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the \texttt{find} method of the \texttt{InputBinding} class. This method must be applied on a scope, that is the \texttt{document}. \texttt{find} accepts any valid jQuery selector. Figure \ref{fig:shiny-find-inputs} summarizes this important step.
+The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the \texttt{actionButton}. On the JS side, we need a method that will identify this receptor. Moreover, two different types of inputs (for instance \texttt{radioButton} and \texttt{selectInput}) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the \texttt{find} method of the \texttt{InputBinding} class. This method must be applied on a scope, that is the \texttt{document}. \texttt{find} accepts any valid jQuery selector. Note the \texttt{console.log} only here for debugging purpose.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{find}\OperatorTok{:} \KeywordTok{function}\NormalTok{(scope) }\OperatorTok{\{}
+  \VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(}\AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{'.input-text'}\NormalTok{))}\OperatorTok{;}
+  \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(scope).}\AttributeTok{find}\NormalTok{(}\StringTok{'.input-text'}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Figure \ref{fig:shiny-find-inputs} summarizes this important step.
 
 \begin{figure}
 \includegraphics[width=20in]{images/survival-kit/shiny-find-inputs} \caption{How to find inputs?}\label{fig:shiny-find-inputs}
@@ -1813,35 +1864,11 @@ Figure \ref{fig:text-input} shows the main elements of the \texttt{textInput} wi
 \includegraphics[width=9.72in]{images/survival-kit/text-input} \caption{Shiny's textInput elements}\label{fig:text-input}
 \end{figure}
 
-We put everything in a Shiny app and invit the reader to open the HTML inspector and look at the \texttt{console.log} result.
+We invite the reader to run the first example below and open the HTML inspector and look at the \texttt{console.log} result.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
-    \StringTok{"$(function() \{}
-\StringTok{      // Input binding}
-\StringTok{      let customTextBinding = new Shiny.InputBinding();}
-
-\StringTok{      $.extend(customTextBinding, \{}
-\StringTok{        find: function(scope) \{}
-\StringTok{          console.log($(scope).find('.input-text'));}
-\StringTok{          return $(scope).find('.input-text');}
-\StringTok{        \}}
-\StringTok{      \});}
-\StringTok{      }
-\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
-\StringTok{    \});}
-\StringTok{    "}
-\NormalTok{  ),}
-  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
-  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
-\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
-\NormalTok{\}}
-\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\KeywordTok{customTextInputExample}\NormalTok{(}\DecValTok{1}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1895,39 +1922,20 @@ Once initialized, we may use all specific methods provided by the API. \href{htt
 \includegraphics[width=35.5in]{images/survival-kit/shiny-el} \caption{About el}\label{fig:shiny-el}
 \end{figure}
 
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{getValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el) }\OperatorTok{\{}
+  \VariableTok{console}\NormalTok{.}\AttributeTok{log}\NormalTok{(}\AttributeTok{$}\NormalTok{(el))}\OperatorTok{;}
+  \ControlFlowTok{return} \AttributeTok{$}\NormalTok{(el).}\AttributeTok{val}\NormalTok{()}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
 To get the value, we apply the jQuery method \texttt{val} on the \texttt{\$(el)} element and return the result.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
-    \StringTok{"$(function() \{}
-\StringTok{      // Input binding}
-\StringTok{      let customTextBinding = new Shiny.InputBinding();}
-
-\StringTok{      $.extend(customTextBinding, \{}
-\StringTok{        find: function(scope) \{}
-\StringTok{          return $(scope).find('.input-text');}
-\StringTok{        \},}
-\StringTok{        // Given the DOM element for the input, return the value}
-\StringTok{        getValue: function(el) \{}
-\StringTok{          console.log($(el));}
-\StringTok{          return $(el).val();}
-\StringTok{        \}}
-\StringTok{      \});}
-\StringTok{      }
-\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
-\StringTok{    \});}
-\StringTok{    "}
-\NormalTok{  ),}
-  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
-  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
-\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
-\NormalTok{\}}
-\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\KeywordTok{customTextInputExample}\NormalTok{(}\DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1938,6 +1946,14 @@ This time, the input value is returned. Notice that when you try to change the t
 
 \texttt{setValue(el,\ value)} is used to set the value of the current input. This method is necessary so that the input value may be updated. It has to be used in combination with \texttt{receiveMessage(el,\ data)}, which is the JavaScript part of all the R \texttt{updateInput} functions. We usually call the \texttt{setValue} method inside.
 
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{setValue}\OperatorTok{:} \KeywordTok{function}\NormalTok{(el}\OperatorTok{,}\NormalTok{ value) }\OperatorTok{\{}
+  \AttributeTok{$}\NormalTok{(el).}\AttributeTok{val}\NormalTok{(value)}\OperatorTok{;}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
 Let's create a function to update our custom text input. Call it \texttt{updateCustomTextInput}. It requires at least 3 parameters:
 
 \begin{itemize}
@@ -1947,7 +1963,7 @@ Let's create a function to update our custom text input. Call it \texttt{updateC
 \item
   value is the new value. This will be taken by the \texttt{setValue} JS method in the input binding
 \item
-  session is the Shiny session object mentionned earlier. We will use the \texttt{sendInputMessage} to send values from R to JavaScript. The \texttt{receiveMessage} method will apply \texttt{setValue} with the data received from R
+  session is the Shiny session object mentionned earlier. We will use the \texttt{sendInputMessage} to send values from R to JavaScript. The \texttt{receiveMessage} method will apply \texttt{setValue} with the data received from R.
 \end{itemize}
 
 \begin{Shaded}
@@ -1958,49 +1974,11 @@ Let's create a function to update our custom text input. Call it \texttt{updateC
 \end{Highlighting}
 \end{Shaded}
 
-We add \texttt{setValue} and \texttt{receiveMessage} to custom input binding:
+We add \texttt{setValue} and \texttt{receiveMessage} to custom input binding.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
-    \StringTok{"$(function() \{}
-\StringTok{      // Input binding}
-\StringTok{      let customTextBinding = new Shiny.InputBinding();}
-
-\StringTok{      $.extend(customTextBinding, \{}
-\StringTok{        find: function(scope) \{}
-\StringTok{          return $(scope).find('.input-text');}
-\StringTok{        \},}
-\StringTok{        // Given the DOM element for the input, return the value}
-\StringTok{        getValue: function(el) \{}
-\StringTok{          return $(el).val();}
-\StringTok{        \},}
-\StringTok{        setValue: function(el, value) \{}
-\StringTok{          $(el).val(value);}
-\StringTok{        \},}
-\StringTok{        receiveMessage: function(el, data) \{}
-\StringTok{          console.log(data);}
-\StringTok{          this.setValue(el, data);}
-\StringTok{        \}}
-\StringTok{      \});}
-\StringTok{      }
-\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
-\StringTok{    \});}
-\StringTok{    "}
-\NormalTok{  ),}
-  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
-  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"update"}\NormalTok{, }\StringTok{"Update text!"}\NormalTok{, }\DataTypeTok{class =} \StringTok{"btn-success"}\NormalTok{),}
-  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
-\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
-  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{update, \{}
-    \KeywordTok{updateCustomTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\DataTypeTok{value =} \StringTok{"new text"}\NormalTok{)}
-\NormalTok{  \})}
-\NormalTok{\}}
-\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\KeywordTok{updateCustomTextInputExample}\NormalTok{(}\DecValTok{3}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -2015,7 +1993,7 @@ If we have to pass multiple elements to update, we would have to change the \tex
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{updateCustomTextInput <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(inputId, }\DataTypeTok{value =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{placeholder =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{session =} \KeywordTok{getDefaultReactiveDomain}\NormalTok{()) \{}
-\NormalTok{  message <-}\StringTok{ }\NormalTok{shiny}\OperatorTok{:::}\KeywordTok{dropNulls}\NormalTok{(}
+\NormalTok{  message <-}\StringTok{ }\KeywordTok{dropNulls}\NormalTok{(}
     \KeywordTok{list}\NormalTok{(}
       \DataTypeTok{value =}\NormalTok{ value,}
       \DataTypeTok{placeholder =}\NormalTok{ placeholder}
@@ -2026,7 +2004,7 @@ If we have to pass multiple elements to update, we would have to change the \tex
 \end{Highlighting}
 \end{Shaded}
 
-\texttt{dropNulls} is an internal function ensuring that the list does not contain NULL elements. On the JS side, we would have to update the \texttt{receiveMessage} method. We send a list from R, which is then serialized to a JSON object. Properties like \texttt{value} may be accessed using the . notation:
+\texttt{dropNulls} is an internal function ensuring that the list does not contain NULL elements. We send a list from R, which is then serialized to a JSON object. In the \texttt{receiveMessage} method, properties like \texttt{value} may be accessed using the . notation:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2040,7 +2018,7 @@ If we have to pass multiple elements to update, we would have to change the \tex
 \end{Highlighting}
 \end{Shaded}
 
-So far so good! We managed to update the text input value. Yet, the output value does not change. We are going to fix this missing step in the next section.
+So far so good! We managed to update the text input value. Yet, after clicking the button, the output value does not change. We are going to fix this missing step in the next section.
 
 \hypertarget{subscribe}{%
 \subsubsection{Subscribe}\label{subscribe}}
@@ -2061,7 +2039,7 @@ We may add those \href{https://javascript.info/events-change-input}{events} to o
 \begin{Shaded}
 \begin{Highlighting}[]
 \AttributeTok{$}\NormalTok{(el).}\AttributeTok{on}\NormalTok{(}\StringTok{'keyup.customTextBinding input.customTextBinding'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(event) }\OperatorTok{\{}
-\AttributeTok{callback}\NormalTok{(}\KeywordTok{true}\NormalTok{)}\OperatorTok{;}
+  \AttributeTok{callback}\NormalTok{(}\KeywordTok{true}\NormalTok{)}\OperatorTok{;}
 \OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
 \end{Highlighting}
 \end{Shaded}
@@ -2070,53 +2048,7 @@ We may add those \href{https://javascript.info/events-change-input}{events} to o
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
-    \StringTok{"$(function() \{}
-\StringTok{      // Input binding}
-\StringTok{      let customTextBinding = new Shiny.InputBinding();}
-
-\StringTok{      $.extend(customTextBinding, \{}
-\StringTok{        find: function(scope) \{}
-\StringTok{          return $(scope).find('.input-text');}
-\StringTok{        \},}
-\StringTok{        // Given the DOM element for the input, return the value}
-\StringTok{        getValue: function(el) \{}
-\StringTok{          return $(el).val();}
-\StringTok{        \},}
-\StringTok{        setValue: function(el, value) \{}
-\StringTok{          $(el).val(value);}
-\StringTok{        \},}
-\StringTok{        receiveMessage: function(el, data) \{}
-\StringTok{          if (data.hasOwnProperty('value')) \{}
-\StringTok{            this.setValue(el, data.value);}
-\StringTok{            $(el).trigger('change');}
-\StringTok{          \}}
-\StringTok{        \},}
-\StringTok{        subscribe: function(el, callback) \{}
-\StringTok{          $(el).on('keyup.customTextBinding input.customTextBinding', function(event) \{}
-\StringTok{            console.log(event);}
-\StringTok{            callback();}
-\StringTok{          \});}
-\StringTok{        \}}
-\StringTok{      \});}
-\StringTok{      }
-\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
-\StringTok{    \});}
-\StringTok{    "}
-\NormalTok{  ),}
-  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
-  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"update"}\NormalTok{, }\StringTok{"Update text!"}\NormalTok{, }\DataTypeTok{class =} \StringTok{"btn-success"}\NormalTok{),}
-  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
-\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
-  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{update, \{}
-    \KeywordTok{updateCustomTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\DataTypeTok{value =} \StringTok{"new text"}\NormalTok{)}
-\NormalTok{  \})}
-\NormalTok{\}}
-\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\KeywordTok{updateCustomTextInputExample}\NormalTok{(}\DecValTok{4}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -2134,56 +2066,7 @@ Let's try again.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
-    \StringTok{"$(function() \{}
-\StringTok{      // Input binding}
-\StringTok{      let customTextBinding = new Shiny.InputBinding();}
-
-\StringTok{      $.extend(customTextBinding, \{}
-\StringTok{        find: function(scope) \{}
-\StringTok{          return $(scope).find('.input-text');}
-\StringTok{        \},}
-\StringTok{        // Given the DOM element for the input, return the value}
-\StringTok{        getValue: function(el) \{}
-\StringTok{          return $(el).val();}
-\StringTok{        \},}
-\StringTok{        setValue: function(el, value) \{}
-\StringTok{          $(el).val(value);}
-\StringTok{        \},}
-\StringTok{        receiveMessage: function(el, data) \{}
-\StringTok{          if (data.hasOwnProperty('value')) \{}
-\StringTok{            this.setValue(el, data.value);}
-\StringTok{            $(el).trigger('change');}
-\StringTok{          \}}
-\StringTok{        \},}
-\StringTok{        subscribe: function(el, callback) \{}
-\StringTok{          $(el).on('keyup.customTextBinding input.textInputBinding', function(event) \{}
-\StringTok{            callback();}
-\StringTok{          \});}
-
-\StringTok{          $(el).on('change.customTextBinding', function(event) \{}
-\StringTok{            callback(false);}
-\StringTok{          \});}
-\StringTok{        \}}
-\StringTok{      \});}
-\StringTok{      }
-\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
-\StringTok{    \});}
-\StringTok{    "}
-\NormalTok{  ),}
-  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
-  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"update"}\NormalTok{, }\StringTok{"Update text!"}\NormalTok{, }\DataTypeTok{class =} \StringTok{"btn-success"}\NormalTok{),}
-  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
-\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
-  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{update, \{}
-    \KeywordTok{updateCustomTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\DataTypeTok{value =} \StringTok{"new text"}\NormalTok{)}
-\NormalTok{  \})}
-\NormalTok{\}}
-\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\KeywordTok{updateCustomTextInputExample}\NormalTok{(}\DecValTok{5}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -2198,65 +2081,7 @@ Run the app below and try to manually change the text input value by adding a co
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
-\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
-    \StringTok{"$(function() \{}
-\StringTok{      // Input binding}
-\StringTok{      let customTextBinding = new Shiny.InputBinding();}
-
-\StringTok{      $.extend(customTextBinding, \{}
-\StringTok{        find: function(scope) \{}
-\StringTok{          return $(scope).find('.input-text');}
-\StringTok{        \},}
-\StringTok{        // Given the DOM element for the input, return the value}
-\StringTok{        getValue: function(el) \{}
-\StringTok{          return $(el).val();}
-\StringTok{        \},}
-\StringTok{        setValue: function(el, value) \{}
-\StringTok{          $(el).val(value);}
-\StringTok{        \},}
-\StringTok{        receiveMessage: function(el, data) \{}
-\StringTok{          if (data.hasOwnProperty('value')) \{}
-\StringTok{            this.setValue(el, data.value);}
-\StringTok{            $(el).trigger('change');}
-\StringTok{          \}}
-\StringTok{        \},}
-\StringTok{        subscribe: function(el, callback) \{}
-\StringTok{          $(el).on('keyup.customTextBinding input.textInputBinding', function(event) \{}
-\StringTok{            callback(true);}
-\StringTok{          \});}
-
-\StringTok{          $(el).on('change.customTextBinding', function(event) \{}
-\StringTok{            callback();}
-\StringTok{          \});}
-\StringTok{        \},}
-\StringTok{        getRatePolicy: function() \{}
-\StringTok{          return \{}
-\StringTok{            policy: 'debounce',}
-\StringTok{            delay: 250}
-\StringTok{          \};}
-\StringTok{        \},}
-\StringTok{        unsubscribe: function(el) \{}
-\StringTok{          $(el).off('.customTextBinding');}
-\StringTok{        \}}
-\StringTok{      \});}
-\StringTok{      }
-\StringTok{      Shiny.inputBindings.register(customTextBinding, 'text');}
-\StringTok{    \});}
-\StringTok{    "}
-\NormalTok{  ),}
-  \KeywordTok{customTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\StringTok{"Caption"}\NormalTok{, }\StringTok{"Data Summary"}\NormalTok{),}
-  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"update"}\NormalTok{, }\StringTok{"Update text!"}\NormalTok{, }\DataTypeTok{class =} \StringTok{"btn-success"}\NormalTok{),}
-  \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"customText"}\NormalTok{)}
-\NormalTok{)}
-
-\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
-\NormalTok{  output}\OperatorTok{$}\NormalTok{customText <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(input}\OperatorTok{$}\NormalTok{caption)}
-  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{update, \{}
-    \KeywordTok{updateCustomTextInput}\NormalTok{(}\StringTok{"caption"}\NormalTok{, }\DataTypeTok{value =} \StringTok{"new text"}\NormalTok{)}
-\NormalTok{  \})}
-\NormalTok{\}}
-\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\KeywordTok{customTextInputExample}\NormalTok{(}\DecValTok{6}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -2283,66 +2108,7 @@ Although the Shiny \href{https://shiny.rstudio.com/articles/building-inputs.html
 \hypertarget{binding-other-elements}{%
 \subsection{Binding other elements}\label{binding-other-elements}}
 
-The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the \texttt{box} function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\StringTok{"%OR%"}\NormalTok{ <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(a, b) }\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(a)) a }\ControlFlowTok{else}\NormalTok{ b}
-
-\NormalTok{box2 <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{ (..., }\DataTypeTok{inputId =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{title =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{footer =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{status =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{solidHeader =} \OtherTok{FALSE}\NormalTok{, }
-                 \DataTypeTok{background =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{width =} \DecValTok{6}\NormalTok{, }\DataTypeTok{height =} \OtherTok{NULL}\NormalTok{, }\DataTypeTok{collapsible =} \OtherTok{FALSE}\NormalTok{, }
-                 \DataTypeTok{collapsed =} \OtherTok{FALSE}\NormalTok{) }
-\NormalTok{\{}
-\NormalTok{  boxClass <-}\StringTok{ "box"}
-  \ControlFlowTok{if}\NormalTok{ (solidHeader }\OperatorTok{||}\StringTok{ }\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(background)) \{}
-\NormalTok{    boxClass <-}\StringTok{ }\KeywordTok{paste}\NormalTok{(boxClass, }\StringTok{"box-solid"}\NormalTok{)}
-\NormalTok{  \}}
-  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(status)) \{}
-\NormalTok{    boxClass <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(boxClass, }\StringTok{" box-"}\NormalTok{, status)}
-\NormalTok{  \}}
-  \ControlFlowTok{if}\NormalTok{ (collapsible }\OperatorTok{&&}\StringTok{ }\NormalTok{collapsed) \{}
-\NormalTok{    boxClass <-}\StringTok{ }\KeywordTok{paste}\NormalTok{(boxClass, }\StringTok{"collapsed-box"}\NormalTok{)}
-\NormalTok{  \}}
-  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(background)) \{}
-\NormalTok{    boxClass <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(boxClass, }\StringTok{" bg-"}\NormalTok{, background)}
-\NormalTok{  \}}
-\NormalTok{  style <-}\StringTok{ }\OtherTok{NULL}
-  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(height)) \{}
-\NormalTok{    style <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}\StringTok{"height: "}\NormalTok{, }\KeywordTok{validateCssUnit}\NormalTok{(height))}
-\NormalTok{  \}}
-\NormalTok{  titleTag <-}\StringTok{ }\OtherTok{NULL}
-  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(title)) \{}
-\NormalTok{    titleTag <-}\StringTok{ }\KeywordTok{h3}\NormalTok{(}\DataTypeTok{class =} \StringTok{"box-title"}\NormalTok{, title)}
-\NormalTok{  \}}
-\NormalTok{  collapseTag <-}\StringTok{ }\OtherTok{NULL}
-  \ControlFlowTok{if}\NormalTok{ (collapsible) \{}
-\NormalTok{    buttonStatus <-}\StringTok{ }\NormalTok{status }\OperatorTok{%OR%}\StringTok{ "default"}
-\NormalTok{    collapseIcon <-}\StringTok{ }\ControlFlowTok{if}\NormalTok{ (collapsed) }
-      \StringTok{"plus"}
-    \ControlFlowTok{else} \StringTok{"minus"}
-\NormalTok{    collapseTag <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"box-tools pull-right"}\NormalTok{, tags}\OperatorTok{$}\KeywordTok{button}\NormalTok{(}\DataTypeTok{class =} \KeywordTok{paste0}\NormalTok{(}\StringTok{"btn btn-box-tool"}\NormalTok{), }
-                                                                   \StringTok{`}\DataTypeTok{data-widget}\StringTok{`}\NormalTok{ =}\StringTok{ "collapse"}\NormalTok{, shiny}\OperatorTok{::}\KeywordTok{icon}\NormalTok{(collapseIcon)))}
-\NormalTok{  \}}
-\NormalTok{  headerTag <-}\StringTok{ }\OtherTok{NULL}
-  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(titleTag) }\OperatorTok{||}\StringTok{ }\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(collapseTag)) \{}
-\NormalTok{    headerTag <-}\StringTok{ }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"box-header"}\NormalTok{, titleTag, collapseTag)}
-\NormalTok{  \}}
-  
-  \KeywordTok{div}\NormalTok{(}
-    \DataTypeTok{class =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(width)) }\KeywordTok{paste0}\NormalTok{(}\StringTok{"col-sm-"}\NormalTok{, width), }
-    \KeywordTok{div}\NormalTok{(}
-      \DataTypeTok{id =}\NormalTok{ inputId, }
-      \DataTypeTok{class =}\NormalTok{ boxClass, }
-      \DataTypeTok{style =} \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(style)) }
-\NormalTok{        style, }
-\NormalTok{      headerTag, }
-      \KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"box-body"}\NormalTok{, ...),}
-      \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{is.null}\NormalTok{(footer)) }\KeywordTok{div}\NormalTok{(}\DataTypeTok{class =} \StringTok{"box-footer"}\NormalTok{, footer)}
-\NormalTok{    )}
-\NormalTok{  )}
-\NormalTok{\}}
-\end{Highlighting}
-\end{Shaded}
+The Shiny input binding system is too convenient to be only used it for input elements. In shinydashboard, you may know the \texttt{box} function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an inputId parameter to the box function. You may inspect the code \href{https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/box2.R}{here}.
 
 Since we may collapse and uncollapse the box, we create the \texttt{updateBox} function, which will toggle it:
 
@@ -2354,7 +2120,7 @@ Since we may collapse and uncollapse the box, we create the \texttt{updateBox} f
 \end{Highlighting}
 \end{Shaded}
 
-When collapsed, a box gets the \texttt{collapsed-box} class. Note: this will be useful for the input binding. As mentionned above, it is also necessary to know when to tell Shiny to update the value with the \texttt{subscribe} method. Most of the time, the change event might be sufficient, but as shinydashboard is built on top of \href{https://adminlte.io/docs/2.4/js-box-widget}{AdminLTE2}, it has an API to control the box behaviour. We identify 2 events corresponding to the collapsible action:
+When collapsed, a box gets the \texttt{collapsed-box} class. Note: this will be useful for the input binding. As mentioned above, it is also necessary to know when to tell Shiny to update the value with the \texttt{subscribe} method. Most of the time, the change event might be sufficient, but as shinydashboard is built on top of \href{https://adminlte.io/docs/2.4/js-box-widget}{AdminLTE2}, it has an API to control the box behavior. We identify 2 events corresponding to the collapsible action:
 
 \begin{itemize}
 \tightlist
@@ -2364,7 +2130,7 @@ When collapsed, a box gets the \texttt{collapsed-box} class. Note: this will be 
   collapsed.boxwidget (Triggered after the box is collapsed)
 \end{itemize}
 
-Unfortunatly, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS \href{https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js}{code} (see the collapse method line 577-612). There are other solutions, as shown below with the \texttt{click} event.
+Unfortunately, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS \href{https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js}{code} (see the collapse method line 577-612). There are other solutions, as shown below with the \texttt{click} event.
 
 There is also a plug and play \texttt{toggleBox} method. To unleash the power of our box, we need to activate it with \texttt{\$(\textquotesingle{}\#\textless{}box\_id\textgreater{}\textquotesingle{}).activateBox();} before the binding step. If you remember, the \texttt{initialize} method is exactly doing this:
 
@@ -2431,83 +2197,41 @@ Let's try our new toy in a simple dashboard:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{shinyApp}\NormalTok{(}
-  \DataTypeTok{ui =} \KeywordTok{dashboardPage}\NormalTok{(}
-    \KeywordTok{dashboardHeader}\NormalTok{(),}
-    \KeywordTok{dashboardSidebar}\NormalTok{(),}
-    \KeywordTok{dashboardBody}\NormalTok{(}
-\NormalTok{      tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
-        \StringTok{"$(function() \{}
-\StringTok{          let boxBinding = new Shiny.InputBinding();}
-\StringTok{          $.extend(boxBinding, \{}
-\StringTok{            initialize: function(el) \{}
-\StringTok{              $(el).activateBox();}
-\StringTok{            \},}
-\StringTok{            find: function(scope) \{}
-\StringTok{              return $(scope).find('.box');}
-\StringTok{            \},}
-\StringTok{            getValue: function(el) \{}
-\StringTok{              let isCollapsed = $(el).hasClass('collapsed-box');}
-\StringTok{              return \{collapsed: isCollapsed\}; // this will be a list in R}
-\StringTok{            \},}
-\StringTok{            setValue: function(el, value) \{}
-\StringTok{              $(el).toggleBox();}
-\StringTok{            \}, }
-\StringTok{            receiveMessage: function(el, data) \{}
-\StringTok{              this.setValue(el, data);}
-\StringTok{              $(el).trigger('change');}
-\StringTok{            \},}
-\StringTok{            subscribe: function(el, callback) \{}
-\StringTok{              $(el).on('click', '[data-widget=}\CharTok{\textbackslash{}"}\StringTok{collapse}\CharTok{\textbackslash{}"}\StringTok{]', function(event) \{}
-\StringTok{                setTimeout(function() \{}
-\StringTok{                  callback();}
-\StringTok{                \}, 550);}
-\StringTok{              \}); }
-\StringTok{              $(el).on('change', function(event) \{}
-\StringTok{                setTimeout(function() \{}
-\StringTok{                  callback();}
-\StringTok{                \}, 550);}
-\StringTok{              \});}
-\StringTok{            \},}
-\StringTok{            unsubscribe: function(el) \{}
-\StringTok{              $(el).off('.boxBinding');}
-\StringTok{            \}}
-\StringTok{          \});}
-\StringTok{          }
-\StringTok{          Shiny.inputBindings.register(boxBinding, 'box-input');}
-\StringTok{        \});}
-\StringTok{        "}
-\NormalTok{      ),}
-      
-      \KeywordTok{box2}\NormalTok{(}
-        \DataTypeTok{title =} \KeywordTok{textOutput}\NormalTok{(}\StringTok{"box_state"}\NormalTok{),}
-        \StringTok{"Box body"}\NormalTok{,}
-        \DataTypeTok{inputId =} \StringTok{"mybox"}\NormalTok{,}
-        \DataTypeTok{collapsible =} \OtherTok{TRUE}\NormalTok{,}
-        \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"plot"}\NormalTok{)}
-\NormalTok{      ),}
-      \KeywordTok{actionButton}\NormalTok{(}\StringTok{"toggle_box"}\NormalTok{, }\StringTok{"Toggle Box"}\NormalTok{)}
-\NormalTok{    ),}
-    \DataTypeTok{title =} \StringTok{"Dashboard example"}
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+  \CommentTok{# import shinydashboard deps without the need of the dashboard template}
+  \KeywordTok{useShinydashboard}\NormalTok{(),}
+
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{style}\NormalTok{(}\StringTok{"body \{ background-color: ghostwhite\};"}\NormalTok{),}
+
+  \KeywordTok{br}\NormalTok{(),}
+  \KeywordTok{box2}\NormalTok{(}
+   \DataTypeTok{title =} \KeywordTok{textOutput}\NormalTok{(}\StringTok{"box_state"}\NormalTok{),}
+   \StringTok{"Box body"}\NormalTok{,}
+   \DataTypeTok{inputId =} \StringTok{"mybox"}\NormalTok{,}
+   \DataTypeTok{collapsible =} \OtherTok{TRUE}\NormalTok{,}
+   \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"plot"}\NormalTok{)}
 \NormalTok{  ),}
-  \DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output) \{}
-    
-\NormalTok{    output}\OperatorTok{$}\NormalTok{plot <-}\StringTok{ }\KeywordTok{renderPlot}\NormalTok{(\{}
-      \KeywordTok{req}\NormalTok{(}\OperatorTok{!}\NormalTok{input}\OperatorTok{$}\NormalTok{mybox}\OperatorTok{$}\NormalTok{collapsed)}
-      \KeywordTok{plot}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(}\DecValTok{200}\NormalTok{))}
-\NormalTok{    \})}
-    
-\NormalTok{    output}\OperatorTok{$}\NormalTok{box_state <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(\{}
-\NormalTok{      state <-}\StringTok{ }\ControlFlowTok{if}\NormalTok{ (input}\OperatorTok{$}\NormalTok{mybox}\OperatorTok{$}\NormalTok{collapsed) }\StringTok{"collapsed"} \ControlFlowTok{else} \StringTok{"uncollapsed"}
-      \KeywordTok{paste}\NormalTok{(}\StringTok{"My box is"}\NormalTok{, state)}
-\NormalTok{    \})}
-    
-    \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{toggle_box, \{}
-      \KeywordTok{updateBox}\NormalTok{(}\StringTok{"mybox"}\NormalTok{)}
-\NormalTok{    \})}
-    
-\NormalTok{  \}}
-\NormalTok{)}
+  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"toggle_box"}\NormalTok{, }\StringTok{"Toggle Box"}\NormalTok{, }\DataTypeTok{class =} \StringTok{"bg-success"}\NormalTok{)}
+\NormalTok{ )}
+
+\NormalTok{ server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{plot <-}\StringTok{ }\KeywordTok{renderPlot}\NormalTok{(\{}
+    \KeywordTok{req}\NormalTok{(}\OperatorTok{!}\NormalTok{input}\OperatorTok{$}\NormalTok{mybox}\OperatorTok{$}\NormalTok{collapsed)}
+    \KeywordTok{plot}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(}\DecValTok{200}\NormalTok{))}
+\NormalTok{  \})}
+
+\NormalTok{  output}\OperatorTok{$}\NormalTok{box_state <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(\{}
+\NormalTok{    state <-}\StringTok{ }\ControlFlowTok{if}\NormalTok{ (input}\OperatorTok{$}\NormalTok{mybox}\OperatorTok{$}\NormalTok{collapsed) }\StringTok{"collapsed"} \ControlFlowTok{else} \StringTok{"uncollapsed"}
+    \KeywordTok{paste}\NormalTok{(}\StringTok{"My box is"}\NormalTok{, state)}
+\NormalTok{  \})}
+
+  \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{toggle_box, \{}
+    \KeywordTok{updateBox2}\NormalTok{(}\StringTok{"mybox"}\NormalTok{)}
+\NormalTok{  \})}
+
+\NormalTok{ \}}
+
+ \KeywordTok{shinyApp}\NormalTok{(ui, server)}
 \end{Highlighting}
 \end{Shaded}
 
