@@ -440,74 +440,8 @@ The script is included in a tag but best practice it to put it in a separate js 
 ```{r, eval=FALSE}
 #thematic_on()
 #onStop(thematic_off)
-ui <- tabler_page(
-  tags$head(
-    tags$script(
-      HTML(
-        "$(function() {
-          // this makes sure to trigger the show event on the active tab at start
-          const activeTab = $('#navbar-menu .nav-link.active');
-          if (activeTab.length > 0) {
-            const tabId = $(activeTab).attr('data-value');
-            $(activeTab).tab('show');
-            $(`#${tabId}`).addClass('show active');
-          } else {
-            $('#navbar-menu .nav-link')
-              .first()
-              .tab('show');
-          }
-        });
-        "
-      )
-    )
-  ),
-  tabler_navbar(
-    brand_url = "https://preview-dev.tabler.io", 
-    brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
-    nav_menu = tabler_navbar_menu(
-      tabler_navbar_menu_item(
-        text = "Tab 1",
-        icon = NULL,
-        tabName = "tab1",
-        selected = TRUE
-      ),
-      tabler_navbar_menu_item(
-        text = "Tab 2",
-        icon = NULL,
-        tabName = "tab2"
-      )
-    )
-  ),
-  tabler_body(
-    tabler_tab_items(
-      tabler_tab_item(
-        tabName = "tab1",
-        sliderInput(
-          "obs", 
-          "Number of observations:",
-          min = 0,
-          max = 1000, 
-          value = 500
-        ),
-        plotOutput("distPlot")
-      ),
-      tabler_tab_item(
-        tabName = "tab2",
-        p("Second Tab")
-      )
-    ),
-    footer = tabler_footer(
-      left = "Rstats, 2020", 
-      right = a(href = "https://www.google.com", "More")
-    )
-  )
-)
-server <- function(input, output) {
-  output$distPlot <- renderPlot({
-    hist(rnorm(input$obs))
-  })
-}
-shinyApp(ui, server)
+# example with custom JS code to activate tabs
+shinyAppDir(system.file("chapter12/tabler_tabs", package = "OSUICode"))
 ```
 
 The result is shown in Figure \@ref(fig:tabler-nav).  I'd also suggest to include at least 1 input/output per tab, to test whether everything works properly. 
@@ -575,19 +509,6 @@ tabler_card <- function(..., title = NULL, status = NULL, width = 6, padding = N
   card_wrapper <- card_wrapper %>% tagAppendChildren(status_tag, body_tag)
   main_wrapper %>% tagAppendChild(card_wrapper)
 }
-
-# test the card
-data("economics_long")
-economics_long <- economics_long %>%
-  group_by(variable) %>%
-  slice((n()-100):n())
-
-
-my_card <- tabler_card(
-  apexchartOutput("my_chart"), 
-  title = "My card", 
-  status = "danger"
-)
 ```
 
 In the meantime, I'd be also nice to be able to display cards in the same row. Let's create the `tabler_row`:
@@ -598,12 +519,26 @@ tabler_row <- function(...) {
 }
 ```
 
+Below, we show an example of the `tabler_card` function, in combination with [apexcharter](https://github.com/dreamRs/apexcharter) by [dreamRs](https://www.dreamrs.fr).
+
 ```{r, eval=FALSE}
+# test the card
+data("economics_long")
+economics_long <- economics_long %>%
+  group_by(variable) %>%
+  slice((n()-100):n())
+
 spark_data <- data.frame(
   date = Sys.Date() + 1:20,
   var1 = round(rnorm(20, 50, 10)),
   var2 = round(rnorm(20, 50, 10)),
   var3 = round(rnorm(20, 50, 10))
+)
+
+my_card <- tabler_card(
+  apexchartOutput("my_chart"), 
+  title = "My card", 
+  status = "danger"
 )
 
 ui <- tabler_page(
