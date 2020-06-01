@@ -157,116 +157,19 @@ We recommend to be reasonable and not to validate every single parameter.
 ### Existing utils functions
 
 #### Validating tags
-The problem with the above approach is that it may take time to create all validation functions. Fortunately, packages like {shinydashboard} include really powerful validation functions, especially `tagAssert`. It is not exported which means you will have to import it in your own project. Below is the code, where I left the documentation describing all parameters.
+The problem with the above approach is that it may take time to create all validation functions. Fortunately, packages like {shinydashboard} include really powerful validation functions, especially `tagAssert`. This function has been included in the book side package so that you may use it at any time.
 
-```{r}
-# Return TRUE if a shiny.tag object has a CSS class, FALSE otherwise.
-hasCssClass <- function(tag, class) {
-  if (is.null(tag$attribs) || is.null(tag$attribs$class))
-    return(FALSE)
-
-  classes <- strsplit(tag$attribs$class, " +")[[1]]
-  return(class %in% classes)
-}
-
-tagAssert <- function(tag, type = NULL, class = NULL, allowUI = TRUE) {
-  if (!inherits(tag, "shiny.tag")) {
-    print(tag)
-    stop("Expected an object with class 'shiny.tag'.")
-  }
-
-  # Skip dynamic output elements
-  if (allowUI &&
-      (hasCssClass(tag, "shiny-html-output") ||
-       hasCssClass(tag, "shinydashboard-menu-output"))) {
-    return()
-  }
-
-  if (!is.null(type) && tag$name != type) {
-    stop("Expected tag to be of type ", type)
-  }
-
-  if (!is.null(class)) {
-    if (is.null(tag$attribs$class)) {
-      stop("Expected tag to have class '", class, "'")
-
-    } else {
-      tagClasses <- strsplit(tag$attribs$class, " ")[[1]]
-      if (!(class %in% tagClasses)) {
-        stop("Expected tag to have class '", class, "'")
-      }
-    }
-  }
-}
-
+```{r, eval=FALSE}
 myTag <- div(class = "bg-blue")
 
 tagAssert(myTag, type = "div")
-# tagAssert(myTag, type = "li") # will fail
+tagAssert(myTag, type = "li") # will fail
 tagAssert(myTag, class = "bg-blue")
 ```
 
-Importantly, `tagAssert` will raise an error if the condition is not fulfilled. Another function, `tagMatch` simply returns TRUE/FALSE. It looks for `ìd`, `class`, `name` and any other tag attribute like `data-value`.
+Importantly, `tagAssert` will raise an error if the condition is not fulfilled. Another function, `tagMatches` simply returns TRUE/FALSE. It looks for `ìd`, `class`, `name` and any other tag attribute like `data-value`. Like `tagAssert`, `tagMatches` is also available in the book side package.
 
-```{r}
-# This is like a==b, except that if a or b is NULL or an empty vector, it won't
-# return logical(0). If a AND b are NULL/length-0, this will return TRUE; if
-# just one of them is NULL/length-0, this will FALSE. This is for use in
-# conditionals where `if(logical(0))` would cause an error. Similar to using
-# identical(a,b), but less stringent about types: `equals(1, 1L)` is TRUE, but
-# `identical(1, 1L)` is FALSE.
-equals <- function(a, b) {
-  alen <- length(a)
-  blen <- length(b)
-  if (alen==0 && blen==0) {
-    return(TRUE)
-  }
-  if (alen > 1 || blen > 1) {
-    stop("Can only compare objects of length 0 or 1")
-  }
-  if (alen==0 || blen==0) {
-    return(FALSE)
-  }
-
-  a == b
-}
-
-
-# Return TRUE if a tag object matches a specific id, and/or tag name, and/or
-# class, and or other arbitrary tag attributes. Put the args after ... so that
-# caller must use named arguments.
-tagMatches <- function(item, ..., id = NULL, name = NULL, class = NULL) {
-  dots <- list(...)
-  if (!inherits(item, "shiny.tag")) {
-    return(FALSE)
-  }
-  if (!is.null(id) && !equals(item$attribs$id, id)) {
-    return(FALSE)
-  }
-  if (!is.null(name) && !equals(item$name, name)) {
-    return(FALSE)
-  }
-  if (!is.null(class)) {
-    if (is.null(item$attribs$class)) {
-      return(FALSE)
-    }
-    classes <- strsplit(item$attribs$class, " ")[[1]]
-    if (! class %in% classes) {
-      return(FALSE)
-    }
-  }
-
-  for (i in seq_along(dots)) {
-    arg     <- dots[[i]]
-    argName <- names(dots)[[i]]
-    if (!equals(item$attribs[[argName]], arg)) {
-      return(FALSE)
-    }
-  }
-
-  TRUE
-}
-
+```{r, eval=FALSE}
 tagMatches(myTag, id = "d")
 tagMatches(myTag, class = "bg-blue")
 ```
@@ -284,30 +187,11 @@ In Chapter \@ref(custom-templates-skeleton), we developed the `tabler_navbar_men
 
 ```{r, eval=FALSE}
 ui <- tabler_page(
-  tags$head(
-    tags$script(
-      HTML(
-        "$(function() {
-          // this makes sure to trigger the show event on the active tab at start
-          const activeTab = $('#navbar-menu .nav-link.active');
-          if (activeTab.length > 0) {
-            const tabId = $(activeTab).attr('data-value');
-            $(activeTab).tab('show');
-            $(`#${tabId}`).addClass('show active');
-          } else {
-            $('#navbar-menu .nav-link')
-              .first()
-              .tab('show');
-          }
-        });
-        "
-      )
-    )
-  ),
   tabler_navbar(
     brand_url = "https://preview-dev.tabler.io", 
     brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
     nav_menu = tabler_navbar_menu(
+      inputId = "mymenu",
       tabler_navbar_menu_item(
         text = "Tab 1",
         icon = NULL,
@@ -381,21 +265,6 @@ tabler_navbar_menu <- function(...) {
 A classic method to inspect items provided to `tabler_navbar_menu` is to capture them in a list. We extract the children of those items `lapply(list(...) , "[", 3)` (A shiny tag is a structure where the first position holds the tag name, the second is a named list of attributes and the third slot is for children). For each children we apply the shinydashboard internal function `findAttribute`, that allows to search for a specific attribute value in a given tag. We use the `vapply` to return an atomic vector (like `c(1, 2`), lists are vectors but recursive!) and compute the sum of the vector. Each TRUE occurrence is counted as 1 and FALSE 0. Therefore, if the latter is higher than 1, it means that the user provided more than 1 selected tab, which should subsequently raise an error.
 
 ```{r, eval=FALSE}
-findAttribute <- function(x, attr, val) {
-  if (is.atomic(x)) return(FALSE) # exhausted this branch of the tree
-
-  if (!is.null(x$attribs[[attr]])) { # found attribute called `attr`
-    if (identical(x$attribs[[attr]], val)) return(TRUE)
-    else return(FALSE)
-  }
-
-  if (length(x$children) > 0) { # recursion
-    return(any(unlist(lapply(x$children, findAttribute, attr, val))))
-  }
-
-  return(FALSE) # found no attribute called `attr`
-}
-
 tabler_navbar_menu <- function(...) {
   
   items <- lapply(list(...) , `[`, 3)
