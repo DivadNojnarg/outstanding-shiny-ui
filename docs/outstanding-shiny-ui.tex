@@ -3202,6 +3202,117 @@ In the next chapter, we will focus on the \href{https://preview-dev.tabler.io/la
 \includegraphics[width=34.33in]{images/practice/tabler-dark} \caption{Tabler dashboard overview}\label{fig:tabler-dark}
 \end{figure}
 
+\hypertarget{custom-templates-package}{%
+\chapter{Package creation}\label{custom-templates-package}}
+
+\hypertarget{introduction-2}{%
+\section{Introduction}\label{introduction-2}}
+
+Translating an HTML template into an R API requires the creation of a package. As,
+stated in Chapter \ref{intro}, this is not a good practice to proceed as follows:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+  \KeywordTok{useShinydashboard}\NormalTok{(),}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+    \StringTok{"$(function() \{}
+\StringTok{      let boxBinding = new Shiny.InputBinding();}
+\StringTok{      $.extend(boxBinding, \{}
+\StringTok{        initialize: function(el) \{}
+\StringTok{          $(el).activateBox();}
+\StringTok{        \},}
+\StringTok{        find: function(scope) \{}
+\StringTok{          return $(scope).find('.box');}
+\StringTok{        \},}
+\StringTok{        getValue: function(el) \{}
+\StringTok{          let isCollapsed = $(el).hasClass('collapsed-box');}
+\StringTok{          return \{collapsed: isCollapsed\}; // this will be a list in R}
+\StringTok{        \},}
+\StringTok{        setValue: function(el, value) \{}
+\StringTok{          $(el).toggleBox();}
+\StringTok{        \}, }
+\StringTok{        receiveMessage: function(el, data) \{}
+\StringTok{          this.setValue(el, data);}
+\StringTok{          $(el).trigger('change');}
+\StringTok{        \},}
+\StringTok{        subscribe: function(el, callback) \{}
+\StringTok{          $(el).on('click', '[data-widget=}\CharTok{\textbackslash{}"}\StringTok{collapse}\CharTok{\textbackslash{}"}\StringTok{]', function(event) \{}
+\StringTok{            setTimeout(function() \{}
+\StringTok{              callback();}
+\StringTok{            \}, 550);}
+\StringTok{          \}); }
+\StringTok{          $(el).on('change', function(event) \{}
+\StringTok{            setTimeout(function() \{}
+\StringTok{              callback();}
+\StringTok{            \}, 550);}
+\StringTok{          \});}
+\StringTok{        \},}
+\StringTok{        unsubscribe: function(el) \{}
+\StringTok{          $(el).off('.boxBinding');}
+\StringTok{        \}}
+\StringTok{      \});}
+\StringTok{      Shiny.inputBindings.register(boxBinding, 'box-input');}
+\StringTok{    \});}
+\StringTok{    "}
+\NormalTok{  ),}
+  
+  \KeywordTok{box2}\NormalTok{(}
+    \DataTypeTok{title =} \KeywordTok{textOutput}\NormalTok{(}\StringTok{"box_state"}\NormalTok{),}
+    \StringTok{"Box body"}\NormalTok{,}
+    \DataTypeTok{inputId =} \StringTok{"mybox"}\NormalTok{,}
+    \DataTypeTok{collapsible =} \OtherTok{TRUE}\NormalTok{,}
+    \KeywordTok{plotOutput}\NormalTok{(}\StringTok{"plot"}\NormalTok{)}
+\NormalTok{  ),}
+  \KeywordTok{actionButton}\NormalTok{(}\StringTok{"toggle_box"}\NormalTok{, }\StringTok{"Toggle Box"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{plot <-}\StringTok{ }\KeywordTok{renderPlot}\NormalTok{(\{}
+      \KeywordTok{req}\NormalTok{(}\OperatorTok{!}\NormalTok{input}\OperatorTok{$}\NormalTok{mybox}\OperatorTok{$}\NormalTok{collapsed)}
+      \KeywordTok{plot}\NormalTok{(}\KeywordTok{rnorm}\NormalTok{(}\DecValTok{200}\NormalTok{))}
+\NormalTok{    \})}
+    
+\NormalTok{    output}\OperatorTok{$}\NormalTok{box_state <-}\StringTok{ }\KeywordTok{renderText}\NormalTok{(\{}
+\NormalTok{      state <-}\StringTok{ }\ControlFlowTok{if}\NormalTok{ (input}\OperatorTok{$}\NormalTok{mybox}\OperatorTok{$}\NormalTok{collapsed) }\StringTok{"collapsed"} \ControlFlowTok{else} \StringTok{"uncollapsed"}
+      \KeywordTok{paste}\NormalTok{(}\StringTok{"My box is"}\NormalTok{, state)}
+\NormalTok{    \})}
+    
+    \KeywordTok{observeEvent}\NormalTok{(input}\OperatorTok{$}\NormalTok{toggle_box, \{}
+      \KeywordTok{updateBox2}\NormalTok{(}\StringTok{"mybox"}\NormalTok{)}
+\NormalTok{    \})}
+\NormalTok{\}}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
+\end{Highlighting}
+\end{Shaded}
+
+Imagine if we had to repeat the process for more than twenty components. The package structure provides many advantages like:
+
+\begin{itemize}
+\tightlist
+\item
+  Develop a comprehensive documentation of the underlying API
+\item
+  Design unit tests to guaranty code robustness and improve long term plan
+\item
+  Relevant file organization
+\end{itemize}
+
+\hypertarget{step-by-step}{%
+\section{Step by step}\label{step-by-step}}
+
+\href{https://usethis.r-lib.org}{\{usethis\}} is a game changer for package creation.
+Below is a quick overview of all steps I followed to setup this book side package.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(usethis)}
+\KeywordTok{create_package}\NormalTok{(}\StringTok{"mypk"}\NormalTok{)}
+\CommentTok{# TO FINISH}
+\end{Highlighting}
+\end{Shaded}
+
 \hypertarget{custom-templates-dependencies}{%
 \chapter{Define dependencies}\label{custom-templates-dependencies}}
 

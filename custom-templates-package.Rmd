@@ -1,0 +1,96 @@
+# Package creation {#custom-templates-package}
+
+## Introduction
+Translating an HTML template into an R API requires the creation of a package. As,
+stated in Chapter \@ref(intro), this is not a good practice to proceed as follows:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  useShinydashboard(),
+  tags$script(
+    "$(function() {
+      let boxBinding = new Shiny.InputBinding();
+      $.extend(boxBinding, {
+        initialize: function(el) {
+          $(el).activateBox();
+        },
+        find: function(scope) {
+          return $(scope).find('.box');
+        },
+        getValue: function(el) {
+          let isCollapsed = $(el).hasClass('collapsed-box');
+          return {collapsed: isCollapsed}; // this will be a list in R
+        },
+        setValue: function(el, value) {
+          $(el).toggleBox();
+        }, 
+        receiveMessage: function(el, data) {
+          this.setValue(el, data);
+          $(el).trigger('change');
+        },
+        subscribe: function(el, callback) {
+          $(el).on('click', '[data-widget=\"collapse\"]', function(event) {
+            setTimeout(function() {
+              callback();
+            }, 550);
+          }); 
+          $(el).on('change', function(event) {
+            setTimeout(function() {
+              callback();
+            }, 550);
+          });
+        },
+        unsubscribe: function(el) {
+          $(el).off('.boxBinding');
+        }
+      });
+      Shiny.inputBindings.register(boxBinding, 'box-input');
+    });
+    "
+  ),
+  
+  box2(
+    title = textOutput("box_state"),
+    "Box body",
+    inputId = "mybox",
+    collapsible = TRUE,
+    plotOutput("plot")
+  ),
+  actionButton("toggle_box", "Toggle Box")
+)
+
+server <- function(input, output, session) {
+  output$plot <- renderPlot({
+      req(!input$mybox$collapsed)
+      plot(rnorm(200))
+    })
+    
+    output$box_state <- renderText({
+      state <- if (input$mybox$collapsed) "collapsed" else "uncollapsed"
+      paste("My box is", state)
+    })
+    
+    observeEvent(input$toggle_box, {
+      updateBox2("mybox")
+    })
+}
+
+shinyApp(ui, server)
+```
+
+Imagine if we had to repeat the process for more than twenty components. The package structure provides many advantages like:
+
+  - Develop a comprehensive documentation of the underlying API
+  - Design unit tests to guaranty code robustness and improve long term plan
+  - Relevant file organization
+  
+## Step by step
+[{usethis}](https://usethis.r-lib.org) is a game changer for package creation.
+Below is a quick overview of all steps I followed to setup this book side package.
+
+
+```{r, eval = FALSE}
+library(usethis)
+create_package("mypk")
+# TO FINISH
+```
