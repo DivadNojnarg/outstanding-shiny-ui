@@ -8,6 +8,9 @@
   - include apps as iframes for demo
   - [x] add chapter to test shiny tags, JavaScript input bindings, ...
   - [x] finish Shiny chapter -> add more screenshots to message handler
-  - finish more interactivity chapter
+  - [x] finish more interactivity chapter
   - [x] split Chapter 4: this chapter could be a entire section
-  - add a part on tabs validation in testing/validating chapter
+  - [x] add a part on tabs validation in testing/validating chapter
+  - more references!
+  - add chapter on how to develop a package for user interfaces.
+  - add chapter listing all available templates
