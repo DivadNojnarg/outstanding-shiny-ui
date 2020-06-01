@@ -129,17 +129,41 @@ customTextInput <- function (inputId, label, value = "", width = NULL, placehold
     # input label
     shinyInputLabel(inputId, label), 
     
-    # input element
-    tags$input(
-      id = inputId, 
-      type = "text", 
-      class = "form-control input-text", 
-      value = value,
-      placeholder = placeholder
+    # input element + JS dependencies
+    tagList(
+      customTextInputDeps(),
+      tags$input(
+        id = inputId,
+        type = "text",
+        class = "form-control input-text",
+        value = value,
+        placeholder = placeholder
+      )
     )
   )
 }
 ```
+
+The last part of the code contains a `tagList` with two elements:
+
+  - The element input binding
+  - The input tag
+  
+Below is an example of how we managed the dependency creation in our side package.
+Considering multiple inputs, we will add more script to the dependency by passing a vector to the script parameter. 
+
+```{r, eval=FALSE}
+customTextInputDeps <- function() {
+  htmlDependency(
+    name = "customTextBindings",
+    version = "1.0.0",
+    src = c(file = system.file("chapter5/input-bindings", package = "OSUICode")),
+    script = "customTextInputBinding.js"
+  )
+}
+```
+
+In the [shinyMobile](https://github.com/RinteRface/shinyMobile/tree/master/inst/framework7-5.5.0) package, we chose a more robust approach. All bindings are contained in a folder and compressed so that we generate only one minified file containing all collapsed bindings. Why wouldn't we add all input bindings scripts to the template dependencies and load everything once for all? This would imply to add all dependencies even when the corresponding element don't exist, which is clearly not optimal.
 
 Figure \@ref(fig:text-input) shows the main elements of the `textInput` widget. In the above code, `shinyInputLabel` is a Shiny internal function that creates the numeric input label, or in other word the text displayed next to it. The core input element is wrapped by `tags$input`. No worry if the structure seems unclear, we will give more details about shiny tags in the next chapter.
 
