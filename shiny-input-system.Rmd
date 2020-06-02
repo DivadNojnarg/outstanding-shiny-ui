@@ -471,6 +471,8 @@ ui <- fluidPage(
 ```
 
 ## Utilities to quickly define new inputs
+
+### Introduction
 If you ever wondered where the `Shiny.onInputChange` or `Shiny.setInputValue` comes from (see  [article](https://shiny.rstudio.com/articles/communicating-with-js.html)), it is actually defined in the `initShiny` function. 
 
 ```javascript
@@ -481,6 +483,60 @@ exports.setInputValue = exports.onInputChange = function(name, value, opts) {
 ```
 
 Briefly, this function avoids creating an input binding. It is faster to code but there is a price to pay: losing the ability to easily update the new input. Indeed, all input functions like `sliderInput` have their own update function like `updateSliderInput`, because of the custom input binding system (We will see it very soon)!
+
+### Examples
+`Shiny.setInputValues` becomes powerful when combined to the numerous Shiny JavaScript events listed [here](https://shiny.rstudio.com/articles/js-events.html). This is what
+we use in the [shinyMobile](https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html) package to store the current device information in a shiny input.
+Briefly, Framework7 (on top of which is built shinyMobile) has a method `Framework7.device`, which gives many [details](https://framework7.io/docs/device.html) related to the user device.
+
+```javascript
+$(document).on('shiny:connected', function(event) {
+  Shiny.setInputValue('deviceInfo', Framework7.device);
+});
+```
+
+This allows to conditionally display elements and deeply customize the interface.
+In the example below, the card will not show on mobile devices. 
+
+```{r, eval= FALSE}
+library(shinyMobile)
+shinyApp(
+  ui = f7Page(
+    title = "My app",
+    f7SingleLayout(
+      navbar = f7Navbar(
+        title = "shinyMobile info",
+        hairline = FALSE,
+        shadow = TRUE
+      ),
+      # main content
+      uiOutput("card"),
+      verbatimTextOutput("info"),
+    )
+  ),
+  server = function(input, output, session) {
+    
+    output$info <- renderPrint(input$shinyInfo)
+
+    # generate a card inkly for desktop
+    output$card <- renderUI({
+      if (!input$deviceInfo$desktop) {
+        f7Card(
+          "This is a simple card with plain text,
+          but cards can also contain their own header,
+          footer, list view, image, or any other element."
+        )
+      } else {
+        f7Toast(
+          session, 
+          "You are on desktop! The card will not display", 
+          position = "center"
+        )
+      }
+    })
+  }
+)
+```
 
 ## Miscellaneous
 We present some tools that may be useful...TO FINISH

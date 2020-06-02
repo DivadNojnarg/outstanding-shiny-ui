@@ -2269,6 +2269,9 @@ Let's try our new toy in a simple dashboard:
 \hypertarget{utilities-to-quickly-define-new-inputs}{%
 \section{Utilities to quickly define new inputs}\label{utilities-to-quickly-define-new-inputs}}
 
+\hypertarget{introduction-2}{%
+\subsection{Introduction}\label{introduction-2}}
+
 If you ever wondered where the \texttt{Shiny.onInputChange} or \texttt{Shiny.setInputValue} comes from (see \href{https://shiny.rstudio.com/articles/communicating-with-js.html}{article}), it is actually defined in the \texttt{initShiny} function.
 
 \begin{Shaded}
@@ -2281,6 +2284,66 @@ If you ever wondered where the \texttt{Shiny.onInputChange} or \texttt{Shiny.set
 \end{Shaded}
 
 Briefly, this function avoids creating an input binding. It is faster to code but there is a price to pay: losing the ability to easily update the new input. Indeed, all input functions like \texttt{sliderInput} have their own update function like \texttt{updateSliderInput}, because of the custom input binding system (We will see it very soon)!
+
+\hypertarget{examples}{%
+\subsection{Examples}\label{examples}}
+
+\texttt{Shiny.setInputValues} becomes powerful when combined to the numerous Shiny JavaScript events listed \href{https://shiny.rstudio.com/articles/js-events.html}{here}. This is what
+we use in the \href{https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html}{shinyMobile} package to store the current device information in a shiny input.
+Briefly, Framework7 (on top of which is built shinyMobile) has a method \texttt{Framework7.device}, which gives many \href{https://framework7.io/docs/device.html}{details} related to the user device.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\AttributeTok{$}\NormalTok{(document).}\AttributeTok{on}\NormalTok{(}\StringTok{'shiny:connected'}\OperatorTok{,} \KeywordTok{function}\NormalTok{(event) }\OperatorTok{\{}
+  \VariableTok{Shiny}\NormalTok{.}\AttributeTok{setInputValue}\NormalTok{(}\StringTok{'deviceInfo'}\OperatorTok{,} \VariableTok{Framework7}\NormalTok{.}\AttributeTok{device}\NormalTok{)}\OperatorTok{;}
+\OperatorTok{\}}\NormalTok{)}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+This allows to conditionally display elements and deeply customize the interface.
+In the example below, the card will not show on mobile devices.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(shinyMobile)}
+\KeywordTok{shinyApp}\NormalTok{(}
+  \DataTypeTok{ui =} \KeywordTok{f7Page}\NormalTok{(}
+    \DataTypeTok{title =} \StringTok{"My app"}\NormalTok{,}
+    \KeywordTok{f7SingleLayout}\NormalTok{(}
+      \DataTypeTok{navbar =} \KeywordTok{f7Navbar}\NormalTok{(}
+        \DataTypeTok{title =} \StringTok{"shinyMobile info"}\NormalTok{,}
+        \DataTypeTok{hairline =} \OtherTok{FALSE}\NormalTok{,}
+        \DataTypeTok{shadow =} \OtherTok{TRUE}
+\NormalTok{      ),}
+      \CommentTok{# main content}
+      \KeywordTok{uiOutput}\NormalTok{(}\StringTok{"card"}\NormalTok{),}
+      \KeywordTok{verbatimTextOutput}\NormalTok{(}\StringTok{"info"}\NormalTok{),}
+\NormalTok{    )}
+\NormalTok{  ),}
+  \DataTypeTok{server =} \ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+    
+\NormalTok{    output}\OperatorTok{$}\NormalTok{info <-}\StringTok{ }\KeywordTok{renderPrint}\NormalTok{(input}\OperatorTok{$}\NormalTok{shinyInfo)}
+
+    \CommentTok{# generate a card inkly for desktop}
+\NormalTok{    output}\OperatorTok{$}\NormalTok{card <-}\StringTok{ }\KeywordTok{renderUI}\NormalTok{(\{}
+      \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\NormalTok{input}\OperatorTok{$}\NormalTok{deviceInfo}\OperatorTok{$}\NormalTok{desktop) \{}
+        \KeywordTok{f7Card}\NormalTok{(}
+          \StringTok{"This is a simple card with plain text,}
+\StringTok{          but cards can also contain their own header,}
+\StringTok{          footer, list view, image, or any other element."}
+\NormalTok{        )}
+\NormalTok{      \} }\ControlFlowTok{else}\NormalTok{ \{}
+        \KeywordTok{f7Toast}\NormalTok{(}
+\NormalTok{          session, }
+          \StringTok{"You are on desktop! The card will not display"}\NormalTok{, }
+          \DataTypeTok{position =} \StringTok{"center"}
+\NormalTok{        )}
+\NormalTok{      \}}
+\NormalTok{    \})}
+\NormalTok{  \}}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
 
 \hypertarget{miscellaneous}{%
 \section{Miscellaneous}\label{miscellaneous}}
@@ -3215,8 +3278,8 @@ In the next chapter, we will focus on the \href{https://preview-dev.tabler.io/la
 \hypertarget{custom-templates-package}{%
 \chapter{Package creation}\label{custom-templates-package}}
 
-\hypertarget{introduction-2}{%
-\section{Introduction}\label{introduction-2}}
+\hypertarget{introduction-3}{%
+\section{Introduction}\label{introduction-3}}
 
 Translating an HTML template into an R API requires the creation of a package. As stated in Chapter \ref{intro}, this is not a good practice to proceed as follows:
 
