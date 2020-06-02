@@ -1,5 +1,14 @@
 # Oustanding User Interfaces with Shiny
 
+This book comes with a standalone companion package.
+
+```r
+remotes::install_github("DivadNojnarg/outstanding-shiny-ui-code")
+```
+
+By doing `library(OSUICode)`, you may access to all functions which will ease the code
+exploration in each chapter.
+
 ## TO DO
 
   - add exercices and assignements for each chapter
