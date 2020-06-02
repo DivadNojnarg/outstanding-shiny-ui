@@ -518,7 +518,7 @@ shinyApp(
     
     output$info <- renderPrint(input$shinyInfo)
 
-    # generate a card inkly for desktop
+    # generate a card only for desktop
     output$card <- renderUI({
       if (!input$deviceInfo$desktop) {
         f7Card(
@@ -536,6 +536,54 @@ shinyApp(
     })
   }
 )
+```
+
+### Custom data format
+In some cases, the automatic Shiny R to JS data management may not meet our needs. For instance, assume we create a date in JS with `new Date()` and store it in a shiny input with `Shiny.setInputValue`. On the R side, we will not obtain a date but a character, which is not convenient. This is where input handlers are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with `shiny::registerInputHandler` that takes 2 parameters:
+
+  - type allows to connect the handler to `Shiny.setInputValue`. Not that the id will be followed by the handler type, for instance `Shiny.setInputValue('test:handler', ...)` will connect to `shiny::registerInputHandler('handler', ...)`
+  - a function to transform data, having data as main parameter
+  
+Below I exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.
+
+```{r, eval=FALSE}
+# You must click on the window to create inputs!!
+registerInputHandler("textDate", function(data, ...) {
+  if (is.null(data)) {
+    NULL
+  } else {
+    res <- try(as.Date(unlist(data)), silent = TRUE)
+    if ("try-error" %in% class(res)) {
+      warning("Failed to parse dates!")
+      # as.Date(NA)
+      data
+    } else {
+      res
+    }
+  }
+}, force = TRUE)
+
+ui <- fluidPage(
+  tags$script(
+    "$(function(){
+      $(window).on('click', function() {
+        var currentTime = new Date();
+        Shiny.setInputValue('time1', currentTime);
+        Shiny.setInputValue('time2:textDate', currentTime);
+      });
+    });
+    "
+  ),
+  verbatimTextOutput("res1"),
+  verbatimTextOutput("res2")
+)
+
+server <- function(input, output, session) {
+  output$res1 <- renderPrint(list(class(input$time1), input$time1))
+  output$res2 <- renderPrint(list(class(input$time2), input$time2))
+}
+
+shinyApp(ui, server)
 ```
 
 ## Miscellaneous

@@ -24,7 +24,7 @@
 <meta name="author" content="David Granjon" />
 
 
-<meta name="date" content="2020-06-02" />
+<meta name="date" content="2020-06-03" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -202,6 +202,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="5.5" data-path="shiny-input-system.html"><a href="shiny-input-system.html#utilities-to-quickly-define-new-inputs"><i class="fa fa-check"></i><b>5.5</b> Utilities to quickly define new inputs</a><ul>
 <li class="chapter" data-level="5.5.1" data-path="shiny-input-system.html"><a href="shiny-input-system.html#introduction-2"><i class="fa fa-check"></i><b>5.5.1</b> Introduction</a></li>
 <li class="chapter" data-level="5.5.2" data-path="shiny-input-system.html"><a href="shiny-input-system.html#examples"><i class="fa fa-check"></i><b>5.5.2</b> Examples</a></li>
+<li class="chapter" data-level="5.5.3" data-path="shiny-input-system.html"><a href="shiny-input-system.html#custom-data-format"><i class="fa fa-check"></i><b>5.5.3</b> Custom data format</a></li>
 </ul></li>
 <li class="chapter" data-level="5.6" data-path="shiny-input-system.html"><a href="shiny-input-system.html#miscellaneous"><i class="fa fa-check"></i><b>5.6</b> Miscellaneous</a><ul>
 <li class="chapter" data-level="5.6.1" data-path="shiny-input-system.html"><a href="shiny-input-system.html#get-access-to-initial-values"><i class="fa fa-check"></i><b>5.6.1</b> Get access to initial values</a></li>
@@ -319,77 +320,77 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div id="introduction-3" class="section level2">
 <h2><span class="header-section-number">11.1</span> Introduction</h2>
 <p>Translating an HTML template into an R API requires the creation of a package. As stated in Chapter <a href="intro.html#intro">1</a>, this is not a good practice to proceed as follows:</p>
-<div class="sourceCode" id="cb159"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb159-1"><a href="custom-templates-package.html#cb159-1"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
-<span id="cb159-2"><a href="custom-templates-package.html#cb159-2"></a>  <span class="kw">useShinydashboard</span>(),</span>
-<span id="cb159-3"><a href="custom-templates-package.html#cb159-3"></a>  tags<span class="op">$</span><span class="kw">script</span>(</span>
-<span id="cb159-4"><a href="custom-templates-package.html#cb159-4"></a>    <span class="st">&quot;$(function() {</span></span>
-<span id="cb159-5"><a href="custom-templates-package.html#cb159-5"></a><span class="st">      let boxBinding = new Shiny.InputBinding();</span></span>
-<span id="cb159-6"><a href="custom-templates-package.html#cb159-6"></a><span class="st">      $.extend(boxBinding, {</span></span>
-<span id="cb159-7"><a href="custom-templates-package.html#cb159-7"></a><span class="st">        initialize: function(el) {</span></span>
-<span id="cb159-8"><a href="custom-templates-package.html#cb159-8"></a><span class="st">          $(el).activateBox();</span></span>
-<span id="cb159-9"><a href="custom-templates-package.html#cb159-9"></a><span class="st">        },</span></span>
-<span id="cb159-10"><a href="custom-templates-package.html#cb159-10"></a><span class="st">        find: function(scope) {</span></span>
-<span id="cb159-11"><a href="custom-templates-package.html#cb159-11"></a><span class="st">          return $(scope).find(&#39;.box&#39;);</span></span>
-<span id="cb159-12"><a href="custom-templates-package.html#cb159-12"></a><span class="st">        },</span></span>
-<span id="cb159-13"><a href="custom-templates-package.html#cb159-13"></a><span class="st">        getValue: function(el) {</span></span>
-<span id="cb159-14"><a href="custom-templates-package.html#cb159-14"></a><span class="st">          let isCollapsed = $(el).hasClass(&#39;collapsed-box&#39;);</span></span>
-<span id="cb159-15"><a href="custom-templates-package.html#cb159-15"></a><span class="st">          return {collapsed: isCollapsed}; // this will be a list in R</span></span>
-<span id="cb159-16"><a href="custom-templates-package.html#cb159-16"></a><span class="st">        },</span></span>
-<span id="cb159-17"><a href="custom-templates-package.html#cb159-17"></a><span class="st">        setValue: function(el, value) {</span></span>
-<span id="cb159-18"><a href="custom-templates-package.html#cb159-18"></a><span class="st">          $(el).toggleBox();</span></span>
-<span id="cb159-19"><a href="custom-templates-package.html#cb159-19"></a><span class="st">        }, </span></span>
-<span id="cb159-20"><a href="custom-templates-package.html#cb159-20"></a><span class="st">        receiveMessage: function(el, data) {</span></span>
-<span id="cb159-21"><a href="custom-templates-package.html#cb159-21"></a><span class="st">          this.setValue(el, data);</span></span>
-<span id="cb159-22"><a href="custom-templates-package.html#cb159-22"></a><span class="st">          $(el).trigger(&#39;change&#39;);</span></span>
-<span id="cb159-23"><a href="custom-templates-package.html#cb159-23"></a><span class="st">        },</span></span>
-<span id="cb159-24"><a href="custom-templates-package.html#cb159-24"></a><span class="st">        subscribe: function(el, callback) {</span></span>
-<span id="cb159-25"><a href="custom-templates-package.html#cb159-25"></a><span class="st">          $(el).on(&#39;click&#39;, &#39;[data-widget=</span><span class="ch">\&quot;</span><span class="st">collapse</span><span class="ch">\&quot;</span><span class="st">]&#39;, function(event) {</span></span>
-<span id="cb159-26"><a href="custom-templates-package.html#cb159-26"></a><span class="st">            setTimeout(function() {</span></span>
-<span id="cb159-27"><a href="custom-templates-package.html#cb159-27"></a><span class="st">              callback();</span></span>
-<span id="cb159-28"><a href="custom-templates-package.html#cb159-28"></a><span class="st">            }, 550);</span></span>
-<span id="cb159-29"><a href="custom-templates-package.html#cb159-29"></a><span class="st">          }); </span></span>
-<span id="cb159-30"><a href="custom-templates-package.html#cb159-30"></a><span class="st">          $(el).on(&#39;change&#39;, function(event) {</span></span>
-<span id="cb159-31"><a href="custom-templates-package.html#cb159-31"></a><span class="st">            setTimeout(function() {</span></span>
-<span id="cb159-32"><a href="custom-templates-package.html#cb159-32"></a><span class="st">              callback();</span></span>
-<span id="cb159-33"><a href="custom-templates-package.html#cb159-33"></a><span class="st">            }, 550);</span></span>
-<span id="cb159-34"><a href="custom-templates-package.html#cb159-34"></a><span class="st">          });</span></span>
-<span id="cb159-35"><a href="custom-templates-package.html#cb159-35"></a><span class="st">        },</span></span>
-<span id="cb159-36"><a href="custom-templates-package.html#cb159-36"></a><span class="st">        unsubscribe: function(el) {</span></span>
-<span id="cb159-37"><a href="custom-templates-package.html#cb159-37"></a><span class="st">          $(el).off(&#39;.boxBinding&#39;);</span></span>
-<span id="cb159-38"><a href="custom-templates-package.html#cb159-38"></a><span class="st">        }</span></span>
-<span id="cb159-39"><a href="custom-templates-package.html#cb159-39"></a><span class="st">      });</span></span>
-<span id="cb159-40"><a href="custom-templates-package.html#cb159-40"></a><span class="st">      Shiny.inputBindings.register(boxBinding, &#39;box-input&#39;);</span></span>
-<span id="cb159-41"><a href="custom-templates-package.html#cb159-41"></a><span class="st">    });</span></span>
-<span id="cb159-42"><a href="custom-templates-package.html#cb159-42"></a><span class="st">    &quot;</span></span>
-<span id="cb159-43"><a href="custom-templates-package.html#cb159-43"></a>  ),</span>
-<span id="cb159-44"><a href="custom-templates-package.html#cb159-44"></a>  </span>
-<span id="cb159-45"><a href="custom-templates-package.html#cb159-45"></a>  <span class="kw">box2</span>(</span>
-<span id="cb159-46"><a href="custom-templates-package.html#cb159-46"></a>    <span class="dt">title =</span> <span class="kw">textOutput</span>(<span class="st">&quot;box_state&quot;</span>),</span>
-<span id="cb159-47"><a href="custom-templates-package.html#cb159-47"></a>    <span class="st">&quot;Box body&quot;</span>,</span>
-<span id="cb159-48"><a href="custom-templates-package.html#cb159-48"></a>    <span class="dt">inputId =</span> <span class="st">&quot;mybox&quot;</span>,</span>
-<span id="cb159-49"><a href="custom-templates-package.html#cb159-49"></a>    <span class="dt">collapsible =</span> <span class="ot">TRUE</span>,</span>
-<span id="cb159-50"><a href="custom-templates-package.html#cb159-50"></a>    <span class="kw">plotOutput</span>(<span class="st">&quot;plot&quot;</span>)</span>
-<span id="cb159-51"><a href="custom-templates-package.html#cb159-51"></a>  ),</span>
-<span id="cb159-52"><a href="custom-templates-package.html#cb159-52"></a>  <span class="kw">actionButton</span>(<span class="st">&quot;toggle_box&quot;</span>, <span class="st">&quot;Toggle Box&quot;</span>)</span>
-<span id="cb159-53"><a href="custom-templates-package.html#cb159-53"></a>)</span>
-<span id="cb159-54"><a href="custom-templates-package.html#cb159-54"></a></span>
-<span id="cb159-55"><a href="custom-templates-package.html#cb159-55"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</span>
-<span id="cb159-56"><a href="custom-templates-package.html#cb159-56"></a>  output<span class="op">$</span>plot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</span>
-<span id="cb159-57"><a href="custom-templates-package.html#cb159-57"></a>      <span class="kw">req</span>(<span class="op">!</span>input<span class="op">$</span>mybox<span class="op">$</span>collapsed)</span>
-<span id="cb159-58"><a href="custom-templates-package.html#cb159-58"></a>      <span class="kw">plot</span>(<span class="kw">rnorm</span>(<span class="dv">200</span>))</span>
-<span id="cb159-59"><a href="custom-templates-package.html#cb159-59"></a>    })</span>
-<span id="cb159-60"><a href="custom-templates-package.html#cb159-60"></a>    </span>
-<span id="cb159-61"><a href="custom-templates-package.html#cb159-61"></a>    output<span class="op">$</span>box_state &lt;-<span class="st"> </span><span class="kw">renderText</span>({</span>
-<span id="cb159-62"><a href="custom-templates-package.html#cb159-62"></a>      state &lt;-<span class="st"> </span><span class="cf">if</span> (input<span class="op">$</span>mybox<span class="op">$</span>collapsed) <span class="st">&quot;collapsed&quot;</span> <span class="cf">else</span> <span class="st">&quot;uncollapsed&quot;</span></span>
-<span id="cb159-63"><a href="custom-templates-package.html#cb159-63"></a>      <span class="kw">paste</span>(<span class="st">&quot;My box is&quot;</span>, state)</span>
-<span id="cb159-64"><a href="custom-templates-package.html#cb159-64"></a>    })</span>
-<span id="cb159-65"><a href="custom-templates-package.html#cb159-65"></a>    </span>
-<span id="cb159-66"><a href="custom-templates-package.html#cb159-66"></a>    <span class="kw">observeEvent</span>(input<span class="op">$</span>toggle_box, {</span>
-<span id="cb159-67"><a href="custom-templates-package.html#cb159-67"></a>      <span class="kw">updateBox2</span>(<span class="st">&quot;mybox&quot;</span>)</span>
-<span id="cb159-68"><a href="custom-templates-package.html#cb159-68"></a>    })</span>
-<span id="cb159-69"><a href="custom-templates-package.html#cb159-69"></a>}</span>
-<span id="cb159-70"><a href="custom-templates-package.html#cb159-70"></a></span>
-<span id="cb159-71"><a href="custom-templates-package.html#cb159-71"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
+<div class="sourceCode" id="cb160"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb160-1"><a href="custom-templates-package.html#cb160-1"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
+<span id="cb160-2"><a href="custom-templates-package.html#cb160-2"></a>  <span class="kw">useShinydashboard</span>(),</span>
+<span id="cb160-3"><a href="custom-templates-package.html#cb160-3"></a>  tags<span class="op">$</span><span class="kw">script</span>(</span>
+<span id="cb160-4"><a href="custom-templates-package.html#cb160-4"></a>    <span class="st">&quot;$(function() {</span></span>
+<span id="cb160-5"><a href="custom-templates-package.html#cb160-5"></a><span class="st">      let boxBinding = new Shiny.InputBinding();</span></span>
+<span id="cb160-6"><a href="custom-templates-package.html#cb160-6"></a><span class="st">      $.extend(boxBinding, {</span></span>
+<span id="cb160-7"><a href="custom-templates-package.html#cb160-7"></a><span class="st">        initialize: function(el) {</span></span>
+<span id="cb160-8"><a href="custom-templates-package.html#cb160-8"></a><span class="st">          $(el).activateBox();</span></span>
+<span id="cb160-9"><a href="custom-templates-package.html#cb160-9"></a><span class="st">        },</span></span>
+<span id="cb160-10"><a href="custom-templates-package.html#cb160-10"></a><span class="st">        find: function(scope) {</span></span>
+<span id="cb160-11"><a href="custom-templates-package.html#cb160-11"></a><span class="st">          return $(scope).find(&#39;.box&#39;);</span></span>
+<span id="cb160-12"><a href="custom-templates-package.html#cb160-12"></a><span class="st">        },</span></span>
+<span id="cb160-13"><a href="custom-templates-package.html#cb160-13"></a><span class="st">        getValue: function(el) {</span></span>
+<span id="cb160-14"><a href="custom-templates-package.html#cb160-14"></a><span class="st">          let isCollapsed = $(el).hasClass(&#39;collapsed-box&#39;);</span></span>
+<span id="cb160-15"><a href="custom-templates-package.html#cb160-15"></a><span class="st">          return {collapsed: isCollapsed}; // this will be a list in R</span></span>
+<span id="cb160-16"><a href="custom-templates-package.html#cb160-16"></a><span class="st">        },</span></span>
+<span id="cb160-17"><a href="custom-templates-package.html#cb160-17"></a><span class="st">        setValue: function(el, value) {</span></span>
+<span id="cb160-18"><a href="custom-templates-package.html#cb160-18"></a><span class="st">          $(el).toggleBox();</span></span>
+<span id="cb160-19"><a href="custom-templates-package.html#cb160-19"></a><span class="st">        }, </span></span>
+<span id="cb160-20"><a href="custom-templates-package.html#cb160-20"></a><span class="st">        receiveMessage: function(el, data) {</span></span>
+<span id="cb160-21"><a href="custom-templates-package.html#cb160-21"></a><span class="st">          this.setValue(el, data);</span></span>
+<span id="cb160-22"><a href="custom-templates-package.html#cb160-22"></a><span class="st">          $(el).trigger(&#39;change&#39;);</span></span>
+<span id="cb160-23"><a href="custom-templates-package.html#cb160-23"></a><span class="st">        },</span></span>
+<span id="cb160-24"><a href="custom-templates-package.html#cb160-24"></a><span class="st">        subscribe: function(el, callback) {</span></span>
+<span id="cb160-25"><a href="custom-templates-package.html#cb160-25"></a><span class="st">          $(el).on(&#39;click&#39;, &#39;[data-widget=</span><span class="ch">\&quot;</span><span class="st">collapse</span><span class="ch">\&quot;</span><span class="st">]&#39;, function(event) {</span></span>
+<span id="cb160-26"><a href="custom-templates-package.html#cb160-26"></a><span class="st">            setTimeout(function() {</span></span>
+<span id="cb160-27"><a href="custom-templates-package.html#cb160-27"></a><span class="st">              callback();</span></span>
+<span id="cb160-28"><a href="custom-templates-package.html#cb160-28"></a><span class="st">            }, 550);</span></span>
+<span id="cb160-29"><a href="custom-templates-package.html#cb160-29"></a><span class="st">          }); </span></span>
+<span id="cb160-30"><a href="custom-templates-package.html#cb160-30"></a><span class="st">          $(el).on(&#39;change&#39;, function(event) {</span></span>
+<span id="cb160-31"><a href="custom-templates-package.html#cb160-31"></a><span class="st">            setTimeout(function() {</span></span>
+<span id="cb160-32"><a href="custom-templates-package.html#cb160-32"></a><span class="st">              callback();</span></span>
+<span id="cb160-33"><a href="custom-templates-package.html#cb160-33"></a><span class="st">            }, 550);</span></span>
+<span id="cb160-34"><a href="custom-templates-package.html#cb160-34"></a><span class="st">          });</span></span>
+<span id="cb160-35"><a href="custom-templates-package.html#cb160-35"></a><span class="st">        },</span></span>
+<span id="cb160-36"><a href="custom-templates-package.html#cb160-36"></a><span class="st">        unsubscribe: function(el) {</span></span>
+<span id="cb160-37"><a href="custom-templates-package.html#cb160-37"></a><span class="st">          $(el).off(&#39;.boxBinding&#39;);</span></span>
+<span id="cb160-38"><a href="custom-templates-package.html#cb160-38"></a><span class="st">        }</span></span>
+<span id="cb160-39"><a href="custom-templates-package.html#cb160-39"></a><span class="st">      });</span></span>
+<span id="cb160-40"><a href="custom-templates-package.html#cb160-40"></a><span class="st">      Shiny.inputBindings.register(boxBinding, &#39;box-input&#39;);</span></span>
+<span id="cb160-41"><a href="custom-templates-package.html#cb160-41"></a><span class="st">    });</span></span>
+<span id="cb160-42"><a href="custom-templates-package.html#cb160-42"></a><span class="st">    &quot;</span></span>
+<span id="cb160-43"><a href="custom-templates-package.html#cb160-43"></a>  ),</span>
+<span id="cb160-44"><a href="custom-templates-package.html#cb160-44"></a>  </span>
+<span id="cb160-45"><a href="custom-templates-package.html#cb160-45"></a>  <span class="kw">box2</span>(</span>
+<span id="cb160-46"><a href="custom-templates-package.html#cb160-46"></a>    <span class="dt">title =</span> <span class="kw">textOutput</span>(<span class="st">&quot;box_state&quot;</span>),</span>
+<span id="cb160-47"><a href="custom-templates-package.html#cb160-47"></a>    <span class="st">&quot;Box body&quot;</span>,</span>
+<span id="cb160-48"><a href="custom-templates-package.html#cb160-48"></a>    <span class="dt">inputId =</span> <span class="st">&quot;mybox&quot;</span>,</span>
+<span id="cb160-49"><a href="custom-templates-package.html#cb160-49"></a>    <span class="dt">collapsible =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb160-50"><a href="custom-templates-package.html#cb160-50"></a>    <span class="kw">plotOutput</span>(<span class="st">&quot;plot&quot;</span>)</span>
+<span id="cb160-51"><a href="custom-templates-package.html#cb160-51"></a>  ),</span>
+<span id="cb160-52"><a href="custom-templates-package.html#cb160-52"></a>  <span class="kw">actionButton</span>(<span class="st">&quot;toggle_box&quot;</span>, <span class="st">&quot;Toggle Box&quot;</span>)</span>
+<span id="cb160-53"><a href="custom-templates-package.html#cb160-53"></a>)</span>
+<span id="cb160-54"><a href="custom-templates-package.html#cb160-54"></a></span>
+<span id="cb160-55"><a href="custom-templates-package.html#cb160-55"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</span>
+<span id="cb160-56"><a href="custom-templates-package.html#cb160-56"></a>  output<span class="op">$</span>plot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</span>
+<span id="cb160-57"><a href="custom-templates-package.html#cb160-57"></a>      <span class="kw">req</span>(<span class="op">!</span>input<span class="op">$</span>mybox<span class="op">$</span>collapsed)</span>
+<span id="cb160-58"><a href="custom-templates-package.html#cb160-58"></a>      <span class="kw">plot</span>(<span class="kw">rnorm</span>(<span class="dv">200</span>))</span>
+<span id="cb160-59"><a href="custom-templates-package.html#cb160-59"></a>    })</span>
+<span id="cb160-60"><a href="custom-templates-package.html#cb160-60"></a>    </span>
+<span id="cb160-61"><a href="custom-templates-package.html#cb160-61"></a>    output<span class="op">$</span>box_state &lt;-<span class="st"> </span><span class="kw">renderText</span>({</span>
+<span id="cb160-62"><a href="custom-templates-package.html#cb160-62"></a>      state &lt;-<span class="st"> </span><span class="cf">if</span> (input<span class="op">$</span>mybox<span class="op">$</span>collapsed) <span class="st">&quot;collapsed&quot;</span> <span class="cf">else</span> <span class="st">&quot;uncollapsed&quot;</span></span>
+<span id="cb160-63"><a href="custom-templates-package.html#cb160-63"></a>      <span class="kw">paste</span>(<span class="st">&quot;My box is&quot;</span>, state)</span>
+<span id="cb160-64"><a href="custom-templates-package.html#cb160-64"></a>    })</span>
+<span id="cb160-65"><a href="custom-templates-package.html#cb160-65"></a>    </span>
+<span id="cb160-66"><a href="custom-templates-package.html#cb160-66"></a>    <span class="kw">observeEvent</span>(input<span class="op">$</span>toggle_box, {</span>
+<span id="cb160-67"><a href="custom-templates-package.html#cb160-67"></a>      <span class="kw">updateBox2</span>(<span class="st">&quot;mybox&quot;</span>)</span>
+<span id="cb160-68"><a href="custom-templates-package.html#cb160-68"></a>    })</span>
+<span id="cb160-69"><a href="custom-templates-package.html#cb160-69"></a>}</span>
+<span id="cb160-70"><a href="custom-templates-package.html#cb160-70"></a></span>
+<span id="cb160-71"><a href="custom-templates-package.html#cb160-71"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
 <p>Imagine if we had to repeat the process for more than twenty components. The package structure provides many advantages like:</p>
 <ul>
 <li>Develop a comprehensive documentation of the underlying API</li>
@@ -401,9 +402,9 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <h2><span class="header-section-number">11.2</span> Step by step</h2>
 <p><a href="https://usethis.r-lib.org">{usethis}</a> is a game changer for package creation.
 Below is a quick overview of all steps I followed to setup this book side package.</p>
-<div class="sourceCode" id="cb160"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb160-1"><a href="custom-templates-package.html#cb160-1"></a><span class="kw">library</span>(usethis)</span>
-<span id="cb160-2"><a href="custom-templates-package.html#cb160-2"></a><span class="kw">create_package</span>(<span class="st">&quot;mypk&quot;</span>)</span>
-<span id="cb160-3"><a href="custom-templates-package.html#cb160-3"></a><span class="co"># TO FINISH</span></span></code></pre></div>
+<div class="sourceCode" id="cb161"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb161-1"><a href="custom-templates-package.html#cb161-1"></a><span class="kw">library</span>(usethis)</span>
+<span id="cb161-2"><a href="custom-templates-package.html#cb161-2"></a><span class="kw">create_package</span>(<span class="st">&quot;mypk&quot;</span>)</span>
+<span id="cb161-3"><a href="custom-templates-package.html#cb161-3"></a><span class="co"># TO FINISH</span></span></code></pre></div>
 
 </div>
 </div>

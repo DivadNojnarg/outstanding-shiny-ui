@@ -120,7 +120,7 @@
 
 \title{Outstanding User Interfaces with Shiny}
 \author{David Granjon}
-\date{2020-06-02}
+\date{2020-06-03}
 
 \begin{document}
 \maketitle
@@ -2324,7 +2324,7 @@ In the example below, the card will not show on mobile devices.
     
 \NormalTok{    output}\OperatorTok{$}\NormalTok{info <-}\StringTok{ }\KeywordTok{renderPrint}\NormalTok{(input}\OperatorTok{$}\NormalTok{shinyInfo)}
 
-    \CommentTok{# generate a card inkly for desktop}
+    \CommentTok{# generate a card only for desktop}
 \NormalTok{    output}\OperatorTok{$}\NormalTok{card <-}\StringTok{ }\KeywordTok{renderUI}\NormalTok{(\{}
       \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\NormalTok{input}\OperatorTok{$}\NormalTok{deviceInfo}\OperatorTok{$}\NormalTok{desktop) \{}
         \KeywordTok{f7Card}\NormalTok{(}
@@ -2342,6 +2342,63 @@ In the example below, the card will not show on mobile devices.
 \NormalTok{    \})}
 \NormalTok{  \}}
 \NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{custom-data-format}{%
+\subsection{Custom data format}\label{custom-data-format}}
+
+In some cases, the automatic Shiny R to JS data management may not meet our needs. For instance, assume we create a date in JS with \texttt{new\ Date()} and store it in a shiny input with \texttt{Shiny.setInputValue}. On the R side, we will not obtain a date but a character, which is not convenient. This is where input handlers are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with \texttt{shiny::registerInputHandler} that takes 2 parameters:
+
+\begin{itemize}
+\tightlist
+\item
+  type allows to connect the handler to \texttt{Shiny.setInputValue}. Not that the id will be followed by the handler type, for instance \texttt{Shiny.setInputValue(\textquotesingle{}test:handler\textquotesingle{},\ ...)} will connect to \texttt{shiny::registerInputHandler(\textquotesingle{}handler\textquotesingle{},\ ...)}
+\item
+  a function to transform data, having data as main parameter
+\end{itemize}
+
+Below I exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# You must click on the window to create inputs!!}
+\KeywordTok{registerInputHandler}\NormalTok{(}\StringTok{"textDate"}\NormalTok{, }\ControlFlowTok{function}\NormalTok{(data, ...) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\KeywordTok{is.null}\NormalTok{(data)) \{}
+    \OtherTok{NULL}
+\NormalTok{  \} }\ControlFlowTok{else}\NormalTok{ \{}
+\NormalTok{    res <-}\StringTok{ }\KeywordTok{try}\NormalTok{(}\KeywordTok{as.Date}\NormalTok{(}\KeywordTok{unlist}\NormalTok{(data)), }\DataTypeTok{silent =} \OtherTok{TRUE}\NormalTok{)}
+    \ControlFlowTok{if}\NormalTok{ (}\StringTok{"try-error"} \OperatorTok{%in%}\StringTok{ }\KeywordTok{class}\NormalTok{(res)) \{}
+      \KeywordTok{warning}\NormalTok{(}\StringTok{"Failed to parse dates!"}\NormalTok{)}
+      \CommentTok{# as.Date(NA)}
+\NormalTok{      data}
+\NormalTok{    \} }\ControlFlowTok{else}\NormalTok{ \{}
+\NormalTok{      res}
+\NormalTok{    \}}
+\NormalTok{  \}}
+\NormalTok{\}, }\DataTypeTok{force =} \OtherTok{TRUE}\NormalTok{)}
+
+\NormalTok{ui <-}\StringTok{ }\KeywordTok{fluidPage}\NormalTok{(}
+\NormalTok{  tags}\OperatorTok{$}\KeywordTok{script}\NormalTok{(}
+    \StringTok{"$(function()\{}
+\StringTok{      $(window).on('click', function() \{}
+\StringTok{        var currentTime = new Date();}
+\StringTok{        Shiny.setInputValue('time1', currentTime);}
+\StringTok{        Shiny.setInputValue('time2:textDate', currentTime);}
+\StringTok{      \});}
+\StringTok{    \});}
+\StringTok{    "}
+\NormalTok{  ),}
+  \KeywordTok{verbatimTextOutput}\NormalTok{(}\StringTok{"res1"}\NormalTok{),}
+  \KeywordTok{verbatimTextOutput}\NormalTok{(}\StringTok{"res2"}\NormalTok{)}
+\NormalTok{)}
+
+\NormalTok{server <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(input, output, session) \{}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{res1 <-}\StringTok{ }\KeywordTok{renderPrint}\NormalTok{(}\KeywordTok{list}\NormalTok{(}\KeywordTok{class}\NormalTok{(input}\OperatorTok{$}\NormalTok{time1), input}\OperatorTok{$}\NormalTok{time1))}
+\NormalTok{  output}\OperatorTok{$}\NormalTok{res2 <-}\StringTok{ }\KeywordTok{renderPrint}\NormalTok{(}\KeywordTok{list}\NormalTok{(}\KeywordTok{class}\NormalTok{(input}\OperatorTok{$}\NormalTok{time2), input}\OperatorTok{$}\NormalTok{time2))}
+\NormalTok{\}}
+
+\KeywordTok{shinyApp}\NormalTok{(ui, server)}
 \end{Highlighting}
 \end{Shaded}
 

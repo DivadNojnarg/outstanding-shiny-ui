@@ -24,7 +24,7 @@
 <meta name="author" content="David Granjon" />
 
 
-<meta name="date" content="2020-06-02" />
+<meta name="date" content="2020-06-03" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -202,6 +202,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="5.5" data-path="shiny-input-system.html"><a href="shiny-input-system.html#utilities-to-quickly-define-new-inputs"><i class="fa fa-check"></i><b>5.5</b> Utilities to quickly define new inputs</a><ul>
 <li class="chapter" data-level="5.5.1" data-path="shiny-input-system.html"><a href="shiny-input-system.html#introduction-2"><i class="fa fa-check"></i><b>5.5.1</b> Introduction</a></li>
 <li class="chapter" data-level="5.5.2" data-path="shiny-input-system.html"><a href="shiny-input-system.html#examples"><i class="fa fa-check"></i><b>5.5.2</b> Examples</a></li>
+<li class="chapter" data-level="5.5.3" data-path="shiny-input-system.html"><a href="shiny-input-system.html#custom-data-format"><i class="fa fa-check"></i><b>5.5.3</b> Custom data format</a></li>
 </ul></li>
 <li class="chapter" data-level="5.6" data-path="shiny-input-system.html"><a href="shiny-input-system.html#miscellaneous"><i class="fa fa-check"></i><b>5.6</b> Miscellaneous</a><ul>
 <li class="chapter" data-level="5.6.1" data-path="shiny-input-system.html"><a href="shiny-input-system.html#get-access-to-initial-values"><i class="fa fa-check"></i><b>5.6.1</b> Get access to initial values</a></li>
@@ -736,7 +737,7 @@ In the example below, the card will not show on mobile devices.</p>
 <span id="cb116-17"><a href="shiny-input-system.html#cb116-17"></a>    </span>
 <span id="cb116-18"><a href="shiny-input-system.html#cb116-18"></a>    output<span class="op">$</span>info &lt;-<span class="st"> </span><span class="kw">renderPrint</span>(input<span class="op">$</span>shinyInfo)</span>
 <span id="cb116-19"><a href="shiny-input-system.html#cb116-19"></a></span>
-<span id="cb116-20"><a href="shiny-input-system.html#cb116-20"></a>    <span class="co"># generate a card inkly for desktop</span></span>
+<span id="cb116-20"><a href="shiny-input-system.html#cb116-20"></a>    <span class="co"># generate a card only for desktop</span></span>
 <span id="cb116-21"><a href="shiny-input-system.html#cb116-21"></a>    output<span class="op">$</span>card &lt;-<span class="st"> </span><span class="kw">renderUI</span>({</span>
 <span id="cb116-22"><a href="shiny-input-system.html#cb116-22"></a>      <span class="cf">if</span> (<span class="op">!</span>input<span class="op">$</span>deviceInfo<span class="op">$</span>desktop) {</span>
 <span id="cb116-23"><a href="shiny-input-system.html#cb116-23"></a>        <span class="kw">f7Card</span>(</span>
@@ -755,6 +756,52 @@ In the example below, the card will not show on mobile devices.</p>
 <span id="cb116-36"><a href="shiny-input-system.html#cb116-36"></a>  }</span>
 <span id="cb116-37"><a href="shiny-input-system.html#cb116-37"></a>)</span></code></pre></div>
 </div>
+<div id="custom-data-format" class="section level3">
+<h3><span class="header-section-number">5.5.3</span> Custom data format</h3>
+<p>In some cases, the automatic Shiny R to JS data management may not meet our needs. For instance, assume we create a date in JS with <code>new Date()</code> and store it in a shiny input with <code>Shiny.setInputValue</code>. On the R side, we will not obtain a date but a character, which is not convenient. This is where input handlers are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with <code>shiny::registerInputHandler</code> that takes 2 parameters:</p>
+<ul>
+<li>type allows to connect the handler to <code>Shiny.setInputValue</code>. Not that the id will be followed by the handler type, for instance <code>Shiny.setInputValue('test:handler', ...)</code> will connect to <code>shiny::registerInputHandler('handler', ...)</code></li>
+<li>a function to transform data, having data as main parameter</li>
+</ul>
+<p>Below I exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.</p>
+<div class="sourceCode" id="cb117"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb117-1"><a href="shiny-input-system.html#cb117-1"></a><span class="co"># You must click on the window to create inputs!!</span></span>
+<span id="cb117-2"><a href="shiny-input-system.html#cb117-2"></a><span class="kw">registerInputHandler</span>(<span class="st">&quot;textDate&quot;</span>, <span class="cf">function</span>(data, ...) {</span>
+<span id="cb117-3"><a href="shiny-input-system.html#cb117-3"></a>  <span class="cf">if</span> (<span class="kw">is.null</span>(data)) {</span>
+<span id="cb117-4"><a href="shiny-input-system.html#cb117-4"></a>    <span class="ot">NULL</span></span>
+<span id="cb117-5"><a href="shiny-input-system.html#cb117-5"></a>  } <span class="cf">else</span> {</span>
+<span id="cb117-6"><a href="shiny-input-system.html#cb117-6"></a>    res &lt;-<span class="st"> </span><span class="kw">try</span>(<span class="kw">as.Date</span>(<span class="kw">unlist</span>(data)), <span class="dt">silent =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb117-7"><a href="shiny-input-system.html#cb117-7"></a>    <span class="cf">if</span> (<span class="st">&quot;try-error&quot;</span> <span class="op">%in%</span><span class="st"> </span><span class="kw">class</span>(res)) {</span>
+<span id="cb117-8"><a href="shiny-input-system.html#cb117-8"></a>      <span class="kw">warning</span>(<span class="st">&quot;Failed to parse dates!&quot;</span>)</span>
+<span id="cb117-9"><a href="shiny-input-system.html#cb117-9"></a>      <span class="co"># as.Date(NA)</span></span>
+<span id="cb117-10"><a href="shiny-input-system.html#cb117-10"></a>      data</span>
+<span id="cb117-11"><a href="shiny-input-system.html#cb117-11"></a>    } <span class="cf">else</span> {</span>
+<span id="cb117-12"><a href="shiny-input-system.html#cb117-12"></a>      res</span>
+<span id="cb117-13"><a href="shiny-input-system.html#cb117-13"></a>    }</span>
+<span id="cb117-14"><a href="shiny-input-system.html#cb117-14"></a>  }</span>
+<span id="cb117-15"><a href="shiny-input-system.html#cb117-15"></a>}, <span class="dt">force =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb117-16"><a href="shiny-input-system.html#cb117-16"></a></span>
+<span id="cb117-17"><a href="shiny-input-system.html#cb117-17"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
+<span id="cb117-18"><a href="shiny-input-system.html#cb117-18"></a>  tags<span class="op">$</span><span class="kw">script</span>(</span>
+<span id="cb117-19"><a href="shiny-input-system.html#cb117-19"></a>    <span class="st">&quot;$(function(){</span></span>
+<span id="cb117-20"><a href="shiny-input-system.html#cb117-20"></a><span class="st">      $(window).on(&#39;click&#39;, function() {</span></span>
+<span id="cb117-21"><a href="shiny-input-system.html#cb117-21"></a><span class="st">        var currentTime = new Date();</span></span>
+<span id="cb117-22"><a href="shiny-input-system.html#cb117-22"></a><span class="st">        Shiny.setInputValue(&#39;time1&#39;, currentTime);</span></span>
+<span id="cb117-23"><a href="shiny-input-system.html#cb117-23"></a><span class="st">        Shiny.setInputValue(&#39;time2:textDate&#39;, currentTime);</span></span>
+<span id="cb117-24"><a href="shiny-input-system.html#cb117-24"></a><span class="st">      });</span></span>
+<span id="cb117-25"><a href="shiny-input-system.html#cb117-25"></a><span class="st">    });</span></span>
+<span id="cb117-26"><a href="shiny-input-system.html#cb117-26"></a><span class="st">    &quot;</span></span>
+<span id="cb117-27"><a href="shiny-input-system.html#cb117-27"></a>  ),</span>
+<span id="cb117-28"><a href="shiny-input-system.html#cb117-28"></a>  <span class="kw">verbatimTextOutput</span>(<span class="st">&quot;res1&quot;</span>),</span>
+<span id="cb117-29"><a href="shiny-input-system.html#cb117-29"></a>  <span class="kw">verbatimTextOutput</span>(<span class="st">&quot;res2&quot;</span>)</span>
+<span id="cb117-30"><a href="shiny-input-system.html#cb117-30"></a>)</span>
+<span id="cb117-31"><a href="shiny-input-system.html#cb117-31"></a></span>
+<span id="cb117-32"><a href="shiny-input-system.html#cb117-32"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</span>
+<span id="cb117-33"><a href="shiny-input-system.html#cb117-33"></a>  output<span class="op">$</span>res1 &lt;-<span class="st"> </span><span class="kw">renderPrint</span>(<span class="kw">list</span>(<span class="kw">class</span>(input<span class="op">$</span>time1), input<span class="op">$</span>time1))</span>
+<span id="cb117-34"><a href="shiny-input-system.html#cb117-34"></a>  output<span class="op">$</span>res2 &lt;-<span class="st"> </span><span class="kw">renderPrint</span>(<span class="kw">list</span>(<span class="kw">class</span>(input<span class="op">$</span>time2), input<span class="op">$</span>time2))</span>
+<span id="cb117-35"><a href="shiny-input-system.html#cb117-35"></a>}</span>
+<span id="cb117-36"><a href="shiny-input-system.html#cb117-36"></a></span>
+<span id="cb117-37"><a href="shiny-input-system.html#cb117-37"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
+</div>
 </div>
 <div id="miscellaneous" class="section level2">
 <h2><span class="header-section-number">5.6</span> Miscellaneous</h2>
@@ -762,47 +809,47 @@ In the example below, the card will not show on mobile devices.</p>
 <div id="get-access-to-initial-values" class="section level3">
 <h3><span class="header-section-number">5.6.1</span> Get access to initial values</h3>
 <p>Something we may notice when exploring the <code>initShiny</code> function is the existence of a <code>Shiny.shinyapp</code> object, defined as follows:</p>
-<div class="sourceCode" id="cb117"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb117-1"><a href="shiny-input-system.html#cb117-1"></a><span class="kw">var</span> shinyapp <span class="op">=</span> <span class="va">exports</span>.<span class="at">shinyapp</span> <span class="op">=</span> <span class="kw">new</span> <span class="at">ShinyApp</span>()<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb118"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb118-1"><a href="shiny-input-system.html#cb118-1"></a><span class="kw">var</span> shinyapp <span class="op">=</span> <span class="va">exports</span>.<span class="at">shinyapp</span> <span class="op">=</span> <span class="kw">new</span> <span class="at">ShinyApp</span>()<span class="op">;</span></span></code></pre></div>
 <p>Let’s explore what <code>shinyApp</code> contains. The definition is located in the shinyapps.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">script</a>.</p>
-<div class="sourceCode" id="cb118"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb118-1"><a href="shiny-input-system.html#cb118-1"></a><span class="kw">var</span> ShinyApp <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb118-2"><a href="shiny-input-system.html#cb118-2"></a>  <span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></span>
-<span id="cb118-3"><a href="shiny-input-system.html#cb118-3"></a>  </span>
-<span id="cb118-4"><a href="shiny-input-system.html#cb118-4"></a>  <span class="co">// Cached input values</span></span>
-<span id="cb118-5"><a href="shiny-input-system.html#cb118-5"></a>  <span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb118-6"><a href="shiny-input-system.html#cb118-6"></a>  </span>
-<span id="cb118-7"><a href="shiny-input-system.html#cb118-7"></a>  <span class="co">// Input values at initialization (and reconnect)</span></span>
-<span id="cb118-8"><a href="shiny-input-system.html#cb118-8"></a>  <span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb118-9"><a href="shiny-input-system.html#cb118-9"></a>  </span>
-<span id="cb118-10"><a href="shiny-input-system.html#cb118-10"></a>  <span class="co">// Output bindings</span></span>
-<span id="cb118-11"><a href="shiny-input-system.html#cb118-11"></a>  <span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb118-12"><a href="shiny-input-system.html#cb118-12"></a>  </span>
-<span id="cb118-13"><a href="shiny-input-system.html#cb118-13"></a>  <span class="co">// Cached values/errors</span></span>
-<span id="cb118-14"><a href="shiny-input-system.html#cb118-14"></a>  <span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb118-15"><a href="shiny-input-system.html#cb118-15"></a>  <span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb118-16"><a href="shiny-input-system.html#cb118-16"></a>  </span>
-<span id="cb118-17"><a href="shiny-input-system.html#cb118-17"></a>  <span class="co">// Conditional bindings (show/hide element based on expression)</span></span>
-<span id="cb118-18"><a href="shiny-input-system.html#cb118-18"></a>  <span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb118-19"><a href="shiny-input-system.html#cb118-19"></a>  </span>
-<span id="cb118-20"><a href="shiny-input-system.html#cb118-20"></a>  <span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></span>
-<span id="cb118-21"><a href="shiny-input-system.html#cb118-21"></a>  <span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb118-22"><a href="shiny-input-system.html#cb118-22"></a>  <span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb118-23"><a href="shiny-input-system.html#cb118-23"></a>  </span>
-<span id="cb118-24"><a href="shiny-input-system.html#cb118-24"></a>  <span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
-<span id="cb118-25"><a href="shiny-input-system.html#cb118-25"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb119"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb119-1"><a href="shiny-input-system.html#cb119-1"></a><span class="kw">var</span> ShinyApp <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb119-2"><a href="shiny-input-system.html#cb119-2"></a>  <span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></span>
+<span id="cb119-3"><a href="shiny-input-system.html#cb119-3"></a>  </span>
+<span id="cb119-4"><a href="shiny-input-system.html#cb119-4"></a>  <span class="co">// Cached input values</span></span>
+<span id="cb119-5"><a href="shiny-input-system.html#cb119-5"></a>  <span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb119-6"><a href="shiny-input-system.html#cb119-6"></a>  </span>
+<span id="cb119-7"><a href="shiny-input-system.html#cb119-7"></a>  <span class="co">// Input values at initialization (and reconnect)</span></span>
+<span id="cb119-8"><a href="shiny-input-system.html#cb119-8"></a>  <span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb119-9"><a href="shiny-input-system.html#cb119-9"></a>  </span>
+<span id="cb119-10"><a href="shiny-input-system.html#cb119-10"></a>  <span class="co">// Output bindings</span></span>
+<span id="cb119-11"><a href="shiny-input-system.html#cb119-11"></a>  <span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb119-12"><a href="shiny-input-system.html#cb119-12"></a>  </span>
+<span id="cb119-13"><a href="shiny-input-system.html#cb119-13"></a>  <span class="co">// Cached values/errors</span></span>
+<span id="cb119-14"><a href="shiny-input-system.html#cb119-14"></a>  <span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb119-15"><a href="shiny-input-system.html#cb119-15"></a>  <span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb119-16"><a href="shiny-input-system.html#cb119-16"></a>  </span>
+<span id="cb119-17"><a href="shiny-input-system.html#cb119-17"></a>  <span class="co">// Conditional bindings (show/hide element based on expression)</span></span>
+<span id="cb119-18"><a href="shiny-input-system.html#cb119-18"></a>  <span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb119-19"><a href="shiny-input-system.html#cb119-19"></a>  </span>
+<span id="cb119-20"><a href="shiny-input-system.html#cb119-20"></a>  <span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb119-21"><a href="shiny-input-system.html#cb119-21"></a>  <span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb119-22"><a href="shiny-input-system.html#cb119-22"></a>  <span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb119-23"><a href="shiny-input-system.html#cb119-23"></a>  </span>
+<span id="cb119-24"><a href="shiny-input-system.html#cb119-24"></a>  <span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb119-25"><a href="shiny-input-system.html#cb119-25"></a><span class="op">};</span></span></code></pre></div>
 <p>It creates several properties, some of them are easy to guess like <code>inputValues</code> or <code>initialInput</code>. Let’s run the example below and open the HTML inspector. Notice that the <code>sliderInput</code> is set to 500 at <code>t0</code> (initialization).</p>
-<div class="sourceCode" id="cb119"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb119-1"><a href="shiny-input-system.html#cb119-1"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
-<span id="cb119-2"><a href="shiny-input-system.html#cb119-2"></a>  <span class="kw">sliderInput</span>(<span class="st">&quot;obs&quot;</span>, <span class="st">&quot;Number of observations:&quot;</span>,</span>
-<span id="cb119-3"><a href="shiny-input-system.html#cb119-3"></a>              <span class="dt">min =</span> <span class="dv">0</span>, <span class="dt">max =</span> <span class="dv">1000</span>, <span class="dt">value =</span> <span class="dv">500</span></span>
-<span id="cb119-4"><a href="shiny-input-system.html#cb119-4"></a>  ),</span>
-<span id="cb119-5"><a href="shiny-input-system.html#cb119-5"></a>  <span class="kw">plotOutput</span>(<span class="st">&quot;distPlot&quot;</span>)</span>
-<span id="cb119-6"><a href="shiny-input-system.html#cb119-6"></a>)</span>
-<span id="cb119-7"><a href="shiny-input-system.html#cb119-7"></a></span>
-<span id="cb119-8"><a href="shiny-input-system.html#cb119-8"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</span>
-<span id="cb119-9"><a href="shiny-input-system.html#cb119-9"></a>  output<span class="op">$</span>distPlot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</span>
-<span id="cb119-10"><a href="shiny-input-system.html#cb119-10"></a>    <span class="kw">hist</span>(<span class="kw">rnorm</span>(input<span class="op">$</span>obs))</span>
-<span id="cb119-11"><a href="shiny-input-system.html#cb119-11"></a>  })</span>
-<span id="cb119-12"><a href="shiny-input-system.html#cb119-12"></a>}</span>
-<span id="cb119-13"><a href="shiny-input-system.html#cb119-13"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
+<div class="sourceCode" id="cb120"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb120-1"><a href="shiny-input-system.html#cb120-1"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
+<span id="cb120-2"><a href="shiny-input-system.html#cb120-2"></a>  <span class="kw">sliderInput</span>(<span class="st">&quot;obs&quot;</span>, <span class="st">&quot;Number of observations:&quot;</span>,</span>
+<span id="cb120-3"><a href="shiny-input-system.html#cb120-3"></a>              <span class="dt">min =</span> <span class="dv">0</span>, <span class="dt">max =</span> <span class="dv">1000</span>, <span class="dt">value =</span> <span class="dv">500</span></span>
+<span id="cb120-4"><a href="shiny-input-system.html#cb120-4"></a>  ),</span>
+<span id="cb120-5"><a href="shiny-input-system.html#cb120-5"></a>  <span class="kw">plotOutput</span>(<span class="st">&quot;distPlot&quot;</span>)</span>
+<span id="cb120-6"><a href="shiny-input-system.html#cb120-6"></a>)</span>
+<span id="cb120-7"><a href="shiny-input-system.html#cb120-7"></a></span>
+<span id="cb120-8"><a href="shiny-input-system.html#cb120-8"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</span>
+<span id="cb120-9"><a href="shiny-input-system.html#cb120-9"></a>  output<span class="op">$</span>distPlot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</span>
+<span id="cb120-10"><a href="shiny-input-system.html#cb120-10"></a>    <span class="kw">hist</span>(<span class="kw">rnorm</span>(input<span class="op">$</span>obs))</span>
+<span id="cb120-11"><a href="shiny-input-system.html#cb120-11"></a>  })</span>
+<span id="cb120-12"><a href="shiny-input-system.html#cb120-12"></a>}</span>
+<span id="cb120-13"><a href="shiny-input-system.html#cb120-13"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
 <p>Figure <a href="shiny-input-system.html#fig:shiny-initial-inputs">5.9</a> shows how to access Shiny’s initial input value with <code>Shiny.shinyapp.$initialInput.obs</code>. After changing the slider position, its value is given by <code>Shiny.shinyapp.$inputValues.obs</code>. <code>$initialInput</code> and <code>$inputValues</code> contains many more elements, however we are only interested in the slider function in this example.</p>
 <div class="figure"><span id="fig:shiny-initial-inputs"></span>
 <img src="images/survival-kit/shiny-init-input.png" alt="Explore initial input values" width="994" />
