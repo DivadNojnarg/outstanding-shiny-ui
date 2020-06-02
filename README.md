@@ -15,3 +15,5 @@
   - add chapter on how to develop a package for user interfaces.
   - add chapter listing all available templates
   - local pkg setup for each Rmd file?
+  - add section on `addResourcePath`
+  - add extra section for case study!
