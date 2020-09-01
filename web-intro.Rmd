@@ -2,26 +2,29 @@
 
 Shiny allows the development of web applications with R in minutes. Let's face it: this is quite mind blowing! While this may not be a production ready app, it will still be a fully functional, working prototype. Believe me, doing a web application with pure HTML/CSS and JavaScript is more difficult, especially for someone with a non-web developer background.
 
+```{r}
+library(shiny)
+```
+
 ## Shiny generates HTML code from R
 Let's start with a little exercise:
 
 1. Run the following code:
 
-```{r}
-library(shiny)
+```{r, eval=FALSE}
 p("Hello World")
 ```
 
 2. Copy and paste this code to the R console. What do you observe?
 
 Notice the output format is an example of an HTML tag. The `p` function generates HTML (see chapter \@ref(htmltools-overview)). The main difference between HTML tags and Shiny tags is the absence of closing tag for Shiny. For instance, in raw HTML, we expect `<p>` to be closed by `</p>`. In Shiny, we only call `p(...)`, where `...` may be attributes like class/id or children tags. For a R developer, being able to generate HTML code from R allows to remain focused on the main task instead of the web development burdens.
-As stated in the general introduction \@ref{intro}, a production app sometimes needs to custom elements that are not contained or hidden in Shiny's core.
+As stated in the general introduction \@ref(intro), a production app sometimes needs to custom elements that are not contained or hidden in Shiny's core.
 
 Is a Shiny app less customizable than a classic web app? Not at all! Under the hood, Shiny has its own engine to build HTML tags, through R, meaning that all HTML elements are available. You may also include any custom [JavaScript](https://shiny.rstudio.com/articles/packaging-javascript.html) or [CSS](https://mastering-shiny.org/advanced-ui.html) code. 
 
 ## HTML 101 {#web-intro-html}
 This chapter provides a short introduction to the 3 main web languages, namely HTML, CSS and JavaScript.
-The following content is crucial to understand part \@ref{htmltools-overview} about HTML generation from R.
+The following content is crucial to understand part \@ref(htmltools-overview) about HTML generation from R.
 
 ### HTML Basics
 HTML (Hypertext Markup Language) is derived from SGML (Standard Generalized markup Language). An HTML file contains tags that may be divided into 2 categories:
@@ -123,6 +126,17 @@ Let's write the famous Hello World in HTML:
 
 In order to preview this page in a web browser, you need to save the above snippet to a script `hello-world.html` and double-click on it. It will open with your default web browser.
 
+Below is the corresponding Shiny app code, only for demonstration purpose (static HTML would be enough if no user interaction is required). 
+
+```{r, eval=FALSE}
+ui <- fluidPage(p("Hello World"))
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+From outside, it looks identical even though we'll see in Chapter \@ref(web-dependencies) that this simple app actually contains much more HTML than our previous example.
 
 ### About the Document Object Model (DOM)
 The DOM stands for "Document Object Model" and is a convenient representation of the html document. There actually exists multiple DOM types, namely DOM-XML and DOM-HTML but we will only focus on the latter. If we consider the last example (Hello World), the associated DOM tree may be inspected in Figure \@ref(fig:html-dom).
@@ -131,14 +145,14 @@ The DOM stands for "Document Object Model" and is a convenient representation of
 Below, we introduce a tool that will facilitate our exploration of beautiful shiny user interfaces. In this section, we restrict the description to the first panel of the HTML inspector [^inspector]. This feature is available in all web browser, however for demonstration purposes, we will only focus on Chrome. It may be opened:
 
   - after a right click and selecting inspect
-  - after clicking on F12 (windows), fn + F12 on Mac
+  - after clicking on F12 (windows), fn + F12 on Mac (or Command+Option+C)
   
 In the following:
 
    - Open the hello-world.html example in a web browser (google chrome [here](https://www.google.com/chrome/))
    - Right-click to open the HTML inspector (developer tools must be enabled if it is not the case)
    
-The HTML inspector is a convenient tool to explore the structure of the current HTML page. On the left-hand side, the DOM tree is displayed where we clearly see that `<html>` is the parent of `<head>` and `<body>`. `<body>` has also 1 child, that is `<p>`. We may preview any style (CSS) associated to the selected element on the right panel as well as Event Listeners (JavaScript), which will be discussed that in the next chapter. 
+The HTML inspector is a convenient tool to explore the structure of the current HTML page. On the left-hand side, the DOM tree is displayed where we clearly see that `<html>` is the parent of `<head>` and `<body>`. `<body>` has also 1 child, that is `<p>`. We may preview any style (CSS) associated to the selected element on the right panel as well as Event Listeners (JavaScript), which will be discussed later in the book. 
 
 ```{r html-dom, echo=FALSE, fig.cap='Inspection of the DOM in the Hello World example'}
 knitr::include_graphics("images/survival-kit/dom.png")
@@ -146,6 +160,71 @@ knitr::include_graphics("images/survival-kit/dom.png")
 
 [^inspector]: As shown in Figure \@ref(fig:html-dom), the inspector also has tools to debug JavaScript code, inspect files, run performances audit, ... We will describe some of these later in the book.
 
+#### HTML Inspector 101
+Below, we describe the Chrome HTML inspector, also know as [Chrome DevTools](https://developers.google.com/web/tools/chrome-devtools), in details.
+In addition to explore the HTML [structure](https://developers.google.com/web/tools/chrome-devtools/dom), the inspector allows to: 
+
+  - Dynamically change CSS at run time
+  - Debug JavaScript code (put break points, ...)
+  - Run JavaScript code from the console.
+  - Monitor any error or warning that may prevent your app or website from properly working
+  
+Interestingly, a lot of Shiny app issues are related to JavaScript problems (htmlWidget conflicts, typos) that could be easily tracked if you know about the HTML inspector. We'll see in section \@ref(shiny-websocket) that you may also track websockets activity! 
+
+Another important set of feature is the ability to switch between different devices, especially mobile platforms and to do a global performance audit with [Google LightHouse](https://developers.google.com/web/tools/lighthouse). The [book](https://engineering-shiny.org/when-optimize.html#tools-for-profiling) from Colin Fay et al. details the most relevant elements for Shiny app development.
+
+Below, we propose at set of quick exercises to review the most important HTML inspector capabilities that we will use during Shiny app customization. We'll consider the app already defined above:
+
+```{r, eval=FALSE}
+ui <- fluidPage(p("Hello World"))
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+##### Altering the DOM structure
+  1. Run the `Hello World` app, right click on the only text element and click on inspect
+  2. Notice we could have done similarly by clicking on the very top left corner `Inspect` icon (Command + maj + C for Mac) and hovering over the `Hello World` text
+
+You should see a result similar to Figure \@ref(fig:html-dom-inspect), the `Inspect` icon being in blue. The selected element is highlighted and a white box displays the main CSS properties like `text-color`, `font-size`, margins, as well as accessibility parameters.
+
+```{r html-dom-inspect, echo=FALSE, fig.cap='Inspection of the p element in the Hello World example'}
+knitr::include_graphics("images/survival-kit/dom-inspect.png")
+``` 
+
+  3. In the `Elements` panel, double click between the `<p>` and `</p>` tags to edit the current text. Press enter when finished. 
+  
+Alternatively, as depicted in Figure \@ref(fig:html-dom-edit), we could have done a right click on the `p` tag to display more options like:
+
+  - Add/edit an attribute. You may try to add it a class `class="awesome-text"` and an id `id="only-text"`
+  - Delete the current tag (the `return` key would do it as well)
+  - Copy the element with all nested elements
+  - Only copy the outside HTML (ignore nested elements)
+  - Extract the CSS selector or JavaScript path (code to select the element): `body > div > p` and `document.querySelector("body > div > p")`, respectively. These 2 features are extremely powerful as they save you time to find these by yourself. Try to copy and paste `document.querySelector("body > div > p")` in the JavaScript console. Notice it returns the selected element, as shown in Figure \@ref(fig:html-dom-js-path)! Amazing isn' it?
+  
+```{r html-dom-js-path, echo=FALSE, fig.cap='Extract the JavaScript path to select the p element'}
+knitr::include_graphics("images/survival-kit/dom-js-path.png")
+``` 
+  
+  - Hide the element
+  - Force a specific state. For instance buttons may be `active`, `inactive`
+
+```{r html-dom-edit, echo=FALSE, fig.cap='Modifications of the p element in the Hello World example'}
+knitr::include_graphics("images/survival-kit/dom-edit.png")
+``` 
+
+I invite the reader to carefully explore those features as they will be crucial in the next chapters.
+
+  4. Let's add some children to our `p` tag. Right click and select the `Edit as HTML` option. YOu may enter any valid HTML code inside. Don't forget about some rules relative to inline and block tags (inline tags cannot contain block tags!!!).
+  
+Whenever you are looking for a specific tag in a more complex page, the `search tag` option is a game changer (command + F within the Elements tab on a Mac). See Figure \@ref(fig:html-dom-search).
+
+```{r html-dom-search, echo=FALSE, fig.cap='Modifications of the p element in the Hello World example'}
+knitr::include_graphics("images/survival-kit/dom-search.png")
+``` 
+  
+Finally, the inspector toolkit allows to reorder DOM elements with a rather intuitive drag and drop feature.
 
 ### Preliminary introduction to CSS and JavaScript
 To introduce this section, I propose to look at the very first website, early in the 90's (August 1991 exactly). From an aesthetic point of view (see Figure \@ref(fig:www-first)), this is far from what we can observe today as shown in Figure \@ref(fig:www-rinterface).
@@ -161,7 +240,7 @@ knitr::include_graphics("images/survival-kit/www-rinterface.png")
 How can we explain that difference? One of the main reason is the absence of CSS (Cascading Style Sheet) since the first CSS release only appeared in December 1996, that is 5 years later than the first web site publication. CSS allows to deeply customize the appearance of any web page by changing colors, fonts, margins and much more. We acknowledge, the role of JavaScript cannot be demonstrated through the previous example. Yet its impact is as important as CSS, so that it is now impossible to dissociate HTML, CSS and JavaScript.
 
 #### HTML and CSS
-CSS (Cascading Style Sheets) changes the style of HTML tags by targeting specific classes or ids. For instance, if we want all p tags to have red color we will use:
+CSS (Cascading Style Sheets) changes the style of HTML tags by targeting specific classes or ids. For instance, if we want all `p` tags to have red color we will use:
 
 ```css
 p {
@@ -188,6 +267,19 @@ To include CSS in an HTML page, we use the `<style>` tag as follows:
 ```
 
 You may update the hello-world.html script and run it in your web-browser to see the difference. The example may be slight, but shows how we may control the look and feel of the display. In a development context, we will see later that css files may so big that it is better to include them in external files.
+
+Let's build a shiny app that does similar things. As a reminder, you may use `tags$style` to include small pieces of CSS in your app:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$style("p { color: red;}"),
+  p("Hello World")
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
 
 #### HTML and JavaScript
 You will see how quickly/seamlessly you may add awesome features to your shiny app.
@@ -218,5 +310,24 @@ Let's consider the following example:
   </body>
 </html>
 ```
-
 In few lines of code, you can change the color of the text. This is only the beginning!
+
+We see below that the process is not dramatically different in a Shiny app. We wrap our custom JavaScript in the `tags$script` function (prefer external scripts to add more code), as below:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+    "alert('Click on the Hello World text!');
+     // change text color
+     function changeColor(color){
+       document.getElementById('hello').style.color = 'green';
+     }
+    "
+  ),
+  p(id = "hello", onclick="changeColor('green')", "Hello World")
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
