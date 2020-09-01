@@ -4,11 +4,11 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Chapter 7 Introduction | Outstanding User Interfaces with Shiny</title>
+  <title>Chapter 3 Discover Shiny dependencies | Outstanding User Interfaces with Shiny</title>
   <meta name="description" content="A book about deeply customizing Shiny app for production." />
   <meta name="generator" content="bookdown 0.20 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="Chapter 7 Introduction | Outstanding User Interfaces with Shiny" />
+  <meta property="og:title" content="Chapter 3 Discover Shiny dependencies | Outstanding User Interfaces with Shiny" />
   <meta property="og:type" content="book" />
   
   
@@ -16,7 +16,7 @@
   <meta name="github-repo" content="DivadNojnarg/outstanding-shiny-ui" />
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Chapter 7 Introduction | Outstanding User Interfaces with Shiny" />
+  <meta name="twitter:title" content="Chapter 3 Discover Shiny dependencies | Outstanding User Interfaces with Shiny" />
   
   <meta name="twitter:description" content="A book about deeply customizing Shiny app for production." />
   
@@ -31,8 +31,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon" />
-<link rel="prev" href="htmltools-other-tools.html"/>
-<link rel="next" href="survival-kit-javascript.html"/>
+<link rel="prev" href="web-intro.html"/>
+<link rel="next" href="htmltools-overview.html"/>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
@@ -322,110 +322,63 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="shiny-intro" class="section level1">
-<h1><span class="header-section-number">Chapter 7</span> Introduction</h1>
-<p>In this chapter, we will answer to the following questions:</p>
-<ul>
-<li>How is R/JavaScript communication achieved?</li>
-<li>How does Shiny deal with inputs?</li>
-</ul>
-<p>In the last part of this book, we will be designing custom inputs and knowing how to debug them is priceless.</p>
-<div id="shiny-websocket" class="section level2">
-<h2><span class="header-section-number">7.1</span> Websocket: R/JS bidirectional communication</h2>
-<p>How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature highlighted <a href="https://github.com/rstudio/shiny">here</a>, which leverages the <a href="https://github.com/rstudio/httpuv">httpuv</a> and <a href="https://github.com/rstudio/websocket">websocket</a> packages. Before going further let’s define what is a websocket! It is an advanced technology allowing bidirectional communication between a client and a server. For instance, a chat system may be built on top of a websocket. In the following, we will show how to inspect the websocket in a web browser. Let’s run the following app (see <a href="shiny-intro.html#fig:shiny-websocket">7.1</a>, left panel)</p>
-<div class="sourceCode" id="cb88"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb88-1"><a href="shiny-intro.html#cb88-1"></a><span class="kw">shinyApp</span>(</span>
-<span id="cb88-2"><a href="shiny-intro.html#cb88-2"></a>  <span class="dt">ui =</span> <span class="kw">fluidPage</span>(</span>
-<span id="cb88-3"><a href="shiny-intro.html#cb88-3"></a>    <span class="kw">selectInput</span>(<span class="st">&quot;variable&quot;</span>, <span class="st">&quot;Variable:&quot;</span>,</span>
-<span id="cb88-4"><a href="shiny-intro.html#cb88-4"></a>                <span class="kw">c</span>(<span class="st">&quot;Cylinders&quot;</span> =<span class="st"> &quot;cyl&quot;</span>,</span>
-<span id="cb88-5"><a href="shiny-intro.html#cb88-5"></a>                  <span class="st">&quot;Transmission&quot;</span> =<span class="st"> &quot;am&quot;</span>,</span>
-<span id="cb88-6"><a href="shiny-intro.html#cb88-6"></a>                  <span class="st">&quot;Gears&quot;</span> =<span class="st"> &quot;gear&quot;</span>)),</span>
-<span id="cb88-7"><a href="shiny-intro.html#cb88-7"></a>    <span class="kw">tableOutput</span>(<span class="st">&quot;data&quot;</span>)</span>
-<span id="cb88-8"><a href="shiny-intro.html#cb88-8"></a>  ),</span>
-<span id="cb88-9"><a href="shiny-intro.html#cb88-9"></a>  <span class="dt">server =</span> <span class="cf">function</span>(input, output) {</span>
-<span id="cb88-10"><a href="shiny-intro.html#cb88-10"></a>    output<span class="op">$</span>data &lt;-<span class="st"> </span><span class="kw">renderTable</span>({</span>
-<span id="cb88-11"><a href="shiny-intro.html#cb88-11"></a>      mtcars[, <span class="kw">c</span>(<span class="st">&quot;mpg&quot;</span>, input<span class="op">$</span>variable), drop =<span class="st"> </span><span class="ot">FALSE</span>]</span>
-<span id="cb88-12"><a href="shiny-intro.html#cb88-12"></a>    }, <span class="dt">rownames =</span> <span class="ot">TRUE</span>)</span>
-<span id="cb88-13"><a href="shiny-intro.html#cb88-13"></a>  }</span>
-<span id="cb88-14"><a href="shiny-intro.html#cb88-14"></a>)</span></code></pre></div>
-<p>After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. On the JavaScript side, the websocket is created in the shinyapp.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">file</a>. The first element received from R is the first message in the list shown in Figure <a href="shiny-intro.html#fig:shiny-websocket">7.1</a>. It is a JSON object containing the method used as well as passed data. In the meantime, you may change the select input value.</p>
-<div class="sourceCode" id="cb89"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb89-1"><a href="shiny-intro.html#cb89-1"></a><span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
-<span id="cb89-2"><a href="shiny-intro.html#cb89-2"></a>  <span class="dt">method</span><span class="op">:</span> <span class="st">&#39;init&#39;</span><span class="op">,</span></span>
-<span id="cb89-3"><a href="shiny-intro.html#cb89-3"></a>  <span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></span>
-<span id="cb89-4"><a href="shiny-intro.html#cb89-4"></a><span class="op">}</span>))<span class="op">;</span></span></code></pre></div>
-<p>The second message received from R is after updating the select input.</p>
-<div class="sourceCode" id="cb90"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb90-1"><a href="shiny-intro.html#cb90-1"></a><span class="kw">this</span>.<span class="at">sendInput</span> <span class="op">=</span> <span class="kw">function</span>(values) <span class="op">{</span></span>
-<span id="cb90-2"><a href="shiny-intro.html#cb90-2"></a>  <span class="kw">var</span> msg <span class="op">=</span> <span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
-<span id="cb90-3"><a href="shiny-intro.html#cb90-3"></a>    <span class="dt">method</span><span class="op">:</span> <span class="st">&#39;update&#39;</span><span class="op">,</span></span>
-<span id="cb90-4"><a href="shiny-intro.html#cb90-4"></a>    <span class="dt">data</span><span class="op">:</span> values</span>
-<span id="cb90-5"><a href="shiny-intro.html#cb90-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb90-6"><a href="shiny-intro.html#cb90-6"></a><span class="co">// other things</span></span>
-<span id="cb90-7"><a href="shiny-intro.html#cb90-7"></a><span class="op">};</span></span></code></pre></div>
-<p>Although complex, it is extremely useful to check whether the input / output communication are working properly. If not, we would see the error field identifying the issue.</p>
-<p>Finally, <code>Shiny.shinyapp.$socket.readyState</code> returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, nothing would be shown. Note that the R option <code>options(shiny.trace = TRUE)</code> allows the websocket messages to be displayed directly in the R console.</p>
-<div class="figure"><span id="fig:shiny-websocket"></span>
-<img src="images/survival-kit/shiny-websocket.png" alt="Shiny websocket" width="997" />
+<div id="web-dependencies" class="section level1">
+<h1><span class="header-section-number">Chapter 3</span> Discover Shiny dependencies</h1>
+<p>We are now convinced that Shiny creates HTML code for us. Is it enough to design a beautiful working app with user interactions? For sure no! As shown above, we also need CSS and JavaScript. Let’s explore these elements in the following exercise.</p>
+<ol style="list-style-type: decimal">
+<li>The simplest Shiny layout is the <code>fluidPage</code>. The <code>shinyapp</code> predefined Rstudio snippet will create a basic app skeleton (type shinyapp in RStudio IDE):</li>
+</ol>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="web-dependencies.html#cb49-1"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
+<span id="cb49-2"><a href="web-dependencies.html#cb49-2"></a>  <span class="kw">p</span>(<span class="st">&quot;Hello World&quot;</span>)</span>
+<span id="cb49-3"><a href="web-dependencies.html#cb49-3"></a>)</span>
+<span id="cb49-4"><a href="web-dependencies.html#cb49-4"></a></span>
+<span id="cb49-5"><a href="web-dependencies.html#cb49-5"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output) {}</span>
+<span id="cb49-6"><a href="web-dependencies.html#cb49-6"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
+<p>At first glance, the page only contains text. Wait … are you sure about this? Let’s run the above example and open the HTML inspector introduced in <a href="web-intro.html#web-intro-html">2.2</a>. Results are displayed on Figure <a href="web-dependencies.html#fig:shiny-deps">3.1</a>.</p>
+<div class="figure"><span id="fig:shiny-deps"></span>
+<img src="images/survival-kit/shiny-deps.png" alt="Shiny dependencies" width="537" />
 <p class="caption">
-FIGURE 7.1: Shiny websocket
+FIGURE 3.1: Shiny dependencies
 </p>
 </div>
-</div>
-<div id="shiny-session" class="section level2">
-<h2><span class="header-section-number">7.2</span> The Shiny session object</h2>
-<p>We won’t be able to go anywhere without giving some reminders about the Shiny <a href="https://shiny.rstudio.com/reference/shiny/1.4.0/session.html">session</a> object. Why do we say object? <code>session</code> is actually an instance of the <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R"><code>ShinySession</code></a> R6 class.
-The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. Understanding how R and JS communicate allows us to discuss the Shiny input system.</p>
+<ol start="2" style="list-style-type: decimal">
+<li><p>Click on “Open in Browser”.</p></li>
+<li><p>Open the HTML inspector.</p></li>
+<li><p>Locate the <code>&lt;head&gt;</code> tag.</p></li>
+<li><p>Uncollapse it and search for the script containing <code>application/html-dependencies</code>.</p></li>
+</ol>
+<p>We see in the head section, delimited by <code>&lt;head&gt;&lt;/head&gt;</code>, that Shiny has four dependencies:</p>
 <ul>
-<li><code>sendCustomMessage</code> sends messages from R to JS. It calls the private <code>sendMessage</code> method which itself calls <code>write</code>. The message is sent only when the session is opened, throught the websocket <code>private$websocket$send(json)</code>. If the <code>shiny.trace</code> <a href="https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html">option</a> is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.</li>
-<li><code>sendInputMessage</code> is used to update inputs from the server</li>
+<li>json2</li>
+<li>jQuery 3.4.1</li>
+<li>shiny (custom JavaScript and CSS)</li>
+<li>Bootstrap 3.4.1 (JavaScript and CSS) + other files (html5shiv, respond)</li>
 </ul>
-<p>The below code is extracted from the <code>shiny.R</code> <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R">file</a>.</p>
-<div class="sourceCode" id="cb91"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb91-1"><a href="shiny-intro.html#cb91-1"></a>sendCustomMessage =<span class="st"> </span><span class="cf">function</span>(type, message) {</span>
-<span id="cb91-2"><a href="shiny-intro.html#cb91-2"></a>  data &lt;-<span class="st"> </span><span class="kw">list</span>()</span>
-<span id="cb91-3"><a href="shiny-intro.html#cb91-3"></a>  data[[type]] &lt;-<span class="st"> </span>message</span>
-<span id="cb91-4"><a href="shiny-intro.html#cb91-4"></a>  private<span class="op">$</span><span class="kw">sendMessage</span>(<span class="dt">custom =</span> data)</span>
-<span id="cb91-5"><a href="shiny-intro.html#cb91-5"></a>}</span>
-<span id="cb91-6"><a href="shiny-intro.html#cb91-6"></a></span>
-<span id="cb91-7"><a href="shiny-intro.html#cb91-7"></a>sendInputMessage =<span class="st"> </span><span class="cf">function</span>(inputId, message) {</span>
-<span id="cb91-8"><a href="shiny-intro.html#cb91-8"></a>  data &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">id =</span> inputId, <span class="dt">message =</span> message)</span>
-<span id="cb91-9"><a href="shiny-intro.html#cb91-9"></a>  </span>
-<span id="cb91-10"><a href="shiny-intro.html#cb91-10"></a>  <span class="co"># Add to input message queue</span></span>
-<span id="cb91-11"><a href="shiny-intro.html#cb91-11"></a>  private<span class="op">$</span>inputMessageQueue[[<span class="kw">length</span>(private<span class="op">$</span>inputMessageQueue) <span class="op">+</span><span class="st"> </span><span class="dv">1</span>]] &lt;-<span class="st"> </span>data</span>
-<span id="cb91-12"><a href="shiny-intro.html#cb91-12"></a>  <span class="co"># Needed so that Shiny knows to actually flush the input message queue</span></span>
-<span id="cb91-13"><a href="shiny-intro.html#cb91-13"></a>  self<span class="op">$</span><span class="kw">requestFlush</span>()</span>
-<span id="cb91-14"><a href="shiny-intro.html#cb91-14"></a>}</span>
-<span id="cb91-15"><a href="shiny-intro.html#cb91-15"></a></span>
-<span id="cb91-16"><a href="shiny-intro.html#cb91-16"></a></span>
-<span id="cb91-17"><a href="shiny-intro.html#cb91-17"></a>sendMessage =<span class="st"> </span><span class="cf">function</span>(...) {</span>
-<span id="cb91-18"><a href="shiny-intro.html#cb91-18"></a>  <span class="co"># This function is a wrapper for $write</span></span>
-<span id="cb91-19"><a href="shiny-intro.html#cb91-19"></a>  msg &lt;-<span class="st"> </span><span class="kw">list</span>(...)</span>
-<span id="cb91-20"><a href="shiny-intro.html#cb91-20"></a>  <span class="cf">if</span> (<span class="kw">anyUnnamed</span>(msg)) {</span>
-<span id="cb91-21"><a href="shiny-intro.html#cb91-21"></a>    <span class="kw">stop</span>(<span class="st">&quot;All arguments to sendMessage must be named.&quot;</span>)</span>
-<span id="cb91-22"><a href="shiny-intro.html#cb91-22"></a>  }</span>
-<span id="cb91-23"><a href="shiny-intro.html#cb91-23"></a>  private<span class="op">$</span><span class="kw">write</span>(<span class="kw">toJSON</span>(msg))</span>
-<span id="cb91-24"><a href="shiny-intro.html#cb91-24"></a>}</span>
-<span id="cb91-25"><a href="shiny-intro.html#cb91-25"></a></span>
-<span id="cb91-26"><a href="shiny-intro.html#cb91-26"></a></span>
-<span id="cb91-27"><a href="shiny-intro.html#cb91-27"></a>write =<span class="st"> </span><span class="cf">function</span>(json) {</span>
-<span id="cb91-28"><a href="shiny-intro.html#cb91-28"></a>  <span class="cf">if</span> (self<span class="op">$</span>closed){</span>
-<span id="cb91-29"><a href="shiny-intro.html#cb91-29"></a>    <span class="kw">return</span>()</span>
-<span id="cb91-30"><a href="shiny-intro.html#cb91-30"></a>  }</span>
-<span id="cb91-31"><a href="shiny-intro.html#cb91-31"></a>  traceOption &lt;-<span class="st"> </span><span class="kw">getOption</span>(<span class="st">&#39;shiny.trace&#39;</span>, <span class="ot">FALSE</span>)</span>
-<span id="cb91-32"><a href="shiny-intro.html#cb91-32"></a>  <span class="cf">if</span> (<span class="kw">isTRUE</span>(traceOption) <span class="op">||</span><span class="st"> </span>traceOption <span class="op">==</span><span class="st"> &quot;send&quot;</span>)</span>
-<span id="cb91-33"><a href="shiny-intro.html#cb91-33"></a>    <span class="kw">message</span>(<span class="st">&#39;SEND &#39;</span>,</span>
-<span id="cb91-34"><a href="shiny-intro.html#cb91-34"></a>            <span class="kw">gsub</span>(<span class="st">&#39;(?m)base64,[a-zA-Z0-9+/=]+&#39;</span>,<span class="st">&#39;[base64 data]&#39;</span>,json,<span class="dt">perl=</span><span class="ot">TRUE</span>))</span>
-<span id="cb91-35"><a href="shiny-intro.html#cb91-35"></a>  private<span class="op">$</span>websocket<span class="op">$</span><span class="kw">send</span>(json)</span>
-<span id="cb91-36"><a href="shiny-intro.html#cb91-36"></a>}</span>
-<span id="cb91-37"><a href="shiny-intro.html#cb91-37"></a><span class="co"># ...</span></span></code></pre></div>
-<p>No worry if it is not clear at the moment. We will discuss those elements in the following sections.</p>
+<p><a href="https://getbootstrap.com">Bootstrap</a> is here to provide plug and play design and interactions (tabs, navigation bars, tooltips, popovers, …). For instance the <code>fluidRow</code> and <code>column</code> functions of Shiny leverage the Bootstrap grid to control how elements are displayed in a page. This is convenient because it avoids writing a large amount of CSS/JavaScript that essentially juts reinvents the wheel.</p>
+<p>As mentioned in Chapter <a href="survival-kit-javascript.html#survival-kit-javascript">8</a>, jQuery allows to perform DOM manipulation, that is interacting with HMTL elements, in a more user-friendly manner than with pure JavaScript.</p>
+<p>Shiny has its own JS and CSS files. We will discuss some of them later in this section.</p>
+<p>Finally, json2 is a library to handle the <a href="https://www.json.org/json-en.html">JSON</a> data format (JavaScript Object Notation). The R / JS communication involves data exchange and given that data structures are not the same in R and JS, there must be a way to ensure the translation. This is done through the <a href="https://cran.r-project.org/web/packages/jsonlite/index.html">jsonlite</a> package that allows to transform JSON objects in R objects with <code>jsonlite::fromJSON</code> and inversely with <code>jsonlite::toJSON</code>. Fortunately Shiny automatically handles the process and it works well most of the time!</p>
+<ol start="6" style="list-style-type: decimal">
+<li>Try to delete the bootstrap.min.css and ion.rangeSlider.css.</li>
+<li>Conclusions.</li>
+</ol>
+<p>In summary, all these libraries are necessary to make Shiny what it is!</p>
+<p>In Chapter <a href="htmltools-dependencies.html#htmltools-dependencies">5</a> we will explore tools to manage HTML dependencies. In Chapter <a href="custom-templates-interactivity.html#insert-tabs">17.4.1</a>, we will see a special case to insert dependencies during the app runtime</p>
+<p>Let’s move to the next part to discover how Shiny creates HTML code from R!</p>
 
 </div>
+
+
+
+
 </div>
             </section>
 
           </div>
         </div>
       </div>
-<a href="htmltools-other-tools.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="survival-kit-javascript.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="web-intro.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="htmltools-overview.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
@@ -456,7 +409,7 @@ gitbook.start({
 "size": 2
 },
 "edit": {
-"link": "https://github.com/DivadNojnarg/outstanding-shiny-ui/edit/master/shiny-intro.Rmd",
+"link": "https://github.com/DivadNojnarg/outstanding-shiny-ui/edit/master/web-dependencies.Rmd",
 "text": "Edit"
 },
 "history": {
