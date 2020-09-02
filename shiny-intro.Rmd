@@ -12,6 +12,7 @@ In the last part of this book, we will be designing custom inputs and knowing ho
 How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature highlighted [here](https://github.com/rstudio/shiny), which leverages the [httpuv](https://github.com/rstudio/httpuv) and [websocket](https://github.com/rstudio/websocket) packages. Before going further let's define what is a websocket! It is an advanced technology allowing bidirectional communication between a client and a server. For instance, a chat system may be built on top of a websocket. In the following, we will show how to inspect the websocket in a web browser. Let's run the following app (see  \@ref(fig:shiny-websocket), left panel)
 
 ```{r, eval=FALSE}
+library(shiny)
 shinyApp(
   ui = fluidPage(
     selectInput("variable", "Variable:",
@@ -51,12 +52,48 @@ this.sendInput = function(values) {
 
 Although complex, it is extremely useful to check whether the input / output communication are working properly. If not, we would see the error field identifying the issue. 
 
-Finally, `Shiny.shinyapp.$socket.readyState` returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, nothing would be shown. Note that the R option `options(shiny.trace = TRUE)` allows the websocket messages to be displayed directly in the R console.
+Finally, `Shiny.shinyapp.$socket.readyState` returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, an error would be raised. Note that the R option `options(shiny.trace = TRUE)` allows the websocket messages to be displayed directly in the R console.
 
 
 ```{r shiny-websocket, echo=FALSE, fig.cap='Shiny websocket'}
 knitr::include_graphics("images/survival-kit/shiny-websocket.png")
 ```
+We see below that we can even bypass the UI element and update the input value directly via the websocket using `Shiny.shinyapp.$sendMsg` with the `update` method.
+
+```{r, eval=FALSE}
+updateObsVal <- function(value) {
+  sprintf(
+    "Shiny.shinyapp.$sendMsg(JSON.stringify({
+      method: 'update',
+      data: {obs: %s}
+    }));",
+    value
+  )
+}
+
+# below we shunt the slider input by sending message
+# directly through the websocket
+
+ui <- fluidPage(
+  tags$button(
+    "Update obs value",
+    onclick = updateObsVal(4)
+  ),
+  sliderInput("obs", "Number of observations:",
+              min = 0, max = 1000, value = 500
+  ),
+  plotOutput("distPlot")
+)
+
+server <- function(input, output, session) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
+
+shinyApp(ui, server)
+```
+
 
 ## The Shiny session object {#shiny-session}
 We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 

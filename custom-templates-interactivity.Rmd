@@ -23,9 +23,9 @@ tabler_custom_js <- htmlDependency(
 ## Custom progress bars
 Progress bars are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those elements are static HTML. Hence, it would be interesting to be able to update the current value from the server side. Since it is not an proper input element, implementing an input binding is inappropriate and we decide to proceed with the `sendCustomMessage`/`addCustomMessageHandler` pair. We first create the `tabler_progress` tag which is mainly composed of:
 
-- `style` gives the current progress value. This is the main element
-- `min` and `max` are bounds, in general between 0 and 100
-- `id` ensures the progress bar uniqueness, thereby avoiding conflicts
+  - `style` gives the current progress value. This is the main element
+  - `min` and `max` are bounds, in general between 0 and 100
+  - `id` ensures the progress bar uniqueness, thereby avoiding conflicts
 
 ```{r}
 tabler_progress <- function(id = NULL, value) {
@@ -52,8 +52,8 @@ update_tabler_progress <- function(id, value, session = shiny::getDefaultReactiv
 
 The next element is the `update_tabler_progress` function which sends 2 elements from R to JS:
 
-- The progress `id`
-- The new value
+  - The progress `id`
+  - The new value
 
 On the JS side, we have a basic `addCustomMessageHandler`. As mentioned in Chapter \@ref(survival-kit-javascript), `sendCustomMessage` and `addCustomMessageHandler` are connected by the `type` parameter. This is crucial! Moreover, as the sent message is a R list, it becomes an JSON, meaning that elements must be accessed with a `.` in JS:
 
@@ -71,12 +71,12 @@ We finally test these components in a simple app, whom output is depicted in Fig
 ui <- tabler_page(
   tabler_body(
     noUiSliderInput(
-    inputId = "progress_value",
-    label = "Progress value",
-    min = 0, 
-    max = 100,
-    value = 20
-  ),
+      inputId = "progress_value",
+      label = "Progress value",
+      min = 0, 
+      max = 100,
+      value = 20
+    ),
     tabler_progress(id = "progress1", 12)
   )
 )
@@ -103,6 +103,76 @@ NOTE: How to handle custom messages in shiny modules? Well, it is pretty straigh
 <br>
 
 
+Is there a way to directly update the progress from the client which would avoid to exchange data between R and JS, thereby saving some time?
+
+The id is to get rid of the classic `session$sendCustomMessage` and `Shiny.addCustomMessageHandler` method. We could directly create a function that
+insert a script in the UI taking a trigger and target as main parameters. This function would have to be inserted multiple times if multiple triggers had to update the same target. The JS logic is slightly different:
+
+  - We have to wait for shiny to be connected so that all inputs/bindings are ready
+  - We recover the trigger element with any JS/jQuery method
+  - We leverage the noUiSlider [API](https://refreshless.com/nouislider/) to listen to any update in the range. It's fine because the slider instance has already been initialized/defined in the shinyWidget [input binding](https://github.com/dreamRs/shinyWidgets/blob/master/inst/assets/nouislider/nouislider-bindings.js#L100). This would not work if we were not waiting for shiny to be connected (you may try)! Notice the use of `this.get()` in the event listener, which avoids to repeat `slider.noUiSlider`
+  - We modify the `width` CSS property of the target like in the previous example
+
+```javascript
+$(document).on('shiny:connected', function(event) {
+  var slider = document.getElementById('triggerId');
+  slider.noUiSlider.on('update', function(event) {
+    $('#targetId').css('width', this.get() + '%');
+  });
+});
+```
+
+```{r, eval=FALSE}
+update_tabler_progress2 <- function(trigger, target) {
+  tags$head(
+    tags$script(
+      paste0(
+        "$(document).on('shiny:connected', function(event) {
+            var slider = document.getElementById('", trigger, "');
+            slider.noUiSlider.on('update', function(event) {
+              $('#", target, "').css('width', this.get() + '%');
+            });
+          });
+        "
+      )
+    )
+  )
+}
+
+ui <- tabler_page(
+  update_tabler_progress2("progress_value", "progress1"),
+  update_tabler_progress2("progress_value2", "progress2"),
+  tabler_body(
+    noUiSliderInput(
+      inputId = "progress_value",
+      label = "Progress value 1",
+      min = 0, 
+      max = 100,
+      value = 20
+    ),
+    noUiSliderInput(
+      inputId = "progress_value2",
+      label = "Progress value 2",
+      min = 0, 
+      max = 100,
+      value = 80,
+      color = "red"
+    ),
+    tabler_progress(id = "progress1", 12),
+    br(), br(),
+    tabler_progress(id = "progress2", 100)
+  )
+)
+
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+Question: Run the above example in an external web browser, then stop the app from RStudio. Try to move both sliders. What happens for the progress bars? Compare with a classic `update` function. How could you explain this?
+
+Overall this way is a bit more complex since you sometimes need to know the API of the trigger to listen to the correct events. Yet, assuming a very complex app with data manipulation, tons of inputs and visualizations, everything that can be done from the client (web browser) is less work for the R server part and a better end-user experience! Building outstanding shiny apps is not only designing amazing user interfaces, it's also about optimization and speed as mentioned by Colin Fay et al. in their [book](https://engineering-shiny.org/optimjs.html).
+
+
 ## User feedback: toasts
 Toasts are components to send discrete user feedback, contrary to modals which open in the middle of the page. Toasts may open on all sides of the window and are similar to the Shiny notifications (see [here](https://shiny.rstudio.com/reference/shiny/0.14/showNotification.html)). The tabler toast component is built on top of [Bootstrap 4](https://getbootstrap.com/docs/4.3/components/toasts/). Therefore, we will rely on this documentation.
 
@@ -120,7 +190,7 @@ The skeleton is the HTML structure of the toast:
     </button>
   </div>
   <div class="toast-body">
-  Hello, world! This is a toast message.
+    Hello, world! This is a toast message.
   </div>
 </div>
 ```
@@ -130,9 +200,9 @@ Toasts are mainly composed of a header and a body. There might be a close button
 ### The toast API
 Toasts have a JS API to control their behaviour, for instance `$('<toast_selector>').toast(option)`, where option is a JSON with the following fields:
 
-- animation applies a CSS fade transition to the toast and is TRUE by default 
-- autohide automatically hides the toast (TRUE by default)
-- delay is the delay to hide the toast (500 ms)
+  - animation applies a CSS fade transition to the toast and is TRUE by default 
+  - autohide automatically hides the toast (TRUE by default)
+  - delay is the delay to hide the toast (500 ms)
 
 There are 3 methods: hide, show and dispose (dispose ensures the toast does not appear anymore). Finally, we may fine tune the toast behavior with 4 events: show.bs.toast, shown.bs.toast, hide.bs.toast, hide.bs.toast, hidden.bs.toast (like for tabs).
 
@@ -253,7 +323,7 @@ knitr::include_graphics("images/practice/tabler-toast.png")
 ## Transform an element in a custom action button
 As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The Tabler template has dropdown menus in the navbar and we would like to transform those dropdown items in action buttons. The `tabler_dropdown` functions takes the following parameters:
 
-  - id is required by the `show_tabler_dropdown` (see below) function which opens the menu
+  - id is required by the `show_tabler_dropdown` (see below) function which opens the   menu
   - title is the dropdown menu name
   - subtitle is optional text
   - img is an optional image
@@ -384,8 +454,8 @@ How about dynamically inserting/removing tabs from a `tabler_navbar`? I chose th
 
 How do we proceed? if you remember about the `tabler_navbar_menu_item` and `tabler_tab_item` coupling, inserting a tab implies to insert the trigger in the navigation menu as well as the content in the dashboard body. Therefore, we need to know the structure of what we insert. Below is a reminder:
 
-- `tabler_navbar_menu_item` are `<li>` elements
-- `tabler_navbar_menu_item` is a `<div>` element with specific classes
+  - `tabler_navbar_menu_item` are `<li>` elements
+  - `tabler_navbar_menu_item` is a `<div>` element with specific classes
 
 ```html
 <li class="nav-item">
@@ -460,7 +530,7 @@ $(function() {
     }
     
     if (message.select) {
-    // trigger a click on corresponding the new tab button. 
+      // trigger a click on corresponding the new tab button. 
       let newTabId = $divTag.attr('id');
       $('#' + message.inputId + ' a[href="#' + newTabId +'"]').tab('show');
     }
@@ -523,14 +593,14 @@ Let's look at `renderUI`:
 
 ```{r, eval=FALSE}
 renderUI <- function (expr, env = parent.frame(), quoted = FALSE, outputArgs = list()) {
-    installExprFunction(expr, "func", env, quoted)
-    createRenderFunction(func, function(result, shinysession, 
-        name, ...) {
-        if (is.null(result) || length(result) == 0) 
-            return(NULL)
-        #processDeps(result, shinysession)
-      result
-    }, uiOutput, outputArgs)
+  installExprFunction(expr, "func", env, quoted)
+  createRenderFunction(func, function(result, shinysession, 
+                                      name, ...) {
+    if (is.null(result) || length(result) == 0) 
+      return(NULL)
+    #processDeps(result, shinysession)
+    result
+  }, uiOutput, outputArgs)
 }
 ```
 
@@ -582,7 +652,7 @@ We then apply the `Shiny.renderContent` method to the tab content and navigation
 ```javascript
 $(function() {
   Shiny.addCustomMessageHandler('insert-tab', function(message) {
-  // define div and li targets
+    // define div and li targets
     let $divTag = $(message.content.html);
     let $liTag = $(message.link.html);
     
@@ -593,16 +663,16 @@ $(function() {
       $divTag.insertBefore($('#' + message.target));
       $liTag.insertBefore($('[href ="#' + message.target +   '"]').parent());
     }
-  
-      // needed to render input/output in newly added tab. It takes the possible
-      // deps and add them to the tag. Indeed, if we insert a tab, its deps are not
-      // included in the page so it can't render properly
-      Shiny.renderContent($liTag[0], {html: $liTag.html(), deps: message.link.deps});
-      Shiny.renderContent($divTag[0], {html: $divTag.html(), deps: message.content.deps});
+    
+    // needed to render input/output in newly added tab. It takes the possible
+    // deps and add them to the tag. Indeed, if we insert a tab, its deps are not
+    // included in the page so it can't render properly
+    Shiny.renderContent($liTag[0], {html: $liTag.html(), deps: message.link.deps});
+    Shiny.renderContent($divTag[0], {html: $divTag.html(), deps: message.content.deps});
     
     if (message.select) {
-    // trigger a click on corresponding the new tab button. 
-    let newTabId = $divTag.attr('id');
+      // trigger a click on corresponding the new tab button. 
+      let newTabId = $divTag.attr('id');
       $('#' + message.inputId + ' a[href="#' + newTabId   +'"]').tab('show');
     }
   });

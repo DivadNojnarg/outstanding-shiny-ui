@@ -30,3 +30,74 @@ You will find a whole chapter dedicated to custom handlers here \@ref(custom-tem
 ```{r shiny-custom-message, echo=FALSE, fig.cap='From R to JavaScript'}
 knitr::include_graphics("images/survival-kit/shiny-custom-message.png")
 ```
+
+Combining `Shiny.setInputValue`, `Shiny.addCustomMessageHandler`, here is a fun example
+that sets the body background as a result of a simple button click.
+We defined 3 JS pieces:
+  - `getPokemon` whose script is adapted from Colin Fay et al. (see [here](https://engineering-shiny.org/optimjs.html)). This function fetch the [pokeapi](https://pokeapi.co/)
+  data and if successful set an input value, which will be available on the R side
+  - An event listener is set to the only button of the page so that each time we click,
+  we call `getPokemon` to select a random background image
+  - `input$pokeData` is actually a quite complex list (deeply nested JSON) and some manipulation is done from R in the `observeEvent` block. Once done, we send the data
+  back to JS through the websocket (the session object sends a message). 
+  - On the JS side, the last block is a custom message handler that will add some inline
+  CSS properties to the body element
+
+
+```{r, eval=FALSE}
+library(shiny)
+
+ui <- fluidPage(
+  tags$script(
+    HTML(
+      "$(function() {
+        // Taken from Colin
+        const getPokemon = () => {
+          // FETCHING THE API DATA
+          let randId = Math.floor(Math.random() * (+151 + 1 - +1)) + +1;
+          fetch('https://pokeapi.co/api/v2/pokemon/' + randId)
+          // DEFINE WHAT HAPPENS WHEN JAVASCRIPT RECEIVES THE DATA
+          .then((data) =>{
+            // TURN THE DATA TO JSON
+            data.json().then((res) => {
+              // SEND THE JSON TO R
+              Shiny.setInputValue('pokeData', res, {priority: 'event'})
+            })
+          })
+          // DEFINE WHAT HAPPENS WHEN THERE IS AN ERROR FETCHING THE API
+          .catch((error) => {
+            alert('Error catching result from API')
+          })
+        };
+        
+        // add event listener
+        $('#button').on('click', function() {
+          getPokemon();
+        });
+        
+        // update background based on R data
+        Shiny.addCustomMessageHandler('update_background', function(message) {
+          $('body').css({
+            'background-image':'url(' + message +')', 
+            'background-repeat':'no-repeat'
+          });
+        });
+        
+      });
+      "
+    )
+  ),
+  tags$button(id = "button", "Go!", class = "btn-success")
+)
+
+server <- function(input, output, session) {
+  
+  observeEvent(input$pokeData, {
+    background <- input$pokeData$sprites$other$`official-artwork`$front_default
+    message(background)
+    session$sendCustomMessage(type = "update_background", message = background)
+  })
+}
+
+shinyApp(ui, server)
+```

@@ -9,9 +9,10 @@ knitr::include_graphics("images/survival-kit/smart-select.png")
 ```
 
 ## Initialization
-When we run our app, most of the time it works just fine! The question is, how are the inputs and outputs handeled correctly to allow this to happen? Upon initialization, Shiny runs several JavaScript functions. Not surprisingly, there is one called [`init_shiny`](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) containing a subtantial number of elements such as `bindInputs` and `unbindInputs` to bind/unbind inputs. Besides, they are accessible to the programmer (see a usecase [here](https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny)). To illustrate what they do, let's run the app below.
+When we run our app, most of the time it works just fine! The question is, how are the inputs and outputs handled correctly to allow this to happen? Upon initialization, Shiny runs several JavaScript functions. Not surprisingly, there is one called [`init_shiny`](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) containing a substantial number of elements such as `bindInputs` and `unbindInputs` to bind/unbind inputs. Besides, they are accessible to the programmer (see a usecase [here](https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny)). To illustrate what they do, let's run the app below.
 
 ```{r, eval=FALSE}
+library(shiny)
 ui <- fluidPage(
   sliderInput("obs", "Number of observations:",
               min = 0, max = 1000, value = 500
@@ -27,7 +28,30 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-We then open the HTML inspector and run `Shiny.unbindAll(document)` (document is the scope, that is where to search). Try to change the slider input. You will notice that nothing happens. Now let's type `Shiny.bindAll(document)` and update the slider value. Moving the slider successfuly update the plot. Magic isn't it? This simply shows that when inputs are not bound, nothing happens so binding inputs is necessary. 
+We then open the HTML inspector and run `Shiny.unbindAll(document)` (document is the scope, that is where to search). Try to change the slider input. You will notice that nothing happens. Now let's type `Shiny.bindAll(document)` and update the slider value. Moving the slider successfully update the plot. Magic isn't it? This simply shows that when inputs are not bound, nothing happens so binding inputs is necessary. 
+
+We consider another example with multiple inputs.
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  actionButton("unbind", "Unbind inputs", onclick = "Shiny.unbindAll();"),
+  actionButton("bind", "Bind inputs", onclick = "Shiny.bindAll();"),
+  lapply(1:3, function(i) {
+    textInput(paste0("text_", i), paste("Text", i))
+  }),
+  lapply(1:3, function(i) {
+    uiOutput(paste0("val_", i))
+  })
+)
+
+server <- function(input, output, session) {
+  lapply(1:3, function(i) {
+    output[[paste0("val_", i)]] <- renderPrint(input[[paste0("text_", i)]])
+  })
+}
+
+shinyApp(ui, server)
+```
 
 Let's see below what is an input binding and how it works.
 

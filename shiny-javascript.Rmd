@@ -719,4 +719,192 @@ Object.defineProperty(object1, 'print', {
 ```
 
 
-## Inspect, run and debut JavaScript code from the HTML inspector {#shiny-js-inspector}
+## Shiny, JavaScript and the HTML inspector {#shiny-js-inspector}
+
+### The console panel
+The console panel is located at the bottom of the inspector and is intended for debugging purpose. While developing JS code, we often put some `console.log(var)` calls to track the content of a given variable and check that our code is doing what it is supposed to do. This console is also called a Real-eval-print loop (REPL) suitable to experiment and practice your new JS/jQuery skills.
+
+
+#### A real REPL
+As a warm up, run the shiny app below and open the Chrome DevTools. Notice the 2 `Console` tabs (next to `Elements` and at the bottom), as depicted in Figure \@ref(fig:dom-console). I prefer using the bottom one to still see the `Elements` tab and preview DOM modifications in real time.
+
+```{r, eval=FALSE}
+ui <- fluidPage()
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+```{r dom-console, echo=FALSE, fig.cap='Console panel in the DevTools', out.width='100%'}
+knitr::include_graphics("images/survival-kit/dom-console.png")
+```  
+
+Interestingly, you may access any element contained in the window. Copy and paste `$("body").addClass("plop");` in the prompt. Notice what happens in the `Elements` tab.
+
+#### Track errors and warnings
+As discussed earlier in the book, a lot of issues on [Stack Overflow](https://stackoverflow.com/) or in the [RStudio community](https://community.rstudio.com/) could be more easily solved by quickly inspecting the console.
+
+
+
+### Debug Shiny/JS code with the inspector
+To debug Shiny apps from the inspector, you need to put all your scripts in a folder accessible by the app like the `www/` folder or by using `shiny::addResourcePath`. Moreover,
+if you have minified files, there must be [source maps](https://www.html5rocks.com/en/tutorials/developertools/sourcemaps/), which will allow to reconstruct the original scripts before the minification process. For instance, Shiny has the `shiny.min.js.map`. In practice, most R packages bundling HTML templates do not ship these files since they could be quite large (see package size restriction for CRAN). The [framework7](https://framework7.io/) HTML template, on top of which is built shinyMobile has source maps but the size can reach 1MB which is obviously too big to include in the R package.
+
+In the following, let's consider a very simple shiny app deployed on [shinyapps.io](https://www.shinyapps.io/), where a notification is displayed with JavaScript as soon as a user clicks an action button. I also made some typos in my code and the goal is to find and fix them.
+
+  1. Browse to the [app](https://dgranjon.shinyapps.io/debug_app_in_web_browser/)
+  2. Open the Chrome DevTools
+  3. Click on the action button (I am pretty sure you clicked before step 2 ;))
+  4. As expected and shown Figure \@ref(fig:dom-debug-shiny-error), the console displays an
+  error message: `Uncaught TypeError: Cannot read property 'show' of undefined`. Sounds good isn't it?
+  
+```{r dom-debug-shiny-error, echo=FALSE, fig.cap='Error in the console panel', out.width='100%'}
+knitr::include_graphics("images/survival-kit/dom-debug-shiny-error.png")
+```  
+  
+  5. Expand the error message to show the stack trace. We see that the error occurred during an onclick event calling the sendNotif function. Interestingly, we can open this file by clicking on the provided link (notif.js:2). You should get a layout similar to Figure \@ref(fig:dom-debug-shiny-sources), depending on your screen width.
+  
+
+```{r dom-debug-shiny-sources, echo=FALSE, fig.cap='Inspect the source causing the error', out.width='100%'}
+knitr::include_graphics("images/survival-kit/dom-debug-shiny-sources.png")
+```
+  
+  6. Let's briefly describe Figure \@ref(fig:dom-debug-shiny-sources). On the left side, you can navigate through all files accessible by the web server, that is shiny internal resources, shiny external dependencies (like Bootstrap 3) as well as your own scripts. If the app is deployed on shinyapps.io, all scripts are located in a folder starting by `_w_`, which corresponds to the shinyapps.io workerId (this is a detail and not important to understand. See more [here](https://github.com/rstudio/shiny/blob/master/R/shiny.R#L69)). The central part contains any opened script like a classic IDE. The right side displays debugging tools which you may trigger by clicking on the corresponding accordion. The scope shows all variables/object values at a break point, watch allows to track specific elements and Event listener Breakpoints allows to stop at given listener type. We could create a new "watcher" by entering `typeof message` and clicking the add icon to check the message type within the `sendNotif` function. Watched expressions are saved when you close the browser. 
+  
+  7. Put a break point line 2 by clicking on the left side of the center panel and click again on the action button to trigger the break point. I also additionally set 2 Watch Expressions (for message and duration) which type is string and number, respectively, as depicted on Figure \@ref(fig:dom-debug-shiny-breakpoint). According to the results, nothing seems wrong for the function arguments.
+
+```{r dom-debug-shiny-breakpoint, echo=FALSE, fig.cap='Inspection of the scope at the breakpoint', out.width='100%'}
+knitr::include_graphics("images/survival-kit/dom-debug-shiny-breakpoint.png")
+```
+
+  8. The error message `Uncaught TypeError: Cannot read property 'show' of undefined` actually means that `notification` does not exist. Try yourself by typing `Shiny.notification` in the console. You'll get `undefined`. Instead, the console suggests
+`Shiny.notifications`. Let's replace the wrong code in the notif.js script and then save it.
+Click on the "Resume script execution" blue button (top left of the right panel). Notice that a notification is displayed and no more error is thrown.
+
+Congrats! You've just debugged your first shiny app from the web inspector. In practice, your code will probably be much more complex than this example but the workflow remains the same.
+
+## Exercises
+
+Because the JavaScript console is a REPL, all JavaScript exercises may be done inside, except exercise 3 which also involves HTML.
+
+### Exercise 1: define variables 
+
+1. Play with the example below
+
+```{js}
+let myNumber = 1; // affectation
+myNumber--; // decrement
+console.log(myNumber); // print 0
+```
+
+### Exercise 2: define objects 
+
+Below is an object skeleton.
+
+```{js}
+const me = {
+  name : ,
+  age : ,
+  music : ,
+  printName: function() {
+    console.log(`I am ${}`);
+  }
+}
+```
+
+1. Fill it with some random values.
+2. Access the name property.
+3. Create the printAge method, which returns the age. Hint: `this` refers to the object itself. For instance `this.name` gives the name property.
+
+### Exercise 3: jQuery
+[JSFiddle](https://jsfiddle.net/) allows to insert HTML, CSS and JavaScript to test
+code, share and more. It also does not require you to have any specific configuration on your machine so that you focus on testing!
+
+1. Go to [JSFiddle](https://jsfiddle.net/)
+2. Insert the following HTML code chunk in the HTML sub-window.
+
+```html
+<!DOCTYPE HTML>
+<html>
+  <head>
+  <!-- head content here -->
+  </head>
+  <body>
+    <ul>
+      <li>Item 1</li>
+      <li>Item 2</li>
+      <li>Item 3</li>
+      <li>Item 4</li>
+      <li>Item 5</li>
+    </ul>
+  </body>
+</html>
+```
+
+This is a very basic HTML skeleton
+
+3. In the JavaScript windows, select jQuery 3.4.1 in the dropdown menu (why 3.4.1? The latest Shiny release relies on that version. It is therefore best practice to ensure dependencies are similar, at least the major version). 
+4. Since it is best practice to run jQuery code only when the document is ready (avoiding to target non existing elements), we wrap our JS code in the following:
+
+```javascript
+$(function() {
+  // your code
+});
+
+// or a more explicit syntax
+$(document).ready(function() {
+  // code
+});
+```
+
+5. Create an event listener to change the third item color as soon as one click on it. 
+Hint 1: To select the a specific item you may use `$(selector:eq(i))` where i is the index of the element. Keep in mind that JavaScript starts from 0 and not 1 like R!
+Hint 2: as a reminder, to create an event listener in jQuery, we use the following pattern.
+
+```javascript
+$("selector").on("event_name", function(e) {
+  // your logic
+});
+```
+
+
+### Exercise 4: a pure JS action button
+
+Below is another example of a button element with an attached event listener. Clicking on the button will increment its value by 1. Fill in the blanks!
+
+```html
+<!DOCTYPE HTML>
+<html>
+  <head>
+  <!-- head content here -->
+  </head>
+  <body>
+    <button>click</button>
+  </body>
+</html>
+```
+
+
+```javascript
+$(function() {
+	
+  // recover the button inner html
+  const btnText = ...;
+
+	// event listener for button element
+	$(...).click(function() {
+  	var val = ...;
+    // (1) increment button 
+    // (2) add the button value to the inner text
+    ...
+    
+    // show alert given condition
+    if (val > 3) {
+      // do whatever you want
+    	...
+    }
+  });
+  
+});
+```
