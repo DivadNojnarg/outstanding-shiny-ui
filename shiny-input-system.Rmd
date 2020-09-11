@@ -186,7 +186,7 @@ var f7ToggleBinding = new Shiny.InputBinding();
 });
 ```
 
-Once initialized, we may use all specific methods provided by the API. [Framework7](https://framework7.io) is clearly a gold mine, as its API provides many possible options for many inputs / widgets. Later in this section, we will demonstrate how to initialize a box element from the [AdminLTE2](https://adminlte.io/docs/2.4/js-box-widget) HTML template.
+Once initialized, we may use all specific methods provided by the API. [Framework7](https://framework7.io) is clearly a gold mine, as its API provides many possible options for many inputs / widgets. 
 
 #### Get the value
 `getValue(el)` returns the input value. The way to obtain the value is different for almost all inputs. For instance, the `textInput` is pretty simple since the value is located in the `value` attribute. `el` refers to the element holding the id attribute and recognized by the `find` method. Figure \@ref(fig:shiny-el) shows the result of a `console.log($(el));`.
@@ -337,6 +337,8 @@ Shiny.inputBindings.register(myBinding, 'reference');
 Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, this case almost never happens.
 
 ### Binding other elements
+
+#### {shinydashboard} boxes on steroids
 The Shiny input binding system is too convenient to be only used it for input elements. In {shinydashboard}, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `inputId` parameter to the box function. You may inspect the code [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/box2.R). 
 
 Since we may collapse and uncollapse the box, we create the `updateBox2` function, which will toggle it:
@@ -352,16 +354,11 @@ When collapsed, a box gets the `collapsed-box` class. Note: this will be useful 
   - expanded.boxwidget (Triggered after the box is expanded)
   - collapsed.boxwidget (Triggered after the box is collapsed)
   
-Unfortunately, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. 
-  
-There is also a plug and play `toggleBox` method. To unleash the power of our box, we need to activate it with `$('#<box_id>').activateBox();` before the binding step. If you remember, the `initialize` method is exactly doing this:
+Unfortunately, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. To toggle the box, we use the `toggleBox` method. 
 
 ```javascript
 let boxBinding = new Shiny.InputBinding();
 $.extend(boxBinding, {
-  initialize: function(el) {
-    $(el).activateBox(); // box activation
-  },
   find: function(scope) {
     return $(scope).find('.box');
   },
@@ -443,6 +440,63 @@ ui <- fluidPage(
  }
 
  shinyApp(ui, server)
+```
+
+#### Faster boxes
+Even though animations are nice, it appears rather sub-optimal to wait 500 ms for a box to collapse. AdminLTE [options](https://adminlte.io/themes/AdminLTE/documentation/index.html#adminlte-options) allow to change this through the `$.AdminLTE.boxWidget` object. We specify the `animationSpeed` property to 10 milliseconds and update the input binding script to reduce the delay in the `subscribe` method (50 ms seems reasonable). To get a comparison try to run the example below.
+
+```{r, eval=FALSE}
+# You'll need the devel version of shinydashboardPlus
+#remotes::install_github("RinteRface/shinydashboardPlus")
+
+library(shiny)
+library(shinydashboard)
+library(shinydashboardPlus)
+ 
+ ui <- dashboardPagePlus(
+   dashboardHeaderPlus(),
+   dashboardSidebar(),
+   dashboardBody(
+     tags$style("body { background-color: ghostwhite}"),
+     actionButton("toggle_box", "Toggle Box"),
+     br(),
+     boxPlus(
+       title = textOutput("box_state"),
+       "Box body",
+       inputId = "mybox",
+       collapsible = TRUE,
+       closable = TRUE,
+       plotOutput("plot")
+     )
+   )
+ )
+ 
+ server <- function(input, output, session) {
+   output$plot <- renderPlot({
+     req(!input$mybox$collapsed)
+     plot(rnorm(200))
+   })
+   
+   output$box_state <- renderText({
+     state <- if (input$mybox$collapsed) "collapsed" else "uncollapsed"
+     paste("My box is", state)
+   })
+   
+   observeEvent(input$toggle_box, {
+     updateBoxPlus("mybox", action = "toggle")
+   })
+   
+   
+   observeEvent(input$mybox$collapsed, {
+     collapsed <- if (input$mybox$collapsed) "collapsed" else "uncollapsed"
+     message <- paste("My box is", collapsed)
+     showNotification(message, type = "warning", duration = 1)
+   })
+   
+ }
+ 
+ shinyApp(ui, server)
+
 ```
 
 ## Utilities to quickly define new inputs
@@ -561,7 +615,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-## Miscellaneous
+## Hidden gems about inputs
 We present some tools that may be useful...TO FINISH
 
 ### Get access to initial values 
@@ -625,4 +679,125 @@ Figure \@ref(fig:shiny-initial-inputs) shows how to access Shiny's initial input
 
 ```{r shiny-initial-inputs, echo=FALSE, fig.cap='Explore initial input values'}
 knitr::include_graphics("images/survival-kit/shiny-init-input.png")
+```
+
+### Get the last changed input
+
+#### Motivations
+
+We probably all had this question one day: How can I get the last changed input in Shiny? There are already some methods like this [one](https://stackoverflow.com/questions/31250587/creating-shiny-reactive-variable-that-indicates-which-widget-was-last-modified) provided by Dean Attali. 
+
+```{r, eval = FALSE}
+runApp(
+  shinyApp(
+    ui = shinyUI(
+      fluidPage(
+        textInput('txt_a', 'Input Text A'),
+        textInput('txt_b', 'Input Text B'),
+        uiOutput('txt_c_out'),
+        verbatimTextOutput("show_last")
+      )
+    ),
+    server = function(input, output, session) {
+      output$txt_c_out <- renderUI({
+        textInput('txt_c', 'Input Text C')
+      })
+      
+      values <- reactiveValues(
+        lastUpdated = NULL
+      )
+      
+      observe({
+        lapply(names(input), function(x) {
+          observe({
+            input[[x]]
+            values$lastUpdated <- x
+          })
+        })
+      })
+      
+      output$show_last <- renderPrint({
+        values$lastUpdated
+      })
+    }
+  )
+)
+```
+
+Shouldn't this be easier? Could we do that from the client instead, thereby reducing the server load?
+
+#### JavaScript, my friend
+
+Here comes our friend, JavaScript. If you insert this snippet in the head of your app, you will be able to get the last changed input (name, value and type). 
+
+```{javascript}
+$(document).on('shiny:inputchanged', function(event) {
+  Shiny.setInputValue('pleaseStayHome', {name: event.name, value: event.value, type: event.binding.name.split('.')[1]});
+});
+```
+
+If you use this code in a custom shiny template, it is possible that input bindings don't have name, which would thereby make `event.binding.name.split('.')[1]` crash because `event.binding` is undefined. If so, you may remove this part:
+
+```{javascript}
+$(document).on('shiny:inputchanged', function(event) {
+  Shiny.setInputValue('pleaseStayHome', {name: event.name, value: event.value});
+});
+```
+
+
+#### Example
+
+`{shinyMobile}` natively implements this feature that may be accessed with `input$lastInputChanged`.
+
+```{r, eval = FALSE}
+library(shinyMobile)
+shinyApp(
+  ui = f7Page(
+    title = "My app",
+    f7SingleLayout(
+      navbar = f7Navbar(
+        title = "Single Layout",
+        hairline = FALSE,
+        shadow = TRUE
+      ),
+      toolbar = f7Toolbar(
+        position = "bottom",
+        f7Link(label = "Link 1", src = "https://www.google.com"),
+        f7Link(label = "Link 2", src = "https://www.google.com", external = TRUE)
+      ),
+      # main content,
+      f7Card(
+        f7Text(inputId = "text", label = "Text"),
+        f7Slider(inputId = "range1", label = "Range", min = 0, max = 2, value = 1, step = 0.1),
+        f7Stepper(inputId = "stepper1", label = "Stepper", min = 0, max = 10, value = 5),
+        verbatimTextOutput("lastChanged")
+      )
+    )
+  ),
+  server = function(input, output) {
+    output$lastChanged <- renderPrint(input$lastInputChanged)
+  }
+)
+```
+
+This approach has the advantage not to overload the server part with complex logic.
+
+#### About {shinylogs}
+The `{shinylogs}` package developed by [dreamRs](https://github.com/dreamRs/shinylogs) contains this feature with much more advanced options.
+
+```{r, eval = FALSE}
+library(shinylogs)
+
+shinyApp(
+  ui = fluidPage(
+    numericInput("n", "n", 1),
+    sliderInput("s", "s", min = 0, max = 10, value = 5),
+    verbatimTextOutput("lastChanged")
+  ),
+  server = function(input, output, session) {
+    # specific to shinylogs
+    track_usage(storage_mode = store_null())
+    output$lastChanged <- renderPrint(input$`.shinylogs_lastInput`)
+  }
+)
 ```
