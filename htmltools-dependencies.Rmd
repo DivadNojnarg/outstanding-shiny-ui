@@ -279,3 +279,68 @@ shinyApp(
   server = function(input, output) { }
 )
 ```
+
+## Insert Custom script in the head
+With `{shinydashboardPlus}`, users can fine tune their dashboard behavior with a simple option parameter passed to `dashboardPagePlus`. The `sidebarExpandOnHover` capability that consists in expanding the sidebar when hovering on it is part of those [options](https://adminlte.io/themes/AdminLTE/documentation/index.html#adminlte-options), yet not exposed by `{shinydashboard}`. Under the hood, all those options are gathered in a (nested) list, then converted into JSON to eventually generate a JavaScript configuration file. Until now, we only saw ways to include static scripts/stylesheets. How do we include any arbitrary script (defined on the fly by the user when the app starts) in an dependency?
+
+`htmlDependency` has a `head` parameter allowing to pass any lines of HTML to insert into the document head. We can easily imagine passing a string containing a script. Below, we first
+construct the options list. Then, we create the dependency: notice since `src` is mandatory, we have to give it a value but we will not use `script` nore `stylesheet` arguments.
+
+```{r}
+
+options <- list(
+  sidebarExpandOnHover = TRUE, 
+  boxWidgetSelectors = list(
+    remove = '[data-widget="remove"]'
+  )
+)
+
+config_script <- function() {
+  htmlDependency(
+    "options",
+    as.character(utils::packageVersion("shinydashboardPlus")),
+    src = c(file = system.file("shinydashboardPlus-0.6.0", package = "shinydashboardPlus")),
+    head = if (!is.null(options)) {
+      paste0(
+        "<script>var AdminLTEOptions = ", 
+        jsonlite::toJSON(
+          options, 
+          auto_unbox = TRUE,
+          pretty = TRUE
+        ),
+        ";</script>"
+      )
+    }
+  )
+}
+
+# show the script
+print(HTML(config_script()$head))
+```
+
+I invite the reader to run the example below involving `{shinydashboardPlus}`, open the HTML inspector and look at the head. 
+
+```{r, eval=FALSE}
+ shinyApp(
+   ui = dashboardPagePlus(
+     collapse_sidebar = TRUE,
+     options = options,
+     header = dashboardHeaderPlus(
+      enable_rightsidebar = TRUE,
+      rightSidebarIcon = "gears"
+     ),
+     sidebar = dashboardSidebar(),
+     body = dashboardBody(),
+     rightsidebar = rightSidebar(),
+     title = "DashboardPage"
+   ),
+   server = function(input, output) { }
+ )
+```
+
+According the the AdminLTE [documentation](https://adminlte.io/themes/AdminLTE/documentation/index.html#adminlte-options), global options must be passed before loading the app.min.js script. Creating this "dummy" dependency allowed us to isolate the script to insert it before the app.min.js script (contained in another [dependency](https://github.com/RinteRface/shinydashboardPlus/blob/master/R/deps.R#L43)), as shown on Figure \@ref(fig:htmltools-head-deps). 
+
+
+```{r htmltools-head-deps, echo=FALSE, fig.cap='Insert arbitrary script in the head', out.width='100%'}
+knitr::include_graphics("images/htmltools/htmltools-head-deps.png")
+```

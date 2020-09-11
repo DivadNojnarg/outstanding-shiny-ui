@@ -24,7 +24,7 @@
 <meta name="author" content="David Granjon" />
 
 
-<meta name="date" content="2020-09-11" />
+<meta name="date" content="2020-09-12" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -190,6 +190,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="5.2" data-path="htmltools-dependencies.html"><a href="htmltools-dependencies.html#the-clean-approach"><i class="fa fa-check"></i><b>5.2</b> The clean approach</a></li>
 <li class="chapter" data-level="5.3" data-path="htmltools-dependencies.html"><a href="htmltools-dependencies.html#another-example-importing-html-dependencies-from-other-packages"><i class="fa fa-check"></i><b>5.3</b> Another example: Importing HTML dependencies from other packages</a></li>
 <li class="chapter" data-level="5.4" data-path="htmltools-dependencies.html"><a href="htmltools-dependencies.html#suppress-dependencies"><i class="fa fa-check"></i><b>5.4</b> Suppress dependencies</a></li>
+<li class="chapter" data-level="5.5" data-path="htmltools-dependencies.html"><a href="htmltools-dependencies.html#insert-custom-script-in-the-head"><i class="fa fa-check"></i><b>5.5</b> Insert Custom script in the head</a></li>
 </ul></li>
 <li class="chapter" data-level="6" data-path="htmltools-other-tools.html"><a href="htmltools-other-tools.html"><i class="fa fa-check"></i><b>6</b> Other tools</a><ul>
 <li class="chapter" data-level="6.1" data-path="htmltools-other-tools.html"><a href="htmltools-other-tools.html#css"><i class="fa fa-check"></i><b>6.1</b> CSS</a></li>
@@ -579,6 +580,69 @@ from a shinydashboard page and nothing is displayed (as expected):</p>
 <span id="cb88-7"><a href="htmltools-dependencies.html#cb88-7"></a>  ),</span>
 <span id="cb88-8"><a href="htmltools-dependencies.html#cb88-8"></a>  <span class="dt">server =</span> <span class="cf">function</span>(input, output) { }</span>
 <span id="cb88-9"><a href="htmltools-dependencies.html#cb88-9"></a>)</span></code></pre></div>
+</div>
+<div id="insert-custom-script-in-the-head" class="section level2">
+<h2><span class="header-section-number">5.5</span> Insert Custom script in the head</h2>
+<p>With <code>{shinydashboardPlus}</code>, users can fine tune their dashboard behavior with a simple option parameter passed to <code>dashboardPagePlus</code>. The <code>sidebarExpandOnHover</code> capability that consists in expanding the sidebar when hovering on it is part of those <a href="https://adminlte.io/themes/AdminLTE/documentation/index.html#adminlte-options">options</a>, yet not exposed by <code>{shinydashboard}</code>. Under the hood, all those options are gathered in a (nested) list, then converted into JSON to eventually generate a JavaScript configuration file. Until now, we only saw ways to include static scripts/stylesheets. How do we include any arbitrary script (defined on the fly by the user when the app starts) in an dependency?</p>
+<p><code>htmlDependency</code> has a <code>head</code> parameter allowing to pass any lines of HTML to insert into the document head. We can easily imagine passing a string containing a script. Below, we first
+construct the options list. Then, we create the dependency: notice since <code>src</code> is mandatory, we have to give it a value but we will not use <code>script</code> nore <code>stylesheet</code> arguments.</p>
+<div class="sourceCode" id="cb89"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb89-1"><a href="htmltools-dependencies.html#cb89-1"></a>options &lt;-<span class="st"> </span><span class="kw">list</span>(</span>
+<span id="cb89-2"><a href="htmltools-dependencies.html#cb89-2"></a>  <span class="dt">sidebarExpandOnHover =</span> <span class="ot">TRUE</span>, </span>
+<span id="cb89-3"><a href="htmltools-dependencies.html#cb89-3"></a>  <span class="dt">boxWidgetSelectors =</span> <span class="kw">list</span>(</span>
+<span id="cb89-4"><a href="htmltools-dependencies.html#cb89-4"></a>    <span class="dt">remove =</span> <span class="st">&#39;[data-widget=&quot;remove&quot;]&#39;</span></span>
+<span id="cb89-5"><a href="htmltools-dependencies.html#cb89-5"></a>  )</span>
+<span id="cb89-6"><a href="htmltools-dependencies.html#cb89-6"></a>)</span>
+<span id="cb89-7"><a href="htmltools-dependencies.html#cb89-7"></a></span>
+<span id="cb89-8"><a href="htmltools-dependencies.html#cb89-8"></a>config_script &lt;-<span class="st"> </span><span class="cf">function</span>() {</span>
+<span id="cb89-9"><a href="htmltools-dependencies.html#cb89-9"></a>  <span class="kw">htmlDependency</span>(</span>
+<span id="cb89-10"><a href="htmltools-dependencies.html#cb89-10"></a>    <span class="st">&quot;options&quot;</span>,</span>
+<span id="cb89-11"><a href="htmltools-dependencies.html#cb89-11"></a>    <span class="kw">as.character</span>(utils<span class="op">::</span><span class="kw">packageVersion</span>(<span class="st">&quot;shinydashboardPlus&quot;</span>)),</span>
+<span id="cb89-12"><a href="htmltools-dependencies.html#cb89-12"></a>    <span class="dt">src =</span> <span class="kw">c</span>(<span class="dt">file =</span> <span class="kw">system.file</span>(<span class="st">&quot;shinydashboardPlus-0.6.0&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;shinydashboardPlus&quot;</span>)),</span>
+<span id="cb89-13"><a href="htmltools-dependencies.html#cb89-13"></a>    <span class="dt">head =</span> <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(options)) {</span>
+<span id="cb89-14"><a href="htmltools-dependencies.html#cb89-14"></a>      <span class="kw">paste0</span>(</span>
+<span id="cb89-15"><a href="htmltools-dependencies.html#cb89-15"></a>        <span class="st">&quot;&lt;script&gt;var AdminLTEOptions = &quot;</span>, </span>
+<span id="cb89-16"><a href="htmltools-dependencies.html#cb89-16"></a>        jsonlite<span class="op">::</span><span class="kw">toJSON</span>(</span>
+<span id="cb89-17"><a href="htmltools-dependencies.html#cb89-17"></a>          options, </span>
+<span id="cb89-18"><a href="htmltools-dependencies.html#cb89-18"></a>          <span class="dt">auto_unbox =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb89-19"><a href="htmltools-dependencies.html#cb89-19"></a>          <span class="dt">pretty =</span> <span class="ot">TRUE</span></span>
+<span id="cb89-20"><a href="htmltools-dependencies.html#cb89-20"></a>        ),</span>
+<span id="cb89-21"><a href="htmltools-dependencies.html#cb89-21"></a>        <span class="st">&quot;;&lt;/script&gt;&quot;</span></span>
+<span id="cb89-22"><a href="htmltools-dependencies.html#cb89-22"></a>      )</span>
+<span id="cb89-23"><a href="htmltools-dependencies.html#cb89-23"></a>    }</span>
+<span id="cb89-24"><a href="htmltools-dependencies.html#cb89-24"></a>  )</span>
+<span id="cb89-25"><a href="htmltools-dependencies.html#cb89-25"></a>}</span>
+<span id="cb89-26"><a href="htmltools-dependencies.html#cb89-26"></a></span>
+<span id="cb89-27"><a href="htmltools-dependencies.html#cb89-27"></a><span class="co"># show the script</span></span>
+<span id="cb89-28"><a href="htmltools-dependencies.html#cb89-28"></a><span class="kw">print</span>(<span class="kw">HTML</span>(<span class="kw">config_script</span>()<span class="op">$</span>head))</span></code></pre></div>
+<pre><code>## &lt;script&gt;var AdminLTEOptions = {
+##   &quot;sidebarExpandOnHover&quot;: true,
+##   &quot;boxWidgetSelectors&quot;: {
+##     &quot;remove&quot;: &quot;[data-widget=\&quot;remove\&quot;]&quot;
+##   }
+## };&lt;/script&gt;</code></pre>
+<p>I invite the reader to run the example below involving <code>{shinydashboardPlus}</code>, open the HTML inspector and look at the head.</p>
+<div class="sourceCode" id="cb91"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb91-1"><a href="htmltools-dependencies.html#cb91-1"></a> <span class="kw">shinyApp</span>(</span>
+<span id="cb91-2"><a href="htmltools-dependencies.html#cb91-2"></a>   <span class="dt">ui =</span> <span class="kw">dashboardPagePlus</span>(</span>
+<span id="cb91-3"><a href="htmltools-dependencies.html#cb91-3"></a>     <span class="dt">collapse_sidebar =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb91-4"><a href="htmltools-dependencies.html#cb91-4"></a>     <span class="dt">options =</span> options,</span>
+<span id="cb91-5"><a href="htmltools-dependencies.html#cb91-5"></a>     <span class="dt">header =</span> <span class="kw">dashboardHeaderPlus</span>(</span>
+<span id="cb91-6"><a href="htmltools-dependencies.html#cb91-6"></a>      <span class="dt">enable_rightsidebar =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb91-7"><a href="htmltools-dependencies.html#cb91-7"></a>      <span class="dt">rightSidebarIcon =</span> <span class="st">&quot;gears&quot;</span></span>
+<span id="cb91-8"><a href="htmltools-dependencies.html#cb91-8"></a>     ),</span>
+<span id="cb91-9"><a href="htmltools-dependencies.html#cb91-9"></a>     <span class="dt">sidebar =</span> <span class="kw">dashboardSidebar</span>(),</span>
+<span id="cb91-10"><a href="htmltools-dependencies.html#cb91-10"></a>     <span class="dt">body =</span> <span class="kw">dashboardBody</span>(),</span>
+<span id="cb91-11"><a href="htmltools-dependencies.html#cb91-11"></a>     <span class="dt">rightsidebar =</span> <span class="kw">rightSidebar</span>(),</span>
+<span id="cb91-12"><a href="htmltools-dependencies.html#cb91-12"></a>     <span class="dt">title =</span> <span class="st">&quot;DashboardPage&quot;</span></span>
+<span id="cb91-13"><a href="htmltools-dependencies.html#cb91-13"></a>   ),</span>
+<span id="cb91-14"><a href="htmltools-dependencies.html#cb91-14"></a>   <span class="dt">server =</span> <span class="cf">function</span>(input, output) { }</span>
+<span id="cb91-15"><a href="htmltools-dependencies.html#cb91-15"></a> )</span></code></pre></div>
+<p>According the the AdminLTE <a href="https://adminlte.io/themes/AdminLTE/documentation/index.html#adminlte-options">documentation</a>, global options must be passed before loading the app.min.js script. Creating this “dummy” dependency allowed us to isolate the script to insert it before the app.min.js script (contained in another <a href="https://github.com/RinteRface/shinydashboardPlus/blob/master/R/deps.R#L43">dependency</a>), as shown on Figure <a href="htmltools-dependencies.html#fig:htmltools-head-deps">5.1</a>.</p>
+<div class="figure"><span id="fig:htmltools-head-deps"></span>
+<img src="images/htmltools/htmltools-head-deps.png" alt="Insert arbitrary script in the head" width="100%" />
+<p class="caption">
+FIGURE 5.1: Insert arbitrary script in the head
+</p>
+</div>
 
 </div>
 </div>
