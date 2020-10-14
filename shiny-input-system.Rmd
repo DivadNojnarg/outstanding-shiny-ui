@@ -64,7 +64,7 @@ An input element is given by the `<input>` tag as well as several attributes.
 <input id = inputId type = "text" class = "input-text" value = value>
 ```
 
-  - id garantees the input uniquess. We will see very soon that all instances of the same input share a unique input binding, therefore id is mandatory.
+  - id guarantees the input uniqueness. We will see very soon that all instances of the same input share a unique input binding, therefore id is mandatory.
   - [type](https://www.w3schools.com/tags/att_input_type.asp) 
   - class is targeted by CSS and JavaScript
   - value holds the input value
@@ -335,6 +335,164 @@ Shiny.inputBindings.register(myBinding, 'reference');
 ```
 
 Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, this case almost never happens.
+
+### Edit an input binding
+In some cases, we would like to access the input binding and change it's default behavior, even though not always recommended, since it will affect **all** related inputs. As bindings are contained in a registry, namely `Shiny.inputBindings`, one may seamlessly access and modify them. This is a 5 steps process:
+
+1. Wait for the `shiny:connected` [event](https://shiny.rstudio.com/articles/js-events.html)
+2. Unbind all inputs with `Shiny.unbindAll()`
+3. Access the binding registry, `Shiny.inputBindings`
+4. Extend the binding and edit its content with `$.extend(... {...})`
+5. Apply the new changes with `Shiny.bindAll()`
+
+```js
+$(function() {
+  $(document).on('shiny:connected', function(event) {
+    Shiny.unbindAll();
+    $.extend(Shiny
+      .inputBindings
+      .bindingNames['shiny.actionButtonInput']
+      .binding, {
+        // do whathever you want to edit existing methods
+      });
+    Shiny.bindAll();
+  });
+});
+```
+
+### Update a binding from the client
+The interest of `receiveMessage` and `setValue` is to be able to update the input
+from the server side, that is R, through the `session$sendInputMessage`. Yet, 
+this task might be done directly on the client, thereby lowering the load on the server.
+We consider the following example: a shiny app contains 2 actions buttons, clicking on the first one
+increases the value of the second by 10. This won't be possible with the classic approach since a button click
+only increases by 1. How do we proceed? 
+
+1. We first set an event listener on the first button.
+2. We target the second button and get the input binding with `$obj.data('shiny-input-binding')`
+3. We recover the current value 
+4. We call the `setValue` method of the input binding adding 10 to the current value
+5. Importantly, to let Shiny update the value on the R side, we must trigger an event that will be detected in the `subscribe` method of the action button input binding. The action button only has 1 event listener but other may be added. Don't forget that triggering a `click` event would also increment the button value by 1! In the following we have to customize the `subscribe` method to work around
+
+```js
+$(function() {
+  // each time we click on #test (a button)
+  $('#button1').on('click', function() {
+    var $obj = $('#button2');
+    var inputBinding = $obj.data('shiny-input-binding');
+    var val = $obj.data('val') || 0;
+    inputBinding.setValue($obj, val + 10);
+    $obj.trigger('event');
+  });
+});
+```
+
+If you click on the second button, the value increments only by 1 and the plot will be only visible after 10 clicks, while only 1 click is necessary on the first button. The reset button resets the second action button value to 0. It implements the feature discussed in the previous part, where we extend the button binding to add a `reset` method and edit the `subscribe` method to add a `change` event listener, simply telling shiny to get the new value. Contrary to `click`, `change` does not increment the button value.
+
+```js
+$.extend(Shiny.inputBindings.bindingNames['shiny.actionButtonInput'].binding, {
+  reset: function(el) {
+   $(el).data('val', 0);
+  },
+  subscribe: function(el, callback) {
+    $(el).on('click.actionButtonInputBinding', function(e) {
+      var $el = $(this);
+      var val = $el.data('val') || 0;
+      $el.data('val', val + 1);
+
+      callback();
+    });
+            
+    // this does not trigger any click and won't change the button value            
+    $(el).on('change.actionButtonInputBinding', function(e) {
+      callback();
+    });
+  }
+});
+```
+
+Below is the working app.
+
+```{r access-binding-outside, eval=FALSE}
+ui <- fluidPage(
+  tags$head(
+    tags$script(
+      "$(function() {
+        $(document).on('shiny:connected', function(event) {
+          Shiny.unbindAll();
+          $.extend(Shiny
+            .inputBindings
+            .bindingNames['shiny.actionButtonInput']
+            .binding, {
+              reset: function(el) {
+               $(el).data('val', 0);
+              },
+              subscribe: function(el, callback) {
+                $(el).on('click.actionButtonInputBinding', function(e) {
+                  var $el = $(this);
+                  var val = $el.data('val') || 0;
+                  $el.data('val', val + 1);
+
+                  callback();
+                });
+                
+                $(el).on('change.actionButtonInputBinding', function(e) {
+                  debugger;
+                  callback();
+                });
+              
+              }
+            });
+          Shiny.bindAll();
+        });
+      
+        $('#button1').on('click', function() {
+          var $obj = $('#button2');
+          var inputBinding = $obj.data('shiny-input-binding');
+          var val = $obj.data('val') || 0;
+          inputBinding.setValue($obj, val + 10);
+          $obj.trigger('change'); 
+        });
+        $('#reset').on('click', function() {
+          var $obj = $('#button2');
+          var inputBinding = $obj.data('shiny-input-binding');
+          inputBinding.reset($obj);
+          $obj.trigger('change');
+        });
+      });
+      "
+    )
+  ),
+  actionButton("button1", icon("plus")),
+  actionButton("button2", uiOutput("val")),
+  actionButton("reset", icon("undo")),
+  plotOutput("plot")
+)
+
+server <- function(input, output) {
+  output$val <- renderUI({
+    paste("Value: ", input$button2)
+  })
+  
+  output$plot <- renderPlot({
+    validate(need(input$button2 >= 10, message = "Only visible after 10 clicks on the second button"))
+    hist(rnorm(100))
+  })
+  
+  observeEvent(input$button2, {
+    if (input$button2 == 0) {
+      showNotification(
+        "Button successfuly reset",
+        type = "warning"
+      )
+    }
+  })
+}
+
+shinyApp(ui, server)
+```
+
+This trick has been extensively used in the [virtual physiology simulator](https://community.rstudio.com/t/shiny-contest-submission-a-virtual-lab-for-teaching-physiology/25348) to trigger [animations](https://dgranjon.shinyapps.io/entry_level/).
 
 ### Binding other elements
 
