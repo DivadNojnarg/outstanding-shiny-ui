@@ -4,6 +4,9 @@ In this chapter, we will answer to the following question:
 
   - How is the R/JavaScript communication achieved?
 
+::: {.warningbox data-latex=""}
+At this point, users may find `options(shiny.minified = FALSE)` to debug the Shiny.js core.
+:::
 
 ## Websocket: R/JS bidirectional communication {#shiny-websocket}
 How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature highlighted [here](https://github.com/rstudio/shiny), which leverages the [httpuv](https://github.com/rstudio/httpuv) package. Before going further let's define what is a websocket! It is an advanced technology allowing bidirectional communication between a client and a server. For instance, a chat system may be built on top of a websocket. The server is created from `{httpuv}` [@R-httpuv] and the client with `{websocket}` [@R-websocket] or directly from JavaScript, as described below:
@@ -19,7 +22,7 @@ s <- startServer("127.0.0.1", 8080,
 
       ws$onMessage(function(binary, message) {
         cat("Server received message:", message, "\n")
-        ws$send(message)
+        ws$send("Hello client!")
       })
       ws$onClose(function() {
         cat("Server connection closed.\n")
@@ -46,7 +49,7 @@ ws$onMessage(function(event) {
 })
 
 # Wait for a moment before running next line
-ws$send("hello world")
+ws$send("Hello server!")
 
 # Close client
 ws$close()
@@ -72,12 +75,20 @@ Note that the client might also be built directly from JS as below, which is act
   </head>
   <body>
     <!-- onclick attributes applies the JavaScript function changeColor define above -->
-    <button onclick="mySocket.send('Hello server')">Say hello to the server</button>
+    <button onclick="mySocket.send('Hello server!')">Say hello to the server</button>
   </body>
 </html>
 ```
 
-If you open this file in a web browser, clicking on a button will send a message to the server.
+::: {.importantblock data-latex=""}
+`host` and `port` must be identical on both server and client side!
+:::
+
+If you open this file in a web browser, clicking on a button will send a message to the server, as shown on Figure \@ref(fig:general-websocket).
+
+```{r general-websocket, echo=FALSE, fig.cap='Server client communication'}
+knitr::include_graphics("images/survival-kit/general-websocket.png")
+```
 
 The reader must understand that when input/output are modified on the client by an end user, there are a lot of exchanges between R and JS, through the websocket. In the following, we briefly describe how Shiny leverages this technology.
 
@@ -168,6 +179,8 @@ socket.onmessage = function(e) {
   self.dispatchMessage(e.data);
 };
 ```
+
+It subsequently invokes the `dispatchMessage` method that sends message to all handlers (through `_sendMessagesToHandlers`). Shiny has internal and custom provided handlers (understand user-defined) stored in separate arrays. Each time, a message type matches an handler, it is treated. For instance, there is a dedicated internal handler for input messages, that bridges the gap between a given input and the corresponding input binding. This handler ultimately triggers the `inputBinding.receiveMessage` method so that the input value is updated on the client.
 
 Finally the `onclose` method is called when the websocket connection is closed. 
 
@@ -275,8 +288,8 @@ shinyApp(ui, server)
 We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 
 The initialization takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. Understanding how R and JS communicate allows us to discuss the Shiny input system.
 
-  - `sendCustomMessage` sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, throught the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.
-  - `sendInputMessage` is used to update inputs from the server.
+  - `sendCustomMessage` sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, through the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.
+  - `sendInputMessage` is used to update inputs from the server. The message is stored in a message queue and ultimately sent through the websocket `private$websocket$send(json)`. 
   
 The below code is extracted from the `shiny.R` [file](https://github.com/rstudio/shiny/blob/master/R/shiny.R).
 
