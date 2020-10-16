@@ -24,7 +24,7 @@
 <meta name="author" content="David Granjon" />
 
 
-<meta name="date" content="2020-10-15" />
+<meta name="date" content="2020-10-16" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -361,77 +361,77 @@ FIGURE 16.1: The {charpente} package
 <div id="motivations" class="section level2">
 <h2><span class="header-section-number">16.1</span> Motivations</h2>
 <p>Translating an HTML template into an R API requires the creation of a package. As stated in Chapter <a href="#intro"><strong>??</strong></a>, this is not a good practice to proceed as follows:</p>
-<div class="sourceCode" id="cb320"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb320-1"><a href="workflow-charpente.html#cb320-1"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
-<span id="cb320-2"><a href="workflow-charpente.html#cb320-2"></a>  <span class="kw">useShinydashboard</span>(),</span>
-<span id="cb320-3"><a href="workflow-charpente.html#cb320-3"></a>  tags<span class="op">$</span><span class="kw">script</span>(</span>
-<span id="cb320-4"><a href="workflow-charpente.html#cb320-4"></a>    <span class="st">&quot;$(function() {</span></span>
-<span id="cb320-5"><a href="workflow-charpente.html#cb320-5"></a><span class="st">      let boxBinding = new Shiny.InputBinding();</span></span>
-<span id="cb320-6"><a href="workflow-charpente.html#cb320-6"></a><span class="st">      $.extend(boxBinding, {</span></span>
-<span id="cb320-7"><a href="workflow-charpente.html#cb320-7"></a><span class="st">        initialize: function(el) {</span></span>
-<span id="cb320-8"><a href="workflow-charpente.html#cb320-8"></a><span class="st">          $(el).activateBox();</span></span>
-<span id="cb320-9"><a href="workflow-charpente.html#cb320-9"></a><span class="st">        },</span></span>
-<span id="cb320-10"><a href="workflow-charpente.html#cb320-10"></a><span class="st">        find: function(scope) {</span></span>
-<span id="cb320-11"><a href="workflow-charpente.html#cb320-11"></a><span class="st">          return $(scope).find(&#39;.box&#39;);</span></span>
-<span id="cb320-12"><a href="workflow-charpente.html#cb320-12"></a><span class="st">        },</span></span>
-<span id="cb320-13"><a href="workflow-charpente.html#cb320-13"></a><span class="st">        getValue: function(el) {</span></span>
-<span id="cb320-14"><a href="workflow-charpente.html#cb320-14"></a><span class="st">          let isCollapsed = $(el).hasClass(&#39;collapsed-box&#39;);</span></span>
-<span id="cb320-15"><a href="workflow-charpente.html#cb320-15"></a><span class="st">          return {collapsed: isCollapsed}; // this will be a list in R</span></span>
-<span id="cb320-16"><a href="workflow-charpente.html#cb320-16"></a><span class="st">        },</span></span>
-<span id="cb320-17"><a href="workflow-charpente.html#cb320-17"></a><span class="st">        setValue: function(el, value) {</span></span>
-<span id="cb320-18"><a href="workflow-charpente.html#cb320-18"></a><span class="st">          $(el).toggleBox();</span></span>
-<span id="cb320-19"><a href="workflow-charpente.html#cb320-19"></a><span class="st">        }, </span></span>
-<span id="cb320-20"><a href="workflow-charpente.html#cb320-20"></a><span class="st">        receiveMessage: function(el, data) {</span></span>
-<span id="cb320-21"><a href="workflow-charpente.html#cb320-21"></a><span class="st">          this.setValue(el, data);</span></span>
-<span id="cb320-22"><a href="workflow-charpente.html#cb320-22"></a><span class="st">          $(el).trigger(&#39;change&#39;);</span></span>
-<span id="cb320-23"><a href="workflow-charpente.html#cb320-23"></a><span class="st">        },</span></span>
-<span id="cb320-24"><a href="workflow-charpente.html#cb320-24"></a><span class="st">        subscribe: function(el, callback) {</span></span>
-<span id="cb320-25"><a href="workflow-charpente.html#cb320-25"></a><span class="st">          $(el).on(&#39;click&#39;, &#39;[data-widget=</span><span class="ch">\&quot;</span><span class="st">collapse</span><span class="ch">\&quot;</span><span class="st">]&#39;, function(event) {</span></span>
-<span id="cb320-26"><a href="workflow-charpente.html#cb320-26"></a><span class="st">            setTimeout(function() {</span></span>
-<span id="cb320-27"><a href="workflow-charpente.html#cb320-27"></a><span class="st">              callback();</span></span>
-<span id="cb320-28"><a href="workflow-charpente.html#cb320-28"></a><span class="st">            }, 550);</span></span>
-<span id="cb320-29"><a href="workflow-charpente.html#cb320-29"></a><span class="st">          }); </span></span>
-<span id="cb320-30"><a href="workflow-charpente.html#cb320-30"></a><span class="st">          $(el).on(&#39;change&#39;, function(event) {</span></span>
-<span id="cb320-31"><a href="workflow-charpente.html#cb320-31"></a><span class="st">            setTimeout(function() {</span></span>
-<span id="cb320-32"><a href="workflow-charpente.html#cb320-32"></a><span class="st">              callback();</span></span>
-<span id="cb320-33"><a href="workflow-charpente.html#cb320-33"></a><span class="st">            }, 550);</span></span>
-<span id="cb320-34"><a href="workflow-charpente.html#cb320-34"></a><span class="st">          });</span></span>
-<span id="cb320-35"><a href="workflow-charpente.html#cb320-35"></a><span class="st">        },</span></span>
-<span id="cb320-36"><a href="workflow-charpente.html#cb320-36"></a><span class="st">        unsubscribe: function(el) {</span></span>
-<span id="cb320-37"><a href="workflow-charpente.html#cb320-37"></a><span class="st">          $(el).off(&#39;.boxBinding&#39;);</span></span>
-<span id="cb320-38"><a href="workflow-charpente.html#cb320-38"></a><span class="st">        }</span></span>
-<span id="cb320-39"><a href="workflow-charpente.html#cb320-39"></a><span class="st">      });</span></span>
-<span id="cb320-40"><a href="workflow-charpente.html#cb320-40"></a><span class="st">      Shiny.inputBindings.register(boxBinding, &#39;box-input&#39;);</span></span>
-<span id="cb320-41"><a href="workflow-charpente.html#cb320-41"></a><span class="st">    });</span></span>
-<span id="cb320-42"><a href="workflow-charpente.html#cb320-42"></a><span class="st">    &quot;</span></span>
-<span id="cb320-43"><a href="workflow-charpente.html#cb320-43"></a>  ),</span>
-<span id="cb320-44"><a href="workflow-charpente.html#cb320-44"></a>  </span>
-<span id="cb320-45"><a href="workflow-charpente.html#cb320-45"></a>  <span class="kw">box2</span>(</span>
-<span id="cb320-46"><a href="workflow-charpente.html#cb320-46"></a>    <span class="dt">title =</span> <span class="kw">textOutput</span>(<span class="st">&quot;box_state&quot;</span>),</span>
-<span id="cb320-47"><a href="workflow-charpente.html#cb320-47"></a>    <span class="st">&quot;Box body&quot;</span>,</span>
-<span id="cb320-48"><a href="workflow-charpente.html#cb320-48"></a>    <span class="dt">inputId =</span> <span class="st">&quot;mybox&quot;</span>,</span>
-<span id="cb320-49"><a href="workflow-charpente.html#cb320-49"></a>    <span class="dt">collapsible =</span> <span class="ot">TRUE</span>,</span>
-<span id="cb320-50"><a href="workflow-charpente.html#cb320-50"></a>    <span class="kw">plotOutput</span>(<span class="st">&quot;plot&quot;</span>)</span>
-<span id="cb320-51"><a href="workflow-charpente.html#cb320-51"></a>  ),</span>
-<span id="cb320-52"><a href="workflow-charpente.html#cb320-52"></a>  <span class="kw">actionButton</span>(<span class="st">&quot;toggle_box&quot;</span>, <span class="st">&quot;Toggle Box&quot;</span>)</span>
-<span id="cb320-53"><a href="workflow-charpente.html#cb320-53"></a>)</span>
-<span id="cb320-54"><a href="workflow-charpente.html#cb320-54"></a></span>
-<span id="cb320-55"><a href="workflow-charpente.html#cb320-55"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</span>
-<span id="cb320-56"><a href="workflow-charpente.html#cb320-56"></a>  output<span class="op">$</span>plot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</span>
-<span id="cb320-57"><a href="workflow-charpente.html#cb320-57"></a>      <span class="kw">req</span>(<span class="op">!</span>input<span class="op">$</span>mybox<span class="op">$</span>collapsed)</span>
-<span id="cb320-58"><a href="workflow-charpente.html#cb320-58"></a>      <span class="kw">plot</span>(<span class="kw">rnorm</span>(<span class="dv">200</span>))</span>
-<span id="cb320-59"><a href="workflow-charpente.html#cb320-59"></a>    })</span>
-<span id="cb320-60"><a href="workflow-charpente.html#cb320-60"></a>    </span>
-<span id="cb320-61"><a href="workflow-charpente.html#cb320-61"></a>    output<span class="op">$</span>box_state &lt;-<span class="st"> </span><span class="kw">renderText</span>({</span>
-<span id="cb320-62"><a href="workflow-charpente.html#cb320-62"></a>      state &lt;-<span class="st"> </span><span class="cf">if</span> (input<span class="op">$</span>mybox<span class="op">$</span>collapsed) <span class="st">&quot;collapsed&quot;</span> <span class="cf">else</span> <span class="st">&quot;uncollapsed&quot;</span></span>
-<span id="cb320-63"><a href="workflow-charpente.html#cb320-63"></a>      <span class="kw">paste</span>(<span class="st">&quot;My box is&quot;</span>, state)</span>
-<span id="cb320-64"><a href="workflow-charpente.html#cb320-64"></a>    })</span>
-<span id="cb320-65"><a href="workflow-charpente.html#cb320-65"></a>    </span>
-<span id="cb320-66"><a href="workflow-charpente.html#cb320-66"></a>    <span class="kw">observeEvent</span>(input<span class="op">$</span>toggle_box, {</span>
-<span id="cb320-67"><a href="workflow-charpente.html#cb320-67"></a>      <span class="kw">updateBox2</span>(<span class="st">&quot;mybox&quot;</span>)</span>
-<span id="cb320-68"><a href="workflow-charpente.html#cb320-68"></a>    })</span>
-<span id="cb320-69"><a href="workflow-charpente.html#cb320-69"></a>}</span>
-<span id="cb320-70"><a href="workflow-charpente.html#cb320-70"></a></span>
-<span id="cb320-71"><a href="workflow-charpente.html#cb320-71"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
+<div class="sourceCode" id="cb322"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb322-1"><a href="workflow-charpente.html#cb322-1"></a>ui &lt;-<span class="st"> </span><span class="kw">fluidPage</span>(</span>
+<span id="cb322-2"><a href="workflow-charpente.html#cb322-2"></a>  <span class="kw">useShinydashboard</span>(),</span>
+<span id="cb322-3"><a href="workflow-charpente.html#cb322-3"></a>  tags<span class="op">$</span><span class="kw">script</span>(</span>
+<span id="cb322-4"><a href="workflow-charpente.html#cb322-4"></a>    <span class="st">&quot;$(function() {</span></span>
+<span id="cb322-5"><a href="workflow-charpente.html#cb322-5"></a><span class="st">      let boxBinding = new Shiny.InputBinding();</span></span>
+<span id="cb322-6"><a href="workflow-charpente.html#cb322-6"></a><span class="st">      $.extend(boxBinding, {</span></span>
+<span id="cb322-7"><a href="workflow-charpente.html#cb322-7"></a><span class="st">        initialize: function(el) {</span></span>
+<span id="cb322-8"><a href="workflow-charpente.html#cb322-8"></a><span class="st">          $(el).activateBox();</span></span>
+<span id="cb322-9"><a href="workflow-charpente.html#cb322-9"></a><span class="st">        },</span></span>
+<span id="cb322-10"><a href="workflow-charpente.html#cb322-10"></a><span class="st">        find: function(scope) {</span></span>
+<span id="cb322-11"><a href="workflow-charpente.html#cb322-11"></a><span class="st">          return $(scope).find(&#39;.box&#39;);</span></span>
+<span id="cb322-12"><a href="workflow-charpente.html#cb322-12"></a><span class="st">        },</span></span>
+<span id="cb322-13"><a href="workflow-charpente.html#cb322-13"></a><span class="st">        getValue: function(el) {</span></span>
+<span id="cb322-14"><a href="workflow-charpente.html#cb322-14"></a><span class="st">          let isCollapsed = $(el).hasClass(&#39;collapsed-box&#39;);</span></span>
+<span id="cb322-15"><a href="workflow-charpente.html#cb322-15"></a><span class="st">          return {collapsed: isCollapsed}; // this will be a list in R</span></span>
+<span id="cb322-16"><a href="workflow-charpente.html#cb322-16"></a><span class="st">        },</span></span>
+<span id="cb322-17"><a href="workflow-charpente.html#cb322-17"></a><span class="st">        setValue: function(el, value) {</span></span>
+<span id="cb322-18"><a href="workflow-charpente.html#cb322-18"></a><span class="st">          $(el).toggleBox();</span></span>
+<span id="cb322-19"><a href="workflow-charpente.html#cb322-19"></a><span class="st">        }, </span></span>
+<span id="cb322-20"><a href="workflow-charpente.html#cb322-20"></a><span class="st">        receiveMessage: function(el, data) {</span></span>
+<span id="cb322-21"><a href="workflow-charpente.html#cb322-21"></a><span class="st">          this.setValue(el, data);</span></span>
+<span id="cb322-22"><a href="workflow-charpente.html#cb322-22"></a><span class="st">          $(el).trigger(&#39;change&#39;);</span></span>
+<span id="cb322-23"><a href="workflow-charpente.html#cb322-23"></a><span class="st">        },</span></span>
+<span id="cb322-24"><a href="workflow-charpente.html#cb322-24"></a><span class="st">        subscribe: function(el, callback) {</span></span>
+<span id="cb322-25"><a href="workflow-charpente.html#cb322-25"></a><span class="st">          $(el).on(&#39;click&#39;, &#39;[data-widget=</span><span class="ch">\&quot;</span><span class="st">collapse</span><span class="ch">\&quot;</span><span class="st">]&#39;, function(event) {</span></span>
+<span id="cb322-26"><a href="workflow-charpente.html#cb322-26"></a><span class="st">            setTimeout(function() {</span></span>
+<span id="cb322-27"><a href="workflow-charpente.html#cb322-27"></a><span class="st">              callback();</span></span>
+<span id="cb322-28"><a href="workflow-charpente.html#cb322-28"></a><span class="st">            }, 550);</span></span>
+<span id="cb322-29"><a href="workflow-charpente.html#cb322-29"></a><span class="st">          }); </span></span>
+<span id="cb322-30"><a href="workflow-charpente.html#cb322-30"></a><span class="st">          $(el).on(&#39;change&#39;, function(event) {</span></span>
+<span id="cb322-31"><a href="workflow-charpente.html#cb322-31"></a><span class="st">            setTimeout(function() {</span></span>
+<span id="cb322-32"><a href="workflow-charpente.html#cb322-32"></a><span class="st">              callback();</span></span>
+<span id="cb322-33"><a href="workflow-charpente.html#cb322-33"></a><span class="st">            }, 550);</span></span>
+<span id="cb322-34"><a href="workflow-charpente.html#cb322-34"></a><span class="st">          });</span></span>
+<span id="cb322-35"><a href="workflow-charpente.html#cb322-35"></a><span class="st">        },</span></span>
+<span id="cb322-36"><a href="workflow-charpente.html#cb322-36"></a><span class="st">        unsubscribe: function(el) {</span></span>
+<span id="cb322-37"><a href="workflow-charpente.html#cb322-37"></a><span class="st">          $(el).off(&#39;.boxBinding&#39;);</span></span>
+<span id="cb322-38"><a href="workflow-charpente.html#cb322-38"></a><span class="st">        }</span></span>
+<span id="cb322-39"><a href="workflow-charpente.html#cb322-39"></a><span class="st">      });</span></span>
+<span id="cb322-40"><a href="workflow-charpente.html#cb322-40"></a><span class="st">      Shiny.inputBindings.register(boxBinding, &#39;box-input&#39;);</span></span>
+<span id="cb322-41"><a href="workflow-charpente.html#cb322-41"></a><span class="st">    });</span></span>
+<span id="cb322-42"><a href="workflow-charpente.html#cb322-42"></a><span class="st">    &quot;</span></span>
+<span id="cb322-43"><a href="workflow-charpente.html#cb322-43"></a>  ),</span>
+<span id="cb322-44"><a href="workflow-charpente.html#cb322-44"></a>  </span>
+<span id="cb322-45"><a href="workflow-charpente.html#cb322-45"></a>  <span class="kw">box2</span>(</span>
+<span id="cb322-46"><a href="workflow-charpente.html#cb322-46"></a>    <span class="dt">title =</span> <span class="kw">textOutput</span>(<span class="st">&quot;box_state&quot;</span>),</span>
+<span id="cb322-47"><a href="workflow-charpente.html#cb322-47"></a>    <span class="st">&quot;Box body&quot;</span>,</span>
+<span id="cb322-48"><a href="workflow-charpente.html#cb322-48"></a>    <span class="dt">inputId =</span> <span class="st">&quot;mybox&quot;</span>,</span>
+<span id="cb322-49"><a href="workflow-charpente.html#cb322-49"></a>    <span class="dt">collapsible =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb322-50"><a href="workflow-charpente.html#cb322-50"></a>    <span class="kw">plotOutput</span>(<span class="st">&quot;plot&quot;</span>)</span>
+<span id="cb322-51"><a href="workflow-charpente.html#cb322-51"></a>  ),</span>
+<span id="cb322-52"><a href="workflow-charpente.html#cb322-52"></a>  <span class="kw">actionButton</span>(<span class="st">&quot;toggle_box&quot;</span>, <span class="st">&quot;Toggle Box&quot;</span>)</span>
+<span id="cb322-53"><a href="workflow-charpente.html#cb322-53"></a>)</span>
+<span id="cb322-54"><a href="workflow-charpente.html#cb322-54"></a></span>
+<span id="cb322-55"><a href="workflow-charpente.html#cb322-55"></a>server &lt;-<span class="st"> </span><span class="cf">function</span>(input, output, session) {</span>
+<span id="cb322-56"><a href="workflow-charpente.html#cb322-56"></a>  output<span class="op">$</span>plot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({</span>
+<span id="cb322-57"><a href="workflow-charpente.html#cb322-57"></a>      <span class="kw">req</span>(<span class="op">!</span>input<span class="op">$</span>mybox<span class="op">$</span>collapsed)</span>
+<span id="cb322-58"><a href="workflow-charpente.html#cb322-58"></a>      <span class="kw">plot</span>(<span class="kw">rnorm</span>(<span class="dv">200</span>))</span>
+<span id="cb322-59"><a href="workflow-charpente.html#cb322-59"></a>    })</span>
+<span id="cb322-60"><a href="workflow-charpente.html#cb322-60"></a>    </span>
+<span id="cb322-61"><a href="workflow-charpente.html#cb322-61"></a>    output<span class="op">$</span>box_state &lt;-<span class="st"> </span><span class="kw">renderText</span>({</span>
+<span id="cb322-62"><a href="workflow-charpente.html#cb322-62"></a>      state &lt;-<span class="st"> </span><span class="cf">if</span> (input<span class="op">$</span>mybox<span class="op">$</span>collapsed) <span class="st">&quot;collapsed&quot;</span> <span class="cf">else</span> <span class="st">&quot;uncollapsed&quot;</span></span>
+<span id="cb322-63"><a href="workflow-charpente.html#cb322-63"></a>      <span class="kw">paste</span>(<span class="st">&quot;My box is&quot;</span>, state)</span>
+<span id="cb322-64"><a href="workflow-charpente.html#cb322-64"></a>    })</span>
+<span id="cb322-65"><a href="workflow-charpente.html#cb322-65"></a>    </span>
+<span id="cb322-66"><a href="workflow-charpente.html#cb322-66"></a>    <span class="kw">observeEvent</span>(input<span class="op">$</span>toggle_box, {</span>
+<span id="cb322-67"><a href="workflow-charpente.html#cb322-67"></a>      <span class="kw">updateBox2</span>(<span class="st">&quot;mybox&quot;</span>)</span>
+<span id="cb322-68"><a href="workflow-charpente.html#cb322-68"></a>    })</span>
+<span id="cb322-69"><a href="workflow-charpente.html#cb322-69"></a>}</span>
+<span id="cb322-70"><a href="workflow-charpente.html#cb322-70"></a></span>
+<span id="cb322-71"><a href="workflow-charpente.html#cb322-71"></a><span class="kw">shinyApp</span>(ui, server)</span></code></pre></div>
 <p>Imagine if we had to repeat the process for more than twenty components. The package structure provides many advantages like:</p>
 <ul>
 <li>Develop a comprehensive documentation of the underlying API</li>
@@ -442,10 +442,10 @@ FIGURE 16.1: The {charpente} package
 <div id="step-by-step" class="section level2">
 <h2><span class="header-section-number">16.2</span> Step by step</h2>
 <p><a href="https://github.com/RinteRface/charpente">{charpente}</a> is a game changer for custom template creation.</p>
-<div class="sourceCode" id="cb321"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb321-1"><a href="workflow-charpente.html#cb321-1"></a><span class="kw">library</span>(charpente)</span>
-<span id="cb321-2"><a href="workflow-charpente.html#cb321-2"></a>path &lt;-<span class="st"> </span><span class="kw">file.path</span>(<span class="kw">tempdir</span>(), <span class="st">&quot;mypkg&quot;</span>)</span>
-<span id="cb321-3"><a href="workflow-charpente.html#cb321-3"></a><span class="kw">create_charpente</span>(path)</span>
-<span id="cb321-4"><a href="workflow-charpente.html#cb321-4"></a><span class="co"># TO FINISH</span></span></code></pre></div>
+<div class="sourceCode" id="cb323"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb323-1"><a href="workflow-charpente.html#cb323-1"></a><span class="kw">library</span>(charpente)</span>
+<span id="cb323-2"><a href="workflow-charpente.html#cb323-2"></a>path &lt;-<span class="st"> </span><span class="kw">file.path</span>(<span class="kw">tempdir</span>(), <span class="st">&quot;mypkg&quot;</span>)</span>
+<span id="cb323-3"><a href="workflow-charpente.html#cb323-3"></a><span class="kw">create_charpente</span>(path)</span>
+<span id="cb323-4"><a href="workflow-charpente.html#cb323-4"></a><span class="co"># TO FINISH</span></span></code></pre></div>
 
 </div>
 </div>

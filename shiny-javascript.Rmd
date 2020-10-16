@@ -1,8 +1,8 @@
 # JavaScript for Shiny {#survival-kit-javascript}
-To understand how Shiny works from inside, especially understand how inputs are handled, we'll need to dive into its core which contains a substantial amount of JavaScript (JS) files.
+To understand how Shiny works from inside, especially how inputs are handled, we'll gradually dive into its core which contains a substantial amount of JavaScript (JS) files.
 
 ## Shiny JavaScript sources
-Let's have a look at the Shiny github [project](https://github.com/rstudio/shiny). As a R package, it is composed of folders like `R`, `man`, `tests` and other elements. The `inst` folder contains resources for external dependencies like Bootstrap 3, jQuery, datatables, fontawesome, ... mentioned in Chapter \@ref(web-dependencies) sorted in the `www/shared` sub-folder as well as the whole CSS and JS Shiny codes. Notice the presence of minified files like `shiny.min.js` and non minified elements such as `shiny.css`. Overall, the minification process reduces the loading time of a web page by removing comments, extra spaces, thereby decreasing the file size. For instance `shiny.js` has 6628 lines of code, while `shiny.min.js` has only 4.
+Let's have a look at the `{shiny}` [@R-shiny] github [project](https://github.com/rstudio/shiny). As a R package, it is composed of standard folders like `R`, `man`, `tests` and other elements. The `inst` folder contains resources for external dependencies like [Bootstrap 3](https://getbootstrap.com/docs/3.3/), [jQuery](https://jquery.com/), [datatables](https://datatables.net/), [fontawesome](https://fontawesome.com/), ... mentioned in Chapter \@ref(web-dependencies) sorted in the `www/shared` sub-folder as well as the whole CSS and JS Shiny codes. Notice the presence of minified files like `shiny.min.js` and non minified elements such as `shiny.css`. Overall, the minification process reduces the loading time of a web page by removing comments, extra spaces, thereby decreasing the file size. For instance `shiny.js` has 6628 lines of code, while `shiny.min.js` has only 4.
 
 Notice the `srcjs/` folder shown in Figure \@ref(fig:shiny-js-sources). It actually contains all pieces to reconstruct the whole `shiny.js` file.
 
@@ -30,22 +30,26 @@ Since in Chapter \ref@(shiny-input-system) we'll use some of those script, a lit
 ## Introduction to JavaScript
 JavaScript was created in 1995 by Brendan Eich and is also known as ECMAScript (ES). Interestingly, you might have heard about ActionScript, which is no more than an implementation of ES by Adobe Systems. Nowadays, JavaScript is the centerpiece of web development across all websites. 
 
-Here is a quick example. If you have a personal blog, you probably know Hugo or Jekyll. These tools allow one to rapidly develop a professional looking (or at least not too ugly) blog in just a few minutes. This allows bloggers to focus on the content, which is really the point! Now, if you open the HTML inspector introduced in Chapter \@ref(web-intro-html), click on the elements tab, which may open by default, and uncollapse the `<head>` tag, you see that a lot of scripts are included, as shown in Figure \@ref(fig:scripts-list). Similarly for the `<body>` tag.
+Here is a quick example. If you have a personal blog, you probably know [Hugo](https://gohugo.io/) or [Jekyll](https://jekyllrb.com/), especially the R interfaces like [blogdown](https://bookdown.org/yihui/blogdown/) [@R-blogdown]. These tools allow one to rapidly develop a nice looking blog in just a few minutes, focusing on the content rather than technical aspects, which is really the point! Now, if you open the HTML inspector introduced in Chapter \@ref(web-intro-html), click on the elements tab, which may open by default, and uncollapse the `<head>` tag, you see that a lot of scripts are included, as shown in Figure \@ref(fig:scripts-list). Similarly for the `<body>` tag.
 
 ```{r scripts-list, echo=FALSE, fig.cap='A website is full of JavaScript'}
 knitr::include_graphics("images/survival-kit/scripts-list.png")
 ```
 
-There are 2 ways to include scripts:
+There are three ways to include scripts:
 
   - Use the `<script>` tag with the JS code inside
-  - Add the `onclick` attribute to a button to trigger JS as soon as it is clicked (This is similar to event listeners, see below)
+  - Add the `onclick` attribute to an HTML tag (preferably a button) to trigger JS as soon as it is clicked (This is similar to event listeners, see below)
   - Import an external file containing the JS code and only
   
 ```html
 <script type="text/javascript">
 // JS code here
 </script>
+```
+
+```html
+<button id="hello" onclick="jsFunction()">Hello World</button>
 ```
 
 ```html
@@ -56,7 +60,7 @@ There are 2 ways to include scripts:
 Whether to choose the first, second or third method depends on the content of your script. If we consider the JS library jQuery, it unfortunately contains so much code making it a challenge to understand. This often makes users avoid the first method.
 
 ## Setup
-Like R or Python, JavaScript (JS) is an interpreted language, executed client-side, in other words in the browser. This also means that JS code may not be run without a suitable tool.
+Like [R](https://www.r-project.org/) or [Python](https://www.python.org/), JavaScript (JS) is an interpreted language. It is executed client-side, in other words in the browser. This also means that JS code may not be run without a suitable tool. In the following, we'll list some tools to test JS code, even though JS may also be run through the web browser developer tools, as demonstrated in section \@ref(shiny-js-inspector).
 
 ### Node
 [Node](https://nodejs.org/en/) contains an interpreter for JS as well as a dependencies manager, npm (Node Package Manager). To install Node on your computer, browse to the website and follow the installation instructions. Afterwards, open a terminal and check if
@@ -67,8 +71,12 @@ $ node --version
 ```
 returns something. If not, Node may not be properly installed. 
 
+::: {.noteblock data-latex=""}
+If you prefer not installing Node, there exists alternatives like [repl.it](https://repl.it/languages/nodejs), offering a Node.js online compiler environment. This will be more than enough to follow the exercises of this part.
+:::
+
 ### Choose a good IDE
-Personally, I really like [VSCode](https://code.visualstudio.com) for coding with JS, as it contains a Node interpreter allowing you to seamlessly execute any JS code. As a side note, I encourage you to try the dracula color theme, which is my favorite! Many also chose the [Rstudio IDE](https://rstudio.com/products/rstudio/), provided that you have Node installed. Below, we will see how to run a JS code in both IDE's. In section \@ref(shiny-js-inspector), we will show how to manipulate JS code directly in the web browser, through the HTML inspector. This is the method we will mostly use in the remaining of the book since we will also work with HTML and CSS at the same time.  
+Personally, I really like [VSCode](https://code.visualstudio.com) for coding with JS, as it contains a Node interpreter allowing you to seamlessly execute any JS code. As a side note, I encourage you to try the dracula color theme, which is my favorite! As R user, I also like [Rstudio IDE](https://rstudio.com/products/rstudio/), provided that you have Node installed. Below, we will explain how to run a JS code in both IDE's. In section \@ref(shiny-js-inspector), we will show how to manipulate JS code directly in the web browser, through the HTML inspector. This is the method we will mostly use in the remaining of the book since we will also work with HTML and CSS at the same time.  
 
 ### First Script
 Let's write our first script:
@@ -106,32 +114,27 @@ typeof 1; // number
 typeof 'pouic'; // string
 ```
 
-<br>
-<div class="callout callout-danger">
+::: {.importantblock data-latex=""}
 In JS, `typeof` is not a function like in R!!! Therefore don't write `typeof('string');`.
-</div>
-<br>
+:::
 
 ### Variables
 
-Variables are key elements in programmation. They allow to store intermediate results and do other manipulations. In JS, a variable is defined by:
+Variables are key elements to programming languages. They allow to store intermediate results and do other manipulations. In JS, a variable is defined by:
 
   - a type
   - a name
   - a value
+  
+::: {.importantblock data-latex=""}
+A valid variable name:
 
-<br>
-<div class="callout callout-danger">
-Valid variable names: 
-<ul>
-<li>don't use an existing name like typeof</li>
-<li>don't start with a number (123soleil)</li>
-<li>don't include any space (total price)</li>
-</ul>
-</div>
-<br>
+  - Doesn't use a reserved JS name like `typeof`! 
+  - Doesn't start with a number (123soleil)! 
+  - Doesn't include any space (total price)!
+:::
 
-Besides, code style is a critical element in programming, increasing readability, and general consistence. There are several styles, the main ones being `snake_case` and `camelCase`. I personally use the camelCase syntax to write variables in JS. To set a variable we use `let` (there exists `var` but this is not the latest JS norm (ESMAScript 6 or ES6). You will see later that we still use `var` in the shiny core and many other R packages). 
+Besides, code style is a critical element in programming, increasing readability, and general consistence. There are several styles, the main ones being `snake_case` and `camelCase`. I personally use the `camelCase` syntax to write variables in JS. 
 
 There are two ways to create variables in JavaScript.
 
@@ -170,24 +173,24 @@ myNumber--; // decrement
 console.log(myNumber); // print 0
 ```
 
-<br>
-<div class="callout callout-info">
+::: {.noteblock data-latex=""}
 List of numerical operators in JS: 
-<ul>
-<li>+</li>
-<li>-</li>
-<li>*</li>
-<li>/</li>
-<li>% (modulo)</li>
-<li>++ (incrementation)</li>
-<li>-- (decrementation)</li>
-</ul>
-</div>
-<br>
 
+  - `+`
+  - `-`
+  - `*`
+  - `/`
+  - `% (modulo)`
+  - `++` (incrementation)
+  - `--` (decrementation)
+:::
+
+::: {.noteblock data-latex=""}
 To concatenate two strings, we use the`+` symbol. 
+:::
 
 You may also know `var` to declare variables. What is the difference with `let`? It is mainly a scope [reason](https://www.w3schools.com/js/js_let.asp): 
+
 ```javascript
 var i = 1;
 {
@@ -202,26 +205,33 @@ let j = 1;
 console.log(`j is ${j}`); // j is 1
 ```
 
+You will see later that we still use `var` in the shiny core and many other R packages. 
+
 ### Conditions
 Below are the operators to check conditions.
 
-<br>
-<div class="callout callout-info">
-<ul>
-<li>== (A equal B)</li>
-<li>!= (A not equal to B)</li>
-<li>\> (>=)</li>
-<li>< (<=)</li>
-<li>AND (A AND B)</li>
-<li>OR (A OR B)</li>
-</ul>
-</div>
-<br>
+::: {.noteblock data-latex=""}
+  - `===` (A equal value, equal type B)
+  - `==` (A equal to B)
+  - `!==` (A not equal value or not equal type B)
+  - `!=` (A not equal to B)
+  - `>`, `>=`
+  - `<`, `<=`
+  - `AND` (A AND B) or `&&`
+  - `OR` (A OR B) or `||`
+:::
+
+::: {.importantblock data-latex=""}
+Importantly, prefer `===` and `!==` to compare elements since `5 == "5"` would return `true`, generally not what you want!
+:::
+
 
 To test conditions there exists several ways:
 
   - `if (condition) { console.log('Test passed'); }`
   - `if (condition) { instruction A} else { instruction B }`
+  
+The ternary operator ...
   
 This is very common to other languages (and R for instance). Whenever a lot of possible conditions need to be evaluated, it is better to choose the `switch`.
 
