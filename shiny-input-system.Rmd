@@ -1,15 +1,16 @@
 # Shiny's input system {#shiny-input-system}
 Shiny inputs are key elements of Shiny apps since they are a way for the end-user to interact with the app. You may know `sliderInput`, `numericInput`, `checkboxInput` but sometimes you may need fancier elements like `knobInput` from [shinyWidgets](https://github.com/dreamRs/shinyWidgets/blob/master/R/input-knob.R), as depicted on Figure \@ref(fig:fancy-inputs) or even more sophisticated inputs like the `smartSelect` of [shinyMobile](https://github.com/RinteRface/shinyMobile/blob/master/R/f7-inputs.R) (Figure \@ref(fig:fancy-inputs), right panel). Have you ever wondered what are the mechanisms behind inputs? Have you ever dreamt to develop your own?
 
-The goal of this section is to understand how Shiny inputs work.
+The goal of this section is to understand how Shiny inputs work and how to create new ones.
 
 ```{r fancy-inputs, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap='Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile'}
 knitr::include_graphics("images/survival-kit/jquery-knobs.png")
 knitr::include_graphics("images/survival-kit/smart-select.png")
 ```
 
-## Initialization
-When we run our app, most of the time it works just fine! The question is, how are the inputs and outputs handled correctly to allow this to happen? Upon initialization, Shiny runs several JavaScript functions. Not surprisingly, there is one called [`init_shiny`](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) containing a substantial number of elements such as `bindInputs` and `unbindInputs` to bind/unbind inputs. Besides, they are accessible to the programmer (see a usecase [here](https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny)). To illustrate what they do, let's run the app below.
+## Input bindings
+
+When we run our app, most of the time it works just fine! The question is, how are the inputs (and outputs) handled to allow this to happen? Upon initialization, Shiny runs several JavaScript functions. Some are accessible to the programmer (see a usecase [here](https://stackoverflow.com/questions/51633326/dateinput-not-working-on-dt-in-shiny)). To illustrate what they do, let's run the app below.
 
 ```{r, eval=FALSE}
 library(shiny)
@@ -55,8 +56,6 @@ shinyApp(ui, server)
 
 Let's see below what is an input binding and how it works.
 
-## Input bindings
-
 ### Input structure
 An input element is given by the `<input>` tag as well as several attributes.
 
@@ -86,7 +85,7 @@ find: function(scope) {
 
 Figure \@ref(fig:shiny-find-inputs) summarizes this important step.
 
-```{r shiny-find-inputs, echo=FALSE, fig.cap='How to find inputs?'}
+```{r shiny-find-inputs, echo=FALSE, fig.cap='How to find inputs?', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-find-inputs.png")
 ```
 
@@ -142,7 +141,7 @@ In the [shinyMobile](https://github.com/RinteRface/shinyMobile/tree/master/inst/
 
 Figure \@ref(fig:text-input) shows the main elements of the `textInput` widget. In the above code, `shinyInputLabel` is a Shiny internal function that creates the numeric input label, or in other word the text displayed next to it. The core input element is wrapped by `tags$input`. No worry if the structure seems unclear, we will give more details about shiny tags in the Chapter \@ref(htmltools-overview).
 
-```{r text-input, echo=FALSE, fig.cap='Shiny\'s textInput elements'}
+```{r text-input, echo=FALSE, fig.cap='Shiny\'s textInput elements', out.width='100%'}
 knitr::include_graphics("images/survival-kit/text-input.png")
 ```
 
@@ -155,7 +154,7 @@ customTextInputExample(1)
 
 Results are shown on Figure \@ref(fig:shiny-find-inputs-result). If the corresponding input is found, you should see the corresponding tag element in the HTML inspector console.
 
-```{r shiny-find-inputs-result, echo=FALSE, fig.cap='find method output'}
+```{r shiny-find-inputs-result, echo=FALSE, fig.cap='find method output', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-find-inputs-result.png")
 ```
 
@@ -191,7 +190,7 @@ Once initialized, we may use all specific methods provided by the API. [Framewor
 #### Get the value
 `getValue(el)` returns the input value. The way to obtain the value is different for almost all inputs. For instance, the `textInput` is pretty simple since the value is located in the `value` attribute. `el` refers to the element holding the id attribute and recognized by the `find` method. Figure \@ref(fig:shiny-el) shows the result of a `console.log($(el));`.
 
-```{r shiny-el, echo=FALSE, fig.cap='About el'}
+```{r shiny-el, echo=FALSE, fig.cap='About el', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-el.png")
 ```
 
@@ -239,7 +238,7 @@ updateCustomTextInputExample(3)
 
 Figure \@ref(fig:shiny-update-inputs) illustrates the main mechanisms.
 
-```{r shiny-update-inputs, echo=FALSE, fig.cap='Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket.'}
+```{r shiny-update-inputs, echo=FALSE, fig.cap='Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket.', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-update-inputs.png")
 ```
 
@@ -494,7 +493,7 @@ shinyApp(ui, server)
 
 This trick has been extensively used in the [virtual physiology simulator](https://community.rstudio.com/t/shiny-contest-submission-a-virtual-lab-for-teaching-physiology/25348) to trigger [animations](https://dgranjon.shinyapps.io/entry_level/).
 
-## Binding other elements
+## Examples
 
 ### {shinydashboard} boxes on steroids
 The Shiny input binding system is too convenient to be only used for input elements. In {shinydashboard}, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `inputId` parameter to the box function. You may inspect the code [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/box2.R). 
@@ -811,6 +810,8 @@ setValue: function(el, value) {
 
 If it represents a significant amount of work, it is also the guarantee to lower the load on the server side.
 
+Be careful with `this`. Indeed, called in an event listener, `this` refers to the element that triggered the event and not to the input binding object!
+
 ## Utilities to quickly define new inputs
 
 ### Introduction
@@ -929,69 +930,6 @@ shinyApp(ui, server)
 
 ## Hidden gems about inputs
 We present some tools that may be useful...TO FINISH
-
-### Get access to initial values 
-Something we may notice when exploring the `initShiny` function is the existence of a `Shiny.shinyapp` object, defined as follows:
-
-```javascript
-var shinyapp = exports.shinyapp = new ShinyApp();
-```
-
-
-Let's explore what `shinyApp` contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). 
-
-```javascript
-var ShinyApp = function() {
-  this.$socket = null;
-  
-  // Cached input values
-  this.$inputValues = {};
-  
-  // Input values at initialization (and reconnect)
-  this.$initialInput = {};
-  
-  // Output bindings
-  this.$bindings = {};
-  
-  // Cached values/errors
-  this.$values = {};
-  this.$errors = {};
-  
-  // Conditional bindings (show/hide element based on expression)
-  this.$conditionals = {};
-  
-  this.$pendingMessages = [];
-  this.$activeRequests = {};
-  this.$nextRequestId = 0;
-  
-  this.$allowReconnect = false;
-};
-```
-
-It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization).
-
-```{r, eval=FALSE}
-ui <- fluidPage(
-  sliderInput("obs", "Number of observations:",
-              min = 0, max = 1000, value = 500
-  ),
-  plotOutput("distPlot")
-)
-
-server <- function(input, output, session) {
-  output$distPlot <- renderPlot({
-    hist(rnorm(input$obs))
-  })
-}
-shinyApp(ui, server)
-```
-
-
-Figure \@ref(fig:shiny-initial-inputs) shows how to access Shiny's initial input value with `Shiny.shinyapp.$initialInput.obs`. After changing the slider position, its value is given by `Shiny.shinyapp.$inputValues.obs`. `$initialInput` and `$inputValues` contains many more elements, however we are only interested in the slider function in this example.
-
-```{r shiny-initial-inputs, echo=FALSE, fig.cap='Explore initial input values'}
-knitr::include_graphics("images/survival-kit/shiny-init-input.png")
-```
 
 ### Get the last changed input
 
@@ -1112,4 +1050,189 @@ shinyApp(
     output$lastChanged <- renderPrint(input$`.shinylogs_lastInput`)
   }
 )
+```
+
+## Recap: Shiny App lifecycles
+In the following, we'll recap everything we see from chapter \@ref(shiny-intro). 
+
+### App initialization
+```{r init-shiny-recap, echo=FALSE, fig.cap='What Shiny does client side on initialization', out.width='100%'}
+knitr::include_graphics("images/survival-kit/init-shiny-recap.png")
+```
+
+When a shiny apps starts, Shiny runs `initShiny` on the client. This [function](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) has 3 main tasks:
+
+  - Bind all inputs and outputs with `_bindAll()`.
+  - Initialize all inputs (if necessary) with `initializeInputs`.
+  - Initialize the client websocket connection mentioned in the previous chapter \@ref(shiny-intro) and send initial values to the server.
+
+Most input bindings are in principle bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple shiny app. In any case, 
+they are all contained in a binding registry, namely `inputBindings` built on top the following class (the same apply for output bindings):
+
+```js
+var BindingRegistry = function() {
+  this.bindings = [];
+  this.bindingNames = {};
+}
+```
+
+This class has method to `register` binding. This is the one we call when doing `Shiny.inputBindings.register(myBinding, 'reference');`, which appends the newly created binding to the bindings array. 
+
+When shiny starts, it has to find all defined bindings with the `getBindings` method.
+Once done, for each binding, `find` is triggered. If no corresponding element is found in the DOM, nothing is done. For each found input, the following methods are triggered:
+
+  - `getId` (no described before) returns the input id. This ensures the uniqueness and is critical!
+  - `getType` optionally handles any `registerInputHandler` defined by the user on the R side.
+  - `getValue` gets the initial input value.
+  - `subscribe` registers event listeners driving the input behavior.
+
+The data attribute `shiny-input-binding` is then added. This allows shiny or any end-users to access the input binding methods from the client (in practice, very few end-users will do that). The `shiny-bound-input` class is added, the corresponding input is appended to the `boundInputs` object (listing all bound inputs) and `shiny:bound` triggered on the client.
+
+Once done, shiny stores all initial values in a variable `initialInput`, also containing all [client data](https://shiny.rstudio.com/articles/client-data.html) and pass them to the `Shinyapp.connect` method. As shown in \@ref(shiny-intro), the latter opens the client websocket connection, raises the `shiny:connected` event and send all values to the server (R). Few time after, `shiny:sessioninitialized` is triggered.
+
+
+In chapter \@ref(shiny-intro), we briefly described the `shiny` JavaScript object. As an exercise, let's explore what the `Shiny.shinyApp` object contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). 
+
+```javascript
+var ShinyApp = function() {
+  this.$socket = null;
+  
+  // Cached input values
+  this.$inputValues = {};
+  
+  // Input values at initialization (and reconnect)
+  this.$initialInput = {};
+  
+  // Output bindings
+  this.$bindings = {};
+  
+  // Cached values/errors
+  this.$values = {};
+  this.$errors = {};
+  
+  // Conditional bindings (show/hide element based on expression)
+  this.$conditionals = {};
+  
+  this.$pendingMessages = [];
+  this.$activeRequests = {};
+  this.$nextRequestId = 0;
+  
+  this.$allowReconnect = false;
+};
+```
+
+It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization).
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  sliderInput("obs", "Number of observations:",
+              min = 0, max = 1000, value = 500
+  ),
+  plotOutput("distPlot")
+)
+
+server <- function(input, output, session) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
+shinyApp(ui, server)
+```
+
+
+Figure \@ref(fig:shiny-initial-inputs) shows how to access Shiny's initial input value with `Shiny.shinyapp.$initialInput.obs`. After changing the slider position, its value is given by `Shiny.shinyapp.$inputValues.obs`. `$initialInput` and `$inputValues` contains many more elements, however we are only interested in the slider function in this example.
+
+```{r shiny-initial-inputs, echo=FALSE, fig.cap='Explore initial input values', out.width='100%'}
+knitr::include_graphics("images/survival-kit/shiny-init-input.png")
+```
+
+### Update input
+Below we try to explain what are the mechanisms to update an input from the server on the client. As stated above, it all starts with an `update<name>Input` function call, which actually sends a message through the current `session`. This message is received by the client websocket message manager:
+
+```js
+socket.onmessage = function(e) {
+  self.dispatchMessage(e.data);
+};
+```
+
+which sends the message to the appropriate [handler](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L552), that is `inputMessages`:
+
+```js
+addMessageHandler('inputMessages', function(message) {
+  // inputMessages should be an array
+  for (var i = 0; i < message.length; i++) {
+    var $obj = $('.shiny-bound-input#' + $escape(message[i].id));
+    var inputBinding = $obj.data('shiny-input-binding');
+
+    // Dispatch the message to the appropriate input object
+    if ($obj.length > 0) {
+      var el = $obj[0];
+      var evt = jQuery.Event('shiny:updateinput');
+      evt.message = message[i].message;
+      evt.binding = inputBinding;
+      $(el).trigger(evt);
+      if (!evt.isDefaultPrevented())
+        inputBinding.receiveMessage(el, evt.message);
+    }
+  }
+});
+```
+In short, this does get the inputId and access the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and call the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. 
+The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
+The `callback` function is actually defined during the initialization [process](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js#L174):
+
+```js
+function valueChangeCallback(binding, el, allowDeferred) {
+  var id = binding.getId(el);
+  if (id) {
+    var value = binding.getValue(el);
+    var type = binding.getType(el);
+    if (type)
+      id = id + ":" + type;
+
+    let opts = {
+      priority: allowDeferred ? "deferred" : "immediate",
+      binding: binding,
+      el: el
+    };
+    inputs.setInput(id, value, opts);
+  }
+}
+```
+
+`valueChangeCallback` ultimately calls `inputs.setInput(id, value, opts)`. The latters involves a rather complex chain of [reactions](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js) (which is not described here). Overall, the result is stored in a queue, namely `pendingData` and sent to the server with `shinyapp.sendInput`:
+
+```js
+this.sendInput = function(values) {
+  var msg = JSON.stringify({
+    method: 'update',
+    data: values
+  });
+
+  this.$sendMsg(msg);
+    
+  $.extend(this.$inputValues, values);
+  // other things ...
+}
+```
+
+The message has an `update` tag and is sent through the client websocket, only if the connection is opened. If not, it is added to the list of pending messages. 
+
+```js
+this.$sendMsg = function(msg) {
+  if (!this.$socket.readyState) {
+    this.$pendingMessages.push(msg);
+  }
+  else {
+    this.$socket.send(msg);
+  }
+};
+```
+
+Finally, current `inputValues` are updated. On the server side, the new value is received
+by the server websocket message handler, that is `ws$onMessage(message)`.
+
+
+```{r update-input-recap, echo=FALSE, fig.cap='What Shiny does client side on initialization', out.width='100%'}
+knitr::include_graphics("images/survival-kit/update-input-recap.png")
 ```
