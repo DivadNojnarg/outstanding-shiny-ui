@@ -1,10 +1,12 @@
 # Beautify with fresh {#beautify-with-fresh}
-[{fresh}](https://github.com/dreamRs/fresh) is an R package developed by the dreamRs team, also authors of [shinyWidget](https://github.com/dreamRs/shinyWidgets) and [esquisse](https://github.com/dreamRs/esquisse). All dreamRs projects are clearly a great source of inspiration to design oustansding Shiny apps, I recommend the reader to explore!
+[{fresh}](https://github.com/dreamRs/fresh) is an R package developed by the dreamRs team, also authors of [shinyWidget](https://github.com/dreamRs/shinyWidgets) and [esquisse](https://github.com/dreamRs/esquisse). All dreamRs projects are clearly a great source of inspiration to design outstanding Shiny apps, I recommend the reader to explore!
 
 ## {fresh}, the big picture
-CSS is probably the poor sibling of this book, which is mainly focused on R and JavaScript interactions. Nevertheless, it remains important to develop consistant themes. One of the main problem with CSS is to handle the growing number of files and the code repetition. Nowadays, web developers mainly use [SASS](https://sass-lang.com/guide), which provides access to variables,  mathematical operators, nesting, thereby reducing the code complexicity and extending the possibilities. [Rstudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package, which makes it possible to use in Shiny apps or Rmarkdown documents. {fresh} is built on top of {sass} and what you see in Figure \@ref(fig:bs4Dash-fresh) may be done in few minutes!
+CSS is probably the poor sibling of this book, which is mainly focused on R and JavaScript interactions. Nevertheless, it remains important to develop consistent themes. One of the main problem with CSS is to handle the growing number of files and the code repetition. Nowadays, web developers mainly use [SASS](https://sass-lang.com/guide), which provides access to variables,  mathematical operators, nesting, thereby reducing the code complexity and extending the possibilities. [Rstudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package, which makes it possible to use in Shiny apps or Rmarkdown documents. `{fresh}` is built on top of `{sass}` and what you see in Figures \@ref(fig:bs4Dash-fresh) and  \@ref(fig:shinydashboardPlus-fresh) may be done in few minutes!
 
-```{r bs4Dash-fresh, echo=FALSE, fig.cap='Few lines of code to create a bs4Dash dark theme!'}
+### Customize `{bs4Dash}` 
+
+```{r bs4Dash-fresh, echo=FALSE, fig.cap='Few lines of code to create a bs4Dash dark theme!', out.width='100%'}
 knitr::include_graphics("images/beautify/bs4Dash-fresh.png")
 ```
 
@@ -208,3 +210,94 @@ server <- function(input, output) {
 
 shinyApp(ui, server)
 ```
+
+### Customize `{shinydashboard}` 
+
+Similarly, `{fresh}` supports `{shinydashboard}` powered apps. In few lines of code, you may definitely provide a cyberpunk look and feel to your favorite dashboard (Figure \@ref(fig:shinydashboardPlus-fresh)). `{shinydashboardPlus}` ([v2](https://rinterface.github.io/shinydashboardPlus/articles/more-skins.html#fresh)) has a plug and play support for `{fresh}` where the theme has to be passed to the `dashboardPage` _freshTheme_ parameter (it would also seamlessly work with `{shinydashboard}`). Importantly, I strongly suggest to avoid setting the default green to blue, as it might become confusing. Prefer playing with different color palettes.  
+
+```{r shinydashboardPlus-fresh, echo=FALSE, fig.cap='Cyberpunk shinydashboard', out.width='100%'}
+knitr::include_graphics("images/beautify/cyberpunk_shinydashboard.png")
+```
+
+```{r, eval=FALSE}
+theme <- create_theme(
+  adminlte_color(
+    green = "#3fff2d",
+    blue = "#2635ff",
+    red = " #ff2b2b",
+    yellow = "#feff6e",
+    fuchsia = "#ff5bf8",
+    navy = "#374c92",
+    purple = "#615cbf",
+    maroon = "#b659c9",
+    light_blue = "#5691cc"
+  ),
+  adminlte_sidebar(
+    dark_bg = "#D8DEE9",
+    dark_hover_bg = "#81A1C1",
+    dark_color = "#2E3440"
+  ),
+  adminlte_global(
+    content_bg = "#aaaaaa"
+  )
+)
+
+# create tribble for box global config
+box_config <- tibble::tribble(
+  ~background, ~labelStatus,
+  "red", "warning",
+  "purple", "success",
+  "green", "primary",
+  "yellow", "danger",
+  "fuchsia", "info"
+)
+
+# box factory function
+box_factory <- function(background, labelStatus) {
+  box(
+    title = "Cyberpunk Box", 
+    collapsible = TRUE, 
+    background = background,
+    height = "200px",
+    label = boxLabel(1, labelStatus)
+  )
+}
+
+# pmap magic
+boxes <- purrr::pmap(box_config, box_factory)
+
+shinyApp(
+   ui = dashboardPage(
+     freshTheme = theme,
+     skin = "blue",
+     options = list(sidebarExpandOnHover = TRUE),
+     header = dashboardHeader(
+       dropdownMenu(
+         type = "messages", 
+         badgeStatus = "success",
+         messageItem(
+           from = "Support Team",
+           message = "This is the content of a message.",
+           time = "5 mins"
+         ),
+         messageItem(
+           from = "Support Team",
+           message = "This is the content of another message.",
+           time = "2 hours"
+         )
+       )
+     ),
+     sidebar = dashboardSidebar(
+       sidebarMenu(
+         menuItem("Item 1", badgeLabel = icon("heart"), badgeColor = "light-blue"),
+         menuItem("Item 2", badgeLabel = icon("poo"), badgeColor = "maroon")
+       )
+     ),
+     body = dashboardBody(boxes),
+     controlbar = dashboardControlbar(),
+     title = "Fresh theming"
+   ),
+   server = function(input, output) { }
+ )
+```
+
