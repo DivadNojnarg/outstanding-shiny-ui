@@ -79,6 +79,24 @@ p, div {
 }
 ```
 
+See below an example with a Shiny app:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$style(
+    "p, div { 
+      color: red;
+    }"
+  ),
+  p("Hello World"),
+  div("A block")
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
 ### Select by class, id
 The method shown above applies to all selected tags. This is not necessarily what we want as we probably would like to filter. We first add a `class` to the first `p` tag. Best practice is to give it a meaningful name. 
 
@@ -100,6 +118,33 @@ To style unique elements, we may use `id`:
 #element {
   color: red;
 }
+```
+
+As another example, the result is shown in Figure \@ref(fig:css-simple-select):
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$style(
+    ".first-p { 
+      color: red;
+    }
+    #element {
+      color: red;
+    }
+    "
+  ),
+  p(class = "first-p", "Hello World"),
+  p("Another text"),
+  div(id = "element", "A block")
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+```{r css-simple-select, echo=FALSE, fig.cap='Select by class and id', out.width='100%'}
+knitr::include_graphics("images/beautify/css-simple-select.png")
 ```
 
 ### Apply CSS to single elements
@@ -148,7 +193,92 @@ li a {
 }
 ```
 
-#### More complex attributes
+The Shiny `navbarPage` template is composed of navigation items `li` and `a`, which we may easily modify:
+
+```{r, eval=FALSE}
+ui <- navbarPage(
+  "App Title",
+  tabPanel(
+    "Plot",
+    tags$style(
+      "li a {
+        font-size: 20px;
+        font-weight: bold;
+      }
+    "
+    ),
+    tabsetPanel(
+      tabPanel("Plot"),
+      tabPanel("Summary"),
+      tabPanel("Table")
+    )
+  ),
+  tabPanel("Summary"),
+  tabPanel("Table")
+)
+
+server <- function(input, output) {}
+
+shinyApp(ui, server)
+```
+
+```{r css-combined-selectors-1, echo=FALSE, fig.cap='Style all nav link elements', out.width='100%'}
+knitr::include_graphics("images/beautify/css-combined-selectors-1.png")
+```
+
+You'll notice that `tabsetPanel` tabs are also modified, which is not exactly what we wanted, as shown in Figure \@ref(fig:css-combined-selectors-1). The main difference between `navbarPage` and `tabsetPanel` is the class held by the the menu wrapper `ul`:
+
+```{r}
+as.character(navbarPage(tabPanel("test")))
+as.character(tabsetPanel(tabPanel("test")))
+```
+
+which is `nav navbar-nav` for `navbarPage` and `nav nav-tabs` for `tabsetPanel`.
+To isolate `navbarPage` tabs, we have to improve our previous selector:
+
+```css
+.navbar-nav li a {
+  font-size: 20px;
+  font-weight: bold;
+}
+```
+
+Doing so, we'll only look at the link elements inside the container having the `navbar-nav` class. 
+
+```{r, eval=FALSE}
+ui <- navbarPage(
+  "App Title",
+  tabPanel(
+    "Plot",
+    tags$style(
+      ".navbar-nav li a {
+        font-size: 20px;
+        font-weight: bold;
+      }
+    "
+    ),
+    tabsetPanel(
+      tabPanel("Plot"),
+      tabPanel("Summary"),
+      tabPanel("Table")
+    )
+  ),
+  tabPanel("Summary"),
+  tabPanel("Table")
+)
+
+server <- function(input, output) {}
+
+shinyApp(ui, server)
+```
+
+The final result is depicted in Figure \@ref(fig:css-combined-selectors-2). 
+
+```{r css-combined-selectors-2, echo=FALSE, fig.cap='Style specific navbar nav link elements', out.width='100%'}
+knitr::include_graphics("images/beautify/css-combined-selectors-2.png")
+```
+
+#### Select by attributes
 To select by attribute, we use `tag[attribute]`
 ```html
 <a data-toggle="dropdown">Tag</a>
@@ -290,6 +420,21 @@ Going back to our previous example, the most specific selector is `#element`, th
 ```
 
 Only the second selector is applied to the tag. To apply `class1`, you must move it after the `class2` style definition. 
+
+Best practice is to keep the lowest specificity as possible, thereby making `.class` the first choice. 
+
+## Block element modified (BEM)
+The BEM methodology will help you to write meaningful CSS, easier to manage. 
+A block is a standalone entity having a self explanatory name like `header`, `checkbox`. An elements is part of the block but not standalone like menu items. 
+A modifier indicates a specific state of an element, for instance if a button is disabled, active, ... The general scheme is defined below:
+
+```css
+.block__element--modifier {
+  /* rules */
+}
+```
+
+Following this methodology guaranties to have documented and meaningful classes.
 
 ## Exercises
 TO DO
