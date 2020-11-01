@@ -111,7 +111,7 @@ FIGURE 16.1: Github project exploration
 <span class="header-section-number">16.3</span> Bundle dependencies<a class="anchor" aria-label="anchor" href="#bundle-dependencies"><i class="fas fa-link"></i></a>
 </h2>
 <p>With the help of the <code>htmltoolsDependency</code> function, we are going to create our main Tabler HTML dependency containing all assets to allow our template to render properly. In this example, I am going to cheat a bit: instead of handling local files, I will use a CDN (content delivery network) that hosts all necessary Tabler <a href="https://www.jsdelivr.com/package/npm/tabler">assets</a>. This avoids to include all the necessary files in the R package, as well as in a github repository.</p>
-<div class="sourceCode" id="cb282"><pre class="downlit">
+<div class="sourceCode" id="cb290"><pre class="downlit">
 <span class="kw">tablers_deps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span>(
   name = <span class="st">"tabler"</span>,
   version = <span class="st">"1.0.7"</span>, <span class="co"># we take that of tabler,</span>
@@ -121,7 +121,7 @@ FIGURE 16.1: Github project exploration
 )
 </pre></div>
 <p>I advise the reader to create one HTML dependency per element. The Bootstrap version is v4.3.1 (Shiny relies on 3.4.1) and jQuery is 3.5.0 (Shiny relies on 3.4.1). We can also use a CDN:</p>
-<div class="sourceCode" id="cb283"><pre class="downlit">
+<div class="sourceCode" id="cb291"><pre class="downlit">
 <span class="kw">bs4_deps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span>(
   name = <span class="st">"Bootstrap"</span>,
   version = <span class="st">"4.3.1"</span>,
@@ -137,7 +137,7 @@ FIGURE 16.1: Github project exploration
 )
 </pre></div>
 <p>We finally create our dependency manager:</p>
-<div class="sourceCode" id="cb284"><pre class="downlit">
+<div class="sourceCode" id="cb292"><pre class="downlit">
 <span class="co"># add all dependencies to a tag. Don't forget to set append to TRUE to preserve any existing dependency</span>
 <span class="kw">add_tabler_deps</span> <span class="op">&lt;-</span> <span class="fu">function</span>(<span class="kw">tag</span>) {
   <span class="co"># below, the order is of critical importance!</span>
@@ -148,12 +148,12 @@ FIGURE 16.1: Github project exploration
 <p>Notice the dependencies order in the <code>deps</code> list: this will be exactly the same order in the <code>head</code> of the HTML page. Some libraries require to be loaded at a specific place, like the Tabler dependencies which must come after Bootstrap.
 It is not surprising since Tabler is built on top of Bootstrap 4.</p>
 <p>Let’s see how to use <code>add_tabler_deps</code>. We consider a <code>&lt;div&gt;</code> placeholder and check for its dependencies with <code>findDependencies</code> (should be NULL). Then, we wrap it with <code>add_tabler_deps</code>.</p>
-<div class="sourceCode" id="cb285"><pre class="downlit">
+<div class="sourceCode" id="cb293"><pre class="downlit">
 <span class="kw">tag</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span>()
 <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/findDependencies.html">findDependencies</a></span>(<span class="kw">tag</span>)
 </pre></div>
 <pre><code>## NULL</code></pre>
-<div class="sourceCode" id="cb287"><pre class="downlit">
+<div class="sourceCode" id="cb295"><pre class="downlit">
 <span class="kw">tag</span> <span class="op">&lt;-</span> <span class="fu">add_tabler_deps</span>(<span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span>())
 <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/findDependencies.html">findDependencies</a></span>(<span class="kw">tag</span>)
 </pre></div>
@@ -187,7 +187,7 @@ It is not surprising since Tabler is built on top of Bootstrap 4.</p>
 ##  $ all_files : logi TRUE
 ##  - attr(*, "class")= chr "html_dependency"</code></pre>
 <p>As shown above, our dependencies are applied to the div, in the correct order. This order is set by the list <code><a href="https://rdrr.io/r/base/list.html">list(bs4_deps, jQuery_deps, tablers_deps)</a></code> and allows use to avoid potential conflicts. If we try to run this simple tag in a shiny app, we notice that all dependencies are added to the <code>&lt;head&gt;</code> tag, whereas the original template loads JavaScript dependencies in the <code>&lt;body&gt;</code>. Unfortunately, htmltools does not allow developers to distribute dependencies in different places. Here there is no impact but for other templates like <a href="https://framework7.io">Framework7</a> (which is powering <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a>), JavaScript must be place in the body. In practice, this is challenging to guess and may only be solved by manual testing.</p>
-<div class="sourceCode" id="cb289"><pre class="downlit">
+<div class="sourceCode" id="cb297"><pre class="downlit">
 <span class="kw">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span>(<span class="kw">tag</span>)
 <span class="kw">server</span> <span class="op">&lt;-</span> <span class="fu">function</span>(<span class="kw">input</span>, <span class="kw">output</span>, <span class="kw">session</span>) {}
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span>(<span class="kw">ui</span>, <span class="kw">server</span>)

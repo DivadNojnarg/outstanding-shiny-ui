@@ -313,11 +313,175 @@ a[data-toggle*="dropdown"] {
 }
 ```
 
-`*` checks whether the word `dropdown` is there but not the position.
+`*` checks whether the word `dropdown` is there but not the position. You may use `^` and `$` like you do with regular expressions to check if the value starts or ends by the specified word, respectively.
 
 
 #### Other selectors
-TO DO
+
+#### Direct descendants
+Let's consider a `navbarPage` with nested navigation. This is accomplished with the `navbarMenu` function:
+
+```{r, eval=FALSE}
+navbarPage("App Title",
+  tabPanel("Plot"),
+  navbarMenu("More",
+    tabPanel("Summary"),
+    "----",
+    "Section header",
+    tabPanel("Table")
+  )
+)
+```
+
+The resulting HTML code is as follow:
+
+```html
+<ul class="nav navbar-nav" data-tabsetid="5879">
+  <li class="active">
+    <a href="#tab-5879-1" data-toggle="tab" data-value="Plot">Plot</a>
+  </li>
+  <li class="dropdown">
+    <a href="#" class="dropdown-toggle" data-toggle="dropdown" data-value="More">
+      More
+      <b class="caret"></b>
+    </a>
+    <ul class="dropdown-menu" data-tabsetid="7141">
+      <li>
+        <a href="#tab-7141-1" data-toggle="tab" data-value="Summary">Summary</a>
+      </li>
+      <li class="divider"></li>
+      <li class="dropdown-header">Section header</li>
+      <li>
+        <a href="#tab-7141-4" data-toggle="tab" data-value="Table">Table</a>
+      </li>
+    </ul>
+  </li>
+</ul>
+```
+
+We see that there are two `ul` menus with multiple `li` and `a` inside. Applying our previous CSS selector as depicted in Figure \@ref(fig:css-direct-child-1) selects all links. 
+
+```{r css-direct-child-1, echo=FALSE, fig.cap='Style all navbar nav link elements', out.width='100%'}
+knitr::include_graphics("images/beautify/css-direct-child-1.png")
+```
+
+What if we only want to select the direct `a` children of the outer menu (meaning we exclude the inner menu links)? Using the `>` we can select direct children and not all descendant that could contain grand-children.
+
+```css
+.navbar-nav > li > a {
+  font-size: 20px;
+  font-weight: bold;
+}
+```
+
+Result is displayed in Figure \@ref(fig:css-direct-child-2):
+
+```{r, eval=FALSE}
+ui <- navbarPage(
+  "App Title",
+  tabPanel(
+    "Plot",
+    tags$style(
+      HTML(
+        ".navbar-nav > li > a {
+          font-size: 20px;
+          font-weight: bold;
+        }
+        "
+      )
+    )
+  ),
+  navbarMenu("More",
+    tabPanel("Summary"),
+    "----",
+    "Section header",
+    tabPanel("Table")
+  )
+)
+
+server <- function(input, output) {}
+
+shinyApp(ui, server)
+```
+
+```{r css-direct-child-2, echo=FALSE, fig.cap='Style only direct children navbar nav link elements', out.width='100%'}
+knitr::include_graphics("images/beautify/css-direct-child-2.png")
+```
+
+Well, what if we want to be even more specific and get only the very first nav link element? We'll have to introduce pseudo classes.
+
+##### Pseudo-classes
+
+A pseudo class starts with the `:` symbol. For instance, `a:active` styles active links, `button:disabled` applies for disabled buttons, ...
+
+```css
+a:active {
+  
+}
+
+button:disabled {
+
+}
+
+checkbox:checked {
+
+}
+```
+
+There exists many pseudo class types, particularly the structural ones. Those are useful to select specific children like `element:first-child`. Going back to the `navbarPage` example, we could refine our CSS selector adding `:first-child` to the `li` element as we want to only select the first item:
+
+```css
+.navbar-nav > li:first-child > a {
+  font-size: 20px;
+  font-weight: bold;
+}
+```
+
+As expected, only the first link is styled, as demonstrated in Figure \@ref(fig:css-direct-child-3)!
+
+```{r, eval=FALSE}
+ui <- navbarPage(
+  "App Title",
+  tabPanel(
+    "Plot",
+    tags$style(
+      HTML(
+        ".navbar-nav > li:first-child > a {
+          font-size: 20px;
+          font-weight: bold;
+        }
+        "
+      )
+    )
+  ),
+  navbarMenu("More",
+    tabPanel("Summary"),
+    "----",
+    "Section header",
+    tabPanel("Table")
+  )
+)
+
+server <- function(input, output) {}
+
+shinyApp(ui, server)
+```
+
+```{r css-direct-child-3, echo=FALSE, fig.cap='Style only the first navbar nav link element', out.width='100%'}
+knitr::include_graphics("images/beautify/css-direct-child-3.png")
+```
+
+##### Pseudo-elements
+
+```css
+a::before {
+
+}
+
+a::after {
+
+}
+```
 
 ## DRY principles
 DRY stands for "Don't repeat yourself". This methodology not only applies to structural languages like R and JavaScript but also to declarative languages like CSS.
@@ -424,7 +588,7 @@ Only the second selector is applied to the tag. To apply `class1`, you must move
 Best practice is to keep the lowest specificity as possible, thereby making `.class` the first choice. 
 
 ## Block element modified (BEM)
-The BEM methodology will help you to write meaningful CSS, easier to manage. 
+The BEM [methodology](http://getbem.com/introduction/) will help you to write meaningful CSS, easier to manage. 
 A block is a standalone entity having a self explanatory name like `header`, `checkbox`. An elements is part of the block but not standalone like menu items. 
 A modifier indicates a specific state of an element, for instance if a button is disabled, active, ... The general scheme is defined below:
 
