@@ -83,28 +83,27 @@
 <h2>
 <span class="header-section-number">10.1</span> Websocket: R/JS bidirectional communication<a class="anchor" aria-label="anchor" href="#shiny-websocket"><i class="fas fa-link"></i></a>
 </h2>
-<p>How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature highlighted <a href="https://github.com/rstudio/shiny">here</a>, which leverages the <a href="https://github.com/rstudio/httpuv">httpuv</a> package. Before going further let’s define what is a websocket! It is an advanced technology allowing bidirectional communication between a (or multiple) client(s) and a server. For instance, a <a href="https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee">chat</a> system may be built on top of a websocket.<a class="footnote-ref" tabindex="0" data-toggle="popover" data-content='&lt;p&gt;Note that by default, each time a client connects to the server, a new connection is open, meaning that this client cannot captures other connections messages. This is also called single cast. For a chat, we want a &lt;a href="https://medium.com/the-quarter-espresso/multicast-websocket-nodejs-ff1f400ba2f7"&gt;multi cast&lt;/a&gt; option, that is forwarding one client message to (all) other connected clients. &lt;code&gt;{httpuv}&lt;/code&gt; does not provide such a feature since this would not make sense and would be harmful in the context of shiny!&lt;/p&gt;'><sup>3</sup></a> The server is created from <code>{httpuv}</code> <span class="citation">(Cheng and Chang <a href="references.html#ref-R-httpuv" role="doc-biblioref">2020</a>)</span> and the client with <code>{websocket}</code> <span class="citation">(Chang, Cheng, Dipert, et al. <a href="references.html#ref-R-websocket" role="doc-biblioref">2020</a>)</span> or directly from JavaScript, as described below:</p>
-<div class="sourceCode" id="cb222"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/library.html">library</a></span>(<span class="kw"><a href="https://github.com/rstudio/httpuv">httpuv</a></span>)
+<p>How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature highlighted <a href="https://github.com/rstudio/shiny">here</a>, which leverages the <a href="https://github.com/rstudio/httpuv">httpuv</a> package. Before going further let’s define what is a websocket! It is an advanced technology allowing bidirectional communication between a (or multiple) client(s) and a server. For instance, a <a href="https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee">chat</a> system may be built on top of a websocket.<a class="footnote-ref" tabindex="0" data-toggle="popover" data-content='&lt;p&gt;Note that by default, each time a client connects to the server, a new connection is open, meaning that this client cannot captures other connections messages. This is also called single cast. For a chat, we want a &lt;a href="https://medium.com/the-quarter-espresso/multicast-websocket-nodejs-ff1f400ba2f7"&gt;multi cast&lt;/a&gt; option, that is forwarding one client message to (all) other connected clients. &lt;code&gt;{httpuv}&lt;/code&gt; does not provide such a feature since this would not make sense and would be harmful in the context of shiny!&lt;/p&gt;'><sup>3</sup></a> The server is created from <a href="https://github.com/rstudio/httpuv">httpuv</a> <span class="citation">(Cheng and Chang <a href="references.html#ref-R-httpuv" role="doc-biblioref">2020</a>)</span> and the client with <code>{websocket}</code> <span class="citation">(Chang, Cheng, Dipert, et al. <a href="references.html#ref-R-websocket" role="doc-biblioref">2020</a>)</span> or directly from JavaScript, as described below:</p>
+<div class="sourceCode" id="cb224"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/httpuv">httpuv</a></span><span class="op">)</span>
 <span class="co"># set the server</span>
-<span class="kw">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer</a></span>(<span class="st">"127.0.0.1"</span>, <span class="fl">8080</span>,
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span>(
-    onWSOpen = <span class="fu">function</span>(<span class="kw">ws</span>) {
+<span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer</a></span><span class="op">(</span><span class="st">"127.0.0.1"</span>, <span class="fl">8080</span>,
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+    onWSOpen <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">ws</span><span class="op">)</span> <span class="op">{</span>
       <span class="co"># The ws object is a WebSocket object</span>
-      <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span>(<span class="st">"Server connection opened.\n"</span>)
+      <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Server connection opened.\n"</span><span class="op">)</span>
       
-      <span class="kw">ws</span><span class="op">$</span><span class="fu">onMessage</span>(<span class="fu">function</span>(<span class="kw">binary</span>, <span class="kw">message</span>) {
-        <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span>(<span class="st">"Server received message:"</span>, <span class="kw">message</span>, <span class="st">"\n"</span>)
-        <span class="kw">ws</span><span class="op">$</span><span class="fu">send</span>(<span class="st">"Hello client!"</span>)
-      })
-      <span class="kw">ws</span><span class="op">$</span><span class="fu">onClose</span>(<span class="fu">function</span>() {
-        <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span>(<span class="st">"Server connection closed.\n"</span>)
-      })
-    }
-  )
-)
-</pre></div>
-<p>On the server side, <code>startServer</code> expects a host, port and an app. In the case of websockets, app is a list containing the <code>onWSOpen</code> function defining all actions to perform after the connection is established. Those actions are defined in the <code>{httpuv}</code> <code>WebSocket</code> R6 class:</p>
+      <span class="va">ws</span><span class="op">$</span><span class="fu">onMessage</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">binary</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Server received message:"</span>, <span class="va">message</span>, <span class="st">"\n"</span><span class="op">)</span>
+        <span class="va">ws</span><span class="op">$</span><span class="fu">send</span><span class="op">(</span><span class="st">"Hello client!"</span><span class="op">)</span>
+      <span class="op">}</span><span class="op">)</span>
+      <span class="va">ws</span><span class="op">$</span><span class="fu">onClose</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Server connection closed.\n"</span><span class="op">)</span>
+      <span class="op">}</span><span class="op">)</span>
+    <span class="op">}</span>
+  <span class="op">)</span>
+<span class="op">)</span></code></pre></div>
+<p>On the server side, <code>startServer</code> expects a host, port and an app. In the case of websockets, app is a list containing the <code>onWSOpen</code> function defining all actions to perform after the connection is established. Those actions are defined in the <a href="https://github.com/rstudio/httpuv">httpuv</a> <code>WebSocket</code> R6 class:</p>
 <ul>
 <li>
 <code>onMessage</code> is invoked whenever a message is received on this connection.</li>
@@ -114,41 +113,40 @@
 <code>send</code> sends a message from the server (to the client).</li>
 </ul>
 <p>On the client, we may use the <code>{websocket}</code> <code>WebSocket</code> class provided by the <a href="https://github.com/rstudio/websocket">websocket</a> package. As soon as the new socket instance is created, the server <code>onWSOpen</code> function is called which displays the welcome message. Then a message is sent from the client, received on the server and sent back to the client.</p>
-<div class="sourceCode" id="cb223"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/library.html">library</a></span>(<span class="kw">websocket</span>)
+<div class="sourceCode" id="cb225"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">websocket</span><span class="op">)</span>
 <span class="co"># set the client</span>
-<span class="kw">ws</span> <span class="op">&lt;-</span> <span class="kw">websocket</span>::<span class="kw"><a href="https://rdrr.io/pkg/websocket/man/WebSocket.html">WebSocket</a></span><span class="op">$</span><span class="fu">new</span>(<span class="st">"ws://127.0.0.1:8080/"</span>)
-<span class="kw">ws</span><span class="op">$</span><span class="fu">onMessage</span>(<span class="fu">function</span>(<span class="kw">event</span>) {
-  <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span>(<span class="st">"Client received message:"</span>, <span class="kw">event</span><span class="op">$</span><span class="kw">data</span>, <span class="st">"\n"</span>)
-})
+<span class="va">ws</span> <span class="op">&lt;-</span> <span class="fu">websocket</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/websocket/man/WebSocket.html">WebSocket</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="st">"ws://127.0.0.1:8080/"</span><span class="op">)</span>
+<span class="va">ws</span><span class="op">$</span><span class="fu">onMessage</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Client received message:"</span>, <span class="va">event</span><span class="op">$</span><span class="va">data</span>, <span class="st">"\n"</span><span class="op">)</span>
+<span class="op">}</span><span class="op">)</span>
 
 <span class="co"># Wait for a moment before running next line</span>
-<span class="kw">ws</span><span class="op">$</span><span class="fu">send</span>(<span class="st">"Hello server!"</span>)
+<span class="va">ws</span><span class="op">$</span><span class="fu">send</span><span class="op">(</span><span class="st">"Hello server!"</span><span class="op">)</span>
 
 <span class="co"># Close client</span>
-<span class="kw">ws</span><span class="op">$</span><span class="fu"><a href="https://rdrr.io/r/base/connections.html">close</a></span>()
-</pre></div>
+<span class="va">ws</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <p>Note that the client might also be built directly from JS as below, which is actually what shiny does:</p>
-<div class="sourceCode" id="cb224"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb224-1"><a href="shiny-intro.html#cb224-1"></a><span class="dt">&lt;!DOCTYPE </span>HTML<span class="dt">&gt;</span></span>
-<span id="cb224-2"><a href="shiny-intro.html#cb224-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
-<span id="cb224-3"><a href="shiny-intro.html#cb224-3"></a>  <span class="kw">&lt;head&gt;</span></span>
-<span id="cb224-4"><a href="shiny-intro.html#cb224-4"></a>    <span class="kw">&lt;script</span><span class="ot"> language=</span><span class="st">"javascript"</span><span class="kw">&gt;</span></span>
-<span id="cb224-5"><a href="shiny-intro.html#cb224-5"></a>      <span class="co">// displays an alert </span></span>
-<span id="cb224-6"><a href="shiny-intro.html#cb224-6"></a>      <span class="kw">var</span> mySocket <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(<span class="st">"ws://127.0.0.1:8080"</span>)<span class="op">;</span></span>
-<span id="cb224-7"><a href="shiny-intro.html#cb224-7"></a>      <span class="va">mySocket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb224-8"><a href="shiny-intro.html#cb224-8"></a>        <span class="co">// exampleSocket.send("Client connected!"); </span></span>
-<span id="cb224-9"><a href="shiny-intro.html#cb224-9"></a>      <span class="op">};</span></span>
-<span id="cb224-10"><a href="shiny-intro.html#cb224-10"></a>      <span class="va">mySocket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb224-11"><a href="shiny-intro.html#cb224-11"></a>        <span class="va">console</span>.<span class="at">log</span>(<span class="va">event</span>.<span class="at">data</span>)<span class="op">;</span></span>
-<span id="cb224-12"><a href="shiny-intro.html#cb224-12"></a>      <span class="op">};</span></span>
-<span id="cb224-13"><a href="shiny-intro.html#cb224-13"></a>    <span class="kw">&lt;/script&gt;</span></span>
-<span id="cb224-14"><a href="shiny-intro.html#cb224-14"></a>    <span class="kw">&lt;title&gt;</span>Websocket Example<span class="kw">&lt;/title&gt;</span></span>
-<span id="cb224-15"><a href="shiny-intro.html#cb224-15"></a>  <span class="kw">&lt;/head&gt;</span></span>
-<span id="cb224-16"><a href="shiny-intro.html#cb224-16"></a>  <span class="kw">&lt;body&gt;</span></span>
-<span id="cb224-17"><a href="shiny-intro.html#cb224-17"></a>    <span class="co">&lt;!-- onclick attributes applies the JavaScript function changeColor define above --&gt;</span></span>
-<span id="cb224-18"><a href="shiny-intro.html#cb224-18"></a>    <span class="kw">&lt;button</span><span class="ot"> onclick=</span><span class="st">"mySocket.send('Hello server!')"</span><span class="kw">&gt;</span>Say hello to the server<span class="kw">&lt;/button&gt;</span></span>
-<span id="cb224-19"><a href="shiny-intro.html#cb224-19"></a>  <span class="kw">&lt;/body&gt;</span></span>
-<span id="cb224-20"><a href="shiny-intro.html#cb224-20"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb226"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb226-1"><a href="shiny-intro.html#cb226-1"></a><span class="dt">&lt;!DOCTYPE </span>HTML<span class="dt">&gt;</span></span>
+<span id="cb226-2"><a href="shiny-intro.html#cb226-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
+<span id="cb226-3"><a href="shiny-intro.html#cb226-3"></a>  <span class="kw">&lt;head&gt;</span></span>
+<span id="cb226-4"><a href="shiny-intro.html#cb226-4"></a>    <span class="kw">&lt;script</span><span class="ot"> language=</span><span class="st">"javascript"</span><span class="kw">&gt;</span></span>
+<span id="cb226-5"><a href="shiny-intro.html#cb226-5"></a>      <span class="co">// displays an alert </span></span>
+<span id="cb226-6"><a href="shiny-intro.html#cb226-6"></a>      <span class="kw">var</span> mySocket <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(<span class="st">"ws://127.0.0.1:8080"</span>)<span class="op">;</span></span>
+<span id="cb226-7"><a href="shiny-intro.html#cb226-7"></a>      <span class="va">mySocket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
+<span id="cb226-8"><a href="shiny-intro.html#cb226-8"></a>        <span class="co">// exampleSocket.send("Client connected!"); </span></span>
+<span id="cb226-9"><a href="shiny-intro.html#cb226-9"></a>      <span class="op">};</span></span>
+<span id="cb226-10"><a href="shiny-intro.html#cb226-10"></a>      <span class="va">mySocket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
+<span id="cb226-11"><a href="shiny-intro.html#cb226-11"></a>        <span class="va">console</span>.<span class="at">log</span>(<span class="va">event</span>.<span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb226-12"><a href="shiny-intro.html#cb226-12"></a>      <span class="op">};</span></span>
+<span id="cb226-13"><a href="shiny-intro.html#cb226-13"></a>    <span class="kw">&lt;/script&gt;</span></span>
+<span id="cb226-14"><a href="shiny-intro.html#cb226-14"></a>    <span class="kw">&lt;title&gt;</span>Websocket Example<span class="kw">&lt;/title&gt;</span></span>
+<span id="cb226-15"><a href="shiny-intro.html#cb226-15"></a>  <span class="kw">&lt;/head&gt;</span></span>
+<span id="cb226-16"><a href="shiny-intro.html#cb226-16"></a>  <span class="kw">&lt;body&gt;</span></span>
+<span id="cb226-17"><a href="shiny-intro.html#cb226-17"></a>    <span class="co">&lt;!-- onclick attributes applies the JavaScript function changeColor define above --&gt;</span></span>
+<span id="cb226-18"><a href="shiny-intro.html#cb226-18"></a>    <span class="kw">&lt;button</span><span class="ot"> onclick=</span><span class="st">"mySocket.send('Hello server!')"</span><span class="kw">&gt;</span>Say hello to the server<span class="kw">&lt;/button&gt;</span></span>
+<span id="cb226-19"><a href="shiny-intro.html#cb226-19"></a>  <span class="kw">&lt;/body&gt;</span></span>
+<span id="cb226-20"><a href="shiny-intro.html#cb226-20"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
 <div class="importantblock">
 <p><code>host</code> and <code>port</code> must be identical on both server and client side!</p>
 </div>
@@ -168,25 +166,25 @@ FIGURE 10.1: Server client communication
 <h4>
 <span class="header-section-number">10.1.1.1</span> Websocket creation<a class="anchor" aria-label="anchor" href="#websocket-creation"><i class="fas fa-link"></i></a>
 </h4>
-<p>On the server, that is R, a websocket is initiated in the <a href="https://github.com/rstudio/shiny/blob/master/R/server.R#L440">startApp</a> function, leveraging the <code>{httpuv}</code> package. In short, a shiny app object is composed of a modified <code>{httpuv}</code> compatible app.
+<p>On the server, that is R, a websocket is initiated in the <a href="https://github.com/rstudio/shiny/blob/master/R/server.R#L440">startApp</a> function, leveraging the <a href="https://github.com/rstudio/httpuv">httpuv</a> package. In short, a shiny app object is composed of a modified <a href="https://github.com/rstudio/httpuv">httpuv</a> compatible app.
 Websocket handlers are <a href="https://github.com/rstudio/shiny/blob/master/R/server.R#L367">defined</a> by <code>handlerManager$addWSHandler(appHandlers$ws, "/", tail = TRUE)</code>.</p>
-<div class="sourceCode" id="cb225"><pre class="downlit">
-<span class="co"># see middleware.R</span>
-<span class="kw">httpuvApp</span> <span class="op">&lt;-</span> <span class="kw">handlerManager</span><span class="op">$</span><span class="fu">createHttpuvApp</span>()
+<div class="sourceCode" id="cb227"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># see middleware.R</span>
+<span class="va">httpuvApp</span> <span class="op">&lt;-</span> <span class="va">handlerManager</span><span class="op">$</span><span class="fu">createHttpuvApp</span><span class="op">(</span><span class="op">)</span>
 
-<span class="kw">onWSOpen</span> <span class="op">=</span> <span class="fu">function</span>(<span class="kw">ws</span>) {
-  <span class="fu"><a href="https://rdrr.io/r/base/function.html">return</a></span>(<span class="kw">wsHandlers</span><span class="op">$</span><span class="fu"><a href="https://rdrr.io/pkg/purrr/man/invoke.html">invoke</a></span>(<span class="kw">ws</span>))
-}
+<span class="va">onWSOpen</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">ws</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="va">wsHandlers</span><span class="op">$</span><span class="fu">invoke</span><span class="op">(</span><span class="va">ws</span><span class="op">)</span><span class="op">)</span>
+<span class="op">}</span>
 
-<span class="kw">addWSHandler</span> <span class="op">=</span> <span class="fu">function</span>(<span class="kw">wsHandler</span>, <span class="kw">key</span>, <span class="kw">tail</span> = <span class="fl">FALSE</span>) {
-  <span class="kw">wsHandlers</span><span class="op">$</span><span class="fu"><a href="https://rdrr.io/pkg/magrittr/man/aliases.html">add</a></span>(<span class="kw">wsHandler</span>, <span class="kw">key</span>, <span class="kw">tail</span>)
-}
+<span class="va">addWSHandler</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">wsHandler</span>, <span class="va">key</span>, <span class="va">tail</span> <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">wsHandlers</span><span class="op">$</span><span class="fu">add</span><span class="op">(</span><span class="va">wsHandler</span>, <span class="va">key</span>, <span class="va">tail</span><span class="op">)</span>
+<span class="op">}</span>
 
 <span class="co"># server.R (line 281-290)</span>
-<span class="kw">ws</span><span class="op">$</span><span class="fu">onMessage</span>(<span class="fu">function</span>(<span class="kw">binary</span>, <span class="kw">msg</span>) {
+<span class="va">ws</span><span class="op">$</span><span class="fu">onMessage</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">binary</span>, <span class="va">msg</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># If unhandled errors occur, make sure they get properly logged</span>
-  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/stacktrace.html">withLogErrors</a></span>(<span class="fu">messageHandler</span>(<span class="kw">binary</span>, <span class="kw">msg</span>))
-})
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/stacktrace.html">withLogErrors</a></span><span class="op">(</span><span class="fu">messageHandler</span><span class="op">(</span><span class="va">binary</span>, <span class="va">msg</span><span class="op">)</span><span class="op">)</span>
+<span class="op">}</span><span class="op">)</span>
 
 <span class="co"># Message is first decoded -&gt; See decodeMessage(msg)</span>
 
@@ -200,16 +198,15 @@ Websocket handlers are <a href="https://github.com/rstudio/shiny/blob/master/R/s
 <span class="co"># started async operations that have yielded control, but not yet</span>
 <span class="co"># completed). The `now` argument can force this</span>
 
-<span class="kw">manageInputs</span> <span class="op">=</span> <span class="fu">function</span>(<span class="kw">data</span>, <span class="kw">now</span> = <span class="fl">FALSE</span>) {
+<span class="va">manageInputs</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">data</span>, <span class="va">now</span> <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># ... normal inputs are located in private</span>
-}
+<span class="op">}</span>
 
-<span class="kw">ws</span><span class="op">$</span><span class="fu">onClose</span>(<span class="fu">function</span>() {
-  <span class="kw">shinysession</span><span class="op">$</span><span class="fu">wsClosed</span>()
-  <span class="kw">appsByToken</span><span class="op">$</span><span class="fu"><a href="https://rdrr.io/r/base/rm.html">remove</a></span>(<span class="kw">shinysession</span><span class="op">$</span><span class="kw">token</span>)
-  <span class="kw">appsNeedingFlush</span><span class="op">$</span><span class="fu"><a href="https://rdrr.io/r/base/rm.html">remove</a></span>(<span class="kw">shinysession</span><span class="op">$</span><span class="kw">token</span>)
-})
-</pre></div>
+<span class="va">ws</span><span class="op">$</span><span class="fu">onClose</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">shinysession</span><span class="op">$</span><span class="fu">wsClosed</span><span class="op">(</span><span class="op">)</span>
+  <span class="va">appsByToken</span><span class="op">$</span><span class="fu">remove</span><span class="op">(</span><span class="va">shinysession</span><span class="op">$</span><span class="va">token</span><span class="op">)</span>
+  <span class="va">appsNeedingFlush</span><span class="op">$</span><span class="fu">remove</span><span class="op">(</span><span class="va">shinysession</span><span class="op">$</span><span class="va">token</span><span class="op">)</span>
+<span class="op">}</span><span class="op">)</span></code></pre></div>
 <p>Note that the R option <code><a href="https://rdrr.io/r/base/options.html">options(shiny.trace = TRUE)</a></code> allows the websocket messages to be displayed directly in the R console.</p>
 </div>
 <div id="shiny-session" class="section level4">
@@ -225,45 +222,44 @@ The initialization takes one parameter, namely the websocket. As shown in the la
 <code>sendInputMessage</code> is used to update inputs from the server. The message is stored in a message queue and ultimately sent through the websocket <code>private$websocket$send(json)</code>.</li>
 </ul>
 <p>The below code is extracted from the <code>shiny.R</code> <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R">file</a>.</p>
-<div class="sourceCode" id="cb226"><pre class="downlit">
-<span class="kw">sendCustomMessage</span> <span class="op">=</span> <span class="fu">function</span>(<span class="kw">type</span>, <span class="kw">message</span>) {
-  <span class="kw">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span>()
-  <span class="kw">data</span>[[<span class="kw">type</span>]] <span class="op">&lt;-</span> <span class="kw">message</span>
-  <span class="kw">private</span><span class="op">$</span><span class="fu">sendMessage</span>(custom = <span class="kw">data</span>)
-}
+<div class="sourceCode" id="cb228"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">sendCustomMessage</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">type</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span>
+  <span class="va">data</span><span class="op">[[</span><span class="va">type</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">message</span>
+  <span class="va">private</span><span class="op">$</span><span class="fu">sendMessage</span><span class="op">(</span>custom <span class="op">=</span> <span class="va">data</span><span class="op">)</span>
+<span class="op">}</span>
 
-<span class="kw">sendInputMessage</span> <span class="op">=</span> <span class="fu">function</span>(<span class="kw">inputId</span>, <span class="kw">message</span>) {
-  <span class="kw">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span>(id = <span class="kw">inputId</span>, message = <span class="kw">message</span>)
+<span class="va">sendInputMessage</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">inputId</span>, message <span class="op">=</span> <span class="va">message</span><span class="op">)</span>
   
   <span class="co"># Add to input message queue</span>
-  <span class="kw">private</span><span class="op">$</span><span class="kw">inputMessageQueue</span>[[<span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span>(<span class="kw">private</span><span class="op">$</span><span class="kw">inputMessageQueue</span>) <span class="op">+</span> <span class="fl">1</span>]] <span class="op">&lt;-</span> <span class="kw">data</span>
+  <span class="va">private</span><span class="op">$</span><span class="va">inputMessageQueue</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">private</span><span class="op">$</span><span class="va">inputMessageQueue</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">data</span>
   <span class="co"># Needed so that Shiny knows to actually flush the input message queue</span>
-  <span class="kw">self</span><span class="op">$</span><span class="fu">requestFlush</span>()
-}
+  <span class="va">self</span><span class="op">$</span><span class="fu">requestFlush</span><span class="op">(</span><span class="op">)</span>
+<span class="op">}</span>
 
 
-<span class="kw">sendMessage</span> <span class="op">=</span> <span class="fu">function</span>(<span class="kw">...</span>) {
+<span class="va">sendMessage</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># This function is a wrapper for $write</span>
-  <span class="kw">msg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span>(<span class="kw">...</span>)
-  <span class="co">if</span> (<span class="fu">anyUnnamed</span>(<span class="kw">msg</span>)) {
-    <span class="fu"><a href="https://rdrr.io/r/base/stop.html">stop</a></span>(<span class="st">"All arguments to sendMessage must be named."</span>)
-  }
-  <span class="kw">private</span><span class="op">$</span><span class="fu"><a href="https://rdrr.io/r/base/write.html">write</a></span>(<span class="fu">toJSON</span>(<span class="kw">msg</span>))
-}
+  <span class="va">msg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span>
+  <span class="kw">if</span> <span class="op">(</span><span class="fu">anyUnnamed</span><span class="op">(</span><span class="va">msg</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+    <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span><span class="st">"All arguments to sendMessage must be named."</span><span class="op">)</span>
+  <span class="op">}</span>
+  <span class="va">private</span><span class="op">$</span><span class="fu">write</span><span class="op">(</span><span class="fu">toJSON</span><span class="op">(</span><span class="va">msg</span><span class="op">)</span><span class="op">)</span>
+<span class="op">}</span>
 
 
-<span class="kw">write</span> <span class="op">=</span> <span class="fu">function</span>(<span class="kw">json</span>) {
-  <span class="co">if</span> (<span class="kw">self</span><span class="op">$</span><span class="kw">closed</span>){
-    <span class="fu"><a href="https://rdrr.io/r/base/function.html">return</a></span>()
-  }
-  <span class="kw">traceOption</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html">getOption</a></span>(<span class="st">'shiny.trace'</span>, <span class="fl">FALSE</span>)
-  <span class="co">if</span> (<span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span>(<span class="kw">traceOption</span>) <span class="op">||</span> <span class="kw">traceOption</span> <span class="op">==</span> <span class="st">"send"</span>)
-    <span class="fu"><a href="https://rdrr.io/r/base/message.html">message</a></span>(<span class="st">'SEND '</span>,
-            <span class="fu"><a href="https://rdrr.io/r/base/grep.html">gsub</a></span>(<span class="st">'(?m)base64,[a-zA-Z0-9+/=]+'</span>,<span class="st">'[base64 data]'</span>,<span class="kw">json</span>,perl=<span class="fl">TRUE</span>))
-  <span class="kw">private</span><span class="op">$</span><span class="kw">websocket</span><span class="op">$</span><span class="fu">send</span>(<span class="kw">json</span>)
-}
-<span class="co"># ...</span>
-</pre></div>
+<span class="va">write</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">json</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw">if</span> <span class="op">(</span><span class="va">self</span><span class="op">$</span><span class="va">closed</span><span class="op">)</span><span class="op">{</span>
+    <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="op">)</span>
+  <span class="op">}</span>
+  <span class="va">traceOption</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html">getOption</a></span><span class="op">(</span><span class="st">'shiny.trace'</span>, <span class="cn">FALSE</span><span class="op">)</span>
+  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="va">traceOption</span><span class="op">)</span> <span class="op">||</span> <span class="va">traceOption</span> <span class="op">==</span> <span class="st">"send"</span><span class="op">)</span>
+    <span class="fu"><a href="https://rdrr.io/r/base/message.html">message</a></span><span class="op">(</span><span class="st">'SEND '</span>,
+            <span class="fu"><a href="https://rdrr.io/r/base/grep.html">gsub</a></span><span class="op">(</span><span class="st">'(?m)base64,[a-zA-Z0-9+/=]+'</span>,<span class="st">'[base64 data]'</span>,<span class="va">json</span>,perl<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">private</span><span class="op">$</span><span class="va">websocket</span><span class="op">$</span><span class="fu">send</span><span class="op">(</span><span class="va">json</span><span class="op">)</span>
+<span class="op">}</span>
+<span class="co"># ...</span></code></pre></div>
 <p>No worry if it is not clear at the moment. We will discuss those elements in the following sections.</p>
 </div>
 </div>
@@ -272,50 +268,50 @@ The initialization takes one parameter, namely the websocket. As shown in the la
 <span class="header-section-number">10.1.2</span> Shiny: Websocket client side<a class="anchor" aria-label="anchor" href="#shiny-websocket-client-side"><i class="fas fa-link"></i></a>
 </h3>
 <p>On the JS side, the socket creation occurs in the <code>shinyapps.js</code> <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L58">file</a>:</p>
-<div class="sourceCode" id="cb227"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb227-1"><a href="shiny-intro.html#cb227-1"></a><span class="kw">var</span> ws <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(protocol <span class="op">+</span> <span class="st">'//'</span> <span class="op">+</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">host</span> <span class="op">+</span> defaultPath)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb229"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb229-1"><a href="shiny-intro.html#cb229-1"></a><span class="kw">var</span> ws <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(protocol <span class="op">+</span> <span class="st">'//'</span> <span class="op">+</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">host</span> <span class="op">+</span> defaultPath)<span class="op">;</span></span></code></pre></div>
 <p>through the <code>WebSocket</code> object. <code>protocol</code> is the chosen protocol (either <code>ws</code> or <code>wss</code> if using <code>https</code>). <code>window.location.host</code> contains the host name and its <a href="https://developer.mozilla.org/fr/docs/Web/API/window/location">port</a>.
 Once the connection is opened, events are handled with the <code>onopen</code> event registry:</p>
-<div class="sourceCode" id="cb228"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb228-1"><a href="shiny-intro.html#cb228-1"></a><span class="va">socket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb228-2"><a href="shiny-intro.html#cb228-2"></a>  hasOpened <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
-<span id="cb228-3"><a href="shiny-intro.html#cb228-3"></a></span>
-<span id="cb228-4"><a href="shiny-intro.html#cb228-4"></a>  <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
-<span id="cb228-5"><a href="shiny-intro.html#cb228-5"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:connected'</span><span class="op">,</span></span>
-<span id="cb228-6"><a href="shiny-intro.html#cb228-6"></a>    <span class="dt">socket</span><span class="op">:</span> socket</span>
-<span id="cb228-7"><a href="shiny-intro.html#cb228-7"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb228-8"><a href="shiny-intro.html#cb228-8"></a></span>
-<span id="cb228-9"><a href="shiny-intro.html#cb228-9"></a>  <span class="va">self</span>.<span class="at">onConnected</span>()<span class="op">;</span> <span class="co">// remove overlay</span></span>
-<span id="cb228-10"><a href="shiny-intro.html#cb228-10"></a></span>
-<span id="cb228-11"><a href="shiny-intro.html#cb228-11"></a>  <span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
-<span id="cb228-12"><a href="shiny-intro.html#cb228-12"></a>    <span class="dt">method</span><span class="op">:</span> <span class="st">'init'</span><span class="op">,</span></span>
-<span id="cb228-13"><a href="shiny-intro.html#cb228-13"></a>    <span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></span>
-<span id="cb228-14"><a href="shiny-intro.html#cb228-14"></a>  <span class="op">}</span>))<span class="op">;</span></span>
-<span id="cb228-15"><a href="shiny-intro.html#cb228-15"></a></span>
-<span id="cb228-16"><a href="shiny-intro.html#cb228-16"></a>  <span class="cf">while</span> (<span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">length</span>) <span class="op">{</span></span>
-<span id="cb228-17"><a href="shiny-intro.html#cb228-17"></a>    <span class="kw">var</span> msg <span class="op">=</span> <span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">shift</span>()<span class="op">;</span></span>
-<span id="cb228-18"><a href="shiny-intro.html#cb228-18"></a>    <span class="va">socket</span>.<span class="at">send</span>(msg)<span class="op">;</span></span>
-<span id="cb228-19"><a href="shiny-intro.html#cb228-19"></a>  <span class="op">}</span></span>
-<span id="cb228-20"><a href="shiny-intro.html#cb228-20"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb230"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb230-1"><a href="shiny-intro.html#cb230-1"></a><span class="va">socket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb230-2"><a href="shiny-intro.html#cb230-2"></a>  hasOpened <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb230-3"><a href="shiny-intro.html#cb230-3"></a></span>
+<span id="cb230-4"><a href="shiny-intro.html#cb230-4"></a>  <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
+<span id="cb230-5"><a href="shiny-intro.html#cb230-5"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:connected'</span><span class="op">,</span></span>
+<span id="cb230-6"><a href="shiny-intro.html#cb230-6"></a>    <span class="dt">socket</span><span class="op">:</span> socket</span>
+<span id="cb230-7"><a href="shiny-intro.html#cb230-7"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb230-8"><a href="shiny-intro.html#cb230-8"></a></span>
+<span id="cb230-9"><a href="shiny-intro.html#cb230-9"></a>  <span class="va">self</span>.<span class="at">onConnected</span>()<span class="op">;</span> <span class="co">// remove overlay</span></span>
+<span id="cb230-10"><a href="shiny-intro.html#cb230-10"></a></span>
+<span id="cb230-11"><a href="shiny-intro.html#cb230-11"></a>  <span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
+<span id="cb230-12"><a href="shiny-intro.html#cb230-12"></a>    <span class="dt">method</span><span class="op">:</span> <span class="st">'init'</span><span class="op">,</span></span>
+<span id="cb230-13"><a href="shiny-intro.html#cb230-13"></a>    <span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></span>
+<span id="cb230-14"><a href="shiny-intro.html#cb230-14"></a>  <span class="op">}</span>))<span class="op">;</span></span>
+<span id="cb230-15"><a href="shiny-intro.html#cb230-15"></a></span>
+<span id="cb230-16"><a href="shiny-intro.html#cb230-16"></a>  <span class="cf">while</span> (<span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">length</span>) <span class="op">{</span></span>
+<span id="cb230-17"><a href="shiny-intro.html#cb230-17"></a>    <span class="kw">var</span> msg <span class="op">=</span> <span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">shift</span>()<span class="op">;</span></span>
+<span id="cb230-18"><a href="shiny-intro.html#cb230-18"></a>    <span class="va">socket</span>.<span class="at">send</span>(msg)<span class="op">;</span></span>
+<span id="cb230-19"><a href="shiny-intro.html#cb230-19"></a>  <span class="op">}</span></span>
+<span id="cb230-20"><a href="shiny-intro.html#cb230-20"></a><span class="op">}</span></span></code></pre></div>
 <p>The <code>shiny:connected</code> event is triggered, any disconnected overlay (the famous grayed out screen) is then removed from the DOM. Initial input values are sent to the server via the <code>send</code> method. The <code>onmessage</code> registry aims at handling messages received from the server.</p>
-<div class="sourceCode" id="cb229"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb229-1"><a href="shiny-intro.html#cb229-1"></a><span class="va">socket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
-<span id="cb229-2"><a href="shiny-intro.html#cb229-2"></a>  <span class="va">self</span>.<span class="at">dispatchMessage</span>(<span class="va">e</span>.<span class="at">data</span>)<span class="op">;</span></span>
-<span id="cb229-3"><a href="shiny-intro.html#cb229-3"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb231"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb231-1"><a href="shiny-intro.html#cb231-1"></a><span class="va">socket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
+<span id="cb231-2"><a href="shiny-intro.html#cb231-2"></a>  <span class="va">self</span>.<span class="at">dispatchMessage</span>(<span class="va">e</span>.<span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb231-3"><a href="shiny-intro.html#cb231-3"></a><span class="op">};</span></span></code></pre></div>
 <p>It subsequently invokes the <code>dispatchMessage</code> method that sends message to all handlers (through <code>_sendMessagesToHandlers</code>), triggering the <code>shiny:message</code> event. Shiny has internal and custom provided handlers (understand user-defined) stored in separate arrays. Each time, a message type matches an handler, it is treated. For instance, there is a dedicated internal handler for input messages, that bridges the gap between a given input and the corresponding input binding. This handler eventually triggers the <code>inputBinding.receiveMessage</code> method so that the input value is updated on the client.</p>
 <p>Finally the <code>onclose</code> method is called when the websocket connection is closed.</p>
-<div class="sourceCode" id="cb230"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb230-1"><a href="shiny-intro.html#cb230-1"></a><span class="va">socket</span>.<span class="at">onclose</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb230-2"><a href="shiny-intro.html#cb230-2"></a>      <span class="co">// These things are needed only if we've successfully opened the</span></span>
-<span id="cb230-3"><a href="shiny-intro.html#cb230-3"></a>      <span class="co">// websocket.</span></span>
-<span id="cb230-4"><a href="shiny-intro.html#cb230-4"></a>  <span class="cf">if</span> (hasOpened) <span class="op">{</span></span>
-<span id="cb230-5"><a href="shiny-intro.html#cb230-5"></a>    <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
-<span id="cb230-6"><a href="shiny-intro.html#cb230-6"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:disconnected'</span><span class="op">,</span></span>
-<span id="cb230-7"><a href="shiny-intro.html#cb230-7"></a>      <span class="dt">socket</span><span class="op">:</span> socket</span>
-<span id="cb230-8"><a href="shiny-intro.html#cb230-8"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb230-9"><a href="shiny-intro.html#cb230-9"></a></span>
-<span id="cb230-10"><a href="shiny-intro.html#cb230-10"></a>    <span class="va">self</span>.<span class="at">$notifyDisconnected</span>()<span class="op">;</span></span>
-<span id="cb230-11"><a href="shiny-intro.html#cb230-11"></a>  <span class="op">}</span></span>
-<span id="cb230-12"><a href="shiny-intro.html#cb230-12"></a></span>
-<span id="cb230-13"><a href="shiny-intro.html#cb230-13"></a>  <span class="va">self</span>.<span class="at">onDisconnected</span>()<span class="op">;</span> <span class="co">// Must be run before self.$removeSocket()</span></span>
-<span id="cb230-14"><a href="shiny-intro.html#cb230-14"></a>  <span class="va">self</span>.<span class="at">$removeSocket</span>()<span class="op">;</span></span>
-<span id="cb230-15"><a href="shiny-intro.html#cb230-15"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb232"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb232-1"><a href="shiny-intro.html#cb232-1"></a><span class="va">socket</span>.<span class="at">onclose</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb232-2"><a href="shiny-intro.html#cb232-2"></a>      <span class="co">// These things are needed only if we've successfully opened the</span></span>
+<span id="cb232-3"><a href="shiny-intro.html#cb232-3"></a>      <span class="co">// websocket.</span></span>
+<span id="cb232-4"><a href="shiny-intro.html#cb232-4"></a>  <span class="cf">if</span> (hasOpened) <span class="op">{</span></span>
+<span id="cb232-5"><a href="shiny-intro.html#cb232-5"></a>    <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
+<span id="cb232-6"><a href="shiny-intro.html#cb232-6"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:disconnected'</span><span class="op">,</span></span>
+<span id="cb232-7"><a href="shiny-intro.html#cb232-7"></a>      <span class="dt">socket</span><span class="op">:</span> socket</span>
+<span id="cb232-8"><a href="shiny-intro.html#cb232-8"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb232-9"><a href="shiny-intro.html#cb232-9"></a></span>
+<span id="cb232-10"><a href="shiny-intro.html#cb232-10"></a>    <span class="va">self</span>.<span class="at">$notifyDisconnected</span>()<span class="op">;</span></span>
+<span id="cb232-11"><a href="shiny-intro.html#cb232-11"></a>  <span class="op">}</span></span>
+<span id="cb232-12"><a href="shiny-intro.html#cb232-12"></a></span>
+<span id="cb232-13"><a href="shiny-intro.html#cb232-13"></a>  <span class="va">self</span>.<span class="at">onDisconnected</span>()<span class="op">;</span> <span class="co">// Must be run before self.$removeSocket()</span></span>
+<span id="cb232-14"><a href="shiny-intro.html#cb232-14"></a>  <span class="va">self</span>.<span class="at">$removeSocket</span>()<span class="op">;</span></span>
+<span id="cb232-15"><a href="shiny-intro.html#cb232-15"></a><span class="op">}</span></span></code></pre></div>
 <p>If the connection was open, the <code>shiny:disconnected</code> event is triggered. Then, the disconnect overlay is added to the DOM (grayed out screen) and the socket is removed.</p>
 </div>
 <div id="example" class="section level3">
@@ -323,23 +319,22 @@ Once the connection is opened, events are handled with the <code>onopen</code> e
 <span class="header-section-number">10.1.3</span> Example<a class="anchor" aria-label="anchor" href="#example"><i class="fas fa-link"></i></a>
 </h3>
 <p>In the following, we will show how to inspect the websocket in a web browser. Let’s run the following app (see <a href="shiny-intro.html#fig:shiny-websocket">10.2</a>, left panel)</p>
-<div class="sourceCode" id="cb231"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/library.html">library</a></span>(<span class="kw"><a href="http://shiny.rstudio.com">shiny</a></span>)
-<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span>(
-  ui = <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span>(
-    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/selectInput.html">selectInput</a></span>(<span class="st">"variable"</span>, <span class="st">"Variable:"</span>,
-                <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span>(<span class="st">"Cylinders"</span> = <span class="st">"cyl"</span>,
-                  <span class="st">"Transmission"</span> = <span class="st">"am"</span>,
-                  <span class="st">"Gears"</span> = <span class="st">"gear"</span>)),
-    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/tableOutput.html">tableOutput</a></span>(<span class="st">"data"</span>)
-  ),
-  server = <span class="fu">function</span>(<span class="kw">input</span>, <span class="kw">output</span>) {
-    <span class="kw">output</span><span class="op">$</span><span class="kw">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderTable.html">renderTable</a></span>({
-      <span class="kw">mtcars</span>[, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span>(<span class="st">"mpg"</span>, <span class="kw">input</span><span class="op">$</span><span class="kw">variable</span>), drop = <span class="fl">FALSE</span>]
-    }, rownames = <span class="fl">TRUE</span>)
-  }
-)
-</pre></div>
+<div class="sourceCode" id="cb233"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://shiny.rstudio.com">shiny</a></span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span>
+  ui <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/selectInput.html">selectInput</a></span><span class="op">(</span><span class="st">"variable"</span>, <span class="st">"Variable:"</span>,
+                <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Cylinders"</span> <span class="op">=</span> <span class="st">"cyl"</span>,
+                  <span class="st">"Transmission"</span> <span class="op">=</span> <span class="st">"am"</span>,
+                  <span class="st">"Gears"</span> <span class="op">=</span> <span class="st">"gear"</span><span class="op">)</span><span class="op">)</span>,
+    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/tableOutput.html">tableOutput</a></span><span class="op">(</span><span class="st">"data"</span><span class="op">)</span>
+  <span class="op">)</span>,
+  server <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span><span class="op">)</span> <span class="op">{</span>
+    <span class="va">output</span><span class="op">$</span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderTable.html">renderTable</a></span><span class="op">(</span><span class="op">{</span>
+      <span class="va">mtcars</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="va">input</span><span class="op">$</span><span class="va">variable</span><span class="op">)</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>
+    <span class="op">}</span>, rownames <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+  <span class="op">}</span>
+<span class="op">)</span></code></pre></div>
 <p>After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. As stated above, the first message sent contains initial input values. Then Shiny recalculates the table, notify when the recalculation is done and becomes idle. The second message received from R is after updating the select input, which triggers the same event cycle.</p>
 <p>Although complex, it is extremely useful to check whether the input / output communication are working properly. If not, we would see the error field identifying the issue.</p>
 <p><code>Shiny.shinyapp.$socket.readyState</code> returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, an error would be raised.</p>
@@ -350,39 +345,38 @@ FIGURE 10.2: Shiny websocket
 </p>
 </div>
 <p>We see below that we can even bypass the UI element and update the input value directly via the websocket using <code>Shiny.shinyapp.$sendMsg</code> with the <code>update</code> method.</p>
-<div class="sourceCode" id="cb232"><pre class="downlit">
-<span class="kw">updateObsVal</span> <span class="op">&lt;-</span> <span class="fu">function</span>(<span class="kw">value</span>) {
-  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span>(
+<div class="sourceCode" id="cb234"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">updateObsVal</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">value</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span>
     <span class="st">"Shiny.shinyapp.$sendMsg(JSON.stringify({
       method: 'update',
       data: {obs: %s}
     }));"</span>,
-    <span class="kw">value</span>
-  )
-}
+    <span class="va">value</span>
+  <span class="op">)</span>
+<span class="op">}</span>
 
 <span class="co"># below we shunt the slider input by sending message</span>
 <span class="co"># directly through the websocket</span>
 
-<span class="kw">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span>(
-  <span class="kw">tags</span><span class="op">$</span><span class="fu">button</span>(
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  <span class="va">tags</span><span class="op">$</span><span class="fu">button</span><span class="op">(</span>
     <span class="st">"Update obs value"</span>,
-    onclick = <span class="fu">updateObsVal</span>(<span class="fl">4</span>)
-  ),
-  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput</a></span>(<span class="st">"obs"</span>, <span class="st">"Number of observations:"</span>,
-              min = <span class="fl">0</span>, max = <span class="fl">1000</span>, value = <span class="fl">500</span>
-  ),
-  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/plotOutput.html">plotOutput</a></span>(<span class="st">"distPlot"</span>)
-)
+    onclick <span class="op">=</span> <span class="fu">updateObsVal</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>
+  <span class="op">)</span>,
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput</a></span><span class="op">(</span><span class="st">"obs"</span>, <span class="st">"Number of observations:"</span>,
+              min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">1000</span>, value <span class="op">=</span> <span class="fl">500</span>
+  <span class="op">)</span>,
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/plotOutput.html">plotOutput</a></span><span class="op">(</span><span class="st">"distPlot"</span><span class="op">)</span>
+<span class="op">)</span>
 
-<span class="kw">server</span> <span class="op">&lt;-</span> <span class="fu">function</span>(<span class="kw">input</span>, <span class="kw">output</span>, <span class="kw">session</span>) {
-  <span class="kw">output</span><span class="op">$</span><span class="kw">distPlot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPlot.html">renderPlot</a></span>({
-    <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span>(<span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span>(<span class="kw">input</span><span class="op">$</span><span class="kw">obs</span>))
-  })
-}
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">output</span><span class="op">$</span><span class="va">distPlot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPlot.html">renderPlot</a></span><span class="op">(</span><span class="op">{</span>
+    <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">obs</span><span class="op">)</span><span class="op">)</span>
+  <span class="op">}</span><span class="op">)</span>
+<span class="op">}</span>
 
-<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span>(<span class="kw">ui</span>, <span class="kw">server</span>)
-</pre></div>
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 </div>
 </div>
 <div id="shiny-js-object" class="section level2">
@@ -390,18 +384,17 @@ FIGURE 10.2: Shiny websocket
 <span class="header-section-number">10.2</span> The Shiny JavaScript object<a class="anchor" aria-label="anchor" href="#shiny-js-object"><i class="fas fa-link"></i></a>
 </h2>
 <p>The <code>Shiny</code> object is exported at the top of the <code>shiny.js</code> file.<a class="footnote-ref" tabindex="0" data-toggle="popover" data-content='&lt;p&gt;Refer to Chapter &lt;a href="survival-kit-javascript.html#survival-kit-javascript"&gt;9&lt;/a&gt; if you don’t remember how to export an object and make it available to all JS files.&lt;/p&gt;'><sup>4</sup></a> In other words, this means that we may use this object and any of its properties within the HTML inspector console tab, in any JavaScript file or shiny app as below.</p>
-<div class="sourceCode" id="cb233"><pre class="downlit">
-<span class="kw">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span>(
-  <span class="kw">tags</span><span class="op">$</span><span class="fu">script</span>(
+<div class="sourceCode" id="cb235"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
     <span class="st">"$(function() {
       console.log(Shiny);
     });
     "</span>
-  )
-)
-<span class="kw">server</span> <span class="op">&lt;-</span> <span class="fu">function</span>(<span class="kw">input</span>, <span class="kw">output</span>, <span class="kw">session</span>) {}
-<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span>(<span class="kw">ui</span>, <span class="kw">server</span>)
-</pre></div>
+  <span class="op">)</span>
+<span class="op">)</span>
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p>This object contains many properties and methods as shown in Figure <a href="shiny-intro.html#fig:shiny-object">10.3</a>. Some of particular interest, such as like <code>Shiny.setInputValue</code>, <code>Shiny.addCustomMessageHandler</code>, <code>Shiny.shinyapps</code>, <code>Shiny.bindAll</code>, … will be detailed later.</p>
 <div class="figure">
 <span id="fig:shiny-object"></span>
@@ -445,7 +438,7 @@ FIGURE 10.3: The Shiny JavaScript object
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2020-11-01.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2020-11-02.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
