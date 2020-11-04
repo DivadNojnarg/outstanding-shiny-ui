@@ -1,6 +1,12 @@
 # Beautify with bootstraplib {#beautify-with-bootstraplib}
 `{bootstraplib}` [@R-bootstraplib] is a package developed by RStudio. It is built on top `{sass}` like `{fresh}` [@R-fresh]. 
 
+## Disclaimer 
+
+::: {.importantblock data-latex=""}
+As of today, this feature still require development version (github) of shiny and bootstraplib!
+:::
+
 ## Plug and play customization
 Like `{fresh}`, `{bootstraplib}` offers a high level set of functions allowing to quickly customize shiny apps. For many users, this step will be enough. `bs_theme` allows to seamlessly modify the main CSS properties like:
 
@@ -69,3 +75,39 @@ knitr::include_graphics("images/beautify/bootstraplib-theme-preview.png")
 Passing `with_themer = TRUE` will show a live theming tools to modify the current theme.
 
 ## Dynamic theming
+Now, let's say you design an app and want to give the choice between the vanilla shiny design and your new cyberpunk theme, created in the previous section. We leverage the new `session$setCurrentTheme` tool that allows to pass bootstraplib generated themes to JavaScript through the session object. Our Shiny app contains a toggle that is either TRUE or FALSE. On the JavaScript side, we first create a custom shiny input with `Shiny.setInputValue` that get the current mode value from the toggle. If TRUE, then the custom theme is applied by `session$setCurrentTheme` in an `observeEvent`.
+
+```{r, eval=FALSE}
+library(thematic)
+default <- bs_theme()
+ui <- fluidPage(
+  theme = default, 
+  div(
+    class = "custom-control custom-switch", 
+    tags$input(
+      id = "custom_mode", type = "checkbox", class = "custom-control-input",
+      onclick = HTML("Shiny.setInputValue('dark_mode', document.getElementById('custom_mode').value);")
+    ),
+    tags$label(
+      "Custom mode?", `for` = "custom_mode", class = "custom-control-label"
+    )
+  ),
+  sliderInput("obs", "Number of observations:",
+    min = 0, max = 1000, value = 500
+  ),
+  plotOutput("distPlot")
+)
+server <- function(input, output, session) {
+  observeEvent(input$custom_mode, {
+    session$setCurrentTheme(
+      if (isTRUE(input$custom_mode)) neon_theme else default
+    )
+  })
+  
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
+thematic_shiny()
+shinyApp(ui, server)
+```
