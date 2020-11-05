@@ -300,6 +300,59 @@ shinyApp(
 
 So many `observeEvent` for a simple action! Imagine if we had 10 similar tasks... Isn't there a way to do all of this at once, thereby reducing the server code? In general setting priorities in `observeEvent` is a rather bad smell of poorly designed shiny app.
 
+Under the hood, `insertUI` sends a custom [message](https://github.com/rstudio/shiny/blob/master/R/shiny.R#L1696) through `session$sendInsertUI`, viathe websocket:
+
+```{r, eval=FALSE}
+sendInsertUI = function(selector, multiple, where, content) {
+  private$sendMessage(
+    `shiny-insert-ui` = list(
+      selector = selector,
+      multiple = multiple,
+      where = where,
+      content = content
+    )
+  )
+}
+```
+
+Importantly, the content has been treated with `shiny:::processDeps` that:
+
+  - 
+  - Find and resolve any HTML dependency
+  - For each dependency, make sure the corresponding files can be accessed on the server with `createWebDependency` and `addResourcePath`. 
+  - Returns a list of the HTML element and dependencies. The HTML will be accessed by `message.content.html` and dependencies by `message.content.deps`.
+  
+
+On the UI side, Shiny has a predefined message [handler](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L670):
+
+```javascript
+addMessageHandler('shiny-insert-ui', function(message) {
+  var targets = $(message.selector);
+  if (targets.length === 0) {
+    // render the HTML and deps to a null target, so
+    // the side-effect of rendering the deps, singletons,
+    // and <head> still occur
+    console.warn('The selector you chose ("' + message.selector +
+                 '") could not be found in the DOM.');
+    exports.renderHtml(message.content.html, $([]), message.content.deps);
+  } else {
+    targets.each(function (i, target) {
+      exports.renderContent(target, message.content, message.where);
+      return message.multiple;
+    });
+  }
+})
+```
+
+It checks whether the provided selector corresponds to multiple DOM elements. If at least 1 item is found, it calls `renderContent(html, el, dependencies)` that triggers `renderHtml(html, el, dependencies)`:
+
+  - Processes the provided HTML (treat the head, body and singletons).
+  - Renders all given dependencies into the page's [head](https://github.com/rstudio/shiny/blob/master/srcjs/output_binding_html.js#L241).
+  - Insert the HTML into the page at the position provided in the `insertUI` __where__ parameter. Internally this calls the `insertAdjacentHTML` method. 
+  - Initialize any input and bind them to the scope and send the value to the server so that output/observers are invalidated. Outputs are also bound. If this step is missed the newly inserted input won't react, so is the related output and any observer.
+    
+
+
 ## Toward custom UI management functions
 
 ### HTML with extra dependencies
