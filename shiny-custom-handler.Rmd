@@ -454,9 +454,75 @@ $(function() {
 });
 ```
 
-We recover the sent message on the JS side with `Shiny.addCustomMessageHandler`, then parse the string to HTML with `$.parseHTML` and insert it before the footer (that is the next UI element of the dropdown body). We also update dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. These two extra JS steps save us to create extra `observeEvent` on the server, as shown before:
+We recover the sent message on the JS side with `Shiny.addCustomMessageHandler`, then parse the string to HTML with `$.parseHTML` and insert it before the footer (that is the next UI element of the dropdown body). We also update dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. These two extra JS steps save us to create extra `observeEvent` on the server, as shown before. The `dropdownMenu` is modified so that dependencies are attached:
 
 ```{r, eval=FALSE}
+dropdownDeps <- function() {
+  htmltools::htmlDependency(
+    name = "bs4-dropdown",
+    version = "1.0.0",
+    src = c(file = "chapter6/add-dropdown-item"),
+    script = "add-dropdown-item.js",
+    package = "OSUICode"
+  )
+}
+
+dropdownMenu <- function(..., show = FALSE, labelText = NULL, src = NULL,
+                         status = c("primary", "warning", "danger", "info", "success"),
+                         menuIcon = "bell", align = "right") {
+
+  status <- match.arg(status)
+  items <- list(...)
+  n_items <- length(items)
+  # remove the divider from the last item
+  #items[[n_items]][[2]] <- NULL
+
+  labelText <- n_items
+
+  tagList(
+    dropdownDeps(),
+    shiny::tags$li(
+      class = if (isTRUE(show)) "nav-item dropdown show" else "nav-item dropdown",
+      shiny::tags$a(
+        class = "nav-link",
+        `data-toggle` = "dropdown",
+        href = "#",
+        shiny::icon(menuIcon),
+        shiny::tags$span(
+          class = paste0("badge badge-", status, " navbar-badge"),
+          labelText
+        )
+      ),
+      shiny::tags$div(
+        class = if (isTRUE(show)) {
+          sprintf("dropdown-menu dropdown-menu-lg dropdown-menu-%s show", align)
+        } else {
+          sprintf("dropdown-menu dropdown-menu-lg dropdown-menu-%s", align)
+        },
+        shiny::tags$span(
+          class = "dropdown-item dropdown-header",
+          paste0(n_items, " Items")
+        ),
+        shiny::tags$div(class = "dropdown-divider"),
+        ...,
+        shiny::tags$a(
+          class = "dropdown-item dropdown-footer",
+          href = src,
+          target = "_blank",
+          "See more"
+        )
+      )
+    )
+  )
+}
+```
+
+You may run the example yourself. Note we load `{OSUICode}` to overwrite the `{bs4Dash}` function:
+
+```{r, eval=FALSE}
+# shinyAppDir(system.file("chapter6/add-dropdown-item", package = "OSUICode"))
+library(OSUICode)
+
 shinyApp(
   ui = bs4DashPage(
     navbar = bs4DashNavbar(
@@ -470,28 +536,10 @@ shinyApp(
     controlbar = bs4DashControlbar(),
     footer = bs4DashFooter(),
     title = "test",
-    body = bs4DashBody(
-      tags$head(
-        tags$script(
-          "$(function() {
-            Shiny.addCustomMessageHandler('add-dropdown-item', function(message) {
-              // convert string to HTML
-              var itemTag = $.parseHTML(message)[0];
-              $(itemTag).insertBefore($('.dropdown-item.dropdown-footer'));
-              // since we do not re-render the dropdown, we must update its item counter
-              var $items = $('button.dropdown-item').length;
-              $('.dropdown-item.dropdown-header').html($items + ' Items');
-              $('.nav-item.dropdown').find('.navbar-badge').html($items);
-            });
-          });
-          "
-        )
-      ),
-      actionButton("add", "Add dropdown item")
-    )
+    body = bs4DashBody(actionButton("add", "Add dropdown item"))
   ),
   server = function(input, output, session) {
-    
+
     observeEvent(input$add, {
       insertDropdownItem(
         dropdownMenuItem(
