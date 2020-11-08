@@ -1,9 +1,324 @@
-# Custom handlers: from R to JavaScript {#shiny-custom-handler}
+# Dynamically manage content with handlers {#shiny-custom-handler}
+
+The three previous chapters are largely dedicated to Shiny input elements. Yet, not everything is input in Shiny. This chapter shows how one may leverage the internal Shiny JavaScript tools to build highly interactive and optimized interfaces. 
 
 ## Introduction
-Shiny provides tools to ease the communication between R and JavaScript, as illustrated in section \@ref(shiny-websocket). How does R send messages to JavaScript?
 
-We already discussed the usage of `sendInputMessage()` in the input binding section \@ref(shiny-input-system). The other important method is `sendCustomMessage(type, message)`. It works by pair with the JS method `Shiny.AddCustomMessageHandler`, linked with the type parameter.
+As shown in the Mastering Shiny [book](https://mastering-shiny.org/action-dynamic.html), there exists tools to update UI components from the server. You can use all `update<INPUT_NAME>` functions like `updateTextInput` but also what I call secondary input related function like `updateTabsetPanel`. Why secondary input? Since they are not inputs, strictly speaking. For instance when you fill an inscription form on a website, it contains a lot of inputs like select, text, numeric, date, so that your data is ultimately stored in a database for later use. A `tabsetPanel` is a simple way to spread multiple elements on different panels and usually gather them by topic. In Shiny, it is always interesting to associate an input to it, as shown in the previous chapter \@ref(secondary-inputs), so as to be able to trigger sophisticated actions on the server side, whenever necessary. In order not to confuse the reader, primary inputs like `actionButton` have an id, accessible through `inputId`, while secondary inputs simply have `id`. 
+
+Other tools to manage your UI consist in `toggle` functions like `hideTab`, `showTab`, the limit being the very few number of them, which often obliges us to use packages like `shinyjs` [@R-shinyjs] or write custom JavaScript code. `insertUI/removeUI` allows to dynamically insert or remove any element, anywhere. 
+
+## The renderUI case
+One may know the `renderUI/uiOutput` that allows to render any HTML block from the server. While the `update<INPUT_NAME>` and `toggle` tools are component specific, meaning they only target the element to modify, `renderUI/uiOutput` re-renders the whole block each time an associated reactive dependency is invalidated, even though only a little part should be re-rendered. This approach is usually to avoid since it implies poor performances. Let's see below, where I simulate a computationally intensive task for three seconds, corresponding to the time to obtain the slider value:
+
+```{r, eval=FALSE}
+library(shiny)
+ui <- fluidPage(
+  uiOutput("moreControls")
+)
+
+server <- function(input, output) {
+  
+  sliderValue <- reactive({
+    # computationally intensive task
+    Sys.sleep(3)
+    1
+  })
+  
+  output$moreControls <- renderUI({
+    sliderInput("n", "N", sliderValue(), 1000, 500)
+  })
+}
+shinyApp(ui, server)
+```
+
+The same example with the `updateSliderInput` functions:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  sliderInput("n", "N", 100, 1000, 500)
+)
+
+server <- function(input, output, session) {
+  
+  sliderValue <- reactive({
+    # computationally intensive task
+    Sys.sleep(3)
+    50
+  })
+  
+  observeEvent(sliderValue(), {
+    updateSliderInput(
+      session,
+      "n",
+      value = sliderValue()
+    )
+  })
+}
+shinyApp(ui, server)
+```
+
+The first approach's biggest problem is the absence of anything for 3 seconds, which may discourage the end user. Although not ideal, the second approach is already much better. 
+
+
+Below is an very naive and dirty example where `renderUI` makes the entire dropdown menu re-render each time something changes in the `renderUI` expression, which may not be optimal. For instance in React, we only re-render what needs to be [updated](https://en.reactjs.org/docs/rendering-elements.html#react-only-updates-whats-necessary)! Run the app below, open the HTML inspector and click to add 1 message. Notice that the entire block is updated, whereas only the corresponding HTML element should (Figure \@ref(fig:render-ui-1)). No doubt that any advanced user see a place for `insertUI`.
+
+```{r, eval=FALSE}
+library(bs4Dash)
+library(tibble)
+
+new_message <- tibble(
+  message = "New message",
+  from = "Paul",
+  src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+  time = "yesterday",
+  status = "success",
+  type = "message"
+)
+
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = uiOutput("messages", container = tags$li)
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(actionButton("add", "Add message"))
+  ),
+  server = function(input, output) {
+    
+    messages <- reactiveValues(
+      items = tibble(
+        message = rep("A message", 10),
+        from = LETTERS[1:10],
+        src = rep("https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg", 10),
+        time = rep("yesterday", 10),
+        status = rep("success", 10),
+        type = rep("message", 10)
+      )
+    )
+    
+    observeEvent(input$add, {
+      messages$items <- add_row(messages$items, new_message)
+    })
+    
+    output$messages <- renderUI({
+      dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr",
+        lapply(seq_len(nrow(messages$items)), function(r) {
+          temp <- messages$items[r, ]
+          dropdownMenuItem(
+            message = temp$message,
+            from = temp$from, 
+            time = temp$time,
+            status = temp$status,
+            type = temp$type,
+            src = temp$src
+          )
+        })
+      )
+    })
+  }
+)
+```
+```{r render-ui-1, echo=FALSE, fig.cap='renderUI is not specific', out.width='100%'}
+knitr::include_graphics("images/survival-kit/render-ui-1.png")
+```
+
+This non specificity property justifies why you should avoid this method as much as possible, as it overloads the server. Later in this chapter, we leverage custom handlers to solve this problem. Overall, it's more work, maybe more complex but ensures to be specific and more optimized.
+
+## Other Shiny handlers
+As mentioned in Chapter \@ref(update-input-lifecycle), all `update<INPUT_NAME>` functions are Shiny defined messages handlers. 
+
+### The insertUI case
+Under the hood, `insertUI` sends a R [message](https://github.com/rstudio/shiny/blob/master/R/shiny.R#L1696) through `session$sendInsertUI`, via the websocket:
+
+```{r, eval=FALSE}
+
+session$sendInsertUI(
+  selector = selector, 
+  multiple = multiple, 
+  where = where, 
+  content = processDeps(ui, session)
+)
+
+sendInsertUI = function(selector, multiple, where, content) {
+  private$sendMessage(
+    `shiny-insert-ui` = list(
+      selector = selector,
+      multiple = multiple,
+      where = where,
+      content = content
+    )
+  )
+}
+```
+
+The content has been treated with `shiny:::processDeps` that:
+
+  - Finds and resolve any HTML dependency, as shown in Chapter \@ref(htmltools-dependencies).
+  - For each dependency, makes sure the corresponding files can be accessed on the server with `createWebDependency` and `addResourcePath`. 
+  - Returns a list of the HTML element and dependencies. The HTML will be accessed by `message.content.html` and dependencies by `message.content.deps`.
+  
+On the UI side, Shiny has a predefined message [handler](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L670):
+
+```javascript
+addMessageHandler('shiny-insert-ui', function(message) {
+  var targets = $(message.selector);
+  if (targets.length === 0) {
+    // render the HTML and deps to a null target, so
+    // the side-effect of rendering the deps, singletons,
+    // and <head> still occur
+    console.warn('The selector you chose ("' + message.selector +
+                 '") could not be found in the DOM.');
+    exports.renderHtml(message.content.html, $([]), message.content.deps);
+  } else {
+    targets.each(function (i, target) {
+      exports.renderContent(target, message.content, message.where);
+      return message.multiple;
+    });
+  }
+})
+```
+
+It checks whether the provided selector corresponds to multiple DOM elements. If at least 1 item is found, it calls `renderContent(html, el, dependencies)` that triggers `renderHtml(html, el, dependencies)`:
+
+  - Processes the provided HTML (treat the head, body and singletons).
+  - Renders all given dependencies into the page's [head](https://github.com/rstudio/shiny/blob/master/srcjs/output_binding_html.js#L241).
+  - Insert the HTML into the page at the position provided in the `insertUI` __where__ parameter. Internally this calls the `insertAdjacentHTML` method. 
+  - Initialize any input and bind them to the scope and send the value to the server so that output/observers are invalidated. Outputs are also bound. If this step is missed the newly inserted input won't react, so is the related output and any observer.
+  
+Keep `renderContent` and `renderHtml` in mind, we'll use them in section \@ref(custom-ui-functions).
+  
+### Example 
+Going back to the previous example, why don't we just go for `insertUI`:
+
+```{r, eval=FALSE}
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr"
+      )
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(actionButton("add", "Add dropdown item"))
+  ),
+  server = function(input, output, session) {
+    
+    observeEvent(input$add, {
+      insertUI(
+        selector = ".dropdown-menu > .dropdown-item.dropdown-footer",
+        where = "beforeBegin",
+        ui = dropdownMenuItem(
+          inputId = paste0("triggerAction_", input$add),
+          message = paste("message", input$add),
+          from = "Divad Nojnarg",
+          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+          time = "today",
+          status = "danger",
+          type = "message"
+        )
+      )
+    })
+  }
+)
+```
+
+Well, if the item is inserted, the item counter as well as the dropdown text are not, as depicted Figure \@ref(fig:insertUI-1)! We can't blame `insertUI` for this, since this is the fault of the `{bs4Dash}` component that actually has interconnected HTML pieces. Indeed, the `dropdownMenu` function generates HTML, detecting the number of `dropdownMenuItem`. This works well when the app fires but the component is not able to maintain an up to date state. 
+
+```{r insertUI-1, echo=FALSE, fig.cap='insertUI is not enough specific', out.width='100%'}
+knitr::include_graphics("images/survival-kit/insertUI-1.png")
+```
+
+We may fix that by adding extra `insertUI()` and `removeUI()` to replace those parts (`insertUI()` does not update the targeted item). Moreover, you we must set correct priority for each `observeEvent` (try to remove them, it will fail) to ensure that _remove_ happens before _insert_. 
+
+```{r, eval=FALSE}
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr"
+      )
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(actionButton("add", "Add dropdown item"))
+  ),
+  server = function(input, output, session) {
+    
+    observeEvent(input$add, {
+      insertUI(
+        selector = ".dropdown-menu > .dropdown-item.dropdown-footer",
+        where = "beforeBegin",
+        ui = dropdownMenuItem(
+          inputId = paste0("triggerAction_", input$add),
+          message = paste("message", input$add),
+          from = "Divad Nojnarg",
+          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+          time = "today",
+          status = "danger",
+          type = "message"
+        )
+      )
+    })
+    
+    # remove old badge
+    observeEvent(input$add, {
+      removeUI(selector = ".badge-danger.navbar-badge")
+    }, priority = 1)
+    
+    # insert new badge
+    observeEvent(input$add, {
+      insertUI(
+        selector = "[data-toggle=\"dropdown\"]",
+        where = "beforeEnd",
+        ui = tags$span(class = "badge badge-danger navbar-badge", input$add)
+      )
+    })
+    
+    
+    # remove old text counter
+    observeEvent(input$add, {
+      removeUI(selector = ".dropdown-item.dropdown-header")
+    }, priority = 1)
+    
+    # insert new text counter
+    observeEvent(input$add, {
+      insertUI(
+        selector = ".dropdown-menu",
+        where = "afterBegin",
+        ui = tags$span(class="dropdown-item dropdown-header", sprintf("%s Items", input$add))
+      )
+    })
+    
+  }
+)
+```
+
+So many `observeEvent` for a simple action! Imagine if we had 10 similar tasks... Isn't there a way to do all of this at once, thereby reducing the server code? In general setting priorities in `observeEvent` is a rather bad smell of poorly designed shiny app.
+
+It seems that we have to create our own message handler! 
+
+## Custom handlers
+
+Custom handlers are a specific category of message handlers, as they are user defined.
+
+### Theory
+Shiny provides tools to ease the communication between R and JavaScript, as illustrated in section \@ref(shiny-websocket). We already discussed the usage of `sendInputMessage()` in the input binding section \@ref(shiny-input-system). The other important method is `sendCustomMessage(type, message)`. It works by pair with the JS method `Shiny.AddCustomMessageHandler`, linked with the type parameter.
 
 ```{r, eval=FALSE}
 say_hello_to_js <- function(text, session = getDefaultReactiveDomain()) {
@@ -11,7 +326,7 @@ say_hello_to_js <- function(text, session = getDefaultReactiveDomain()) {
 }
 ```
 
-The JavaScript receptor is defined below:
+The JavaScript part is defined below:
 
 ```javascript
 $(function() {
@@ -21,19 +336,17 @@ $(function() {
 });
 ```
 
-The shiny app below will simply print a welcome message every 5 seconds. We obviously set `options(shiny.trace = TRUE)`. Figure \@ref(fig:shiny-custom-message) summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/say_hello.R).
+The shiny app below will simply print a welcome message every 5 seconds. We obviously set `options(shiny.trace = TRUE)` so as to capture all messages sent between R and JS. Figure \@ref(fig:shiny-custom-message) summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/say_hello.R).
 
 ```{r, eval=FALSE}
 shinyAppDir(system.file("chapter6/say_hello", package = "OSUICode"))
 ```
 
-You will find a whole chapter dedicated to custom handlers here \@ref(custom-templates-interactivity).
-
 ```{r shiny-custom-message, echo=FALSE, fig.cap='From R to JavaScript', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-custom-message.png")
 ```
 
-Combining `Shiny.setInputValue`, `Shiny.addCustomMessageHandler`, here is a fun example
+Combining `Shiny.setInputValue` and `Shiny.addCustomMessageHandler`, here is a fun example
 that sets the body background as a result of a simple button click.
 We defined 3 JS pieces:
 
@@ -105,260 +418,101 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-## Dynamically manage content
-
-As shown in the Mastering Shiny [book](https://mastering-shiny.org/action-dynamic.html), there exists tools to update UI components from the server. You can use all `update<INPUT_NAME>` functions like `updateTextInput` but also what I call secondary input related function like `updateTabsetPanel`. Why secondary input? Since they are not necessary to perform computations. For instance when you fill a inscription form on a website, it contains a lot of input like select, text, numeric, date. Your data is ultimately stored in a database for later use (login, ...). A `tabsetPanel` is a simple way to dispatch multiple elements on different panels and usually gather them by topic. In Shiny, it is always interesting to associate an input to it, as shown in the previous chapter \@ref(secondary-inputs), so as to be able to trigger sophisticated actions on the server side, whenever necessary. 
-Other tools to manage your UI consist in `toggle` functions like `hideTab`, `showTab`, the limit being the very few number, which often oblige use to use packages like `shinyjs` [@R-shinyjs] or write custom JavaScript code.
-`insertUI/removeUI` allows to dynamically insert or remove any element any where. Finally, one may know the `renderUI/uiOutput` that allows to render any HTML block from the server. While the `update<INPUT_NAME>` and `toggle` tools are component specific, meaning they in principle only target the element to modify, `renderUI/uiOutput` re-renders the whole block each time an associated reactive dependency is invalidated, even though only a little part should be re-rendered. 
+A whole chapter is dedicated to custom handlers, with a practical example \@ref(custom-templates-interactivity).
 
 
-### Issues with renderUI
-Below is an very naive and dirty example where `renderUI` makes the entire dropdown menu re-render each time something changes in the `renderUI` expression, which may not be optimal. For instance in React, we only re-render what needs to be [updated](https://en.reactjs.org/docs/rendering-elements.html#react-only-updates-whats-necessary)! Run the app below, open the HTML inspector and click to add 1 message. Notice that the entire block is updated, whereas only the corresponding HTML element should. Advanced user will immediately see a place for `insertUI`.
+### Toward custom UI management functions {#custom-ui-functions}
 
-```{r, eval=FALSE}
-library(bs4Dash)
-library(tibble)
-
-new_message <- tibble(
-  message = "New message",
-  from = "Paul",
-  src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
-  time = "yesterday",
-  status = "success",
-  type = "message"
-)
-
-shinyApp(
-  ui = bs4DashPage(
-    navbar = bs4DashNavbar(
-      rightUi = uiOutput("messages", container = tags$li)
-    ),
-    sidebar = bs4DashSidebar(),
-    controlbar = bs4DashControlbar(),
-    footer = bs4DashFooter(),
-    title = "test",
-    body = bs4DashBody(actionButton("add", "Add message"))
-  ),
-  server = function(input, output) {
-    
-    messages <- reactiveValues(
-      items = tibble(
-        message = rep("A message", 10),
-        from = LETTERS[1:10],
-        src = rep("https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg", 10),
-        time = rep("yesterday", 10),
-        status = rep("success", 10),
-        type = rep("message", 10)
-      )
-    )
-    
-    observeEvent(input$add, {
-      messages$items <- add_row(messages$items, new_message)
-    })
-    
-    output$messages <- renderUI({
-      dropdownMenu(
-        show = FALSE,
-        status = "danger",
-        src = "https://www.google.fr",
-        lapply(seq_len(nrow(messages$items)), function(r) {
-          temp <- messages$items[r, ]
-          dropdownMenuItem(
-            message = temp$message,
-            from = temp$from, 
-            time = temp$time,
-            status = temp$status,
-            type = temp$type,
-            src = temp$src
-          )
-        })
-      )
-    })
-  }
-)
-```
-```{r render-ui-1, echo=FALSE, fig.cap='renderUI is not specific', out.width='100%'}
-knitr::include_graphics("images/survival-kit/render-ui-1.png")
-```
-
-The problem is illustrated Figure \@ref(fig:render-ui-1), where the entire block is re-rendered. That's why you should avoid this method as much as possible, as it will overload the server. In the following, we'll leverage custom handlers to solve this problem. Overall, it's more work, maybe more complex but ensures to be specific and more optimized.
-
-### insertUI
-Why don't we just go for `insertUI`? Let's try below:
+#### An insertDropdownItem function
+In this example, we go back to the `{bs4Dash}` `dropdownMenu` issue, discussed earlier
+in the chapter. We propose a method involving only custom message handlers.
 
 ```{r, eval=FALSE}
-shinyApp(
-  ui = bs4DashPage(
-    navbar = bs4DashNavbar(
-      rightUi = dropdownMenu(
-        show = FALSE,
-        status = "danger",
-        src = "https://www.google.fr"
-      )
-    ),
-    sidebar = bs4DashSidebar(),
-    controlbar = bs4DashControlbar(),
-    footer = bs4DashFooter(),
-    title = "test",
-    body = bs4DashBody(actionButton("add", "Add dropdown item"))
-  ),
-  server = function(input, output, session) {
-    
-    observeEvent(input$add, {
-      insertUI(
-        selector = ".dropdown-menu > .dropdown-item.dropdown-footer",
-        where = "beforeBegin",
-        ui = dropdownMenuItem(
-          inputId = paste0("triggerAction_", input$add),
-          message = paste("message", input$add),
-          from = "Divad Nojnarg",
-          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
-          time = "today",
-          status = "danger",
-          type = "message"
-        )
-      )
-    })
-  }
-)
-```
-
-Well, if the item is inserted, the item counter as well as the dropdown text are not, as depicted Figure \@ref(fig:insertUI-1)! We can't blame `insertUI` for this, since this is the fault of the `{bs4Dash}` component that actually has interconnected HTML pieces.
-
-```{r insertUI-1, echo=FALSE, fig.cap='insertUI is not enough specific', out.width='100%'}
-knitr::include_graphics("images/survival-kit/insertUI-1.png")
-```
-
-We may fix that by adding extra `insertUI()` and `removeUI()` to replace those parts (`insertUI()` does not update the targeted item). Moreover, you we must set correct priority to each `observeEvent` (try to remove them, it will fail) to ensure that _remove_ happens before _insert_. 
-
-```{r, eval=FALSE}
-shinyApp(
-  ui = bs4DashPage(
-    navbar = bs4DashNavbar(
-      rightUi = dropdownMenu(
-        show = FALSE,
-        status = "danger",
-        src = "https://www.google.fr"
-      )
-    ),
-    sidebar = bs4DashSidebar(),
-    controlbar = bs4DashControlbar(),
-    footer = bs4DashFooter(),
-    title = "test",
-    body = bs4DashBody(actionButton("add", "Add dropdown item"))
-  ),
-  server = function(input, output, session) {
-    
-    observeEvent(input$add, {
-      insertUI(
-        selector = ".dropdown-menu > .dropdown-item.dropdown-footer",
-        where = "beforeBegin",
-        ui = dropdownMenuItem(
-          inputId = paste0("triggerAction_", input$add),
-          message = paste("message", input$add),
-          from = "Divad Nojnarg",
-          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
-          time = "today",
-          status = "danger",
-          type = "message"
-        )
-      )
-    })
-    
-    # remove old badge
-    observeEvent(input$add, {
-      removeUI(selector = ".badge-danger.navbar-badge")
-    }, priority = 1)
-    
-    # insert new badge
-    observeEvent(input$add, {
-      insertUI(
-        selector = "[data-toggle=\"dropdown\"]",
-        where = "beforeEnd",
-        ui = tags$span(class = "badge badge-danger navbar-badge", input$add)
-      )
-    })
-    
-    
-    # remove old text counter
-    observeEvent(input$add, {
-      removeUI(selector = ".dropdown-item.dropdown-header")
-    }, priority = 1)
-    
-    # insert new text counter
-    observeEvent(input$add, {
-      insertUI(
-        selector = ".dropdown-menu",
-        where = "afterBegin",
-        ui = tags$span(class="dropdown-item dropdown-header", sprintf("%s Items", input$add))
-      )
-    })
-    
-  }
-)
-```
-
-So many `observeEvent` for a simple action! Imagine if we had 10 similar tasks... Isn't there a way to do all of this at once, thereby reducing the server code? In general setting priorities in `observeEvent` is a rather bad smell of poorly designed shiny app.
-
-Under the hood, `insertUI` sends a custom [message](https://github.com/rstudio/shiny/blob/master/R/shiny.R#L1696) through `session$sendInsertUI`, viathe websocket:
-
-```{r, eval=FALSE}
-sendInsertUI = function(selector, multiple, where, content) {
-  private$sendMessage(
-    `shiny-insert-ui` = list(
-      selector = selector,
-      multiple = multiple,
-      where = where,
-      content = content
-    )
-  )
+insertDropdownItem <- function(item, session = shiny::getDefaultReactiveDomain()) {
+  session$sendCustomMessage("add-dropdown-item", message = as.character(item))
 }
 ```
 
-Importantly, the content has been treated with `shiny:::processDeps` that:
+We create the `insertDropdownItem` function with 2 parameters:
 
-  - 
-  - Find and resolve any HTML dependency
-  - For each dependency, make sure the corresponding files can be accessed on the server with `createWebDependency` and `addResourcePath`. 
-  - Returns a list of the HTML element and dependencies. The HTML will be accessed by `message.content.html` and dependencies by `message.content.deps`.
-  
+  - item, the HTML element we want to insert in the DOM.
+  - session, used to send a message to JavaScript with `session$sendCustomMessage`.
 
-On the UI side, Shiny has a predefined message [handler](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L670):
+item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a type, that is 'add-dropdown-item', to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
 
 ```javascript
-addMessageHandler('shiny-insert-ui', function(message) {
-  var targets = $(message.selector);
-  if (targets.length === 0) {
-    // render the HTML and deps to a null target, so
-    // the side-effect of rendering the deps, singletons,
-    // and <head> still occur
-    console.warn('The selector you chose ("' + message.selector +
-                 '") could not be found in the DOM.');
-    exports.renderHtml(message.content.html, $([]), message.content.deps);
-  } else {
-    targets.each(function (i, target) {
-      exports.renderContent(target, message.content, message.where);
-      return message.multiple;
-    });
-  }
-})
+$(function() {
+  Shiny.addCustomMessageHandler('add-dropdown-item', function(message) {
+    // convert string to HTML
+    var itemTag = $.parseHTML(message)[0];
+    $(itemTag).insertBefore($('.dropdown-item.dropdown-footer'));
+    // since we do not re-render the dropdown, we must update its item counter
+    var $items = $('button.dropdown-item').length;
+    $('.dropdown-item.dropdown-header').html($items + ' Items');
+    $('.nav-item.dropdown').find('.navbar-badge').html($items);
+  });
+});
 ```
 
-It checks whether the provided selector corresponds to multiple DOM elements. If at least 1 item is found, it calls `renderContent(html, el, dependencies)` that triggers `renderHtml(html, el, dependencies)`:
+We recover the sent message on the JS side with `Shiny.addCustomMessageHandler`, then parse the string to HTML with `$.parseHTML` and insert it before the footer (that is the next UI element of the dropdown body). We also update dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. These two extra JS steps save us to create extra `observeEvent` on the server, as shown before:
 
-  - Processes the provided HTML (treat the head, body and singletons).
-  - Renders all given dependencies into the page's [head](https://github.com/rstudio/shiny/blob/master/srcjs/output_binding_html.js#L241).
-  - Insert the HTML into the page at the position provided in the `insertUI` __where__ parameter. Internally this calls the `insertAdjacentHTML` method. 
-  - Initialize any input and bind them to the scope and send the value to the server so that output/observers are invalidated. Outputs are also bound. If this step is missed the newly inserted input won't react, so is the related output and any observer.
+```{r, eval=FALSE}
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr"
+      )
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(
+      tags$head(
+        tags$script(
+          "$(function() {
+            Shiny.addCustomMessageHandler('add-dropdown-item', function(message) {
+              // convert string to HTML
+              var itemTag = $.parseHTML(message)[0];
+              $(itemTag).insertBefore($('.dropdown-item.dropdown-footer'));
+              // since we do not re-render the dropdown, we must update its item counter
+              var $items = $('button.dropdown-item').length;
+              $('.dropdown-item.dropdown-header').html($items + ' Items');
+              $('.nav-item.dropdown').find('.navbar-badge').html($items);
+            });
+          });
+          "
+        )
+      ),
+      actionButton("add", "Add dropdown item")
+    )
+  ),
+  server = function(input, output, session) {
     
+    observeEvent(input$add, {
+      insertDropdownItem(
+        dropdownMenuItem(
+          inputId = paste0("triggerAction_", input$add),
+          message = paste("message", input$add),
+          from = "Divad Nojnarg",
+          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+          time = "today",
+          status = "danger",
+          type = "message"
+        )
+      )
+    })
+  }
+)
+```
 
+This solution significantly lightens the server code since everything may be done
+on the JS side in one step. 
 
-## Toward custom UI management functions
-
-### HTML with extra dependencies
-TO DO: talk about `Shiny.renderHtml`, `Shiny.renderContent`
-
-### Example
+#### A chat system for shinydashboardPlus
 
 User messages in `{shinydashboardPlus}` (latest devel version).
 
