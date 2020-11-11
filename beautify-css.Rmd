@@ -51,6 +51,23 @@ All of the above methods apply to shiny:
   - External CSS file `tags$link(rel = "stylesheet", type="text/css", href="www/style.css")`.
   - Internal CSS `tags$head(tags$style("p {color: red;}"))`.
   - Inline CSS `p(style = "color:red;", "Red text")`.
+  
+However, if you correctly followed the previous part about HTML dependencies, the best way in Shiny is to create a dependency, and attach it to a tag:
+
+```{r, eval=FALSE}
+css_dep <- function() {
+  htmlDependency(
+    name = "css dep",
+    version = "1.0",
+    src = path_to_css,
+    stylesheet = filename
+  )
+}
+
+tagList(tag, css_dep)
+```
+
+Following this method, you make the file accessible on the server, thereby easing the debugging process. When should we apply the above method? Well, it does not make a lot of sense for tiny CSS modifications, where you could use one of the 3 other methods listed above. 
 
 ## CSS selectors
 
@@ -58,7 +75,7 @@ All of the above methods apply to shiny:
 To apply CSS, we select a the tag , choose the property we want to change and give it a value:
 
 ```css
-tag {
+selector {
   property: value;
 }
 ```
@@ -522,6 +539,53 @@ shinyApp(ui, server)
 ```{r css-pseudoelements-before, echo=FALSE, fig.cap='Add before pseudo-element', out.width='100%'}
 knitr::include_graphics("images/beautify/css-pseudoelements-before.png")
 ```
+
+
+## Modify CSS with the HTML inspector
+
+### Add inline properties
+1. Run the following app:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$style("p { color: red;}"),
+  p("Hello World")
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+2. Right click the `p` element and open the inspector. In the `Styles` tab, notice the `element.style` section. This is to define inline new CSS rules for the selected item. 
+
+3. Let's add 2 rules by clicking inside the `element.style` container:
+
+  - `border-style: dashed`. Indicates we want a box with dashed border
+  - `border-color: ...`. To set a border color
+  
+After typing enter, the inline CSS is automatically added in the tag element.
+  
+You probably noticed the auto suggestion feature while typing a property, as shown in Figure \@ref(fig:html-dom-css).
+
+```{r html-dom-css, echo=FALSE, fig.cap='Edit CSS with Chrome DevTools', out.width='100%'}
+knitr::include_graphics("images/survival-kit/dom-css.png")
+```
+
+### View local changes
+Whenever playing around with a web page style or a shiny app, it may be good to have an overview of all changes when you are satisfied about the new design. 
+
+  1. Run the previous shiny app example and open the inspector
+  2. In the Styles tab, add some new CSS properties to the first p element set of rules
+  3. Once done press enter and click on the file name located at the top-right corner of the property box
+  4. This opens the Sources tab. In the left sidebar, right click on the file name (index) and select `Local Modifications`
+  5. This opens a `Git` like diff panel called `Changes` where you can review any change and see the previous values. If you refresh the page, you will loose every local change, unless the persistent authoring feature is active
+
+```{r html-dom-css-changes, echo=FALSE, fig.cap='Review all CSS changes', out.width='100%'}
+knitr::include_graphics("images/survival-kit/dom-css-changes.png")
+```  
+  
+To get a deeper understanding of the different CSS options please refer to the Google [documentation](https://developers.google.com/web/tools/chrome-devtools/css).
 
 ## CSS in action
 
