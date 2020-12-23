@@ -33,6 +33,7 @@
       <nav aria-label="Table of contents"><h2>Table of contents</h2>
         <ul class="book-toc list-unstyled">
 <li><a class="" href="index.html">Welcome</a></li>
+<li><a class="" href="foreword.html">Foreword</a></li>
 <li class="book-part">Introduction</li>
 <li><a class="" href="web-intro.html"><span class="header-section-number">1</span> Shiny and the Web</a></li>
 <li><a class="" href="web-dependencies.html"><span class="header-section-number">2</span> Discover Shiny dependencies</a></li>
@@ -92,10 +93,10 @@ FIGURE 13.1: What Shiny does client side on initialization
 </ul>
 <p>Most input bindings are in principle bundled in the <a href="http://shiny.rstudio.com">shiny</a> package. Some may be user-defined like in <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> or even in a simple shiny app. In any case,
 they are all contained in a binding registry, namely <code>inputBindings</code> built on top the following class (the same apply for output bindings):</p>
-<div class="sourceCode" id="cb290"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb290-1"><a href="shiny-input-lifecycle.html#cb290-1"></a><span class="kw">var</span> BindingRegistry <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb290-2"><a href="shiny-input-lifecycle.html#cb290-2"></a>  <span class="kw">this</span>.<span class="at">bindings</span> <span class="op">=</span> []<span class="op">;</span></span>
-<span id="cb290-3"><a href="shiny-input-lifecycle.html#cb290-3"></a>  <span class="kw">this</span>.<span class="at">bindingNames</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb290-4"><a href="shiny-input-lifecycle.html#cb290-4"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb292"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb292-1"><a href="shiny-input-lifecycle.html#cb292-1"></a><span class="kw">var</span> BindingRegistry <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb292-2"><a href="shiny-input-lifecycle.html#cb292-2"></a>  <span class="kw">this</span>.<span class="at">bindings</span> <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb292-3"><a href="shiny-input-lifecycle.html#cb292-3"></a>  <span class="kw">this</span>.<span class="at">bindingNames</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb292-4"><a href="shiny-input-lifecycle.html#cb292-4"></a><span class="op">}</span></span></code></pre></div>
 <p>This class has method to <code>register</code> binding. This is the one we call when doing <code>Shiny.inputBindings.register(myBinding, 'reference');</code>, which appends the newly created binding to the bindings array.</p>
 <p>When shiny starts, it has to find all defined bindings with the <code>getBindings</code> method.
 Once done, for each binding, <code>find</code> is triggered. If no corresponding element is found in the DOM, nothing is done. For each found input, the following methods are triggered:</p>
@@ -112,33 +113,33 @@ Once done, for each binding, <code>find</code> is triggered. If no corresponding
 <p>The data attribute <code>shiny-input-binding</code> is then added. This allows shiny or any end-users to access the input binding methods from the client (in practice, very few end-users will do that). The <code>shiny-bound-input</code> class is added, the corresponding input is appended to the <code>boundInputs</code> object (listing all bound inputs) and <code>shiny:bound</code> triggered on the client.</p>
 <p>Once done, shiny stores all initial values in a variable <code>initialInput</code>, also containing all <a href="https://shiny.rstudio.com/articles/client-data.html">client data</a> and pass them to the <code>Shinyapp.connect</code> method. As shown in <a href="shiny-intro.html#shiny-intro">11</a>, the latter opens the client websocket connection, raises the <code>shiny:connected</code> event and send all values to the server (R). Few time after, <code>shiny:sessioninitialized</code> is triggered.</p>
 <p>In chapter <a href="shiny-intro.html#shiny-intro">11</a>, we briefly described the <code>shiny</code> JavaScript object. As an exercise, let’s explore what the <code>Shiny.shinyApp</code> object contains. The definition is located in the shinyapps.js <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js">script</a>.</p>
-<div class="sourceCode" id="cb291"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb291-1"><a href="shiny-input-lifecycle.html#cb291-1"></a><span class="kw">var</span> ShinyApp <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb291-2"><a href="shiny-input-lifecycle.html#cb291-2"></a>  <span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></span>
-<span id="cb291-3"><a href="shiny-input-lifecycle.html#cb291-3"></a>  </span>
-<span id="cb291-4"><a href="shiny-input-lifecycle.html#cb291-4"></a>  <span class="co">// Cached input values</span></span>
-<span id="cb291-5"><a href="shiny-input-lifecycle.html#cb291-5"></a>  <span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb291-6"><a href="shiny-input-lifecycle.html#cb291-6"></a>  </span>
-<span id="cb291-7"><a href="shiny-input-lifecycle.html#cb291-7"></a>  <span class="co">// Input values at initialization (and reconnect)</span></span>
-<span id="cb291-8"><a href="shiny-input-lifecycle.html#cb291-8"></a>  <span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb291-9"><a href="shiny-input-lifecycle.html#cb291-9"></a>  </span>
-<span id="cb291-10"><a href="shiny-input-lifecycle.html#cb291-10"></a>  <span class="co">// Output bindings</span></span>
-<span id="cb291-11"><a href="shiny-input-lifecycle.html#cb291-11"></a>  <span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb291-12"><a href="shiny-input-lifecycle.html#cb291-12"></a>  </span>
-<span id="cb291-13"><a href="shiny-input-lifecycle.html#cb291-13"></a>  <span class="co">// Cached values/errors</span></span>
-<span id="cb291-14"><a href="shiny-input-lifecycle.html#cb291-14"></a>  <span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb291-15"><a href="shiny-input-lifecycle.html#cb291-15"></a>  <span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb291-16"><a href="shiny-input-lifecycle.html#cb291-16"></a>  </span>
-<span id="cb291-17"><a href="shiny-input-lifecycle.html#cb291-17"></a>  <span class="co">// Conditional bindings (show/hide element based on expression)</span></span>
-<span id="cb291-18"><a href="shiny-input-lifecycle.html#cb291-18"></a>  <span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb291-19"><a href="shiny-input-lifecycle.html#cb291-19"></a>  </span>
-<span id="cb291-20"><a href="shiny-input-lifecycle.html#cb291-20"></a>  <span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></span>
-<span id="cb291-21"><a href="shiny-input-lifecycle.html#cb291-21"></a>  <span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></span>
-<span id="cb291-22"><a href="shiny-input-lifecycle.html#cb291-22"></a>  <span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb291-23"><a href="shiny-input-lifecycle.html#cb291-23"></a>  </span>
-<span id="cb291-24"><a href="shiny-input-lifecycle.html#cb291-24"></a>  <span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
-<span id="cb291-25"><a href="shiny-input-lifecycle.html#cb291-25"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb293"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb293-1"><a href="shiny-input-lifecycle.html#cb293-1"></a><span class="kw">var</span> ShinyApp <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb293-2"><a href="shiny-input-lifecycle.html#cb293-2"></a>  <span class="kw">this</span>.<span class="at">$socket</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span></span>
+<span id="cb293-3"><a href="shiny-input-lifecycle.html#cb293-3"></a>  </span>
+<span id="cb293-4"><a href="shiny-input-lifecycle.html#cb293-4"></a>  <span class="co">// Cached input values</span></span>
+<span id="cb293-5"><a href="shiny-input-lifecycle.html#cb293-5"></a>  <span class="kw">this</span>.<span class="at">$inputValues</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb293-6"><a href="shiny-input-lifecycle.html#cb293-6"></a>  </span>
+<span id="cb293-7"><a href="shiny-input-lifecycle.html#cb293-7"></a>  <span class="co">// Input values at initialization (and reconnect)</span></span>
+<span id="cb293-8"><a href="shiny-input-lifecycle.html#cb293-8"></a>  <span class="kw">this</span>.<span class="at">$initialInput</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb293-9"><a href="shiny-input-lifecycle.html#cb293-9"></a>  </span>
+<span id="cb293-10"><a href="shiny-input-lifecycle.html#cb293-10"></a>  <span class="co">// Output bindings</span></span>
+<span id="cb293-11"><a href="shiny-input-lifecycle.html#cb293-11"></a>  <span class="kw">this</span>.<span class="at">$bindings</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb293-12"><a href="shiny-input-lifecycle.html#cb293-12"></a>  </span>
+<span id="cb293-13"><a href="shiny-input-lifecycle.html#cb293-13"></a>  <span class="co">// Cached values/errors</span></span>
+<span id="cb293-14"><a href="shiny-input-lifecycle.html#cb293-14"></a>  <span class="kw">this</span>.<span class="at">$values</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb293-15"><a href="shiny-input-lifecycle.html#cb293-15"></a>  <span class="kw">this</span>.<span class="at">$errors</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb293-16"><a href="shiny-input-lifecycle.html#cb293-16"></a>  </span>
+<span id="cb293-17"><a href="shiny-input-lifecycle.html#cb293-17"></a>  <span class="co">// Conditional bindings (show/hide element based on expression)</span></span>
+<span id="cb293-18"><a href="shiny-input-lifecycle.html#cb293-18"></a>  <span class="kw">this</span>.<span class="at">$conditionals</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb293-19"><a href="shiny-input-lifecycle.html#cb293-19"></a>  </span>
+<span id="cb293-20"><a href="shiny-input-lifecycle.html#cb293-20"></a>  <span class="kw">this</span>.<span class="at">$pendingMessages</span> <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb293-21"><a href="shiny-input-lifecycle.html#cb293-21"></a>  <span class="kw">this</span>.<span class="at">$activeRequests</span> <span class="op">=</span> <span class="op">{};</span></span>
+<span id="cb293-22"><a href="shiny-input-lifecycle.html#cb293-22"></a>  <span class="kw">this</span>.<span class="at">$nextRequestId</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb293-23"><a href="shiny-input-lifecycle.html#cb293-23"></a>  </span>
+<span id="cb293-24"><a href="shiny-input-lifecycle.html#cb293-24"></a>  <span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb293-25"><a href="shiny-input-lifecycle.html#cb293-25"></a><span class="op">};</span></span></code></pre></div>
 <p>It creates several properties, some of them are easy to guess like <code>inputValues</code> or <code>initialInput</code>. Let’s run the example below and open the HTML inspector. Notice that the <code>sliderInput</code> is set to 500 at <code>t0</code> (initialization).</p>
-<div class="sourceCode" id="cb292"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb294"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput</a></span><span class="op">(</span><span class="st">"obs"</span>, <span class="st">"Number of observations:"</span>,
               min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">1000</span>, value <span class="op">=</span> <span class="fl">500</span>
@@ -165,68 +166,68 @@ FIGURE 13.2: Explore initial input values
 <span class="header-section-number">13.2</span> Update input<a class="anchor" aria-label="anchor" href="#update-input-lifecycle"><i class="fas fa-link"></i></a>
 </h2>
 <p>Below we try to explain what are the mechanisms to update an input from the server on the client. As stated above, it all starts with an <code>update&lt;name&gt;Input</code> function call, which actually sends a message through the current <code>session</code>. This message is received by the client websocket message manager:</p>
-<div class="sourceCode" id="cb293"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb293-1"><a href="shiny-input-lifecycle.html#cb293-1"></a><span class="va">socket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
-<span id="cb293-2"><a href="shiny-input-lifecycle.html#cb293-2"></a>  <span class="va">self</span>.<span class="at">dispatchMessage</span>(<span class="va">e</span>.<span class="at">data</span>)<span class="op">;</span></span>
-<span id="cb293-3"><a href="shiny-input-lifecycle.html#cb293-3"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb295"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb295-1"><a href="shiny-input-lifecycle.html#cb295-1"></a><span class="va">socket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
+<span id="cb295-2"><a href="shiny-input-lifecycle.html#cb295-2"></a>  <span class="va">self</span>.<span class="at">dispatchMessage</span>(<span class="va">e</span>.<span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb295-3"><a href="shiny-input-lifecycle.html#cb295-3"></a><span class="op">};</span></span></code></pre></div>
 <p>which sends the message to the appropriate <a href="https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L552">handler</a>, that is <code>inputMessages</code>:</p>
-<div class="sourceCode" id="cb294"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb294-1"><a href="shiny-input-lifecycle.html#cb294-1"></a><span class="at">addMessageHandler</span>(<span class="st">'inputMessages'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb294-2"><a href="shiny-input-lifecycle.html#cb294-2"></a>  <span class="co">// inputMessages should be an array</span></span>
-<span id="cb294-3"><a href="shiny-input-lifecycle.html#cb294-3"></a>  <span class="cf">for</span> (<span class="kw">var</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> <span class="va">message</span>.<span class="at">length</span><span class="op">;</span> i<span class="op">++</span>) <span class="op">{</span></span>
-<span id="cb294-4"><a href="shiny-input-lifecycle.html#cb294-4"></a>    <span class="kw">var</span> $obj <span class="op">=</span> <span class="at">$</span>(<span class="st">'.shiny-bound-input#'</span> <span class="op">+</span> <span class="at">$escape</span>(message[i].<span class="at">id</span>))<span class="op">;</span></span>
-<span id="cb294-5"><a href="shiny-input-lifecycle.html#cb294-5"></a>    <span class="kw">var</span> inputBinding <span class="op">=</span> <span class="va">$obj</span>.<span class="at">data</span>(<span class="st">'shiny-input-binding'</span>)<span class="op">;</span></span>
-<span id="cb294-6"><a href="shiny-input-lifecycle.html#cb294-6"></a></span>
-<span id="cb294-7"><a href="shiny-input-lifecycle.html#cb294-7"></a>    <span class="co">// Dispatch the message to the appropriate input object</span></span>
-<span id="cb294-8"><a href="shiny-input-lifecycle.html#cb294-8"></a>    <span class="cf">if</span> (<span class="va">$obj</span>.<span class="at">length</span> <span class="op">&gt;</span> <span class="dv">0</span>) <span class="op">{</span></span>
-<span id="cb294-9"><a href="shiny-input-lifecycle.html#cb294-9"></a>      <span class="kw">var</span> el <span class="op">=</span> $obj[<span class="dv">0</span>]<span class="op">;</span></span>
-<span id="cb294-10"><a href="shiny-input-lifecycle.html#cb294-10"></a>      <span class="kw">var</span> evt <span class="op">=</span> <span class="va">jQuery</span>.<span class="at">Event</span>(<span class="st">'shiny:updateinput'</span>)<span class="op">;</span></span>
-<span id="cb294-11"><a href="shiny-input-lifecycle.html#cb294-11"></a>      <span class="va">evt</span>.<span class="at">message</span> <span class="op">=</span> message[i].<span class="at">message</span><span class="op">;</span></span>
-<span id="cb294-12"><a href="shiny-input-lifecycle.html#cb294-12"></a>      <span class="va">evt</span>.<span class="at">binding</span> <span class="op">=</span> inputBinding<span class="op">;</span></span>
-<span id="cb294-13"><a href="shiny-input-lifecycle.html#cb294-13"></a>      <span class="at">$</span>(el).<span class="at">trigger</span>(evt)<span class="op">;</span></span>
-<span id="cb294-14"><a href="shiny-input-lifecycle.html#cb294-14"></a>      <span class="cf">if</span> (<span class="op">!</span><span class="va">evt</span>.<span class="at">isDefaultPrevented</span>())</span>
-<span id="cb294-15"><a href="shiny-input-lifecycle.html#cb294-15"></a>        <span class="va">inputBinding</span>.<span class="at">receiveMessage</span>(el<span class="op">,</span> <span class="va">evt</span>.<span class="at">message</span>)<span class="op">;</span></span>
-<span id="cb294-16"><a href="shiny-input-lifecycle.html#cb294-16"></a>    <span class="op">}</span></span>
-<span id="cb294-17"><a href="shiny-input-lifecycle.html#cb294-17"></a>  <span class="op">}</span></span>
-<span id="cb294-18"><a href="shiny-input-lifecycle.html#cb294-18"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb296"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb296-1"><a href="shiny-input-lifecycle.html#cb296-1"></a><span class="at">addMessageHandler</span>(<span class="st">'inputMessages'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb296-2"><a href="shiny-input-lifecycle.html#cb296-2"></a>  <span class="co">// inputMessages should be an array</span></span>
+<span id="cb296-3"><a href="shiny-input-lifecycle.html#cb296-3"></a>  <span class="cf">for</span> (<span class="kw">var</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> <span class="va">message</span>.<span class="at">length</span><span class="op">;</span> i<span class="op">++</span>) <span class="op">{</span></span>
+<span id="cb296-4"><a href="shiny-input-lifecycle.html#cb296-4"></a>    <span class="kw">var</span> $obj <span class="op">=</span> <span class="at">$</span>(<span class="st">'.shiny-bound-input#'</span> <span class="op">+</span> <span class="at">$escape</span>(message[i].<span class="at">id</span>))<span class="op">;</span></span>
+<span id="cb296-5"><a href="shiny-input-lifecycle.html#cb296-5"></a>    <span class="kw">var</span> inputBinding <span class="op">=</span> <span class="va">$obj</span>.<span class="at">data</span>(<span class="st">'shiny-input-binding'</span>)<span class="op">;</span></span>
+<span id="cb296-6"><a href="shiny-input-lifecycle.html#cb296-6"></a></span>
+<span id="cb296-7"><a href="shiny-input-lifecycle.html#cb296-7"></a>    <span class="co">// Dispatch the message to the appropriate input object</span></span>
+<span id="cb296-8"><a href="shiny-input-lifecycle.html#cb296-8"></a>    <span class="cf">if</span> (<span class="va">$obj</span>.<span class="at">length</span> <span class="op">&gt;</span> <span class="dv">0</span>) <span class="op">{</span></span>
+<span id="cb296-9"><a href="shiny-input-lifecycle.html#cb296-9"></a>      <span class="kw">var</span> el <span class="op">=</span> $obj[<span class="dv">0</span>]<span class="op">;</span></span>
+<span id="cb296-10"><a href="shiny-input-lifecycle.html#cb296-10"></a>      <span class="kw">var</span> evt <span class="op">=</span> <span class="va">jQuery</span>.<span class="at">Event</span>(<span class="st">'shiny:updateinput'</span>)<span class="op">;</span></span>
+<span id="cb296-11"><a href="shiny-input-lifecycle.html#cb296-11"></a>      <span class="va">evt</span>.<span class="at">message</span> <span class="op">=</span> message[i].<span class="at">message</span><span class="op">;</span></span>
+<span id="cb296-12"><a href="shiny-input-lifecycle.html#cb296-12"></a>      <span class="va">evt</span>.<span class="at">binding</span> <span class="op">=</span> inputBinding<span class="op">;</span></span>
+<span id="cb296-13"><a href="shiny-input-lifecycle.html#cb296-13"></a>      <span class="at">$</span>(el).<span class="at">trigger</span>(evt)<span class="op">;</span></span>
+<span id="cb296-14"><a href="shiny-input-lifecycle.html#cb296-14"></a>      <span class="cf">if</span> (<span class="op">!</span><span class="va">evt</span>.<span class="at">isDefaultPrevented</span>())</span>
+<span id="cb296-15"><a href="shiny-input-lifecycle.html#cb296-15"></a>        <span class="va">inputBinding</span>.<span class="at">receiveMessage</span>(el<span class="op">,</span> <span class="va">evt</span>.<span class="at">message</span>)<span class="op">;</span></span>
+<span id="cb296-16"><a href="shiny-input-lifecycle.html#cb296-16"></a>    <span class="op">}</span></span>
+<span id="cb296-17"><a href="shiny-input-lifecycle.html#cb296-17"></a>  <span class="op">}</span></span>
+<span id="cb296-18"><a href="shiny-input-lifecycle.html#cb296-18"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>In short, this does get the inputId and access the corresponding input binding. Then it triggers the <code>shiny:updateinput</code> <a href="https://shiny.rstudio.com/articles/js-events.html">event</a> and call the input binding <code>receiveMessage</code> method. This fires <code>setValue</code> and <code>subscribe</code>.
 The way <code>subscribe</code> works is not really well covered in the official <a href="https://shiny.rstudio.com/articles/building-inputs.html">documentation</a>.
 The <code>callback</code> function is actually defined during the initialization <a href="https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js#L174">process</a>:</p>
-<div class="sourceCode" id="cb295"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb295-1"><a href="shiny-input-lifecycle.html#cb295-1"></a><span class="kw">function</span> <span class="at">valueChangeCallback</span>(binding<span class="op">,</span> el<span class="op">,</span> allowDeferred) <span class="op">{</span></span>
-<span id="cb295-2"><a href="shiny-input-lifecycle.html#cb295-2"></a>  <span class="kw">var</span> id <span class="op">=</span> <span class="va">binding</span>.<span class="at">getId</span>(el)<span class="op">;</span></span>
-<span id="cb295-3"><a href="shiny-input-lifecycle.html#cb295-3"></a>  <span class="cf">if</span> (id) <span class="op">{</span></span>
-<span id="cb295-4"><a href="shiny-input-lifecycle.html#cb295-4"></a>    <span class="kw">var</span> value <span class="op">=</span> <span class="va">binding</span>.<span class="at">getValue</span>(el)<span class="op">;</span></span>
-<span id="cb295-5"><a href="shiny-input-lifecycle.html#cb295-5"></a>    <span class="kw">var</span> type <span class="op">=</span> <span class="va">binding</span>.<span class="at">getType</span>(el)<span class="op">;</span></span>
-<span id="cb295-6"><a href="shiny-input-lifecycle.html#cb295-6"></a>    <span class="cf">if</span> (type)</span>
-<span id="cb295-7"><a href="shiny-input-lifecycle.html#cb295-7"></a>      id <span class="op">=</span> id <span class="op">+</span> <span class="st">":"</span> <span class="op">+</span> type<span class="op">;</span></span>
-<span id="cb295-8"><a href="shiny-input-lifecycle.html#cb295-8"></a></span>
-<span id="cb295-9"><a href="shiny-input-lifecycle.html#cb295-9"></a>    <span class="kw">let</span> opts <span class="op">=</span> <span class="op">{</span></span>
-<span id="cb295-10"><a href="shiny-input-lifecycle.html#cb295-10"></a>      <span class="dt">priority</span><span class="op">:</span> allowDeferred <span class="op">?</span> <span class="st">"deferred"</span> : <span class="st">"immediate"</span><span class="op">,</span></span>
-<span id="cb295-11"><a href="shiny-input-lifecycle.html#cb295-11"></a>      <span class="dt">binding</span><span class="op">:</span> binding<span class="op">,</span></span>
-<span id="cb295-12"><a href="shiny-input-lifecycle.html#cb295-12"></a>      <span class="dt">el</span><span class="op">:</span> el</span>
-<span id="cb295-13"><a href="shiny-input-lifecycle.html#cb295-13"></a>    <span class="op">};</span></span>
-<span id="cb295-14"><a href="shiny-input-lifecycle.html#cb295-14"></a>    <span class="va">inputs</span>.<span class="at">setInput</span>(id<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></span>
-<span id="cb295-15"><a href="shiny-input-lifecycle.html#cb295-15"></a>  <span class="op">}</span></span>
-<span id="cb295-16"><a href="shiny-input-lifecycle.html#cb295-16"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb297"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb297-1"><a href="shiny-input-lifecycle.html#cb297-1"></a><span class="kw">function</span> <span class="at">valueChangeCallback</span>(binding<span class="op">,</span> el<span class="op">,</span> allowDeferred) <span class="op">{</span></span>
+<span id="cb297-2"><a href="shiny-input-lifecycle.html#cb297-2"></a>  <span class="kw">var</span> id <span class="op">=</span> <span class="va">binding</span>.<span class="at">getId</span>(el)<span class="op">;</span></span>
+<span id="cb297-3"><a href="shiny-input-lifecycle.html#cb297-3"></a>  <span class="cf">if</span> (id) <span class="op">{</span></span>
+<span id="cb297-4"><a href="shiny-input-lifecycle.html#cb297-4"></a>    <span class="kw">var</span> value <span class="op">=</span> <span class="va">binding</span>.<span class="at">getValue</span>(el)<span class="op">;</span></span>
+<span id="cb297-5"><a href="shiny-input-lifecycle.html#cb297-5"></a>    <span class="kw">var</span> type <span class="op">=</span> <span class="va">binding</span>.<span class="at">getType</span>(el)<span class="op">;</span></span>
+<span id="cb297-6"><a href="shiny-input-lifecycle.html#cb297-6"></a>    <span class="cf">if</span> (type)</span>
+<span id="cb297-7"><a href="shiny-input-lifecycle.html#cb297-7"></a>      id <span class="op">=</span> id <span class="op">+</span> <span class="st">":"</span> <span class="op">+</span> type<span class="op">;</span></span>
+<span id="cb297-8"><a href="shiny-input-lifecycle.html#cb297-8"></a></span>
+<span id="cb297-9"><a href="shiny-input-lifecycle.html#cb297-9"></a>    <span class="kw">let</span> opts <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb297-10"><a href="shiny-input-lifecycle.html#cb297-10"></a>      <span class="dt">priority</span><span class="op">:</span> allowDeferred <span class="op">?</span> <span class="st">"deferred"</span> : <span class="st">"immediate"</span><span class="op">,</span></span>
+<span id="cb297-11"><a href="shiny-input-lifecycle.html#cb297-11"></a>      <span class="dt">binding</span><span class="op">:</span> binding<span class="op">,</span></span>
+<span id="cb297-12"><a href="shiny-input-lifecycle.html#cb297-12"></a>      <span class="dt">el</span><span class="op">:</span> el</span>
+<span id="cb297-13"><a href="shiny-input-lifecycle.html#cb297-13"></a>    <span class="op">};</span></span>
+<span id="cb297-14"><a href="shiny-input-lifecycle.html#cb297-14"></a>    <span class="va">inputs</span>.<span class="at">setInput</span>(id<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></span>
+<span id="cb297-15"><a href="shiny-input-lifecycle.html#cb297-15"></a>  <span class="op">}</span></span>
+<span id="cb297-16"><a href="shiny-input-lifecycle.html#cb297-16"></a><span class="op">}</span></span></code></pre></div>
 <p><code>valueChangeCallback</code> ultimately calls <code>inputs.setInput(id, value, opts)</code>. The latters involves a rather complex chain of <a href="https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js">reactions</a> (which is not described here). Overall, the result is stored in a queue, namely <code>pendingData</code> and sent to the server with <code>shinyapp.sendInput</code>:</p>
-<div class="sourceCode" id="cb296"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb296-1"><a href="shiny-input-lifecycle.html#cb296-1"></a><span class="kw">this</span>.<span class="at">sendInput</span> <span class="op">=</span> <span class="kw">function</span>(values) <span class="op">{</span></span>
-<span id="cb296-2"><a href="shiny-input-lifecycle.html#cb296-2"></a>  <span class="kw">var</span> msg <span class="op">=</span> <span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
-<span id="cb296-3"><a href="shiny-input-lifecycle.html#cb296-3"></a>    <span class="dt">method</span><span class="op">:</span> <span class="st">'update'</span><span class="op">,</span></span>
-<span id="cb296-4"><a href="shiny-input-lifecycle.html#cb296-4"></a>    <span class="dt">data</span><span class="op">:</span> values</span>
-<span id="cb296-5"><a href="shiny-input-lifecycle.html#cb296-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb296-6"><a href="shiny-input-lifecycle.html#cb296-6"></a></span>
-<span id="cb296-7"><a href="shiny-input-lifecycle.html#cb296-7"></a>  <span class="kw">this</span>.<span class="at">$sendMsg</span>(msg)<span class="op">;</span></span>
-<span id="cb296-8"><a href="shiny-input-lifecycle.html#cb296-8"></a>    </span>
-<span id="cb296-9"><a href="shiny-input-lifecycle.html#cb296-9"></a>  <span class="va">$</span>.<span class="at">extend</span>(<span class="kw">this</span>.<span class="at">$inputValues</span><span class="op">,</span> values)<span class="op">;</span></span>
-<span id="cb296-10"><a href="shiny-input-lifecycle.html#cb296-10"></a>  <span class="co">// other things ...</span></span>
-<span id="cb296-11"><a href="shiny-input-lifecycle.html#cb296-11"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb298"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb298-1"><a href="shiny-input-lifecycle.html#cb298-1"></a><span class="kw">this</span>.<span class="at">sendInput</span> <span class="op">=</span> <span class="kw">function</span>(values) <span class="op">{</span></span>
+<span id="cb298-2"><a href="shiny-input-lifecycle.html#cb298-2"></a>  <span class="kw">var</span> msg <span class="op">=</span> <span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
+<span id="cb298-3"><a href="shiny-input-lifecycle.html#cb298-3"></a>    <span class="dt">method</span><span class="op">:</span> <span class="st">'update'</span><span class="op">,</span></span>
+<span id="cb298-4"><a href="shiny-input-lifecycle.html#cb298-4"></a>    <span class="dt">data</span><span class="op">:</span> values</span>
+<span id="cb298-5"><a href="shiny-input-lifecycle.html#cb298-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb298-6"><a href="shiny-input-lifecycle.html#cb298-6"></a></span>
+<span id="cb298-7"><a href="shiny-input-lifecycle.html#cb298-7"></a>  <span class="kw">this</span>.<span class="at">$sendMsg</span>(msg)<span class="op">;</span></span>
+<span id="cb298-8"><a href="shiny-input-lifecycle.html#cb298-8"></a>    </span>
+<span id="cb298-9"><a href="shiny-input-lifecycle.html#cb298-9"></a>  <span class="va">$</span>.<span class="at">extend</span>(<span class="kw">this</span>.<span class="at">$inputValues</span><span class="op">,</span> values)<span class="op">;</span></span>
+<span id="cb298-10"><a href="shiny-input-lifecycle.html#cb298-10"></a>  <span class="co">// other things ...</span></span>
+<span id="cb298-11"><a href="shiny-input-lifecycle.html#cb298-11"></a><span class="op">}</span></span></code></pre></div>
 <p>The message has an <code>update</code> tag and is sent through the client websocket, only if the connection is opened. If not, it is added to the list of pending messages.</p>
-<div class="sourceCode" id="cb297"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb297-1"><a href="shiny-input-lifecycle.html#cb297-1"></a><span class="kw">this</span>.<span class="at">$sendMsg</span> <span class="op">=</span> <span class="kw">function</span>(msg) <span class="op">{</span></span>
-<span id="cb297-2"><a href="shiny-input-lifecycle.html#cb297-2"></a>  <span class="cf">if</span> (<span class="op">!</span><span class="kw">this</span>.<span class="va">$socket</span>.<span class="at">readyState</span>) <span class="op">{</span></span>
-<span id="cb297-3"><a href="shiny-input-lifecycle.html#cb297-3"></a>    <span class="kw">this</span>.<span class="va">$pendingMessages</span>.<span class="at">push</span>(msg)<span class="op">;</span></span>
-<span id="cb297-4"><a href="shiny-input-lifecycle.html#cb297-4"></a>  <span class="op">}</span></span>
-<span id="cb297-5"><a href="shiny-input-lifecycle.html#cb297-5"></a>  <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb297-6"><a href="shiny-input-lifecycle.html#cb297-6"></a>    <span class="kw">this</span>.<span class="va">$socket</span>.<span class="at">send</span>(msg)<span class="op">;</span></span>
-<span id="cb297-7"><a href="shiny-input-lifecycle.html#cb297-7"></a>  <span class="op">}</span></span>
-<span id="cb297-8"><a href="shiny-input-lifecycle.html#cb297-8"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb299"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb299-1"><a href="shiny-input-lifecycle.html#cb299-1"></a><span class="kw">this</span>.<span class="at">$sendMsg</span> <span class="op">=</span> <span class="kw">function</span>(msg) <span class="op">{</span></span>
+<span id="cb299-2"><a href="shiny-input-lifecycle.html#cb299-2"></a>  <span class="cf">if</span> (<span class="op">!</span><span class="kw">this</span>.<span class="va">$socket</span>.<span class="at">readyState</span>) <span class="op">{</span></span>
+<span id="cb299-3"><a href="shiny-input-lifecycle.html#cb299-3"></a>    <span class="kw">this</span>.<span class="va">$pendingMessages</span>.<span class="at">push</span>(msg)<span class="op">;</span></span>
+<span id="cb299-4"><a href="shiny-input-lifecycle.html#cb299-4"></a>  <span class="op">}</span></span>
+<span id="cb299-5"><a href="shiny-input-lifecycle.html#cb299-5"></a>  <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb299-6"><a href="shiny-input-lifecycle.html#cb299-6"></a>    <span class="kw">this</span>.<span class="va">$socket</span>.<span class="at">send</span>(msg)<span class="op">;</span></span>
+<span id="cb299-7"><a href="shiny-input-lifecycle.html#cb299-7"></a>  <span class="op">}</span></span>
+<span id="cb299-8"><a href="shiny-input-lifecycle.html#cb299-8"></a><span class="op">};</span></span></code></pre></div>
 <p>Finally, current <code>inputValues</code> are updated. On the server side, the new value is received
 by the server websocket message handler, that is <code>ws$onMessage(message)</code>.</p>
 <div class="figure">
@@ -264,7 +265,7 @@ FIGURE 13.3: What Shiny does client side on initialization
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2020-11-12.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2020-12-23.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
