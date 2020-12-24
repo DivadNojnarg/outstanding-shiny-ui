@@ -557,12 +557,334 @@ shinyApp(
 )
 ```
 
-This solution significantly lightens the server code since everything may be done
-on the JS side in one step. 
+This solution significantly lightens the server code since everything may be done on the JS side in one step. 
 
 #### A chat system for shinydashboardPlus
 
-User messages in `{shinydashboardPlus}` (latest devel version).
+User messages in `{shinydashboardPlus}` (latest devel version) provide an easy way to create a chat system within a shiny app. `userMessages` hosts the main container while `userMessage` are the message elements. All of this is pure HTML:
+
+```html
+<div class="direct-chat-msg">
+  <div class="direct-chat-info clearfix">
+    <span class="direct-chat-name pull-left">Alexander Pierce</span>
+    <span class="direct-chat-timestamp pull-right">23 Jan 2:00 pm</span>
+  </div>
+  <!-- /.direct-chat-info -->
+  <img class="direct-chat-img" src="dist/img/user1-128x128.jpg" alt="message user image">
+                      <!-- /.direct-chat-img -->
+  <div class="direct-chat-text">Is this template really for free? That's unbelievable!
+  </div>
+  <!-- /.direct-chat-text -->
+</div>
+```
+
+Given that no JavaScript API is available to handle messages, that is send/receive/edit/remove any message, we are going to design a custom R/JavaScript API step by step. 
+
+##### HTML elements
+The message container is a simple `div` element:
+
+```html
+<div class="direct-chat-messages">...</div>
+```
+
+where `...` receives all messages. From the AdminLTE demonstration [page](https://adminlte.io/themes/AdminLTE/index2.html), the class `direct-chat-warning` gives the yellow color to the sent messages, while received messages are always gray. In `{shinydashboardPlus}`, the container is defined as below:
+
+```{r, eval=FALSE}
+userMessages <- function(..., id = NULL, status, width = 4, height = NULL) {
+  cl <- "direct-chat-messages direct-chat"
+  if (!is.null(height)) shiny::validateCssUnit(height)
+  if (!is.null(status)) {
+    validateStatus(status)
+    cl <- paste0(cl, " direct-chat-", status)
+  }
+  msgtag <- shiny::tags$div(
+    class = cl, 
+    ..., 
+    style = if (!is.null(height)) {
+      sprintf("height: %s; overflow-y: auto;", height)
+    } else {
+      "height: 100%;"
+    }
+  )
+  
+  shiny::tags$div(
+    id = id,
+    class = if (!is.null(width)) paste0("col-sm-", width),
+    msgtag
+  )
+  
+}
+```
+
+The most important element is the __id__ parameter that makes the link with the custom message handler on the JavaScript side. The message element is defined as:
+
+```{r eval=FALSE}
+userMessage <- function(..., author, date = NULL, 
+                        image = NULL, type = c("sent", "received")) {
+  
+  type <- match.arg(type)
+  messageCl <- "direct-chat-msg"
+  if (type == "sent") messageCl <- paste0(messageCl, " right")
+  
+  # message info
+  messageInfo <- shiny::tags$div(
+    class = "direct-chat-info clearfix",
+    shiny::tags$span(
+      class = if (type == "right") {
+        "direct-chat-name pull-right"
+      } else {
+        "direct-chat-name"
+      }, 
+      author
+    ),
+    if (!is.null(date)) {
+      shiny::tags$span(
+        class = if (type == "right") {
+          "direct-chat-timestamp right"
+        } else {
+          "direct-chat-timestamp"
+        }, 
+        date
+      )
+    }
+  )
+  
+  # message Text
+  messageTxt <- shiny::tags$div(class = "direct-chat-text", ...)
+  
+  # message author image
+  messageImg <- shiny::tags$img(class = "direct-chat-img", src = image)
+  
+  shiny::tags$div(
+    class = messageCl,
+    messageInfo,
+    messageImg, 
+    messageTxt
+  )
+}
+```
+
+There are 3 parts:
+
+  - The author tag, defined in the `messageInfo` variable.
+  - The message itself, defined in the `messageTxt` variable.
+  - The author image, contained in the `messageImg` variable.
+
+The class of the message varies depending whether it is received or sent, which actually changes its position (left or right). 
+
+Note the corresponding HTML classes like `direct-chat-text` since we will use them in JS.
+
+##### Handle interactions
+`userMessages` and `userMessage` alone only provide a static API. Let's design an `updateMessages` function that offers way to update the message container. That function must allow to:
+
+  - Add any message to the list.
+  - Remove any existing message.
+  - Update a given message.
+  
+For now, we assume to add only one message at a time. `updateMessages` is linked to any `userMessages` container by the __id__ parameter. In order to delete/update a message, we need to define an __index__ parameter. Don't forget that R starts from 1 while JS starts from 0. Consequently, we have to decrease the R index by 1 so that JS receives the correct number. We must also provide a content slot so as to update any existing message content. The content has to be compatible we the `userMessage` structure. We expect the user to pass a list like:
+
+```{r, eval=FALSE}
+list(
+  author = "David",
+  date = "Now",
+  image = "https://i.pinimg.com/originals/f1/15/df/f115dfc9cab063597b1221d015996b39.jpg",
+  type = "received",
+  text = tagList(
+    sliderInput(
+      "obs", 
+      "Number of observations:",
+      min = 0, 
+      max = 1000, 
+      value = 500
+    ),
+    plotOutput("distPlot")
+  )
+```
+
+Interestingly, we may offer the ability to add input/output element in the message content (as shown above) with dependencies that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the `processDeps` function on the R side for all elements with `lapply` function. Finally, the message is going to be sent with `session$sendCustomMessage`:
+
+```{r, eval=FALSE}
+updateUserMessages <- function(id, action = c("add", "remove", "update"), 
+                               index = NULL, content = NULL, 
+                               session = shiny::getDefaultReactiveDomain()) {
+  action <- match.arg(action)
+  
+  content <- lapply(content, function(c) {
+    if (inherits(c, "shiny.tag") || inherits(c, "shiny.tag.list")) {
+      # necessary if the user pass input/output with deps
+      # that are not yet available in the page before inserting the new tag
+      c <- processDeps(c, session)
+    }
+    c
+  })
+  
+  session$sendCustomMessage(
+    "user-messages", 
+    list(
+      id = session$ns(id), 
+      action = action, 
+      index = index,
+      body = content
+    )
+  )
+}
+```
+
+We have to send the container __id__ so as to be able to select the good target on the JS side. Note the `session$ns` that actually make sure this function can work within shiny modules. 
+
+As a reminder, the message handler name has to be the same on the JS side!
+
+Now we are all done for the R side but still have to design the JS interface. The first step is to create a custom message handler skeleton:
+
+```javascript
+Shiny.addCustomMessageHandler("user-messages", function(message) {
+  // JS logic
+});
+```
+
+where the message parameter is actually the message sent through the R `updateUserMessages` function. We recall that is we send a list, it is converted into a JS object. Therefore, to access the container id element, we do:
+
+```javascript
+message.id
+```
+
+and similarly for other elements. There may be nested list, for instance the message content is one, which is not very complex to handle: we simply use the `.` JS notation to access lower level elements, that is `message.content.text` for the message text. 
+
+The second step is to store all message elements in variables, which may be separated by commas. This step is not mandatory but improves the code readability:
+
+```javascript
+Shiny.addCustomMessageHandler("user-messages", function(message) {
+  var id = message.id, action = message.action, content = message.body, index = message.index;
+});
+```
+
+In the following we show how to process any message content. For sake of simplicity, we assume to be able to only edit the message text. 
+As mentioned earlier, there are 2 possible cases:
+
+  - The text is simple text or simple HTML without any extra dependency, we do nothing more than storing it into a meaningful variable.
+  - The text is a list of shiny tags containing input/output with extra dependencies like `sliderInput`, we have to use the `renderHtml` method to correctly process the missing dependencies passed from R via `processDeps` in `updateUserMessages`.
+  
+This yields:
+
+```javascript
+Shiny.addCustomMessageHandler("user-messages", function(message) {
+  var id = message.id, action = message.action, content = message.body, index = message.index;
+  
+  if (content.hasOwnProperty("text")) {
+    var text;
+    if (content.text.html === undefined) {
+      text = content.text;
+    } else {
+      text = Shiny.renderHtml(content.text.html, $([]), content.text.deps).html;
+    } 
+  }
+  
+});
+```
+
+Note the `hasOwnProperty` that checks whether content has a text property. 
+
+
+Then, the next step is to consider the multiple options provided by the user (update, add, remove). We consider the simplest case, that is `remove` a message. We remind the reader that the __action__ contains the user choice in `updateUserMessages`. What do we need to remove a given message:
+
+  - It's index contained in the __index__ variable.
+  - The container __id__.
+  - Remember/notice that a message has the `direct-chat-msg` class.
+  - Use the `remove` jQuery method.
+  
+We therefore target the main container with `$("#" + id)`, look for its messages with `find(".direct-chat-msg")`, specify the target using `eq(index - 1)` (index is the R value) and apply the remove method:
+
+```javascript
+if (action === "remove") {
+  $("#" + id).find(".direct-chat-msg").eq(index - 1).remove();
+}
+```
+
+We could add more security with `console.warn` whenever the user wants to delete a message that does not exist. We leave it to the reader as an exercise. 
+
+The second case is to add a new message. In that case, we define new variables containing the
+author, the date, the image and the message type. Below is a reminder of the message HTML structure:
+
+```html
+<div class="direct-chat-msg">
+  <div class="direct-chat-info clearfix">
+    <span class="direct-chat-name pull-left">AUTHOR (TO REPLACE)</span>
+    <span class="direct-chat-timestamp pull-right">DATE (TO REPLACE)</span>
+  </div>
+  <!-- /.direct-chat-info -->
+  <img class="direct-chat-img" src="IMAGE URL (TO REPLACE)" alt="message user image">
+                      <!-- /.direct-chat-img -->
+  <div class="direct-chat-text">MAIN CONTENT (TO REPLACE)
+  </div>
+  <!-- /.direct-chat-text -->
+</div>
+```
+
+In our JS logic, we use the same template and replace any relevant element (see capital letters) 
+by the previously created variables. We might use the string interpolation but this is not compatible with all
+web browsers. We wrap all of these elements in a `direct-chat-msg` div which class may vary depending
+on the message type. If sent, the class is `direct-chat-msg right` and `direct-chat-msg` otherwise.
+The final step is to target the main container with `$("#" + id)`, look for the messages slot `find(".direct-chat-messages")` (the message container is nested in the main wrapper) and `append` it 
+to the DOM. We used `append` which add the message at the end but could choose `prepend` to add on top
+of all other messages. This behavior may be defined by the programmer with no option for the end-user.
+Alternatively, the developer could expose an external parameter to control the add position. 
+
+```javascript
+// other condition before ...
+else if (action === "add") {
+  var author = content.author, date = content.date, image = content.image, type = content.type;
+      
+  // build the new message 
+  var newMessage = '<div class="direct-chat-info clearfix">' +
+    '<span class="direct-chat-name">' + author + '</span>' +
+    '<span class="direct-chat-timestamp" style="margin-left: 4px">' + date + '</span>' + '</div>' +
+    '<img class="direct-chat-img" src="' + image + '"/>' + 
+    '<div class="direct-chat-text">' + text + '</div>'
+    
+  // build wrapper
+  var newMessageWrapper;
+  if (type === "sent") {
+    newMessageWrapper = '<div class="direct-chat-msg right">' + newMessage + '</div>'
+  } else {
+    newMessageWrapper = '<div class="direct-chat-msg">' + newMessage + '</div>'
+  }
+  
+  // append message
+  $("#" + id).find(".direct-chat-messages").append(newMessageWrapper);
+}
+```
+
+Finally, the last case is to update a given message. As stated above, we assume to only edit the
+message text and the date. To update the message, we target the messages container with `$("#" + id)`,
+look for all texts with `find(".direct-chat-text")`, refine our choice by targeting the good element with
+`eq(index - 1)`, call `replaceWith` containing the new text element. 
+
+```javascript
+else if (action === "update") {
+      
+  // today's date
+  var d = new Date();
+  var month = d.getMonth() + 1;
+  var day = d.getDate();
+  var today = d.getFullYear() + '/' +
+    ((''+month).length<2 ? '0' : '') + month + '/' +
+    ((''+day).length<2 ? '0' : '') + day;
+    
+  // we assume only text may be updated. Does not make sense to modify author
+  
+  $("#" + id)
+    .find(".direct-chat-text")
+    .eq(index - 1)
+    .replaceWith('<div class="direct-chat-text"><small class="text-red">(modified: ' + today +')</small><br>' +  text + '</div>')
+}
+```
+
+Don't forget to unbind, re-initialize and bind all inputs by calling `Shiny.unbindAll();`, `Shiny.initializeInputs();` and
+`Shiny.bindAll();`. If you ommit this part, the newly inserted input/output elements won't work!
+
+
+The whole JS code may be found below:
+
 
 ```javascript
 // userMessages
@@ -633,7 +955,7 @@ User messages in `{shinydashboardPlus}` (latest devel version).
   });
 ```
 
-Shiny demo:
+as well as a demonstration:
 
 ```{r, eval=FALSE}
 library(shinydashboard)
