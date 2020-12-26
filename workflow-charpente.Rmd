@@ -208,6 +208,17 @@ add_bulma_deps <- function(tag) {
  )
  htmltools::tagList(tag, bulma_deps)
 }
+
+# CDN dependencies
+add_bulma_deps <- function(tag) {
+ bulma_deps <- htmltools::htmlDependency(
+  name = "bulma",
+  version = "0.9.1",
+  src = c(href = "https://cdn.jsdelivr.net/npm/bulma@0.9.1/"),
+  stylesheet = "css/bulma.min.css"
+ )
+ htmltools::tagList(tag, bulma_deps)
+}
 ```
 
 
@@ -296,10 +307,154 @@ the dependency with another version. Be careful, since `{charpente}` does not ma
 of old versions. 
 
 
-#### Add custom JavaScript
+#### Exercise: add bulmaJS
 As stated in the above, bulma only contains CSS things! It means we need
 either to develop custom JS code to add interactivity or rely on any third party existing API. 
 [bulma JS](https://bulmajs.tomerbe.co.uk/) is one of these!
+
+1. Using `{charpente}`, create a bulma js dependency. We'll point to [vizuaalog/bulmajs](https://bulmajs.tomerbe.co.uk/) since some bulmajs already exist and are not what we want. Run the following code in the R console.
+
+```{r bulmajs-deps, eval=FALSE}
+create_dependency(..., options = charpente_options(local = FALSE))
+```
+
+Notice how many files are added to the dependency. In the following, we'll only work with **notifications**:
+
+  - Only keep `notification.js` and remove all the unnecessary files
+  - Only keep `bulma.js` that gather all plugins in 1 script. 
+  
+The best practice is usually to **keep only what we need** since some scripts may be **heavy to load**!
+
+2. Run `devtools::load_all()`. Modify the below code to test the newly created dependency. Hint: toggle the HTML inspector to check all appropriate dependencies are there!
+```{r bulmajs-deps-test, eval=FALSE}
+ui <- bulma_page()
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+#### Add custom JS
+Notifications are always useful to send user feedback. Shiny has a notification system through `shiny::showNotification`. Like Shiny, Bulma [notifications](https://bulmajs.tomerbe.co.uk/docs/0.11/2-core-components/notification/) are entirely built from JS (no need for any HTML code).
+
+The API works as follows:
+
+  - `Bulma(target).notification(config)` creates the notification based on a JSON option list (config). 
+  `target` expects a jQuery selector.
+  - `show` toggles the newly instantiated notification
+  
+In other words the below code attaches the notification to the `body`:
+
+```javascript
+Bulma('body').notification({
+  body: 'Example notification',
+  color: 'info'
+}).show();
+```
+  
+In the following we design the R interface and JavaScript handler (which is no more than an event listener). 
+`{charpente}` has a function that creates both pieces, namely `create_custom_handler`:
+
+```{r, eval=FALSE}
+create_custom_handler("notification")
+```
+
+We obtain the `notification-handler.R` script:
+
+```{r, eval=FALSE}
+send_notification_message <- function(id = NULL, options = NULL, session = shiny::getDefaultReactiveDomain()) {
+ message <- list(
+  # your logic
+ )
+ 
+ session$sendCustomMessage(type = "notification", message)
+}
+```
+
+and the corresponding JavaScript piece in `notification.js`, 
+derived from the `{golem}` `add_js_handler` function:
+
+```javascript
+$(function() {
+  Shiny.addCustomMessageHandler('notification', function(message) {
+ 
+  });
+});
+```
+
+By default, the JS file is created in the `srcjs` directory. This is a special directory
+where we store all JavaScript files that depend on the package author. For instance, 
+bulmaJS is an external dependency and is very unlikely to be edited by the package author. For that reason, 
+it remains in the `inst` folder like all other external dependencies.
+
+#### Organize your JS code
+This naturally leads us to this part which is about JS code organization. Shiny developers
+may have a lot of custom scripts, and it is generally a bad idea to put them all
+under `inst`. Instead, we put them in `srcjs`, concatenate and minify them to create one big
+`file.min.js` in the `inst` folder. This is better for performance since file size matter in JS.
+
+The dreamRs team developed a tool to seamlessly format, organize, validate CSS and JS code, that is
+[{jstools}](https://github.com/dreamRs/jstools). Interestingly, it has 2 addins allowing to quickly
+format and validate a given JS file. 
+
+```{r, eval=FALSE}
+remotes::install_github("dreamRs/jstools")
+```
+
+We are going to create a second custom handler with `{charpente}` and reorganize
+the whole JS code:
+
+```{r, eval=FALSE}
+create_custom_handler("modal")
+```
+
+Now there should be 2 JS scripts in the `srcjs` folder. Below, we use a compressor, namely
+[terser](https://terser.org/), that optimizes and compresses our code for the web browser, at a price to be less
+human readable.  It also provides source maps that are crucial to the debugging process, thereby making it possible to reconstruct the original JS code starting from a minified script:
+
+```{r, eval=FALSE}
+library(jstools)
+mypkgJS <- list.files(
+  path = "srcjs",
+  recursive = TRUE,
+  full.names = TRUE
+)
+
+dir.create("inst")
+outputDir <- "inst/mypkg-0.0.0.9000"
+dir.create(outputDir)
+
+# Concat + Compress + source maps ----------------------------------------------------------------
+
+terser_file(
+  input = mypkgJS,
+  output = sprintf("%s/mypkg.min.js", outputDir),
+  options = terser_options(
+    sourceMap = list(
+      root = "../../mypkg-build",
+      filename = "mypkg.min.js",
+      url = "mypkg.min.js.map",
+      includeSources = TRUE
+    )
+  )
+)
+```
+
+`terser_file` takes all raw JS files as input, generate a minified/optimized script as well
+as source maps available at `mypkg.min.js.map`. The __root__ parameter indicates their location
+on the server once the shiny app running:
+
+```javascript
+$((function(){Shiny.addCustomMessageHandler("modal",(function(n){}))})),
+$((function(){Shiny.addCustomMessageHandler("notification",(function(n){}))}));
+//# sourceMappingURL=mypkg.min.js.map
+```
+
+The good new is that `{charpente}` can automate this task in only one line of code:
+
+```{r, eval=FALSE}
+compress_js()
+```
+
+#### Combine multiple dependencies
 
 ## Validate JavaScript
 We could not finish this chapter without mentioning tools to validate JavaScript code. We will particularly focus on [JSHint](https://jshint.com), which has a R [wrapper](https://github.com/dreamRs/jstools), nicely provided by the dreamRs team. Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
