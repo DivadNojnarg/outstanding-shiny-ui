@@ -363,18 +363,18 @@ We finally raise an error if any punctuation is found.</p>
   <span class="fu"><a href="https://rdrr.io/pkg/testthat/man/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">13</span><span class="op">)</span><span class="op">)</span>
   <span class="fu"><a href="https://rdrr.io/pkg/testthat/man/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>width <span class="op">=</span> <span class="st">"hello world"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
-<pre><code>## Test passed 🥳</code></pre>
+<pre><code>## Test passed 🎉</code></pre>
 <p>We then test <code>validate_status</code> and <code>validate_padding</code>.</p>
 <div class="sourceCode" id="cb380"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/testthat/man/test_that.html">test_that</a></span><span class="op">(</span><span class="st">"validate status works"</span>, <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/testthat/man/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>status <span class="op">=</span> <span class="st">"toto"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
-<pre><code>## Test passed 🥳</code></pre>
+<pre><code>## Test passed 🎊</code></pre>
 <div class="sourceCode" id="cb382"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/testthat/man/test_that.html">test_that</a></span><span class="op">(</span><span class="st">"validate padding works"</span>, <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/testthat/man/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>width <span class="op">=</span> <span class="st">"xs"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
-<pre><code>## Test passed 😸</code></pre>
+<pre><code>## Test passed 🎊</code></pre>
 <p>So far so good. In few lines of code, we substantially increased the robustness of our function without increasing its complexity. Now, let’s try to remove the <code>validate_width</code> step from the <code>tabler_card</code>.</p>
 <div class="sourceCode" id="cb384"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">tabler_card</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">status</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">stacked</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">padding</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
@@ -535,7 +535,7 @@ loads immediately but you may wait some time if there are computations):</p>
 <div class="sourceCode" id="cb392"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <p>Note the <code>--remote-debugging-port=31683</code> that gives the link to the Chrome devtools link
-to inspect the current app, as shown Figure <a href="#fig:abler-crrry-debug"><strong>??</strong></a>.</p>
+to inspect the current app, as shown Figure <a href="custom-templates-testing.html#fig:tabler-crrry-debug">19.1</a>.</p>
 <div class="figure">
 <span id="fig:tabler-crrry-debug"></span>
 <img src="images/practice/tabler-crrry-debug.png" alt="Tabler progress bar debug tools" width="100%"><p class="caption">
@@ -576,8 +576,103 @@ attribute, as a string. We have to convert it to a number with <code>parseInt</c
 <p>The test pass, meaning that our <code>update_tabler_progress</code>, especially the associated
 custom message handler, works. This test was simple and did not involve any input elements.
 Yet, <a href="https://github.com/ColinFay/crrry">crrry</a> also support setting input values with <code>shiny_set_input(id, value)</code>.</p>
-
 </div>
+</div>
+<div id="test-input-bindings" class="section level3">
+<h3>
+<span class="header-section-number">19.2.2</span> Test input bindings<a class="anchor" aria-label="anchor" href="#test-input-bindings"><i class="fas fa-link"></i></a>
+</h3>
+<p>We decide to add more complexity and show how to test a home made input binding. We are going to
+test the tabler navbar JavaScript logic developed in Chapter <a href="custom-templates-inputs.html#custom-templates-inputs-navbar">20.3</a>.
+Before starting to test, we define the expectations:</p>
+<ul>
+<li>If no <code>tabler_navbar_menu_item</code> is selected by default, at start, the first item is selected.
+It must have the <code>active</code> class on it. We have to check whether the first <code>&lt;a class="nav-link"&gt;</code>
+has the active class.</li>
+<li>Moreover, if one item is selected at start, we have to make sure this item has the <code>active</code> class.</li>
+<li>We have to ensure that clicking on another link switch the currently selected link so that
+the corresponding input on the R side is properly updated.</li>
+<li>When we call <code>update_tabler_tab_item</code> we have to check whether the active link is
+successfully changed.</li>
+<li>Each time a navbar item is active, the corresponding body <code>tabler_tab_item</code> must hold the
+<code>active show</code> class, to make sure the tab content is visible. Only on tab may have those classes at a time.</li>
+</ul>
+<p>As described above, we run our app in another R process, so as to keep the main process
+for the test:</p>
+<div class="sourceCode" id="cb396"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">processx</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/processx/man/process.html">process</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>
+  <span class="st">"Rscript"</span>, 
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span> <span class="st">"-e"</span>,  <span class="st">"options('shiny.port'= 3515);OSUICode::update_tabler_navbar_example()"</span> <span class="op">)</span>
+<span class="op">)</span>
+
+<span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html">Sys.sleep</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>
+
+<span class="va">p</span><span class="op">$</span><span class="fu">is_alive</span><span class="op">(</span><span class="op">)</span>
+
+<span class="va">test</span> <span class="op">&lt;-</span> <span class="fu">crrry</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/crrry/man/CrrryOnPage.html">CrrryOnPage</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>
+  chrome_bin <span class="op">=</span> <span class="fu">pagedown</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pagedown/man/find_chrome.html">find_chrome</a></span><span class="op">(</span><span class="op">)</span>,
+  chrome_port <span class="op">=</span> <span class="fu">httpuv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/httpuv/man/randomPort.html">randomPort</a></span><span class="op">(</span><span class="op">)</span>,
+  url <span class="op">=</span> <span class="st">"http://localhost:3515/"</span>,
+  headless <span class="op">=</span> <span class="cn">TRUE</span>
+<span class="op">)</span>
+
+<span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<p>At start, no link was selected, meaning we expect the first link to be active and shown. The navbar
+may be targeted using the <code>navbar-nav</code> class and we use <code>find</code> to locate the active child which must
+have the <code>nav-link active</code> classes. We also control that only 1 item is selected by inspecting the length
+of the active nav link items.
+We extract its index with <code>index</code> which is contained in the <code>data-value</code> attribute:</p>
+<div class="sourceCode" id="cb397"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">active</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').length"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">active</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="fl">1</span><span class="op">)</span>
+
+<span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span>
+
+<span class="va">res1</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').attr('data-value')"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res1</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab1"</span><span class="op">)</span></code></pre></div>
+<p>Now let’s see whether to body tab has the good index. We target the <code>tab-content</code> class and look
+for the element having <code>active show</code> classes. We recover its id which contains the tab name:</p>
+<div class="sourceCode" id="cb398"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">res2</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.tab-content').find('.active.show').attr('id')"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res1</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="va">res2</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span><span class="op">)</span></code></pre></div>
+<p>We programmatically change the active tab by clicking on the second link. Below we use
+<code>.nav-link:eq(1)</code> to select the second link but we could use <code>.nav-link:not(.active)</code> since
+we only have 2 links. We also recover the index of the selected link and the corresponding tab. If
+everything happens well, we expect their value to be 2:</p>
+<div class="sourceCode" id="cb399"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav .nav-link:eq(1)').click();"</span><span class="op">)</span>
+
+<span class="va">res3</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').attr('data-value')"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res3</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab2"</span><span class="op">)</span>
+
+<span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span>
+
+<span class="va">res4</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.tab-content').find('.active.show').attr('id')"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res3</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="va">res4</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span><span class="op">)</span></code></pre></div>
+<p>We then click on the “change tab” button, that has the <code>update</code> id. The latter,
+actually triggers <code>update_tabler_tab_item</code>. We also want to check its behavior and expect
+to be back on tab 1:</p>
+<div class="sourceCode" id="cb400"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('#update').click();"</span><span class="op">)</span>
+
+<span class="va">res5</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').attr('data-value')"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res5</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab1"</span><span class="op">)</span>
+
+<span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span>
+
+<span class="va">res6</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.tab-content').find('.active.show').attr('id')"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res5</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="va">res6</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span><span class="op">)</span></code></pre></div>
+<p>If the test is successful, it means that the <code>receiveMessage</code> and <code>setValue</code> methods
+work as expected. We finally test the input value by setting its value to <code>tab2</code> with <code>shiny_set_input</code>.
+All Shiny input values are stored in the <code>Shiny.shinyapp.$inputValues</code> object, as shown in Chapter <a href="shiny-input-lifecycle.html#shiny-input-lifecycle">13</a>:</p>
+<div class="sourceCode" id="cb401"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">test</span><span class="op">$</span><span class="fu">shiny_set_input</span><span class="op">(</span><span class="st">"current_tab"</span>, <span class="st">"tab2"</span><span class="op">)</span>
+<span class="va">tab_input</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"Shiny.shinyapp.$inputValues.current_tab"</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/testthat/man/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">tab_input</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab2"</span><span class="op">)</span></code></pre></div>
+<p>This does not effect the navbar but triggers the notification.</p>
+<p>As an exercise, we leave the reader to write a test to check the app behavior when
+the second tab is active at start.</p>
+
 </div>
 </div>
 </div>
@@ -596,7 +691,10 @@ Yet, <a href="https://github.com/ColinFay/crrry">crrry</a> also support setting 
 </ul>
 </li>
 <li>
-<a class="nav-link" href="#testing-templates-elements"><span class="header-section-number">19.2</span> Testing templates elements</a><ul class="nav navbar-nav"><li><a class="nav-link" href="#testing-template-behavior"><span class="header-section-number">19.2.1</span> Testing template behavior</a></li></ul>
+<a class="nav-link" href="#testing-templates-elements"><span class="header-section-number">19.2</span> Testing templates elements</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#testing-template-behavior"><span class="header-section-number">19.2.1</span> Testing template behavior</a></li>
+<li><a class="nav-link" href="#test-input-bindings"><span class="header-section-number">19.2.2</span> Test input bindings</a></li>
+</ul>
 </li>
 </ul>
 

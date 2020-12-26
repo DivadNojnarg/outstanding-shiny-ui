@@ -503,7 +503,7 @@ test$wait_for_shiny_ready()
 ```
 
 Note the `--remote-debugging-port=31683` that gives the link to the Chrome devtools link
-to inspect the current app, as shown Figure \@ref(fig:abler-crrry-debug). 
+to inspect the current app, as shown Figure \@ref(fig:tabler-crrry-debug). 
 
 
 ```{r tabler-crrry-debug, echo=FALSE, fig.cap='Tabler progress bar debug tools', out.width='100%'}
@@ -552,3 +552,119 @@ test$stop()
 The test pass, meaning that our `update_tabler_progress`, especially the associated
 custom message handler, works. This test was simple and did not involve any input elements.
 Yet, `{crrry}` also support setting input values with `shiny_set_input(id, value)`.
+
+
+### Test input bindings
+We decide to add more complexity and show how to test a home made input binding. We are going to
+test the tabler navbar JavaScript logic developed in Chapter \@ref(custom-templates-inputs-navbar). 
+Before starting to test, we define the expectations:
+
+  - If no `tabler_navbar_menu_item` is selected by default, at start, the first item is selected.
+  It must have the `active` class on it. We have to check whether the first `<a class="nav-link">` 
+  has the active class.
+  - Moreover, if one item is selected at start, we have to make sure this item has the `active` class.
+  - We have to ensure that clicking on another link switch the currently selected link so that
+  the corresponding input on the R side is properly updated.
+  - When we call `update_tabler_tab_item` we have to check whether the active link is
+  successfully changed.
+  - Each time a navbar item is active, the corresponding body `tabler_tab_item` must hold the
+  `active show` class, to make sure the tab content is visible. Only on tab may have those classes at a time.
+  
+As described above, we run our app in another R process, so as to keep the main process
+for the test:
+
+
+```{r, eval=FALSE}
+p <- processx::process$new(
+  "Rscript", 
+  c( "-e",  "options('shiny.port'= 3515);OSUICode::update_tabler_navbar_example()" )
+)
+
+Sys.sleep(2)
+
+p$is_alive()
+
+test <- crrry::CrrryOnPage$new(
+  chrome_bin = pagedown::find_chrome(),
+  chrome_port = httpuv::randomPort(),
+  url = "http://localhost:3515/",
+  headless = TRUE
+)
+
+test$wait_for_shiny_ready()
+```
+
+At start, no link was selected, meaning we expect the first link to be active and shown. The navbar
+may be targeted using the `navbar-nav` class and we use `find` to locate the active child which must
+have the `nav-link active` classes. We also control that only 1 item is selected by inspecting the length
+of the active nav link items. 
+We extract its index with `index` which is contained in the `data-value` attribute:
+
+```{r, eval=FALSE}
+active <- test$call_js("$('.navbar-nav').find('.nav-link.active').length")
+expect_equal(active$result$value, 1)
+
+test$wait_for_shiny_ready()
+
+res1 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+expect_equal(res1$result$value, "tab1")
+```
+
+Now let's see whether to body tab has the good index. We target the `tab-content` class and look
+for the element having `active show` classes. We recover its id which contains the tab name:
+
+```{r, eval=FALSE}
+res2 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+expect_equal(res1$result$value, res2$result$value)
+```
+
+We programmatically change the active tab by clicking on the second link. Below we use
+`.nav-link:eq(1)` to select the second link but we could use `.nav-link:not(.active)` since
+we only have 2 links. We also recover the index of the selected link and the corresponding tab. If 
+everything happens well, we expect their value to be 2:
+
+```{r, eval=FALSE}
+test$call_js("$('.navbar-nav .nav-link:eq(1)').click();")
+
+res3 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+expect_equal(res3$result$value, "tab2")
+
+test$wait_for_shiny_ready()
+
+res4 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+expect_equal(res3$result$value, res4$result$value)
+```
+
+We then click on the "change tab" button, that has the `update` id. The latter,
+actually triggers `update_tabler_tab_item`. We also want to check its behavior and expect
+to be back on tab 1:
+
+```{r, eval=FALSE}
+test$call_js("$('#update').click();")
+
+res5 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+expect_equal(res5$result$value, "tab1")
+
+test$wait_for_shiny_ready()
+
+res6 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+expect_equal(res5$result$value, res6$result$value)
+```
+
+If the test is successful, it means that the `receiveMessage` and `setValue` methods
+work as expected. We finally test the input value by setting its value to `tab2` with `shiny_set_input`.
+All Shiny input values are stored in the `Shiny.shinyapp.$inputValues` object, as shown in Chapter \@ref(shiny-input-lifecycle):
+
+```{r, eval=FALSE}
+test$shiny_set_input("current_tab", "tab2")
+tab_input <- test$call_js("Shiny.shinyapp.$inputValues.current_tab")
+expect_equal(tab_input$result$value, "tab2")
+```
+
+This does not effect the navbar but triggers the notification.
+
+
+As an exercise, we leave the reader to write a test to check the app behavior when
+the second tab is active at start. 
+
+
