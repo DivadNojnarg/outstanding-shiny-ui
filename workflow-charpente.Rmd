@@ -5,7 +5,7 @@ knitr::include_graphics("images/workflow/charpente-hex.png")
 ```
 
 ## Motivations
-Translating an HTML template into an R API requires the creation of a package. As stated in Chapter \@ref(intro), this is not a good practice to proceed as follows:
+Translating an HTML template into an R API requires the creation of a package. As stated in Chapter \@ref(welcome-code-structure), this is not a good practice to proceed as follows:
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -88,17 +88,218 @@ Imagine if we had to repeat the process for more than twenty components. The pac
   - Relevant file organization
   
 ## Step by step
-[{charpente}](https://github.com/RinteRface/charpente) is a game changer for custom template creation.
+
+### General idea
+[{charpente}](https://github.com/RinteRface/charpente) is a game changer for custom template creation. 
+It is not yet on CRAN but has been widely used to help developing RinteRface packages.
+`{charpente}`, it drastically:
+
+  - Eases the import of external dependencies.
+  - Speeds up the HTML to R conversion, which is quite frankly a rather boring process,
+  allowing to focus on the features rather than the syntax. This feature builds on top of the
+  `{html2R}` shiny app by Alan Dipert, already mentioned in Chapter \@ref(htmltools-overview).
+  
+Let's try below with `html_2_R`:
+
+```{r}
+library(charpente)
+html_2_R('<div class="divclass" id = "someid"></div>')
+```
+
+`html_2_R` has a __prefix__ parameter which adds a `tags$` prefix if TRUE. It is 
+TRUE by default which prevents errors with unexported Shiny tags like `nav`.
 
 
+The second main benefice of `{charpente}` is the dependency management system.
+
+### A case study: `{shinybulma}`
+In the following, we'll illustrate `{charpente}`'s workflow, through the R in Pharma workshop [exercises](https://github.com/RinteRface/Unleash-Shiny-Exercise-1) focused on `{shinybulma}`.
+
+[bulma](https://bulma.io/) is a more and more popular open source CSS framework for the web. 
+Importantly, there **isn't** any JavaScript helper in the bulma core. 
+We'll see later that the recent [bulma JS](https://bulmajs.tomerbe.co.uk/) provides such feature. 
+For now, we only focus on HTML and CSS.
+
+To initialize a `{charpente}` package, we do:
 
 ```{r, eval = FALSE}
-library(charpente)
 path <- file.path(tempdir(), "mypkg")
-create_charpente(path)
+create_charpente(path, license = "mit")
 # TO FINISH
 ```
 
+This sets up a minimal viable package with git and optionally github remote setup, 
+Figure \@ref(fig:workflow-charpente-pkg). 
+
+```{r workflow-charpente-pkg, echo=FALSE, fig.cap='Package structure for {charpente}', fig.align = 'center', out.width='100%'}
+knitr::include_graphics("images/workflow/charpente-pkg.png")
+```
+
+#### Build the HTML dependency
+The interested reader will have a look at the **Getting started [guide](https://bulma.io/documentation/overview/start/)**,
+so as to know more how to get bulma. To install bulma dependencies, there are 3 ways. 
+For convenience, we'll choose the CDN method (content delivery network) which consists in getting dependencies from a dedicated server.
+
+We could build the bulma dependency as follows:
+
+```{r, eval=FALSE}
+library(htmltools)
+bulma_deps <- htmlDependency(
+  name = ...,
+  version = ...,
+  src = c(href = ...),
+  stylesheet = ...
+)
+
+add_bulma_deps <- function(tag) {
+  tagList(..., ...)
+}
+```
+
+but this already takes too much time. This is where `{charpente}` comes into play. 
+Specifically, the `create_dependency` function:
+
+  - Automatically download/points to the specified dependency by just providing its
+  name. It means you have to know what you are looking for. Best practice is
+  to have a look at the [jsdelivr](https://www.jsdelivr.com/) website 
+  (`{charpente}` is built on top of jsdelivr) and find the good repository, as shown Figure 
+  \@ref(fig:workflow-jsdelivr-bulma).
+  - `charpente_options(local = FALSE)` allows to fine tune the behavior. If local is FALSE,
+  `{charpente}` points to the CDN without downloading any file. It is substantially faster than
+  the local option but requires an internet connection. Package developers will prefer the
+  `local = TRUE` to ensure dependencies are always accessible.
+  - Extra parameters like __tag__ control the downloaded version since HTML templates
+  may have several flavors. It is always good to be able to test multiple versions and select
+  the best option. 
+  - Creates the `add_<DEP_NAME>_deps` function in a `<DEP_NAME>--dependencies.R` script and opens it.
+  
+```{r workflow-jsdelivr-bulma, echo=FALSE, fig.cap='jsdelivr result for bulma', fig.align = 'center', out.width='100%'}
+knitr::include_graphics("images/workflow/jsdelivr-bulma.png")
+```
+Once satisfied, we simply run to get the latest version:
+
+```{r, eval=FALSE}
+create_dependency("bulma", options = charpente_options(local = FALSE))
+create_dependency("bulma", tag = "0.7.0", options = charpente_options(local = FALSE))
+```
+
+At the moment, `create_dependency` is not able to filter all files and you'll have 
+to remove either `bulma-rtl.min.css` or `bulma.min.css`, rtl standing for right to left.
+
+We can test our new dependency:
+
+```{r, eval=FALSE}
+devtools::load_all()
+findDependencies(add_bulma_deps(div()))
+```
+
+which works like a charm. If you chose the local option, you would also get an `inst` folder
+with all relevant bulma files sorted by type, that is css, javascript, ...:
+
+```{r, eval=FALSE}
+# local dependency script output
+add_bulma_deps <- function(tag) {
+ bulma_deps <- htmltools::htmlDependency(
+  name = "bulma",
+  version = "0.9.1",
+  src = c(file = "bulma-0.9.1"),
+  stylesheet = "css/bulma.min.css",
+  package = "mypkg",
+ )
+ htmltools::tagList(tag, bulma_deps)
+}
+```
+
+
+#### Set up the minimal page template
+According to the [documentation](https://bulma.io/documentation/overview/start/#starter-template), the starter page template is:
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hello Bulma!</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">
+          Hello World
+        </h1>
+        <p class="subtitle">
+          My first website with <strong>Bulma</strong>!
+        </p>
+      </div>
+    </section>
+  </body>
+</html>
+```
+
+Adding some `{charpente}` magic with `html_2_R`, we set the path parameter to `/html` to get the entire template. Replace `...` by the appropriate content. Since the copied HTML contains double quotations marks like `<p class="subtitle"></p>`, 
+you'll need to put the string in single quotation marks.
+
+```{r}
+html_2_R(
+  '<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hello Bulma!</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">
+          Hello World
+        </h1>
+        <p class="subtitle">
+          My first website with <strong>Bulma</strong>!
+        </p>
+      </div>
+    </section>
+  </body>
+</html>
+  ',
+  path = "/html",
+  prefix = TRUE
+)
+```
+
+**Note**: at run time, shiny adds `html` around the UI, thereby making it not necessary to include. 
+We 'll also don't need the `link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")` 
+since `add_bulma_deps` does already attach the dependencies to the page.
+
+The `bulma_page` function is, that you may save in the `R` package folder:
+
+```{r}
+bulma_page <- function(..., title = NULL) {
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1"
+      ),
+      tags$title(title)
+    ),
+    add_bulma_deps(tags$body(...)) 
+  )
+}
+```
+
+With some practice, going from step 1 to the bulma page templates literally takes 3 minutes,
+while it would have taken more than 30 minutes by hand. At any time, you may replace
+the dependency with another version. Be careful, since `{charpente}` does not make snapshots
+of old versions. 
+
+
+#### Add custom JavaScript
+As stated in the above, bulma only contains CSS things! It means we need
+either to develop custom JS code to add interactivity or rely on any third party existing API. 
+[bulma JS](https://bulmajs.tomerbe.co.uk/) is one of these!
 
 ## Validate JavaScript
 We could not finish this chapter without mentioning tools to validate JavaScript code. We will particularly focus on [JSHint](https://jshint.com), which has a R [wrapper](https://github.com/dreamRs/jstools), nicely provided by the dreamRs team. Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
