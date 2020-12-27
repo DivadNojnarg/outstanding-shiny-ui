@@ -248,8 +248,7 @@ According to the [documentation](https://bulma.io/documentation/overview/start/#
 </html>
 ```
 
-Adding some `{charpente}` magic with `html_2_R`, we set the path parameter to `/html` to get the entire template. Replace `...` by the appropriate content. Since the copied HTML contains double quotations marks like `<p class="subtitle"></p>`, 
-you'll need to put the string in single quotation marks.
+Adding some `{charpente}` magic with `html_2_R`, we set the path parameter to `/html` to get the entire template. We, replace `...` by the appropriate content (see above). Since the copied HTML contains double quotations marks like `<p class="subtitle"></p>`, we put the string in single quotation marks.
 
 ```{r}
 html_2_R(
@@ -280,7 +279,7 @@ html_2_R(
 ```
 
 **Note**: at run time, shiny adds `html` around the UI, thereby making it not necessary to include. 
-We 'll also don't need the `link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")` 
+We'll also don't need the `link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")` 
 since `add_bulma_deps` does already attach the dependencies to the page.
 
 The `bulma_page` function is, that you may save in the `R` package folder:
@@ -454,9 +453,47 @@ The good new is that `{charpente}` can automate this task in only one line of co
 compress_js()
 ```
 
-#### Combine multiple dependencies
+Additionally, this creates a plug and play dependency pointing to the newly generated JS file:
 
-## Validate JavaScript
+```{r, eval=FALSE}
+add_mypkg_deps <- function(tag) {
+ mypkg_deps <- htmltools::htmlDependency(
+  name = "mypkg",
+  version = utils::packageVersion("mypkg"),
+  src = c(file = "mypkg-0.0.0.9000"),
+  script = "js/mypkg.min.js",
+  package = "mypkg",
+ )
+ htmltools::tagList(tag, mypkg_deps)
+}
+```
+
+__Disclaimer__: there is not yet similar process for CSS. This is still work in progress.
+
+#### Combine multiple dependencies
+`add_dependencies` allow to select any dependency available in the `./R` folder, provided that they follow the convention `<depName>_dependencies.R` (which is always the case if you use `{charpente}`). For instance `add_dependencies(div(), deps = c("bulma", "bulmajs"))` will add bulma (first) and bulmajs dependencies to a `div` tag. You may change the order as you want since most of the time, the order matters. `bulma_page` could also benefit from that shortcut:
+
+```{r, eval=FALSE}
+bulma_page <- function(..., title = NULL) {
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1"
+      ),
+      tags$title(title)
+    ),
+    add_dependencies(
+      tags$body(...),
+      deps = c("bulma", "mypkg")
+    ) 
+  )
+}
+```
+
+## Other tips
+### Validate JavaScript
 We could not finish this chapter without mentioning tools to validate JavaScript code. We will particularly focus on [JSHint](https://jshint.com), which has a R [wrapper](https://github.com/dreamRs/jstools), nicely provided by the dreamRs team. Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
 
 ```{r, eval = FALSE}

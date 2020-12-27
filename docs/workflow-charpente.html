@@ -289,8 +289,7 @@ with all relevant bulma files sorted by type, that is css, javascript, …:</p>
 <span id="cb467-19"><a href="workflow-charpente.html#cb467-19"></a>    <span class="kw">&lt;/section&gt;</span></span>
 <span id="cb467-20"><a href="workflow-charpente.html#cb467-20"></a>  <span class="kw">&lt;/body&gt;</span></span>
 <span id="cb467-21"><a href="workflow-charpente.html#cb467-21"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
-<p>Adding some <a href="https://github.com/RinteRface/charpente">charpente</a> magic with <code>html_2_R</code>, we set the path parameter to <code>/html</code> to get the entire template. Replace <code>...</code> by the appropriate content. Since the copied HTML contains double quotations marks like <code>&lt;p class="subtitle"&gt;&lt;/p&gt;</code>,
-you’ll need to put the string in single quotation marks.</p>
+<p>Adding some <a href="https://github.com/RinteRface/charpente">charpente</a> magic with <code>html_2_R</code>, we set the path parameter to <code>/html</code> to get the entire template. We, replace <code>...</code> by the appropriate content (see above). Since the copied HTML contains double quotations marks like <code>&lt;p class="subtitle"&gt;&lt;/p&gt;</code>, we put the string in single quotation marks.</p>
 <div class="sourceCode" id="cb468"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/html_2_R.html">html_2_R</a></span><span class="op">(</span>
   <span class="st">'&lt;html&gt;
@@ -354,7 +353,7 @@ you’ll need to put the string in single quotation marks.</p>
 ##   ))
 ## )</code></pre>
 <p><strong>Note</strong>: at run time, shiny adds <code>html</code> around the UI, thereby making it not necessary to include.
-We ’ll also don’t need the <code>link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")</code>
+We’ll also don’t need the <code>link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")</code>
 since <code>add_bulma_deps</code> does already attach the dependencies to the page.</p>
 <p>The <code>bulma_page</code> function is, that you may save in the <code>R</code> package folder:</p>
 <div class="sourceCode" id="cb476"><pre class="downlit sourceCode r">
@@ -500,20 +499,55 @@ on the server once the shiny app running:</p>
 <p>The good new is that <a href="https://github.com/RinteRface/charpente">charpente</a> can automate this task in only one line of code:</p>
 <div class="sourceCode" id="cb487"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/compress_js.html">compress_js</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<p>Additionally, this creates a plug and play dependency pointing to the newly generated JS file:</p>
+<div class="sourceCode" id="cb488"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">add_mypkg_deps</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">tag</span><span class="op">)</span> <span class="op">{</span>
+ <span class="va">mypkg_deps</span> <span class="op">&lt;-</span> <span class="fu">htmltools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
+  name <span class="op">=</span> <span class="st">"mypkg"</span>,
+  version <span class="op">=</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html">packageVersion</a></span><span class="op">(</span><span class="st">"mypkg"</span><span class="op">)</span>,
+  src <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>file <span class="op">=</span> <span class="st">"mypkg-0.0.0.9000"</span><span class="op">)</span>,
+  script <span class="op">=</span> <span class="st">"js/mypkg.min.js"</span>,
+  package <span class="op">=</span> <span class="st">"mypkg"</span>,
+ <span class="op">)</span>
+ <span class="fu">htmltools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span><span class="va">tag</span>, <span class="va">mypkg_deps</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p><strong>Disclaimer</strong>: there is not yet similar process for CSS. This is still work in progress.</p>
 </div>
 <div id="combine-multiple-dependencies" class="section level4">
 <h4>
 <span class="header-section-number">22.2.2.6</span> Combine multiple dependencies<a class="anchor" aria-label="anchor" href="#combine-multiple-dependencies"><i class="fas fa-link"></i></a>
 </h4>
+<p><code>add_dependencies</code> allow to select any dependency available in the <code>./R</code> folder, provided that they follow the convention <code>&lt;depName&gt;_dependencies.R</code> (which is always the case if you use <a href="https://github.com/RinteRface/charpente">charpente</a>). For instance <code><a href="https://rdrr.io/pkg/charpente/man/add_dependencies.html">add_dependencies(div(), deps = c("bulma", "bulmajs"))</a></code> will add bulma (first) and bulmajs dependencies to a <code>div</code> tag. You may change the order as you want since most of the time, the order matters. <code>bulma_page</code> could also benefit from that shortcut:</p>
+<div class="sourceCode" id="cb489"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">bulma_page</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span>
+    <span class="va">tags</span><span class="op">$</span><span class="fu">head</span><span class="op">(</span>
+      <span class="va">tags</span><span class="op">$</span><span class="fu">meta</span><span class="op">(</span>charset <span class="op">=</span> <span class="st">"utf-8"</span><span class="op">)</span>,
+      <span class="va">tags</span><span class="op">$</span><span class="fu">meta</span><span class="op">(</span>
+        name <span class="op">=</span> <span class="st">"viewport"</span>,
+        content <span class="op">=</span> <span class="st">"width=device-width, initial-scale=1"</span>
+      <span class="op">)</span>,
+      <span class="va">tags</span><span class="op">$</span><span class="fu">title</span><span class="op">(</span><span class="va">title</span><span class="op">)</span>
+    <span class="op">)</span>,
+    <span class="fu"><a href="https://rdrr.io/pkg/charpente/man/add_dependencies.html">add_dependencies</a></span><span class="op">(</span>
+      <span class="va">tags</span><span class="op">$</span><span class="fu">body</span><span class="op">(</span><span class="va">...</span><span class="op">)</span>,
+      deps <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"bulma"</span>, <span class="st">"mypkg"</span><span class="op">)</span>
+    <span class="op">)</span> 
+  <span class="op">)</span>
+<span class="op">}</span></code></pre></div>
 </div>
 </div>
 </div>
-<div id="validate-javascript" class="section level2">
+<div id="other-tips" class="section level2">
 <h2>
-<span class="header-section-number">22.3</span> Validate JavaScript<a class="anchor" aria-label="anchor" href="#validate-javascript"><i class="fas fa-link"></i></a>
+<span class="header-section-number">22.3</span> Other tips<a class="anchor" aria-label="anchor" href="#other-tips"><i class="fas fa-link"></i></a>
 </h2>
+<div id="validate-javascript" class="section level3">
+<h3>
+<span class="header-section-number">22.3.1</span> Validate JavaScript<a class="anchor" aria-label="anchor" href="#validate-javascript"><i class="fas fa-link"></i></a>
+</h3>
 <p>We could not finish this chapter without mentioning tools to validate JavaScript code. We will particularly focus on <a href="https://jshint.com">JSHint</a>, which has a R <a href="https://github.com/dreamRs/jstools">wrapper</a>, nicely provided by the dreamRs team. Below is an example of how to check all the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> JavaScript input bindings at once:</p>
-<div class="sourceCode" id="cb488"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb490"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">bindings</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html">list.files</a></span><span class="op">(</span>
   path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html">system.file</a></span><span class="op">(</span><span class="st">"framework7-5.5.0/input-bindings"</span>, package <span class="op">=</span> <span class="st">"shinyMobile"</span><span class="op">)</span>,
   recursive <span class="op">=</span> <span class="cn">TRUE</span>,
@@ -522,6 +556,7 @@ on the server once the shiny app running:</p>
 <span class="fu"><a href="https://rdrr.io/pkg/jstools/man/JSHint.html">jshint_file</a></span><span class="op">(</span>input <span class="op">=</span> <span class="va">bindings</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/jstools/man/JSHint.html">jshint_options</a></span><span class="op">(</span>jquery <span class="op">=</span> <span class="cn">TRUE</span>, globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="st">"Shiny"</span>, <span class="st">"app"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <p>You may fine tune the <code>jshint_file</code> behavior with the <a href="https://jshint.com/docs/options/"><code>jshint_options</code></a>. One is often tempted to call <code>eval</code> in JS code, which will result in a JSHint error. An option called <code>evil</code> exists to disable the corresponding test. However, we recommend to play the game, accept those error and try to fix them instead of cheating with options!</p>
 
+</div>
 </div>
 </div>
   <div class="chapter-nav">
@@ -538,7 +573,9 @@ on the server once the shiny app running:</p>
 <li><a class="nav-link" href="#a-case-study-shinybulma"><span class="header-section-number">22.2.2</span> A case study: {shinybulma}</a></li>
 </ul>
 </li>
-<li><a class="nav-link" href="#validate-javascript"><span class="header-section-number">22.3</span> Validate JavaScript</a></li>
+<li>
+<a class="nav-link" href="#other-tips"><span class="header-section-number">22.3</span> Other tips</a><ul class="nav navbar-nav"><li><a class="nav-link" href="#validate-javascript"><span class="header-section-number">22.3.1</span> Validate JavaScript</a></li></ul>
+</li>
 </ul>
 
       <div class="book-extra">
