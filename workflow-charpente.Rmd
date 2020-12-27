@@ -643,15 +643,54 @@ latest version: 0.9.1
 
 ## Other tips
 ### Validate JavaScript
-We could not finish this chapter without mentioning tools to validate JavaScript code. We will particularly focus on [JSHint](https://jshint.com), which has a R [wrapper](https://github.com/dreamRs/jstools), nicely provided by the dreamRs team. Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
+We could not finish this chapter without mentioning tools to validate JavaScript code. We will particularly focus on [JSHint](https://jshint.com), which comes with [{jstools}](https://github.com/dreamRs/jstools). Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
 
-```{r, eval = FALSE}
+```{r}
 bindings <- list.files(
-  path = system.file("framework7-5.5.0/input-bindings", package = "shinyMobile"),
+  path = system.file("framework7-5.7.8/input-bindings", package = "shinyMobile"),
   recursive = TRUE,
   full.names = TRUE
 )
 jshint_file(input = bindings, options = jshint_options(jquery = TRUE, globals = list("Shiny", "app")))
 ```
 
-You may fine tune the `jshint_file` behavior with the [`jshint_options`](https://jshint.com/docs/options/). One is often tempted to call `eval` in JS code, which will result in a JSHint error. An option called `evil` exists to disable the corresponding test. However, we recommend to play the game, accept those error and try to fix them instead of cheating with options!
+You may fine tune the `jshint_file` behavior with the [`jshint_options`](https://jshint.com/docs/options/). One is often tempted to call `eval` in JS code, which will result in a JSHint error. An option called `evil` exists to disable the corresponding test. However, we recommend to play the game, accept those error and try to fix them instead of cheating with options! An important remark about validation is that it does not check whether your code
+does what it should do. It just focus on checking whether the code runs! To test
+the JavaScript behavior, please refer to Chapter \@ref(custom-templates-testing-js). 
+Be extremely careful: if we consider the example mentioned in section \@ref(broken-shiny-app-debug), the
+following code is valid JavaScript:
+
+```javascript
+const sendNotif = (message, type, duration) => {
+  Shiny.notification.show({
+    html: `<strong>${message}</strong>`,
+    type: type,
+    duration: duration
+  });
+};
+
+sendNotif('Hello')
+```
+
+and will pass the validation step without any error:
+
+```{r}
+jshint(
+  "const sendNotif = (message, type, duration) => {
+  Shiny.notification.show({
+    html: `<strong>${message}</strong>`,
+    type: type,
+    duration: duration
+  });
+  };
+  sendNotif('Hello');
+  ",
+  options = jshint_options(
+    esversion = 6,
+    jquery = TRUE, 
+    globals = list("Shiny", "app")
+  )
+)
+```
+
+Yet the code won't work since `Shiny.notification` does not exist.
