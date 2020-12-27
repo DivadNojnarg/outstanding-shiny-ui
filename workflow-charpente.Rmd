@@ -384,6 +384,75 @@ where we store all JavaScript files that depend on the package author. For insta
 bulmaJS is an external dependency and is very unlikely to be edited by the package author. For that reason, 
 it remains in the `inst` folder like all other external dependencies.
 
+#### Add custom input/output bindings
+In part \@ref(secondary-inputs), we created better shinydashboard boxes that one
+may programmatically collapse, close and restore. Until know, there was no way to 
+setup an input binding skeleton and one had to copy and paste each time the same
+code. `{charpente}` has a `create_input_binding` and `create_output_binding` (functions that
+you can also find in the development version of `{golem}`). Contrary to the custom handler case,
+`create_input_binding` only generate the JavaScript piece since the R part is highly variable from
+one input to another. To get a plug and play box input binding we call:
+
+```{r, eval=FALSE}
+create_input_binding("boxBinding")
+```
+
+which gives the `input-boxBinding.js` script in the `srcjs` folder:
+
+```javascript
+var boxBinding = new Shiny.InputBinding();
+$.extend(boxBinding, {
+  find: function(scope) {
+    // JS logic $(scope).find('whatever')
+  },
+  getValue: function(el) {
+    // JS code to get value
+  },
+  setValue: function(el, value) {
+    // JS code to set value
+  },
+  receiveMessage: function(el, data) {
+    // this.setValue(el, data);
+  },
+  subscribe: function(el, callback) {
+    $(el).on('click.boxBinding', function(e) {
+      callback();
+    });
+
+  },
+  unsubscribe: function(el) {
+    $(el).off('.boxBinding');
+  }
+});
+Shiny.inputBindings.register(boxBinding, 'shiny.whatever');
+```
+
+This function has multiple options:
+
+  - __initialized__ is FALSE by default. If TRUE, it adds an `initialized` method
+  to the binding. 
+  - __dev__ adds some `console.log` elements whenever relevant to help in the debugging 
+  process.
+  - __event__ is a list containing events related to the binding. By default, it generates
+  a `click` event without any rate policy. To add extra events we do 
+  `list(name = c("click", "whatever"), rate_policy = c(FALSE, TRUE))`. 
+  
+Similarly, the `create_output_binding` function creates a ready to use output binding JS script, 
+in the `srcjs` folder (`create_output_binding("menuOutput")`):
+
+```javascript
+var menuOutput = new Shiny.OutputBinding();
+$.extend(menuOutput, {
+  find: function(scope) {
+    // JS logic $(scope).find('whatever')
+  },
+  renderValue: function(el, data) {
+    // JS logic
+  }
+});
+Shiny.outputBindings.register(menuOutput, 'shiny.whatever');
+```
+
 #### Organize your JS code
 This naturally leads us to this part which is about JS code organization. Shiny developers
 may have a lot of custom scripts, and it is generally a bad idea to put them all
@@ -469,6 +538,8 @@ add_mypkg_deps <- function(tag) {
 ```
 
 __Disclaimer__: there is not yet similar process for CSS. This is still work in progress.
+
+Other tools exist like [`{packer}`](https://github.com/JohnCoene/packer) by John Coene, which leverages [webpack](https://webpack.js.org/) to handle JS code.
 
 #### Combine multiple dependencies
 `add_dependencies` allow to select any dependency available in the `./R` folder, provided that they follow the convention `<depName>_dependencies.R` (which is always the case if you use `{charpente}`). For instance `add_dependencies(div(), deps = c("bulma", "bulmajs"))` will add bulma (first) and bulmajs dependencies to a `div` tag. You may change the order as you want since most of the time, the order matters. `bulma_page` could also benefit from that shortcut:
