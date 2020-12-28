@@ -184,9 +184,18 @@ FIGURE 22.2: Package structure for {charpente}
 <span class="header-section-number">22.3.1</span> Build the HTML dependency<a class="anchor" aria-label="anchor" href="#build-the-html-dependency"><i class="fas fa-link"></i></a>
 </h3>
 <p>The interested reader will have a look at the <strong>Getting started <a href="https://bulma.io/documentation/overview/start/">guide</a></strong>,
-so as to know more how to get bulma. To install bulma dependencies, there are 3 ways.
-For convenience, we’ll choose the CDN method (content delivery network) which consists in getting dependencies from a dedicated server.</p>
-<p>We could build the bulma dependency as follows:</p>
+so as to know more how to get bulma. To install bulma dependencies, there are several ways:</p>
+<ul>
+<li>The CDN method (content delivery network) which consists in getting dependencies from a dedicated server.
+Files are not stored locally which may be a problem if one does not have internet.</li>
+<li>The local method consists in downloading the production files (minified CSS).</li>
+<li>Using npm that installs bulma sources as well as production files. It means one can modify
+sources at anytime, which is not recommended since it would be hard to
+maintain.</li>
+</ul>
+<p>In our case, we show the two first methods, the third being out of the scope of this book.</p>
+<p>As shown in previous Chapter (custom-templates-dependencies),
+we could build the bulma dependency as follows:</p>
 <div class="sourceCode" id="cb463"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/htmltools">htmltools</a></span><span class="op">)</span>
 <span class="va">bulma_deps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
@@ -200,41 +209,39 @@ For convenience, we’ll choose the CDN method (content delivery network) which 
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span><span class="va">...</span>, <span class="va">...</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>but this already takes too much time. This is where <a href="https://github.com/RinteRface/charpente">charpente</a> comes into play.
-Specifically, the <code>create_dependency</code> function:</p>
-<ul>
-<li>Automatically download/points to the specified dependency by just providing its
-name. It means you have to know what you are looking for. Best practice is
-to have a look at the <a href="https://www.jsdelivr.com/">jsdelivr</a> website
-(<a href="https://github.com/RinteRface/charpente">charpente</a> is built on top of jsdelivr) and find the good repository, as shown Figure
-<a href="workflow-charpente.html#fig:workflow-jsdelivr-bulma">22.3</a>.</li>
-<li>
-<code><a href="https://rdrr.io/pkg/charpente/man/charpente_options.html">charpente_options(local = FALSE)</a></code> allows to fine tune the behavior. If local is FALSE,
+Specifically, the <code>create_dependency</code> function automatically download/points to the specified dependency by just providing its name. It means you have to know what you are looking for. Best practice is to have a look at the <a href="https://www.jsdelivr.com/">jsdelivr</a> website (<a href="https://github.com/RinteRface/charpente">charpente</a> is built on top of jsdelivr) and find the good repository, as shown Figure <a href="workflow-charpente.html#fig:workflow-jsdelivr-bulma">22.3</a>. <code>create_dependency</code> also creates the <code>add_&lt;DEP_NAME&gt;_deps</code> function in a <code>&lt;DEP_NAME&gt;--dependencies.R</code> script and opens it.</p>
+<p><code><a href="https://rdrr.io/pkg/charpente/man/charpente_options.html">charpente_options(local = FALSE)</a></code> allows to fine tune the behavior. If local is FALSE,
 <a href="https://github.com/RinteRface/charpente">charpente</a> points to the CDN without downloading any file. It is substantially faster than
 the local option but requires an internet connection. Package developers will prefer the
-<code>local = TRUE</code> to ensure dependencies are always accessible.</li>
-<li>Extra parameters like <strong>tag</strong> control the downloaded version since HTML templates
+<code>local = TRUE</code> to ensure dependencies are always accessible.
+Extra parameters like <strong>tag</strong> control the downloaded version since HTML templates
 may have several flavors. It is always good to be able to test multiple versions and select
-the best option.</li>
-<li>Creates the <code>add_&lt;DEP_NAME&gt;_deps</code> function in a <code>&lt;DEP_NAME&gt;--dependencies.R</code> script and opens it.</li>
-</ul>
+the best option.</p>
 <div class="figure" style="text-align: center">
 <span id="fig:workflow-jsdelivr-bulma"></span>
 <img src="images/workflow/jsdelivr-bulma.png" alt="jsdelivr result for bulma" width="100%"><p class="caption">
 FIGURE 22.3: jsdelivr result for bulma
 </p>
 </div>
-<p>Once satisfied, we simply run to get the latest version:</p>
+<p>Once satisfied, we simply run the below code to get the latest version, or a specific
+version if <strong>tag</strong> is used:</p>
 <div class="sourceCode" id="cb464"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="st">"bulma"</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/charpente/man/charpente_options.html">charpente_options</a></span><span class="op">(</span>local <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="st">"bulma"</span>, tag <span class="op">=</span> <span class="st">"0.7.0"</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/charpente/man/charpente_options.html">charpente_options</a></span><span class="op">(</span>local <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<p>At the moment, <code>create_dependency</code> is not able to filter all files and you’ll have
+<code class="sourceCode R"><span class="co"># CDN method </span>
+<span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="st">"bulma"</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/charpente/man/charpente_options.html">charpente_options</a></span><span class="op">(</span>local <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="st">"bulma"</span>, tag <span class="op">=</span> <span class="st">"0.7.0"</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/charpente/man/charpente_options.html">charpente_options</a></span><span class="op">(</span>local <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># local method (default)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="st">"bulma"</span><span class="op">)</span></code></pre></div>
+<p>At the moment, <code>create_dependency</code> is not able to filter all files and we have
 to remove either <code>bulma-rtl.min.css</code> or <code>bulma.min.css</code>, rtl standing for right to left.</p>
 <p>We can test our new dependency:</p>
 <div class="sourceCode" id="cb465"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org//reference/load_all.html">load_all</a></span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/findDependencies.html">findDependencies</a></span><span class="op">(</span><span class="fu">add_bulma_deps</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<p>which works like a charm. If you chose the local option, you would also get an <code>inst</code> folder
-with all relevant bulma files sorted by type, that is css, javascript, …:</p>
+<p>which works like a charm. If you chose the local option, you also get an <code>inst</code> folder
+with all relevant bulma files sorted by type. The <code>bulma-dependencies.R</code> script contains the
+newly created <code>add_bulma_deps</code> function, either pointing to the CDN or the local
+files, depending on the chosen strategy:</p>
 <div class="sourceCode" id="cb466"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># local dependency script output</span>
 <span class="va">add_bulma_deps</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">tag</span><span class="op">)</span> <span class="op">{</span>
@@ -263,7 +270,7 @@ with all relevant bulma files sorted by type, that is css, javascript, …:</p>
 <h3>
 <span class="header-section-number">22.3.2</span> Set up the minimal page template<a class="anchor" aria-label="anchor" href="#set-up-the-minimal-page-template"><i class="fas fa-link"></i></a>
 </h3>
-<p>According to the <a href="https://bulma.io/documentation/overview/start/#starter-template">documentation</a>, the starter page template is:</p>
+<p>According to the bulma <a href="https://bulma.io/documentation/overview/start/#starter-template">documentation</a>, the starter page template is:</p>
 <div class="sourceCode" id="cb467"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb467-1"><a href="workflow-charpente.html#cb467-1"></a><span class="dt">&lt;!DOCTYPE </span>html<span class="dt">&gt;</span></span>
 <span id="cb467-2"><a href="workflow-charpente.html#cb467-2"></a><span class="kw">&lt;html&gt;</span></span>
 <span id="cb467-3"><a href="workflow-charpente.html#cb467-3"></a>  <span class="kw">&lt;head&gt;</span></span>
@@ -351,7 +358,7 @@ with all relevant bulma files sorted by type, that is css, javascript, …:</p>
 <p><strong>Note</strong>: at run time, shiny adds <code>html</code> around the UI, thereby making it not necessary to include.
 We’ll also don’t need the <code>link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")</code>
 since <code>add_bulma_deps</code> does already attach the dependencies to the page.</p>
-<p>The <code>bulma_page</code> function is, that you may save in the <code>R</code> package folder:</p>
+<p>The <code>bulma_page</code> function is defined below, that we save in the <code>R</code> package folder:</p>
 <div class="sourceCode" id="cb476"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">bulma_page</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span>
@@ -366,7 +373,7 @@ since <code>add_bulma_deps</code> does already attach the dependencies to the pa
     <span class="fu">add_bulma_deps</span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">body</span><span class="op">(</span><span class="va">...</span><span class="op">)</span><span class="op">)</span> 
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>With some practice, going from step 1 to the bulma page templates literally takes 3 minutes,
+<p>With some practice, going from step one to the bulma page templates literally takes three minutes,
 while it would have taken more than 30 minutes by hand. At any time, you may replace
 the dependency with another version. Be careful, since <a href="https://github.com/RinteRface/charpente">charpente</a> does not make snapshots
 of old versions.</p>
@@ -379,11 +386,11 @@ of old versions.</p>
 either to develop custom JS code to add interactivity or rely on any third party existing API.
 <a href="https://bulmajs.tomerbe.co.uk/">bulma JS</a> is one of these!</p>
 <ol style="list-style-type: decimal">
-<li>Using <a href="https://github.com/RinteRface/charpente">charpente</a>, create a bulma js dependency. We’ll point to <a href="https://bulmajs.tomerbe.co.uk/">vizuaalog/bulmajs</a> since some bulmajs already exist and are not what we want. Run the following code in the R console.</li>
+<li>Using <a href="https://github.com/RinteRface/charpente">charpente</a>, create a bulma js dependency. We point to <a href="https://bulmajs.tomerbe.co.uk/">vizuaalog/bulmajs</a> since some bulmajs already exist and are not what we want. Run the following code in the R console.</li>
 </ol>
 <div class="sourceCode" id="cb477"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="va">...</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/charpente/man/charpente_options.html">charpente_options</a></span><span class="op">(</span>local <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<p>Notice how many files are added to the dependency. In the following, we’ll only work with <strong>notifications</strong>:</p>
+<p>Notice how many files are added to the dependency. Below, we only work with <strong>notifications</strong>:</p>
 <ul>
 <li>Only keep <code>notification.js</code> and remove all the unnecessary files</li>
 <li>Only keep <code>bulma.js</code> that gather all plugins in 1 script.</li>
@@ -522,7 +529,7 @@ format and validate a given JS file.</p>
 the whole JS code:</p>
 <div class="sourceCode" id="cb487"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_file.html">create_custom_handler</a></span><span class="op">(</span><span class="st">"modal"</span><span class="op">)</span></code></pre></div>
-<p>Now there should be 2 JS scripts in the <code>srcjs</code> folder. Below, we use a compressor, namely
+<p>Now there should be two JS scripts in the <code>srcjs</code> folder. Below, we use a compressor, namely
 <a href="https://terser.org/">terser</a>, that optimizes and compresses our code for the web browser, at a price to be less
 human readable. It also provides source maps that are crucial to the debugging process, thereby making it possible to reconstruct the original JS code starting from a minified script:</p>
 <div class="sourceCode" id="cb488"><pre class="downlit sourceCode r">
@@ -533,7 +540,7 @@ human readable. It also provides source maps that are crucial to the debugging p
   full.names <span class="op">=</span> <span class="cn">TRUE</span>
 <span class="op">)</span>
 
-<span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="st">"inst"</span><span class="op">)</span>
+<span class="co"># /inst is already created by create_charpente</span>
 <span class="va">outputDir</span> <span class="op">&lt;-</span> <span class="st">"inst/mypkg-0.0.0.9000"</span>
 <span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="va">outputDir</span><span class="op">)</span>
 
@@ -553,10 +560,22 @@ human readable. It also provides source maps that are crucial to the debugging p
 <span class="op">)</span></code></pre></div>
 <p><code>terser_file</code> takes all raw JS files as input, generate a minified/optimized script as well
 as source maps available at <code>mypkg.min.js.map</code>. The <strong>root</strong> parameter indicates their location
-on the server once the shiny app running:</p>
-<div class="sourceCode" id="cb489"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb489-1"><a href="workflow-charpente.html#cb489-1"></a><span class="at">$</span>((<span class="kw">function</span>()<span class="op">{</span><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">"modal"</span><span class="op">,</span>(<span class="kw">function</span>(n)<span class="op">{}</span>))<span class="op">}</span>))<span class="op">,</span></span>
-<span id="cb489-2"><a href="workflow-charpente.html#cb489-2"></a><span class="at">$</span>((<span class="kw">function</span>()<span class="op">{</span><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">"notification"</span><span class="op">,</span>(<span class="kw">function</span>(n)<span class="op">{}</span>))<span class="op">}</span>))<span class="op">;</span></span>
-<span id="cb489-3"><a href="workflow-charpente.html#cb489-3"></a><span class="co">//# sourceMappingURL=mypkg.min.js.map</span></span></code></pre></div>
+on the server once the shiny app running.</p>
+<p>To highlight source maps role, let’s run the below app:</p>
+<div class="sourceCode" id="cb489"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">bulma_page</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"test"</span><span class="op">)</span>
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
+<span class="fu"><a href="https://shiny.rstudio.com/reference/shiny/latest/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p>We open the developer tools and navigate to the <code>Sources</code> panel, as illustrated on
+Figure <a href="workflow-charpente.html#fig:workflow-sourcemaps-bulma">22.4</a>. The script <code>mypkg.min.js</code> is not human readable but the generated source map
+allows to reconstruct the original code, which location is under the <code>mypkg-build</code> folder. From
+there, we can access any mapped script and start the debugging process like setting break points.</p>
+<div class="figure" style="text-align: center">
+<span id="fig:workflow-sourcemaps-bulma"></span>
+<img src="images/workflow/sourcemaps-bulma.png" alt="Source maps ease the debugging process" width="100%"><p class="caption">
+FIGURE 22.4: Source maps ease the debugging process
+</p>
+</div>
 <p>The good new is that <a href="https://github.com/RinteRface/charpente">charpente</a> can automate this task in only one line of code:</p>
 <div class="sourceCode" id="cb490"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/compress_js.html">compress_js</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
@@ -602,11 +621,12 @@ on the server once the shiny app running:</p>
 <h3>
 <span class="header-section-number">22.3.8</span> Other <code>{charpente}</code> helpers<a class="anchor" aria-label="anchor" href="#other-charpente-helpers"><i class="fas fa-link"></i></a>
 </h3>
-<p>Let’s finish this section by listing some tools. We know <code>create_dependency</code> to install
-an external dependency. For instance this code installs framework7 dependencies:</p>
+<p>Let’s finish this section by listing other useful <a href="https://github.com/RinteRface/charpente">charpente</a> tools.
+We know <code>create_dependency</code> to install an external dependency.
+For instance, this code installs framework7 dependencies:</p>
 <div class="sourceCode" id="cb493"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="st">"framework7"</span><span class="op">)</span></code></pre></div>
-<p>The problem is that we don’t necessarily know all package versions and yOu may need
+<p>The problem is that we don’t necessarily know all package versions and may need
 <code>framework7 4.5.0</code> or <code>framework7 5.3.1</code>. <code>get_dependency_versions</code> allows to look for
 all versions:</p>
 <div class="sourceCode" id="cb494"><pre class="downlit sourceCode r">
@@ -763,7 +783,7 @@ latest version: 0.9.1
 <h3>
 <span class="header-section-number">22.4.1</span> Validate JavaScript<a class="anchor" aria-label="anchor" href="#validate-javascript"><i class="fas fa-link"></i></a>
 </h3>
-<p>We could not finish this chapter without mentioning tools to validate JavaScript code. We will particularly focus on <a href="https://jshint.com">JSHint</a>, which comes with <a href="https://github.com/dreamRs/jstools">{jstools}</a>. Below is an example of how to check all the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> JavaScript input bindings at once:</p>
+<p>We could not finish this chapter without mentioning tools to validate JavaScript code. <a href="https://jshint.com">JSHint</a>, which comes with <a href="https://github.com/dreamRs/jstools">{jstools}</a>. Below is an example of how to check all the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> JavaScript input bindings at once:</p>
 <div class="sourceCode" id="cb512"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">bindings</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html">list.files</a></span><span class="op">(</span>
   path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html">system.file</a></span><span class="op">(</span><span class="st">"framework7-5.7.8/input-bindings"</span>, package <span class="op">=</span> <span class="st">"shinyMobile"</span><span class="op">)</span>,
@@ -942,11 +962,11 @@ following code is valid JavaScript:</p>
 <p>If you work with the RStudio IDE, your JS code maybe sometimes messy with bad indentation.
 <a href="https://github.com/dreamRs/jstools">jstools</a> also provides a function and addin to fix the problem. <code><a href="https://rdrr.io/pkg/jstools/man/prettier.html">prettier_js(code)</a></code> and
 <code><a href="https://rdrr.io/pkg/jstools/man/prettier.html">prettier_file(input = "path/to/file.js", output = "path/to/reformated.js")</a></code> does this.
-I often use the <code>Prettier</code> addin which is way faster than typing the function call (Figure <a href="workflow-charpente.html#fig:workflow-pretty-js">22.4</a>).</p>
+I often use the <code>Prettier</code> addin which is way faster than typing the function call (Figure <a href="workflow-charpente.html#fig:workflow-pretty-js">22.5</a>).</p>
 <div class="figure" style="text-align: center">
 <span id="fig:workflow-pretty-js"></span>
 <img src="images/workflow/pretty-js.png" alt="Better JS formatting" width="50%"><p class="caption">
-FIGURE 22.4: Better JS formatting
+FIGURE 22.5: Better JS formatting
 </p>
 </div>
 
@@ -997,7 +1017,7 @@ FIGURE 22.4: Better JS formatting
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2020-12-27.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2020-12-28.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
