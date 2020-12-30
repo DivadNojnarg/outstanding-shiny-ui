@@ -664,7 +664,7 @@ var app = new Framework7({
     name: 'My App',
     version: config .version,
     // other options
-    theme: config .theme,
+    theme: config.theme,
     notification: {
       title: 'My App',
       closeTimeout: 3000,
@@ -678,6 +678,47 @@ var app = new Framework7({
   });
 ```
 
-What happens if the user forget to supply the version number? `data.version` is undefined
-and the app still works! The biggest avantage of this approach is the fact that all `TRUE`
+What happens if the user forgets to supply the version number? `data.version` is undefined
+and the app still works! The biggest advantage of this approach is the fact that all `TRUE`
 and `FALSE` (R) are converted to `true` and `false` (JS), which avoids unnecessary conversion steps.
+
+
+In theory, we could do:
+
+```javascript
+var app = new Framework7(config);
+```
+
+which assumes that the user exactly knows what to provide in the list, especially mandatory elements. 
+Knowing the crazy number of options, it might be slightly too complex for a new user. 
+What we suggest is to extract the most important components as direct `f7_page` parameters and keep less important parameters in the options list. For example, if you think that __theme__ is super important (and it truly is), you could do:
+
+```{r, eval=FALSE}
+f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"), 
+                    title = NULL, options = NULL) {
+
+  theme <- match.arg(theme)
+  options$theme <- theme
+  
+  config_tag <- shiny::tags$script(
+    type = "application/json",
+    `data-for` = "app",
+    jsonlite::toJSON(
+      x = options,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+  
+# ...
+```
+
+which makes the API a bit more accessible (event though more complex to maintain) 
+and you only need to add one line of documentation in the roxygen part. 
+It would be disheartening to redirect them to the Framework7 API documentation and have to 
+look for the relevant option!
+
+Don't forget that since `config` is an object, 
+you may add any other properties, methods, on the fly with the `.` notation or `app.utils.extend`.
+
+## Theming and colors
