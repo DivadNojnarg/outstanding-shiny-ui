@@ -711,6 +711,8 @@ f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"),
   )
   
 # ...
+  
+}
 ```
 
 which makes the API a bit more accessible (event though more complex to maintain) 
@@ -722,3 +724,127 @@ Don't forget that since `config` is an object,
 you may add any other properties, methods, on the fly with the `.` notation or `app.utils.extend`.
 
 ## Theming and colors
+Framework7 has 15 color [themes](https://framework7.io/docs/color-themes.html?theme=light&bars=empty&color=%09+%23673ab7) with a dark/light global appearance. To apply them, we add `color-theme-COLOR` to the
+parent element. Best practice is to target the `body` since its the parent of all the page
+content. This ensures global consistency. The dark theme is triggered by adding the
+`theme-dark` class to `html`. Since `body` belongs to `f7_page` but not `html` (added by
+Shiny at startup), we can apply the color in R but the dark mode has to be activated
+from JS:
+
+```{r, eval=FALSE}
+f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"), 
+                    color = NULL, title = NULL, options = NULL) {
+  
+  body_cl <- NULL
+  if (!is.null(color)) body_cl <- sprintf("color-theme-color")
+  
+  # Modify the body tag to add a class
+  tags$body(
+    class = body_cl,
+    tags$div(
+      id = "app",
+      tags$div(
+        class = "view view-main",
+        tags$div(
+          class = "page",
+          navbar,
+          toolbar,
+          tags$div(
+            class = "page-content",
+            ...
+          )
+        )
+      )
+    ),
+    config_tag
+  )
+  
+  # ...
+  
+}
+```
+
+This approach assumes the user to pass the color name as parameter like `pink`, `yellow`.
+What if we want to allow more flexibility and add any existing HEX color? 
+Framework7 has tools, namely `app.utils.colorThemeCSSProperties`, that is a JS method
+creating the required CSS on the fly depending on the provided HEX color. For instance, if we select a
+cyberpunk green color:
+
+```javascript
+app.utils.colorThemeCSSProperties('#42f5a1');
+// /* Custom color theme */
+// {
+//   "--f7-theme-color": "#42f5a1";
+//   "--f7-theme-color-rgb": "66, 245, 161";
+//   "--f7-theme-color-shade": "#1bf38e";
+//   "--f7-theme-color-tint": "#69f7b4";
+// }
+```
+
+The commented code has to be injected in the app CSS. I personally don't think its a problem
+to look for a specific HEX code, knowing that many tools can help. Therefore, I prefer the
+second approach. We edit the `init.js` code by adding the following JS snippet:
+
+```javascript
+if (config.hasOwnProperty('color')) {
+  var colorCSS = app.utils.colorThemeCSSProperties(config.color);
+  $('<style>')
+    .prop('type', 'text/css')
+    .html(`:root {
+      --f7-theme-color: ${colorCSS["--f7-theme-color"]};
+      --f7-theme-color-rgb: ${colorCSS["--f7-theme-color-rgb"]};
+      --f7-theme-color-shade: ${colorCSS["--f7-theme-color-shade"]};
+      --f7-theme-color-tint: ${colorCSS["--f7-theme-color-tint"]};
+    }`)
+    .appendTo("head");
+}
+```
+
+`config.hasOwnProperty('color')` ensures that this code does not run if color is missing from the
+provided config. Then, we generate an object containing the theme color properties with `app.utils.colorThemeCSSProperties(config.color)`.
+Importantly, as this is an object, we can't insert it in a string. However, we can extract its
+properties 1 by 1 to generate the relevant piece of CSS. Then we add a `style` tag to the `head`
+containing the following CSS rule:
+
+```css
+/* Custom color theme */
+:root {
+  --f7-theme-color: #42f5a1;
+  --f7-theme-color-rgb: 66, 245, 161;
+  --f7-theme-color-shade: #1bf38e;
+  --f7-theme-color-tint: #69f7b4;
+}
+```
+
+For each property like `--f7-theme-color`, we recover the corresponding value in the
+`colorCSS` object, that is `colorCSS["--f7-theme-color"]`. Once done, recompile the JS
+with `compress_js` and try with the following app:
+
+```{r, eval=FALSE}
+devtools::load_all()
+
+ui <- f7_page(
+    tags$div(
+        class = "list inset",
+        tags$ul(
+            tags$li(
+                tags$a(
+                    href = "#",
+                    id = "mybutton",
+                    class = "list-button",
+                    "Large Red Button"
+                )
+            )
+        )
+    ),
+    navbar = f7_navbar("Title"),
+    toolbar = f7_toolbar(),
+    title = "shinyMobile",
+    options = list(theme = "ios", version = "1.0.0", taphold = TRUE, color = "#42f5a1")
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
