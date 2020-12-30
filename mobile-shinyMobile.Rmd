@@ -359,6 +359,8 @@ Among all parameters, there are metadata parameters like __name__ and __version_
 app parameters are accessible with the `.` notation. For instance, if you setup a version number it is accessible 
 with `app.version`.
 
+### Global theme
+
 One of the most important parameter is the __theme__ that controls the overall app design (Figure \@ref(fig:mobile-framework7-themes)):
 
   - `ios` corresponds the iOS design.
@@ -367,9 +369,316 @@ One of the most important parameter is the __theme__ that controls the overall a
   
 The good new is that if this parameter is set to `auto`, Framework7 will detect the
 current device and accordingly adapt the design. Nothing prevents you from forcing the
-iOS layout on android devices, even though being irrelevant. 
+iOS layout on android devices, even though being irrelevant. Interestingly, one may recover the
+current device with `app.device`. There are many properties to [review](https://framework7.io/docs/device.html).
+
 
 ```{r mobile-framework7-themes, echo=FALSE, fig.cap='Framework7 skins: iOS (left), md (right).', out.width='50%', fig.align = "default", fig.show = "hold"}
 knitr::include_graphics("images/mobile/mobile-shinymobile-slider-ios.png")
 knitr::include_graphics("images/mobile/mobile-shinymobile-slider-md.png")
 ```
+
+### Global data and methods
+The __data__ parameters allows to pass parameters between all scripts. This is a convenient place
+to store global options and we will use it in the theming section. Similarly __methods__ hosts all global
+app methods. This are function you may re-use in different parts. As mentioned above we respectively access them 
+with `app.data` and `app.methods`. 
+
+
+### Events
+The app is able to emit events whenever relevant like `init`, `resize`, `online`, `offline`, which
+allows to add interactivity:
+
+```javascript
+var app = new Framework7({
+  on: {
+    init: function () {
+      console.log('App initialized');
+    },
+    // other events
+  }
+});
+```
+
+### Components configuration
+All Framework7 components are highly customizable. Yet, if you know that some 
+parameters are not going to change, it is a good idea to make them global and share
+across all instances. For instance, notifications have global options. Let's add this code
+to the `init.js` script inside the `var app = new Framework7({ ... })`:
+
+```javascript
+notification: {
+  title: 'My App',
+  closeTimeout: 3000,
+}
+```
+
+This means all notifications will close after 3 seconds and have the `My App` title.
+We add another notification to the `init.js` script with a delay of 1 second so as to
+test this global feature. Note the use of internal Framework7 [utils](https://framework7.io/docs/utils.html#nexttick) 
+`app.utils.nextTick`, 
+which is nothing more
+than a `setTimeout`. At this point it should look like this:
+
+```javascript
+$( document ).ready(function() {
+ // create app instance
+ var app = new Framework7({
+    // App root element
+    root: '#app',
+    // App Name
+    name: 'My App',
+    // other options
+    notification: {
+      title: 'My App',
+      closeTimeout: 3000,
+    }
+  });
+
+  // init main view
+  var mainView = app.views.create('.view-main');
+
+
+  var notification = app.notification.create({
+    text: 'Hello, how are you?',
+    on: {
+      opened: function () {
+        console.log('Notification opened');
+      }
+    }
+  }).open();
+  
+  
+  var otherMessage = app.notification.create({
+    text: 'You look great!'
+  });
+  
+  // equivalent to setTimeout ...
+  app.utils.nextTick(function() {
+    otherMessage.open();
+  }, 1000);
+  
+});
+```
+
+
+
+### Other elements
+Framework7 provides mobile specific modules like `touch`, which is a long press event (here 750 ms).
+This is something you can usually do on many apps. To activate that feature, we pass
+the following configuration to the app parameters list:
+
+```javascript
+touch: {
+  tapHold: true,
+}
+```
+
+To test that component, we create a button element and add it the `taphold` event in `init.js`:
+
+```javascript
+$('#mybutton').on('taphold', function () {
+  app.dialog.alert('Tap hold fired!');
+});
+```
+
+The `app.R` script should look like:
+
+```{r, eval=FALSE}
+ui <- f7_page(
+  "Test",
+  tags$div(
+    class = "list inset",
+    tags$ul(
+      tags$li(
+        tags$a(
+          href = "#",
+          id = "mybutton",
+          class = "list-button color-red",
+          "Large Red Button"
+        )
+      )
+    )
+  ),
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile"
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+Once the app is running don't forget to open the developer tools and
+set the device on mobile mode (iPhone or android) since `taphold` does not fire
+on desktop (Figure \@ref(fig:mobile-shinyMobile-taphold)). 
+
+```{r mobile-shinyMobile-taphold, echo=FALSE, fig.cap='Long press or taphold event', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-shinyMobile-taphold.png")
+```
+
+An important remark is the click handling in Framework7. Framework7 has its own internal [router](https://framework7.io/docs/view.html) that allows to pass data between pages and perform quite
+advanced actions. While extremely convenient for classic web apps, 
+this feature is not completely suited for Shiny that does not natively support multi pages apps. 
+The recent [work](https://github.com/ColinFay/brochure) in the field is promising and works well
+with `{shinyMobile}` (see [here](https://github.com/RinteRface/shinyMobile/issues/136)) but this is out of the scope of this chapter. The internal router has strong implications, for instance clicking on 
+`<a href="https://www.google.com/">Click me</a>` will fail, while it works like
+a charm for a classic shiny app, as shown below:
+```{r, eval=FALSE}
+mylink <- a(href = "https://www.google.com/", "Click me")
+
+# shinyMobile
+ui <- f7_page(
+  mylink,
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile"
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+
+# classic shiny
+ui <- fluidPage(mylink)
+shinyApp(ui, server)
+```
+
+To fix this issue, we may pass a valid CSS selector to the `externalLinks` property
+of the clicks module like:
+
+```javascript
+clicks: {
+  externalLinks: 'a',
+}
+```
+
+Add this code to the `init.js` and try the app again. 
+
+
+### Allow end-user configuration
+In the above sections, we described some parameters to configure the app. Yet, 
+we did setup all values directly in JavaScript. How do we allow the end user to provide
+external values?
+
+The idea is the following:
+
+  - We create an options parameter in the `f7_page` function which accepts a list
+  of parameters.
+  - We store all list elements in a `data-<ELEMENT_NAME>` non standard attributes in the
+  `body` element or at least something that is always in the DOM.
+  - We recover those data on the JS side and store them in the app.data object.
+  
+The `f7_page` may be adapted:
+
+```{r, eval=FALSE}
+f7_page <- function(..., navbar, toolbar, title = NULL, options = NULL) {
+
+  config_tag <- tags$script(
+    type = "application/json",
+    `data-for` = "app",
+    jsonlite::toJSON(
+      x = options,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+
+  # create body_tag
+  body_tag <- tags$body(
+    tags$div(
+      id = "app",
+      tags$div(
+        class = "view view-main",
+        tags$div(
+          class = "page",
+          navbar,
+          toolbar,
+          tags$div(
+            class = "page-content",
+            ...
+          )
+        )
+      )
+    ),
+    config_tag
+  )
+
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+      ),
+      tags$meta(
+        name = "apple-mobile-web-app-capable",
+        content = "yes"
+      ),
+      tags$meta(
+        name = "theme-color",
+        content = "#2196f3"
+      ),
+      tags$title(title)
+    ),
+    add_dependencies(
+      body_tag,
+      deps = c("framework7", "shinyMobile")
+    )
+  )
+}
+```
+
+The above code deserves some explanations. We exploit a method already defined in section \@ref(secondary-inputs).
+We convert the options list to a JSON with `jsonlite::toJSON` and embed it in a script tag. 
+The `data-for` attribute with the unique id guarantees the uniqueness of our configuration script.
+
+```{r, eval=FALSE}
+config_tag <- shiny::tags$script(
+    type = "application/json",
+    `data-for` = "app",
+    jsonlite::toJSON(
+      x = options,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+```
+
+We then create an intermediate `body_tag` component where we insert the configuration tag.
+On the JS side, the data collection must occur before the app initialization and is quite easy
+with the jQuery `find` method (result is commented for convenience):
+
+```javascript
+var config = $(document).find("script[data-for='app']");
+config = JSON.parse(config.html());
+```
+
+We can accordingly update the app initialization:
+
+```javascript
+var app = new Framework7({
+    // App root element
+    root: '#app',
+    // App Name
+    name: 'My App',
+    version: config .version,
+    // other options
+    theme: config .theme,
+    notification: {
+      title: 'My App',
+      closeTimeout: 3000,
+    },
+    touch: {
+      tapHold: config.taphold,
+    },
+    clicks: {
+      externalLinks: 'a',
+    },
+  });
+```
+
+What happens if the user forget to supply the version number? `data.version` is undefined
+and the app still works! The biggest avantage of this approach is the fact that all `TRUE`
+and `FALSE` (R) are converted to `true` and `false` (JS), which avoids unnecessary conversion steps.
