@@ -902,7 +902,8 @@ We can go further and apply the `filled` theme, which is a reverted design where
 Like above, we do this on the JS side in `init.js`:
 
 ```javascript
-if (config.hasOwnProperty('filled')) {
+if (!config.hasOwnProperty('filled')) config.filled = false;
+if (config.filled) {
   var filledCSS = `
     :root,
     :root.theme-dark,
@@ -961,4 +962,206 @@ to pass the `filled` property to the config list.
 
 ```{r mobile-shinyMobile-theming, echo=FALSE, fig.cap='Filled green color theme', out.width='100%'}
 knitr::include_graphics("images/mobile/mobile-shinyMobile-theming.png")
+```
+
+Let's finish this section by the dark mode. We leverage the Framework7 app method 
+element since we could also toggle the dark mode under other circumstances. We add a
+`toggleDarkTheme` function to the methods object then trigger it depending on the value
+of the config. If the user don't provide any value, we set `config.dark` to `false`:
+
+```javascript
+app.methods = {
+  toggleDarkTheme: function () {
+    var self = this;
+    var $html = self.$('html');
+    $html.toggleClass('theme-dark');
+  }
+}
+
+if (!config.hasOwnProperty('dark')) config.dark = false;
+
+if (config.dark) {
+  app.methods.toggleDarkTheme();
+}
+
+```
+
+
+At this point `init.js` should be:
+
+```javascript
+$( document ).ready(function() {
+ // collect all data elements stored in body
+ var config = $(document).find("script[data-for='app']");
+ config = JSON.parse(config.html());
+
+ // create app instance
+ var app = new Framework7({
+    // App root element
+    root: '#app',
+    // App Name
+    name: 'My App',
+    version: config.version,
+    // other options
+    theme: config.theme,
+    notification: {
+      title: 'My App',
+      closeTimeout: 3000,
+    },
+    touch: {
+      tapHold: config.taphold,
+    },
+    clicks: {
+      externalLinks: 'a',
+    },
+    methods: {
+      toggleDarkTheme: function () {
+        var self = this;
+        var $html = self.$('html');
+        $html.toggleClass('theme-dark');
+      }
+    },
+  });
+
+  // init main view
+  var mainView = app.views.create('.view-main');
+
+
+  var notification = app.notification.create({
+    text: 'Hello, how are you?',
+    on: {
+      opened: function () {
+        console.log('Notification opened');
+      }
+    }
+  }).open();
+
+  var otherMessage = app.notification.create({
+    text: 'You look great!'
+  });
+
+  // equivalent to setTimeout ...
+  app.utils.nextTick(function() {
+    otherMessage.open();
+  }, 1000);
+
+  // taphold test
+  $('#mybutton').on('taphold', function () {
+    app.dialog.alert('Tap hold fired!');
+  });
+
+  // Set color theme
+  if (config.hasOwnProperty('color')) {
+    var colorCSS = app.utils.colorThemeCSSProperties(config.color);
+    $('<style>')
+      .prop('type', 'text/css')
+      .html(`:root {
+        --f7-theme-color: ${colorCSS["--f7-theme-color"]};
+        --f7-theme-color-rgb: ${colorCSS["--f7-theme-color-rgb"]};
+        --f7-theme-color-shade: ${colorCSS["--f7-theme-color-shade"]};
+        --f7-theme-color-tint: ${colorCSS["--f7-theme-color-tint"]};
+      }`)
+      .appendTo("head");
+  }
+
+  // Filled theme
+  if (!config.hasOwnProperty('filled')) config.filled = false;
+  var filledCSS = `
+    :root,
+    :root.theme-dark,
+    :root .theme-dark {
+      --f7-bars-bg-color: var(--f7-theme-color);
+      --f7-bars-bg-color-rgb: var(--f7-theme-color-rgb);
+      --f7-bars-translucent-opacity: 0.9;
+      --f7-bars-text-color: #fff;
+      --f7-bars-link-color: #fff;
+      --f7-navbar-subtitle-text-color: rgba(255,255,255,0.85);
+      --f7-bars-border-color: transparent;
+      --f7-tabbar-link-active-color: #fff;
+      --f7-tabbar-link-inactive-color: rgba(255,255,255,0.54);
+      --f7-sheet-border-color: transparent;
+      --f7-tabbar-link-active-border-color: #fff;
+    }
+    .appbar,
+    .navbar,
+    .toolbar,
+    .subnavbar,
+    .calendar-header,
+    .calendar-footer {
+      --f7-touch-ripple-color: var(--f7-touch-ripple-white);
+      --f7-link-highlight-color: var(--f7-link-highlight-white);
+      --f7-button-text-color: #fff;
+      --f7-button-pressed-bg-color: rgba(255,255,255,0.1);
+    }
+    .navbar-large-transparent,
+    .navbar-large.navbar-transparent {
+      --f7-navbar-large-title-text-color: #000;
+
+      --r: 0;
+      --g: 122;
+      --b: 255;
+      --progress: var(--f7-navbar-large-collapse-progress);
+      --f7-bars-link-color: rgb(
+        calc(var(--r) + (255 - var(--r)) * var(--progress)),
+        calc(var(--g) + (255 - var(--g)) * var(--progress)),
+        calc(var(--b) + (255 - var(--b)) * var(--progress))
+      );
+    }
+    .theme-dark .navbar-large-transparent,
+    .theme-dark .navbar-large.navbar-transparent {
+      --f7-navbar-large-title-text-color: #fff;
+  }`;
+
+  $('<style>')
+    .prop('type', 'text/css')
+    .html(`${filledCSS}`)
+    .appendTo("head");
+
+  // dark mode
+  if (!config.hasOwnProperty('dark')) config.dark = false;
+  if (config.dark) {
+    app.methods.toggleDarkTheme();
+  }
+});
+```
+
+and the dark mode app example:
+
+```{r, eval=FALSE}
+ui <- f7_page(
+    tags$div(
+        class = "list inset",
+        tags$ul(
+            tags$li(
+                tags$a(
+                    href = "#",
+                    id = "mybutton",
+                    class = "list-button",
+                    "Large Green Button"
+                )
+            )
+        )
+    ),
+    navbar = f7_navbar("Title"),
+    toolbar = f7_toolbar(),
+    title = "shinyMobile",
+    options = list(
+      theme = "ios", 
+      version = "1.0.0", 
+      taphold = TRUE, 
+      color = "#42f5a1", 
+      filled = TRUE, 
+      dark = TRUE
+    )
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+The overall expected result is shown Figure \@ref(fig:mobile-shinyMobile-dark).
+
+```{r mobile-shinyMobile-dark, echo=FALSE, fig.cap='Dark mode in {shinyMobile}', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-shinymobile-dark.png")
 ```
