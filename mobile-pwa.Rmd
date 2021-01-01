@@ -2,7 +2,11 @@
 Transforming a classic Shiny app into a PWA is a game changer for end users.
 The first step is to setup a valid web manifest with icons and favicon.
 
-## Create the manifest
+## Manual approach
+
+Below, we review one by one the steps necessary to convert a shiny app to a PWA.
+
+### Create the manifest
 We want to create a JSON configuration file like this:
 
 ```javascript
@@ -175,7 +179,7 @@ Elements are included in the `head` in the following order:
 <link rel="icon" type="image/png" href="icons/logo-144.png" sizes="144x144" />
 ```
 
-## Service worker and offline page
+### Service worker and offline page
 The second mandatory step to make our app installable is the service worker.
 We borrow the code from [web.dev](https://web.dev/offline-fallback-page/) and save it
 to `service-worker.js` in the `www` folder:
@@ -331,3 +335,66 @@ to design a basic offline page:
   </body>
 </html>
 ```
+
+## Automated approach
+
+`{charpente}` has tools to help designing a PWA. The `set_pwa` function is a wrapper
+that does all the previously mentioned step in only one line of code. There are however few
+prerequisites:
+
+  - The app must belong to a package.
+  - The function must target the app directory.
+  
+### With `{shinyMobile}`
+As a reminder, the demonstration apps are located within the `inst/examples` folder.
+We create the `pwa-app` sub-folder and the `app.R` file:
+
+```{r, eval=FALSE}
+library(shiny)
+library(shinyMobile)
+
+ui <- f7_page(
+  "Test",
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile"
+)
+
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+Then we set the PWA configuration:
+
+```{r, eval=FALSE}
+set_pwa("inst/examples/pwa-app")
+```
+
+This function generates a `manifest.webmanifest` file, downloads the Google PWA compatibility
+script, adds a custom dependency pointing to the `manifest.webmanifest` file and a `144x144` icon file,
+copies a boilerplate `service-worker.js` with its `offline.html` page and optionally registers the
+service worker (code borrowed from [web.dev](https://web.dev/offline-fallback-page/#registering-the-service-worker):
+
+```javascript
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js');
+  };
+});
+```
+
+In the `{shinyMobile}` case, as Framework7 already registers any linked service
+worker, we don't need that initialization script. Therefore, we actually call:
+
+```{r, eval=FALSE}
+set_pwa("inst/examples/pwa-app", register_service_worker = FALSE)
+```
+
+Importantly, this functions does not handle icon creation. There are tools such as 
+[appsco](https://appsco.pe/developer/splash-screens) and 
+[app-manifest](https://app-manifest.firebaseapp.com), to create 
+those custom icons and splash screens, if you need to.
+  
+### Without `{shinyMobile}`
+To show that the process is generalizable to any HTML template, even vanilla shiny,
+let's consider the following example. 
