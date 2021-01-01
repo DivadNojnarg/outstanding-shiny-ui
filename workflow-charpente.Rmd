@@ -124,7 +124,6 @@ To initialize a `{charpente}` package, we do:
 ```{r, eval = FALSE}
 path <- file.path(tempdir(), "mypkg")
 create_charpente(path, license = "mit")
-# TO FINISH
 ```
 
 This sets up a minimal viable package with git and optionally github remote setup, 
@@ -133,6 +132,16 @@ Figure \@ref(fig:workflow-charpente-pkg).
 ```{r workflow-charpente-pkg, echo=FALSE, fig.cap='Package structure for {charpente}', fig.align = 'center', out.width='100%'}
 knitr::include_graphics("images/workflow/charpente-pkg.png")
 ```
+
+By default, the package `DESCRIPTION` `Imports` field has `shiny`, `htmltools` and
+`utils`. `{charpente}` is never required to be a dependency of your package since it might
+be invasive. 
+
+In the `./R` folder, `{charpente}` creates a `mypkg-utils.R` script containing:
+
+  - Tools to facilitate HTML dependency management like `add_dependencies` (see corresponding section below),
+  `processDeps`. 
+  - Some validation functions mentioned in Chapter \@ref(custom-templates-testing).
 
 ### Build the HTML dependency
 The interested reader will have a look at the **Getting started [guide](https://bulma.io/documentation/overview/start/)**,
@@ -191,17 +200,17 @@ create_dependency("bulma")
 
 ```
 
-Moreover, `create_dependency` is able to filter all files, through the `charpent_options`:
+Moreover, `create_dependency` is able to filter all files, through the `charpente_options`:
 
   - __minified__ targets all files with `.min`, if TRUE.
   - __bundle__ targets all files containing `.bundle`, if TRUE.
   - __lite__ targets files with `lite` keyword, if TRUE.
   - __rtl__ target all files with `.rtl`, if TRUE. rtl design stands for right to left
-  and is common in arabic countries for instance. 
+  and is common in some countries for instance. 
   
-You may imagine that `charpent_options` targets `bundle.min` files by default. If you don't find
-any script, you probably have to set `bundle = FALSE` since some template don't have that 
-flavor. 
+You may imagine that `charpente_options` targets `.min` files by default. If you don't find
+any script, you probably have to change options. For instance, some templates
+like Bootstrap and Framework7 have `bundle.min` files (`charpente_options(bunlde = TRUE)`), whereas bulma doesn't.
 
 
 We can test our new dependency:
@@ -211,35 +220,56 @@ devtools::load_all()
 findDependencies(add_bulma_deps(div()))
 ```
 
-which works like a charm. If you chose the local option, you also get an `inst` folder
-with all relevant bulma files sorted by type. The `bulma-dependencies.R` script contains the 
+which works like a charm. If you chose the local option, you also get an `inst/bulma-<BULMA-VERSION>` folder
+with all relevant files sorted by type. The `bulma-dependencies.R` script contains the 
 newly created `add_bulma_deps` function, either pointing to the CDN or the local 
 files, depending on the chosen strategy:
 
 ```{r, eval=FALSE}
 # local dependency script output
+
+#' bulma dependencies utils
+#'
+#' @description This function attaches bulma. dependencies to the given tag
+#'
+#' @param tag Element to attach the dependencies.
+#'
+#' @importFrom htmltools tagList htmlDependency
+#' @export
 add_bulma_deps <- function(tag) {
- bulma_deps <- htmltools::htmlDependency(
+ bulma_deps <- htmlDependency(
   name = "bulma",
   version = "0.9.1",
   src = c(file = "bulma-0.9.1"),
   stylesheet = "css/bulma.min.css",
   package = "mypkg",
  )
- htmltools::tagList(tag, bulma_deps)
+ tagList(tag, bulma_deps)
 }
 
 # CDN dependencies
+
+#' bulma dependencies utils
+#'
+#' @description This function attaches bulma. dependencies to the given tag
+#'
+#' @param tag Element to attach the dependencies.
+#'
+#' @importFrom htmltools tagList htmlDependency
+#' @export
 add_bulma_deps <- function(tag) {
- bulma_deps <- htmltools::htmlDependency(
+ bulma_deps <- htmlDependency(
   name = "bulma",
   version = "0.9.1",
   src = c(href = "https://cdn.jsdelivr.net/npm/bulma@0.9.1/"),
   stylesheet = "css/bulma.min.css"
  )
- htmltools::tagList(tag, bulma_deps)
+ tagList(tag, bulma_deps)
 }
 ```
+
+`{charpente}` sets the roxygen skeleton so that you don't have to worry about function
+imports. 
 
 
 ### Set up the minimal page template
@@ -293,14 +323,15 @@ html_2_R(
   </body>
 </html>
   ',
-  path = "/html",
-  prefix = TRUE
+  path = "/html"
 )
 ```
 
 **Note**: at run time, shiny adds `html` around the UI, thereby making it not necessary to include. 
-We'll also don't need the `link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")` 
-since `add_bulma_deps` does already attach the dependencies to the page.
+We also don't need the `link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")` 
+since `add_bulma_deps` does already attach the dependencies to the page. The `prefix` parameter
+is set to TRUE by default so that we don't have to worry about whether tags functions are exported
+by shiny (see Chapter \@ref(htmltools-overview)).
 
 The `bulma_page` function is defined below, that we save in the `R` package folder:
 
@@ -334,7 +365,7 @@ either to develop custom JS code to add interactivity or rely on any third party
 1. Using `{charpente}`, create a bulma js dependency. We point to [vizuaalog/bulmajs](https://bulmajs.tomerbe.co.uk/) since some bulmajs already exist and are not what we want. Run the following code in the R console.
 
 ```{r bulmajs-deps, eval=FALSE}
-create_dependency(..., options = charpente_options(local = FALSE))
+create_dependency(...)
 ```
 
 Notice how many files are added to the dependency. Below, we only work with **notifications**:
@@ -405,7 +436,7 @@ bulmaJS is an external dependency and is very unlikely to be edited by the packa
 it remains in the `inst` folder like all other external dependencies.
 
 ### Add custom input/output bindings
-In part \@ref(secondary-inputs), we created better shinydashboard boxes that one
+In part \@ref(secondary-inputs), we created better `{shinydashboard}` boxes that one
 may programmatically collapse, close and restore. Until know, there was no way to 
 setup an input binding skeleton and one had to copy and paste each time the same
 code. `{charpente}` has a `create_input_binding` and `create_output_binding` (functions that
@@ -548,33 +579,91 @@ knitr::include_graphics("images/workflow/sourcemaps-bulma.png")
 ```
 
 
-The good new is that `{charpente}` can automate this task in only one line of code:
+The good new is that `{charpente}` can automate this task:
 
 ```{r, eval=FALSE}
+devtools::load_all()
 compress_js()
 ```
 
-Additionally, this creates a plug and play dependency pointing to the newly generated JS file:
+Additionally, this creates the `mypkg-dependencies.R` file containing the HTML 
+dependency pointing to the newly generated JS file:
 
 ```{r, eval=FALSE}
+#' mypkg dependencies utils
+#'
+#' @description This function attaches mypkg dependencies to the given tag
+#'
+#' @param tag Element to attach the dependencies.
+#'
+#' @importFrom utils packageVersion
+#' @importFrom htmltools tagList htmlDependency
+#' @export
 add_mypkg_deps <- function(tag) {
- mypkg_deps <- htmltools::htmlDependency(
+ mypkg_deps <- htmlDependency(
   name = "mypkg",
-  version = utils::packageVersion("mypkg"),
+  version = packageVersion("mypkg"),
   src = c(file = "mypkg-0.0.0.9000"),
   script = "js/mypkg.min.js",
   package = "mypkg",
  )
- htmltools::tagList(tag, mypkg_deps)
+ tagList(tag, mypkg_deps)
 }
 ```
 
-__Disclaimer__: there is not yet similar process for CSS. This is still work in progress.
+__Disclaimer__: there is not yet similar process for CSS. This is still work in progress. 
 
-Other tools exist like [`{packer}`](https://github.com/JohnCoene/packer) by John Coene, which leverages [webpack](https://webpack.js.org/) to handle JS code.
+Other tools exist like [`{packer}`](https://github.com/JohnCoene/packer) by John Coene, 
+which leverages [webpack](https://webpack.js.org/) to handle JS code.
 
 ### Combine multiple dependencies
-`add_dependencies` allow to select any dependency available in the `./R` folder, provided that they follow the convention `<depName>_dependencies.R` (which is always the case if you use `{charpente}`). For instance `add_dependencies(div(), deps = c("bulma", "bulmajs"))` will add bulma (first) and bulmajs dependencies to a `div` tag. You may change the order as you want since most of the time, the order matters. `bulma_page` could also benefit from that shortcut:
+`add_dependencies` allows to select any dependency available in the `./R` folder, 
+provided that they follow the convention `<depName>_dependencies.R` 
+(which is always the case if you use `{charpente}`):
+
+```{r, eval=FALSE}
+#' Attach all created dependencies in the ./R directory to the provided tag
+#'
+#' This function only works if there are existing dependencies. Otherwise,
+#' an error is raised.
+#'
+#' @param tag Tag to attach the dependencies.
+#' @param deps Dependencies to add. Expect a vector of names. If NULL, all dependencies
+#' are added.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'  library(htmltools)
+#'  findDependencies(add_dependencies(div()))
+#'  findDependencies(add_dependencies(div(), deps = "bulma"))
+#' }
+add_dependencies <- function(tag, deps = NULL) {
+  if (is.null(deps)) {
+    temp_names <- list.files("./R", pattern = "dependencies.R$")
+    deps <- unlist(lapply(temp_names, stringr::str_split_n, pattern = "-", n = 1))
+  }
+
+  if (length(deps) == 0) stop("No dependencies found.")
+
+  deps <- lapply(deps, function(x) {
+    temp <- eval(
+      parse(
+        text = sprintf("htmltools::findDependencies(add_%s_deps(htmltools::div()))", x)
+      )
+    )
+    # this assumes all add_*_deps function only add 1 dependency
+    temp[[1]]
+  })
+
+  htmltools::tagList(tag, deps)
+}
+```
+
+For instance 
+`add_dependencies(div(), deps = c("bulma", "bulmajs"))` adds bulma (first) and 
+bulmajs dependencies to a `div` tag. You may change the order as you want since most 
+of the time, the order matters. We update `bulma_page` to benefit from that feature:
 
 ```{r, eval=FALSE}
 bulma_page <- function(..., title = NULL) {
@@ -595,6 +684,9 @@ bulma_page <- function(..., title = NULL) {
 }
 ```
 
+As mentioned above, `add_dependencies` belongs to the `mypkg-utils.R` script
+so that you don't have to import charpente in the `DESCRIPTION` `Imports` field.
+
 ### Other `{charpente}` helpers
 Let's finish this section by listing other useful `{charpente}` tools. 
 We know `create_dependency` to install an external dependency. 
@@ -604,9 +696,9 @@ As shown earlier, this code installs bulma dependencies:
 create_dependency("bulma")
 ```
 
-The problem is that we don't necessarily know all package versions and may need
+However, we don't necessarily know all package versions and may need
 `bulma 0.9.1` or `bulma 0.7.0`. `get_dependency_versions` allows to look for
-all versions:
+all existing versions:
 
 ```{r}
 get_dependency_versions("bulma")
@@ -624,7 +716,8 @@ get_dependency_assets("bulma")
 ```
 
 This is helpful to further fine tune `charpente_options`, as stated previously. It is indeed possible
-that you don't want bundles, minified, lite or rtl versions of scripts. 
+that you don't want bundles, minified, lite or rtl versions of scripts. Internally, `create_dependency`
+relies on `get_dependency_assets`. 
 
 `get_installed_dependency` allows to inspect which dependencies are installed. It only works
 if the dependencies were created locally, that is `charpente_options(local = TRUE)`.
