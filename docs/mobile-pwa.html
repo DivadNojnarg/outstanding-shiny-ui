@@ -82,9 +82,9 @@
 </h1>
 <p>Transforming a classic Shiny app into a PWA is a game changer for end users.
 The first step is to setup a valid web manifest with icons and favicon.</p>
-<div id="manual-approach" class="section level2">
+<div id="introduction-5" class="section level2">
 <h2>
-<span class="header-section-number">25.1</span> Manual approach<a class="anchor" aria-label="anchor" href="#manual-approach"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.1</span> Introduction<a class="anchor" aria-label="anchor" href="#introduction-5"><i class="fas fa-link"></i></a>
 </h2>
 <p>Below, we review one by one the steps necessary to convert a shiny app to a PWA.
 To get a goo idea of what we exactly miss, we leverage the <code>Application</code> tab of the
@@ -111,34 +111,81 @@ FIGURE 25.1: Application tab of the developers tools
 FIGURE 25.2: Lighthouse audit result
 </p>
 </div>
-<p>Let’s first create the manifest.</p>
+</div>
+<div id="charpente-and-pwa-tools" class="section level2">
+<h2>
+<span class="header-section-number">25.2</span> <code>{charpente}</code> and PWA tools<a class="anchor" aria-label="anchor" href="#charpente-and-pwa-tools"><i class="fas fa-link"></i></a>
+</h2>
+<p><a href="https://github.com/RinteRface/charpente">charpente</a> has tools to help designing a PWA. The <code>set_pwa</code> function is a wrapper
+that does all the previously mentioned step in only one line of code. There are however few
+prerequisites:</p>
+<ul>
+<li>The app must belong to a package.</li>
+<li>The function must target the app directory.</li>
+</ul>
+<p>As a reminder, the demonstration apps are located within the <code>inst/examples</code> folder.
+We create the <code>pwa-app</code> sub-folder and the <code>app.R</code> file:</p>
+<div class="sourceCode" id="cb562"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://shiny.rstudio.com">shiny</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a></span><span class="op">)</span>
+
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">f7_page</span><span class="op">(</span>
+  <span class="st">"Test"</span>,
+  navbar <span class="op">=</span> <span class="fu">f7_navbar</span><span class="op">(</span><span class="st">"Title"</span><span class="op">)</span>,
+  toolbar <span class="op">=</span> <span class="fu">f7_toolbar</span><span class="op">(</span><span class="op">)</span>,
+  title <span class="op">=</span> <span class="st">"shinyMobile"</span>
+<span class="op">)</span>
+
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
+<span class="fu"><a href="https://shiny.rstudio.com/reference/shiny/latest/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p>Then we set the PWA configuration:</p>
+<div class="sourceCode" id="cb563"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/set_pwa.html">set_pwa</a></span><span class="op">(</span><span class="st">"inst/examples/pwa-app"</span><span class="op">)</span></code></pre></div>
+<p>This function generates a <code>manifest.webmanifest</code> file, downloads the Google PWA compatibility
+script, adds a custom dependency pointing to the <code>manifest.webmanifest</code> file and a <code>144x144</code> icon file,
+copies a boilerplate <code>service-worker.js</code> with its <code>offline.html</code> page and optionally registers the
+service worker (code borrowed from <a href="https://web.dev/offline-fallback-page/#registering-the-service-worker">web.dev</a>:</p>
+<div class="sourceCode" id="cb564"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb564-1"><a href="mobile-pwa.html#cb564-1"></a><span class="va">window</span>.<span class="at">addEventListener</span>(<span class="st">'load'</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb564-2"><a href="mobile-pwa.html#cb564-2"></a>  <span class="cf">if</span> (<span class="st">'serviceWorker'</span> <span class="kw">in</span> navigator) <span class="op">{</span></span>
+<span id="cb564-3"><a href="mobile-pwa.html#cb564-3"></a>    <span class="va">navigator</span>.<span class="va">serviceWorker</span>.<span class="at">register</span>(<span class="st">'service-worker.js'</span>)<span class="op">;</span></span>
+<span id="cb564-4"><a href="mobile-pwa.html#cb564-4"></a>  <span class="op">};</span></span>
+<span id="cb564-5"><a href="mobile-pwa.html#cb564-5"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>In the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> case, as Framework7 already registers any linked service
+worker, we don’t need that initialization script. Therefore, we actually call:</p>
+<div class="sourceCode" id="cb565"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/set_pwa.html">set_pwa</a></span><span class="op">(</span><span class="st">"inst/examples/pwa-app"</span>, register_service_worker <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
+<p>Importantly, this functions does not handle icon creation. There are tools such as
+<a href="https://appsco.pe/developer/splash-screens">appsco</a> and
+<a href="https://app-manifest.firebaseapp.com">app-manifest</a>, to create
+those custom icons and splash screens, if you need to.</p>
+<p>Below we give more detail</p>
 <div id="create-the-manifest" class="section level3">
 <h3>
-<span class="header-section-number">25.1.1</span> Create the manifest<a class="anchor" aria-label="anchor" href="#create-the-manifest"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.2.1</span> Create the manifest<a class="anchor" aria-label="anchor" href="#create-the-manifest"><i class="fas fa-link"></i></a>
 </h3>
 <p>We want to create a JSON configuration file like this:</p>
-<div class="sourceCode" id="cb562"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb562-1"><a href="mobile-pwa.html#cb562-1"></a><span class="op">{</span></span>
-<span id="cb562-2"><a href="mobile-pwa.html#cb562-2"></a>  <span class="st">"short_name"</span><span class="op">:</span> <span class="st">"My App"</span><span class="op">,</span></span>
-<span id="cb562-3"><a href="mobile-pwa.html#cb562-3"></a>  <span class="st">"name"</span><span class="op">:</span> <span class="st">"Super amazing app"</span><span class="op">,</span></span>
-<span id="cb562-4"><a href="mobile-pwa.html#cb562-4"></a>  <span class="st">"description"</span><span class="op">:</span> <span class="st">"This app is just mind blowing"</span><span class="op">,</span></span>
-<span id="cb562-5"><a href="mobile-pwa.html#cb562-5"></a>  <span class="st">"icons"</span><span class="op">:</span> [</span>
-<span id="cb562-6"><a href="mobile-pwa.html#cb562-6"></a>    <span class="op">{</span></span>
-<span id="cb562-7"><a href="mobile-pwa.html#cb562-7"></a>      <span class="st">"src"</span><span class="op">:</span> <span class="st">"icons/icon.png"</span><span class="op">,</span></span>
-<span id="cb562-8"><a href="mobile-pwa.html#cb562-8"></a>      <span class="st">"type"</span><span class="op">:</span> <span class="st">"image/png"</span><span class="op">,</span></span>
-<span id="cb562-9"><a href="mobile-pwa.html#cb562-9"></a>      <span class="st">"sizes"</span><span class="op">:</span> <span class="st">"192x192"</span></span>
-<span id="cb562-10"><a href="mobile-pwa.html#cb562-10"></a>    <span class="op">}</span></span>
-<span id="cb562-11"><a href="mobile-pwa.html#cb562-11"></a>    <span class="co">// ...</span></span>
-<span id="cb562-12"><a href="mobile-pwa.html#cb562-12"></a>  ]<span class="op">,</span></span>
-<span id="cb562-13"><a href="mobile-pwa.html#cb562-13"></a>  <span class="st">"start_url"</span><span class="op">:</span> <span class="st">"https://whatever-url.com/"</span><span class="op">,</span></span>
-<span id="cb562-14"><a href="mobile-pwa.html#cb562-14"></a>  <span class="st">"background_color"</span><span class="op">:</span> <span class="st">"#3367D6"</span><span class="op">,</span></span>
-<span id="cb562-15"><a href="mobile-pwa.html#cb562-15"></a>  <span class="st">"display"</span><span class="op">:</span> <span class="st">"standalone"</span><span class="op">,</span></span>
-<span id="cb562-16"><a href="mobile-pwa.html#cb562-16"></a>  <span class="st">"scope"</span><span class="op">:</span> <span class="st">"/"</span><span class="op">,</span></span>
-<span id="cb562-17"><a href="mobile-pwa.html#cb562-17"></a>  <span class="st">"theme_color"</span><span class="op">:</span> <span class="st">"#3367D6"</span></span>
-<span id="cb562-18"><a href="mobile-pwa.html#cb562-18"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb566"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb566-1"><a href="mobile-pwa.html#cb566-1"></a><span class="op">{</span></span>
+<span id="cb566-2"><a href="mobile-pwa.html#cb566-2"></a>  <span class="st">"short_name"</span><span class="op">:</span> <span class="st">"My App"</span><span class="op">,</span></span>
+<span id="cb566-3"><a href="mobile-pwa.html#cb566-3"></a>  <span class="st">"name"</span><span class="op">:</span> <span class="st">"Super amazing app"</span><span class="op">,</span></span>
+<span id="cb566-4"><a href="mobile-pwa.html#cb566-4"></a>  <span class="st">"description"</span><span class="op">:</span> <span class="st">"This app is just mind blowing"</span><span class="op">,</span></span>
+<span id="cb566-5"><a href="mobile-pwa.html#cb566-5"></a>  <span class="st">"icons"</span><span class="op">:</span> [</span>
+<span id="cb566-6"><a href="mobile-pwa.html#cb566-6"></a>    <span class="op">{</span></span>
+<span id="cb566-7"><a href="mobile-pwa.html#cb566-7"></a>      <span class="st">"src"</span><span class="op">:</span> <span class="st">"icons/icon.png"</span><span class="op">,</span></span>
+<span id="cb566-8"><a href="mobile-pwa.html#cb566-8"></a>      <span class="st">"type"</span><span class="op">:</span> <span class="st">"image/png"</span><span class="op">,</span></span>
+<span id="cb566-9"><a href="mobile-pwa.html#cb566-9"></a>      <span class="st">"sizes"</span><span class="op">:</span> <span class="st">"192x192"</span></span>
+<span id="cb566-10"><a href="mobile-pwa.html#cb566-10"></a>    <span class="op">}</span></span>
+<span id="cb566-11"><a href="mobile-pwa.html#cb566-11"></a>    <span class="co">// ...</span></span>
+<span id="cb566-12"><a href="mobile-pwa.html#cb566-12"></a>  ]<span class="op">,</span></span>
+<span id="cb566-13"><a href="mobile-pwa.html#cb566-13"></a>  <span class="st">"start_url"</span><span class="op">:</span> <span class="st">"https://whatever-url.com/"</span><span class="op">,</span></span>
+<span id="cb566-14"><a href="mobile-pwa.html#cb566-14"></a>  <span class="st">"background_color"</span><span class="op">:</span> <span class="st">"#3367D6"</span><span class="op">,</span></span>
+<span id="cb566-15"><a href="mobile-pwa.html#cb566-15"></a>  <span class="st">"display"</span><span class="op">:</span> <span class="st">"standalone"</span><span class="op">,</span></span>
+<span id="cb566-16"><a href="mobile-pwa.html#cb566-16"></a>  <span class="st">"scope"</span><span class="op">:</span> <span class="st">"/"</span><span class="op">,</span></span>
+<span id="cb566-17"><a href="mobile-pwa.html#cb566-17"></a>  <span class="st">"theme_color"</span><span class="op">:</span> <span class="st">"#3367D6"</span></span>
+<span id="cb566-18"><a href="mobile-pwa.html#cb566-18"></a><span class="op">}</span></span></code></pre></div>
 <p>This file has to be accessible by the app so best practice is to put it in the <code>/www</code> folder.
 and images are hosted in a sub-directory <code>/www/icons</code>.</p>
-<p><a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> has a create manifest function:</p>
-<div class="sourceCode" id="cb563"><pre class="downlit sourceCode r">
+<p>The <code>create_manifest</code> function is basically writing a JSON file at the provided location:</p>
+<div class="sourceCode" id="cb567"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">create_manifest</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">path</span>, <span class="va">name</span> <span class="op">=</span> <span class="st">"My Progressive Web App"</span>, <span class="va">shortName</span> <span class="op">=</span> <span class="st">"My App"</span>,
                             <span class="va">description</span> <span class="op">=</span> <span class="st">"What it does!"</span>, <span class="va">lang</span> <span class="op">=</span> <span class="st">"en-US"</span>,
                             <span class="va">startUrl</span> <span class="op">=</span> <span class="st">"/"</span>, <span class="va">display</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"minimal-ui"</span>, <span class="st">"standalone"</span>, <span class="st">"fullscreen"</span>, <span class="st">"browser"</span><span class="op">)</span>,
@@ -156,7 +203,7 @@ and images are hosted in a sub-directory <code>/www/icons</code>.</p>
     background_color <span class="op">=</span> <span class="va">background_color</span>,
     theme_color <span class="op">=</span> <span class="va">theme_color</span>,
     icons <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>
-      src <span class="op">=</span> <span class="st">"icons/logo-144.png"</span>,
+      src <span class="op">=</span> <span class="st">"icons/icon-144.png"</span>,
       sizes <span class="op">=</span> <span class="st">"144x144"</span>
     <span class="op">)</span>
   <span class="op">)</span>
@@ -171,36 +218,59 @@ and images are hosted in a sub-directory <code>/www/icons</code>.</p>
     pretty <span class="op">=</span> <span class="cn">TRUE</span>,
     auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>
   <span class="op">)</span>
+  
+  <span class="fu">ui_done</span><span class="op">(</span><span class="st">"Web manifest successfully created!"</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>This function may be included in <code>f7_page</code> so that any app that uses it creates a manifest when the user asks for it.
-We could for instance add an extra <code>pwa_options</code> parameter that takes a list of properties related
-to the manifest:</p>
-<div class="sourceCode" id="cb564"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">f7_page</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
-  <span class="va">...</span>, 
-  <span class="va">navbar</span>, 
-  <span class="va">toolbar</span>, 
-  <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, 
-  <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span>, 
-  <span class="va">pwa_options</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-    name <span class="op">=</span> <span class="st">"My App"</span>,
-    shortName <span class="op">=</span> <span class="st">"My App"</span>,
-    description <span class="op">=</span> <span class="st">"What it does!"</span>,
-    lang <span class="op">=</span> <span class="st">"en-US"</span>,
-    startUrl <span class="op">=</span> <span class="st">"/"</span>,
-    display <span class="op">=</span> <span class="st">"standalone"</span>,
-    background_color <span class="op">=</span> <span class="st">"#ffffff"</span>,
-    theme_color <span class="op">=</span> <span class="st">"#ffffff"</span>,
-    icons <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>
-      src <span class="op">=</span> <span class="st">"icons/logox144.png"</span>,
-      sizes <span class="op">=</span> <span class="st">"144x144"</span>
-    <span class="op">)</span>
-  <span class="op">)</span>
-<span class="op">)</span> <span class="op">{</span>
+<p>The web manifest and icons have to be included in the <code>head</code> before the Google PWA compatibility
+script:</p>
+<div class="sourceCode" id="cb568"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb568-1"><a href="mobile-pwa.html#cb568-1"></a><span class="kw">&lt;link</span><span class="ot"> rel=</span><span class="st">"manifest"</span><span class="ot"> href=</span><span class="st">"manifest.webmanifest"</span> <span class="kw">/&gt;</span></span>
+<span id="cb568-2"><a href="mobile-pwa.html#cb568-2"></a><span class="co">&lt;!-- include icon also from manifest --&gt;</span></span>
+<span id="cb568-3"><a href="mobile-pwa.html#cb568-3"></a><span class="kw">&lt;link</span><span class="ot"> rel=</span><span class="st">"icon"</span><span class="ot"> type=</span><span class="st">"image/png"</span><span class="ot"> href=</span><span class="st">"icons/logo-144.png"</span><span class="ot"> sizes=</span><span class="st">"144x144"</span> <span class="kw">/&gt;</span></span></code></pre></div>
+<p><code>set_pwa</code> includes a <code>create_pwa_dependency</code> function that creates an HTML dependency
+containing all necessary resources:</p>
+<div class="sourceCode" id="cb569"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co">#' PWA dependencies utils</span>
+<span class="co">#'</span>
+<span class="co">#' @description This function attaches PWA manifest and icons to the given tag</span>
+<span class="co">#'</span>
+<span class="co">#' @param tag Element to attach the dependencies.</span>
+<span class="co">#'</span>
+<span class="co">#' @importFrom utils packageVersion</span>
+<span class="co">#' @importFrom htmltools tagList htmlDependency</span>
+<span class="co">#' @export</span>
+<span class="va">add_pwa_deps</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">tag</span><span class="op">)</span> <span class="op">{</span>
+ <span class="va">pwa_deps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
+  name <span class="op">=</span> <span class="st">"pwa-utils"</span>,
+  version <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html">packageVersion</a></span><span class="op">(</span><span class="st">"shinyMobile"</span><span class="op">)</span>,
+  src <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>file <span class="op">=</span> <span class="st">"shinyMobile-0.0.0.9000"</span><span class="op">)</span>,
+  head <span class="op">=</span> <span class="st">"&lt;link rel=\"manifest\" href=\"manifest.webmanifest\"  /&gt;
+&lt;link rel=\"icon\" type=\"image/png\" href=\"icons/icon-144.png\" sizes=\"144x144\" /&gt;"</span>,
+  package <span class="op">=</span> <span class="st">"mypkg2"</span>,
+ <span class="op">)</span>
+ <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span><span class="va">tag</span>, <span class="va">pwa_deps</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>Importantly, all provided icons must follow the convention <code>icon-&lt;size_in_px&gt;.png</code> like
+<code>icon-144.png</code>, which is the default.</p>
+</div>
+<div id="google-pwa-compatibility" class="section level3">
+<h3>
+<span class="header-section-number">25.2.2</span> Google PWA compatibility<a class="anchor" aria-label="anchor" href="#google-pwa-compatibility"><i class="fas fa-link"></i></a>
+</h3>
+<p>As we use the google PWA compatibility script, we have to include at least one icon
+like <code>&lt;link rel="icon" type="image/png" href="res/icon-128.png" sizes="128x128" /&gt;</code>.
+However, we found some discrepancies between the developer tools recommendations and the
+PWA compatibility script. We recommend to follow the developer tools prescriptions, that
+is to include at least one icon of size 144x144. All other elements are generated by the script itself,
+which is extremely convenient. Indeed, having to handle all possible screen sizes and different OS is particularly
+tricky, repetitive and not interesting.</p>
+<p>The web manifest included in the <code>head</code> in the following order:</p>
+<div class="sourceCode" id="cb570"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb570-1"><a href="mobile-pwa.html#cb570-1"></a><span class="kw">&lt;script</span><span class="ot"> async src=</span><span class="st">"path/to/pwacompat.min.js"</span><span class="kw">&gt;&lt;/script&gt;</span></span></code></pre></div>
+<p>The HTML dependency is downloaded with <code><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency("pwacompat", options = charpente_options(bundle = FALSE))</a></code>.
+Don’t forget to update the <code>add_dependencies</code> list by including the two new dependencies:</p>
+<div class="sourceCode" id="cb571"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">f7_page</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">navbar</span>, <span class="va">toolbar</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
 
-  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">create_manifest</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>path <span class="op">=</span> <span class="st">"."</span><span class="op">)</span>, <span class="va">pwa_options</span><span class="op">)</span><span class="op">)</span>
-
-  <span class="va">config_tag</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">tags</a></span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
+  <span class="va">config_tag</span> <span class="op">&lt;-</span> <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
     type <span class="op">=</span> <span class="st">"application/json"</span>,
     `data-for` <span class="op">=</span> <span class="st">"app"</span>,
     <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span>
@@ -245,240 +315,217 @@ to the manifest:</p>
         name <span class="op">=</span> <span class="st">"theme-color"</span>,
         content <span class="op">=</span> <span class="st">"#2196f3"</span>
       <span class="op">)</span>,
-      <span class="va">tags</span><span class="op">$</span><span class="fu">title</span><span class="op">(</span><span class="va">title</span><span class="op">)</span>,
-      <span class="va">tags</span><span class="op">$</span><span class="fu">link</span><span class="op">(</span>rel<span class="op">=</span><span class="st">"manifest"</span>,href<span class="op">=</span><span class="st">"manifest.webmanifest"</span><span class="op">)</span>,
-      <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>async <span class="op">=</span> <span class="cn">NA</span>, src<span class="op">=</span><span class="st">"https://cdn.jsdelivr.net/npm/pwacompat"</span>, crossorigin<span class="op">=</span><span class="st">"anonymous"</span><span class="op">)</span>,
-      <span class="va">tags</span><span class="op">$</span><span class="fu">link</span><span class="op">(</span>
-        rel<span class="op">=</span><span class="st">"icon"</span>,
-        type<span class="op">=</span><span class="st">"image/png"</span>,
-        href<span class="op">=</span><span class="st">"icons/logo-144.png"</span>,
-        sizes<span class="op">=</span><span class="st">"144x144"</span>
-      <span class="op">)</span>
+      <span class="va">tags</span><span class="op">$</span><span class="fu">title</span><span class="op">(</span><span class="va">title</span><span class="op">)</span>
     <span class="op">)</span>,
     <span class="fu">add_dependencies</span><span class="op">(</span>
       <span class="va">body_tag</span>,
-      deps <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"framework7"</span>, <span class="st">"shinyMobile"</span><span class="op">)</span>
+      deps <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"framework7"</span>, <span class="st">"shinyMobile"</span>, <span class="st">"pwa"</span>, <span class="st">"pwacompat"</span><span class="op">)</span>
     <span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p><code>do.call</code> is particularly handy in that case. The chosen path is <code>.</code> that is the app
-root so that <code>www</code> is properly created.</p>
-<p>As we use the google PWA compatibility script, we have to include at least one icon like <code>&lt;link rel="icon" type="image/png" href="res/icon-128.png" sizes="128x128" /&gt;</code>. All other elements are generated by the script
-itself.</p>
-<p>Elements are included in the <code>head</code> in the following order:</p>
-<div class="sourceCode" id="cb565"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb565-1"><a href="mobile-pwa.html#cb565-1"></a><span class="kw">&lt;link</span><span class="ot"> rel=</span><span class="st">"manifest"</span><span class="ot"> href=</span><span class="st">"manifest.webmanifest"</span> <span class="kw">/&gt;</span></span>
-<span id="cb565-2"><a href="mobile-pwa.html#cb565-2"></a><span class="kw">&lt;script</span><span class="ot"> async src=</span><span class="st">"path/to/pwacompat.min.js"</span><span class="kw">&gt;&lt;/script&gt;</span></span>
-<span id="cb565-3"><a href="mobile-pwa.html#cb565-3"></a><span class="co">&lt;!-- include icon also from manifest --&gt;</span></span>
-<span id="cb565-4"><a href="mobile-pwa.html#cb565-4"></a><span class="kw">&lt;link</span><span class="ot"> rel=</span><span class="st">"icon"</span><span class="ot"> type=</span><span class="st">"image/png"</span><span class="ot"> href=</span><span class="st">"icons/logo-144.png"</span><span class="ot"> sizes=</span><span class="st">"144x144"</span> <span class="kw">/&gt;</span></span></code></pre></div>
+<p>If you do <code><a href="https://devtools.r-lib.org//reference/load_all.html">devtools::load_all()</a></code> and run the app again, you should see the new dependencies
+in the <code>head</code> (Figure <a href="mobile-pwa.html#fig:mobile-pwa-deps">25.3</a>).</p>
+<div class="figure">
+<span id="fig:mobile-pwa-deps"></span>
+<img src="images/mobile/mobile-pwa-deps.png" alt="New PWA dependencies in the head tag." width="100%"><p class="caption">
+FIGURE 25.3: New PWA dependencies in the head tag.
+</p>
+</div>
+<p>Yet, according to Figure <a href="mobile-pwa.html#fig:mobile-pwa-missing-sw">25.4</a>, we still miss the service worker,
+as shown in the manifest diagnostic. This shows how powerful are the developer tools and
+the end user is always guided step by step.</p>
+<div class="figure">
+<span id="fig:mobile-pwa-missing-sw"></span>
+<img src="images/mobile/mobile-pwa-missing-sw.png" alt="Missing service worker registration." width="100%"><p class="caption">
+FIGURE 25.4: Missing service worker registration.
+</p>
+</div>
 </div>
 <div id="service-worker-and-offline-page" class="section level3">
 <h3>
-<span class="header-section-number">25.1.2</span> Service worker and offline page<a class="anchor" aria-label="anchor" href="#service-worker-and-offline-page"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.2.3</span> Service worker and offline page<a class="anchor" aria-label="anchor" href="#service-worker-and-offline-page"><i class="fas fa-link"></i></a>
 </h3>
 <p>The second mandatory step to make our app installable is the service worker.
-We borrow the code from <a href="https://web.dev/offline-fallback-page/">web.dev</a> and save it
-to <code>service-worker.js</code> in the <code>www</code> folder:</p>
-<div class="sourceCode" id="cb566"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb566-1"><a href="mobile-pwa.html#cb566-1"></a><span class="co">/*</span></span>
-<span id="cb566-2"><a href="mobile-pwa.html#cb566-2"></a><span class="co">Copyright 2015, 2019, 2020 Google LLC. All Rights Reserved.</span></span>
-<span id="cb566-3"><a href="mobile-pwa.html#cb566-3"></a><span class="co"> Licensed under the Apache License, Version 2.0 (the "License");</span></span>
-<span id="cb566-4"><a href="mobile-pwa.html#cb566-4"></a><span class="co"> you may not use this file except in compliance with the License.</span></span>
-<span id="cb566-5"><a href="mobile-pwa.html#cb566-5"></a><span class="co"> You may obtain a copy of the License at</span></span>
-<span id="cb566-6"><a href="mobile-pwa.html#cb566-6"></a><span class="co"> http://www.apache.org/licenses/LICENSE-2.0</span></span>
-<span id="cb566-7"><a href="mobile-pwa.html#cb566-7"></a><span class="co"> Unless required by applicable law or agreed to in writing, software</span></span>
-<span id="cb566-8"><a href="mobile-pwa.html#cb566-8"></a><span class="co"> distributed under the License is distributed on an "AS IS" BASIS,</span></span>
-<span id="cb566-9"><a href="mobile-pwa.html#cb566-9"></a><span class="co"> WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span></span>
-<span id="cb566-10"><a href="mobile-pwa.html#cb566-10"></a><span class="co"> See the License for the specific language governing permissions and</span></span>
-<span id="cb566-11"><a href="mobile-pwa.html#cb566-11"></a><span class="co"> limitations under the License.</span></span>
-<span id="cb566-12"><a href="mobile-pwa.html#cb566-12"></a><span class="co">*/</span></span>
-<span id="cb566-13"><a href="mobile-pwa.html#cb566-13"></a></span>
-<span id="cb566-14"><a href="mobile-pwa.html#cb566-14"></a><span class="co">// Incrementing OFFLINE_VERSION will kick off the install event and force</span></span>
-<span id="cb566-15"><a href="mobile-pwa.html#cb566-15"></a><span class="co">// previously cached resources to be updated from the network.</span></span>
-<span id="cb566-16"><a href="mobile-pwa.html#cb566-16"></a><span class="kw">const</span> OFFLINE_VERSION <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb566-17"><a href="mobile-pwa.html#cb566-17"></a><span class="kw">const</span> CACHE_NAME <span class="op">=</span> <span class="st">"offline"</span><span class="op">;</span></span>
-<span id="cb566-18"><a href="mobile-pwa.html#cb566-18"></a><span class="co">// Customize this with a different URL if needed.</span></span>
-<span id="cb566-19"><a href="mobile-pwa.html#cb566-19"></a><span class="kw">const</span> OFFLINE_URL <span class="op">=</span> <span class="st">"offline.html"</span><span class="op">;</span></span>
-<span id="cb566-20"><a href="mobile-pwa.html#cb566-20"></a></span>
-<span id="cb566-21"><a href="mobile-pwa.html#cb566-21"></a><span class="va">self</span>.<span class="at">addEventListener</span>(<span class="st">"install"</span><span class="op">,</span> (event) <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb566-22"><a href="mobile-pwa.html#cb566-22"></a>  <span class="va">event</span>.<span class="at">waitUntil</span>(</span>
-<span id="cb566-23"><a href="mobile-pwa.html#cb566-23"></a>    (<span class="kw">async</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb566-24"><a href="mobile-pwa.html#cb566-24"></a>      <span class="kw">const</span> cache <span class="op">=</span> <span class="cf">await</span> <span class="va">caches</span>.<span class="at">open</span>(CACHE_NAME)<span class="op">;</span></span>
-<span id="cb566-25"><a href="mobile-pwa.html#cb566-25"></a>      <span class="co">// Setting {cache: 'reload'} in the new request will ensure that the</span></span>
-<span id="cb566-26"><a href="mobile-pwa.html#cb566-26"></a>      <span class="co">// response isn't fulfilled from the HTTP cache; i.e., it will be from</span></span>
-<span id="cb566-27"><a href="mobile-pwa.html#cb566-27"></a>      <span class="co">// the network.</span></span>
-<span id="cb566-28"><a href="mobile-pwa.html#cb566-28"></a>      <span class="cf">await</span> <span class="va">cache</span>.<span class="at">add</span>(<span class="kw">new</span> <span class="at">Request</span>(OFFLINE_URL<span class="op">,</span> <span class="op">{</span> <span class="dt">cache</span><span class="op">:</span> <span class="st">"reload"</span> <span class="op">}</span>))<span class="op">;</span></span>
-<span id="cb566-29"><a href="mobile-pwa.html#cb566-29"></a>    <span class="op">}</span>)()</span>
-<span id="cb566-30"><a href="mobile-pwa.html#cb566-30"></a>  )<span class="op">;</span></span>
-<span id="cb566-31"><a href="mobile-pwa.html#cb566-31"></a>  <span class="co">// Force the waiting service worker to become the active service worker.</span></span>
-<span id="cb566-32"><a href="mobile-pwa.html#cb566-32"></a>  <span class="va">self</span>.<span class="at">skipWaiting</span>()<span class="op">;</span></span>
-<span id="cb566-33"><a href="mobile-pwa.html#cb566-33"></a><span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb566-34"><a href="mobile-pwa.html#cb566-34"></a></span>
-<span id="cb566-35"><a href="mobile-pwa.html#cb566-35"></a><span class="va">self</span>.<span class="at">addEventListener</span>(<span class="st">"activate"</span><span class="op">,</span> (event) <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb566-36"><a href="mobile-pwa.html#cb566-36"></a>  <span class="va">event</span>.<span class="at">waitUntil</span>(</span>
-<span id="cb566-37"><a href="mobile-pwa.html#cb566-37"></a>    (<span class="kw">async</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb566-38"><a href="mobile-pwa.html#cb566-38"></a>      <span class="co">// Enable navigation preload if it's supported.</span></span>
-<span id="cb566-39"><a href="mobile-pwa.html#cb566-39"></a>      <span class="co">// See https://developers.google.com/web/updates/2017/02/navigation-preload</span></span>
-<span id="cb566-40"><a href="mobile-pwa.html#cb566-40"></a>      <span class="cf">if</span> (<span class="st">"navigationPreload"</span> <span class="kw">in</span> <span class="va">self</span>.<span class="at">registration</span>) <span class="op">{</span></span>
-<span id="cb566-41"><a href="mobile-pwa.html#cb566-41"></a>        <span class="cf">await</span> <span class="va">self</span>.<span class="va">registration</span>.<span class="va">navigationPreload</span>.<span class="at">enable</span>()<span class="op">;</span></span>
-<span id="cb566-42"><a href="mobile-pwa.html#cb566-42"></a>      <span class="op">}</span></span>
-<span id="cb566-43"><a href="mobile-pwa.html#cb566-43"></a>    <span class="op">}</span>)()</span>
-<span id="cb566-44"><a href="mobile-pwa.html#cb566-44"></a>  )<span class="op">;</span></span>
-<span id="cb566-45"><a href="mobile-pwa.html#cb566-45"></a></span>
-<span id="cb566-46"><a href="mobile-pwa.html#cb566-46"></a>  <span class="co">// Tell the active service worker to take control of the page immediately.</span></span>
-<span id="cb566-47"><a href="mobile-pwa.html#cb566-47"></a>  <span class="va">self</span>.<span class="va">clients</span>.<span class="at">claim</span>()<span class="op">;</span></span>
-<span id="cb566-48"><a href="mobile-pwa.html#cb566-48"></a><span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb566-49"><a href="mobile-pwa.html#cb566-49"></a></span>
-<span id="cb566-50"><a href="mobile-pwa.html#cb566-50"></a><span class="va">self</span>.<span class="at">addEventListener</span>(<span class="st">"fetch"</span><span class="op">,</span> (event) <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb566-51"><a href="mobile-pwa.html#cb566-51"></a>  <span class="co">// We only want to call event.respondWith() if this is a navigation request</span></span>
-<span id="cb566-52"><a href="mobile-pwa.html#cb566-52"></a>  <span class="co">// for an HTML page.</span></span>
-<span id="cb566-53"><a href="mobile-pwa.html#cb566-53"></a>  <span class="cf">if</span> (<span class="va">event</span>.<span class="va">request</span>.<span class="at">mode</span> <span class="op">===</span> <span class="st">"navigate"</span>) <span class="op">{</span></span>
-<span id="cb566-54"><a href="mobile-pwa.html#cb566-54"></a>    <span class="va">event</span>.<span class="at">respondWith</span>(</span>
-<span id="cb566-55"><a href="mobile-pwa.html#cb566-55"></a>      (<span class="kw">async</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb566-56"><a href="mobile-pwa.html#cb566-56"></a>        <span class="cf">try</span> <span class="op">{</span></span>
-<span id="cb566-57"><a href="mobile-pwa.html#cb566-57"></a>          <span class="co">// First, try to use the navigation preload response if it's supported.</span></span>
-<span id="cb566-58"><a href="mobile-pwa.html#cb566-58"></a>          <span class="kw">const</span> preloadResponse <span class="op">=</span> <span class="cf">await</span> <span class="va">event</span>.<span class="at">preloadResponse</span><span class="op">;</span></span>
-<span id="cb566-59"><a href="mobile-pwa.html#cb566-59"></a>          <span class="cf">if</span> (preloadResponse) <span class="op">{</span></span>
-<span id="cb566-60"><a href="mobile-pwa.html#cb566-60"></a>            <span class="cf">return</span> preloadResponse<span class="op">;</span></span>
-<span id="cb566-61"><a href="mobile-pwa.html#cb566-61"></a>          <span class="op">}</span></span>
-<span id="cb566-62"><a href="mobile-pwa.html#cb566-62"></a></span>
-<span id="cb566-63"><a href="mobile-pwa.html#cb566-63"></a>          <span class="co">// Always try the network first.</span></span>
-<span id="cb566-64"><a href="mobile-pwa.html#cb566-64"></a>          <span class="kw">const</span> networkResponse <span class="op">=</span> <span class="cf">await</span> <span class="at">fetch</span>(<span class="va">event</span>.<span class="at">request</span>)<span class="op">;</span></span>
-<span id="cb566-65"><a href="mobile-pwa.html#cb566-65"></a>          <span class="cf">return</span> networkResponse<span class="op">;</span></span>
-<span id="cb566-66"><a href="mobile-pwa.html#cb566-66"></a>        <span class="op">}</span> <span class="cf">catch</span> (error) <span class="op">{</span></span>
-<span id="cb566-67"><a href="mobile-pwa.html#cb566-67"></a>          <span class="co">// catch is only triggered if an exception is thrown, which is likely</span></span>
-<span id="cb566-68"><a href="mobile-pwa.html#cb566-68"></a>          <span class="co">// due to a network error.</span></span>
-<span id="cb566-69"><a href="mobile-pwa.html#cb566-69"></a>          <span class="co">// If fetch() returns a valid HTTP response with a response code in</span></span>
-<span id="cb566-70"><a href="mobile-pwa.html#cb566-70"></a>          <span class="co">// the 4xx or 5xx range, the catch() will NOT be called.</span></span>
-<span id="cb566-71"><a href="mobile-pwa.html#cb566-71"></a>          <span class="va">console</span>.<span class="at">log</span>(<span class="st">"Fetch failed; returning offline page instead."</span><span class="op">,</span> error)<span class="op">;</span></span>
-<span id="cb566-72"><a href="mobile-pwa.html#cb566-72"></a></span>
-<span id="cb566-73"><a href="mobile-pwa.html#cb566-73"></a>          <span class="kw">const</span> cache <span class="op">=</span> <span class="cf">await</span> <span class="va">caches</span>.<span class="at">open</span>(CACHE_NAME)<span class="op">;</span></span>
-<span id="cb566-74"><a href="mobile-pwa.html#cb566-74"></a>          <span class="kw">const</span> cachedResponse <span class="op">=</span> <span class="cf">await</span> <span class="va">cache</span>.<span class="at">match</span>(OFFLINE_URL)<span class="op">;</span></span>
-<span id="cb566-75"><a href="mobile-pwa.html#cb566-75"></a>          <span class="cf">return</span> cachedResponse<span class="op">;</span></span>
-<span id="cb566-76"><a href="mobile-pwa.html#cb566-76"></a>        <span class="op">}</span></span>
-<span id="cb566-77"><a href="mobile-pwa.html#cb566-77"></a>      <span class="op">}</span>)()</span>
-<span id="cb566-78"><a href="mobile-pwa.html#cb566-78"></a>    )<span class="op">;</span></span>
-<span id="cb566-79"><a href="mobile-pwa.html#cb566-79"></a>  <span class="op">}</span></span>
-<span id="cb566-80"><a href="mobile-pwa.html#cb566-80"></a></span>
-<span id="cb566-81"><a href="mobile-pwa.html#cb566-81"></a>  <span class="co">// If our if() condition is false, then this fetch handler won't intercept the</span></span>
-<span id="cb566-82"><a href="mobile-pwa.html#cb566-82"></a>  <span class="co">// request. If there are any other fetch handlers registered, they will get a</span></span>
-<span id="cb566-83"><a href="mobile-pwa.html#cb566-83"></a>  <span class="co">// chance to call event.respondWith(). If no fetch handlers call</span></span>
-<span id="cb566-84"><a href="mobile-pwa.html#cb566-84"></a>  <span class="co">// event.respondWith(), the request will be handled by the browser as if there</span></span>
-<span id="cb566-85"><a href="mobile-pwa.html#cb566-85"></a>  <span class="co">// were no service worker involvement.</span></span>
-<span id="cb566-86"><a href="mobile-pwa.html#cb566-86"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+We borrowed the code from <a href="https://web.dev/offline-fallback-page/">web.dev</a>. <code>set_pwa</code> copies
+this code in the <code>www</code> folder of the provided app:</p>
+<div class="sourceCode" id="cb572"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb572-1"><a href="mobile-pwa.html#cb572-1"></a><span class="co">/*</span></span>
+<span id="cb572-2"><a href="mobile-pwa.html#cb572-2"></a><span class="co">Copyright 2015, 2019, 2020 Google LLC. All Rights Reserved.</span></span>
+<span id="cb572-3"><a href="mobile-pwa.html#cb572-3"></a><span class="co"> Licensed under the Apache License, Version 2.0 (the "License");</span></span>
+<span id="cb572-4"><a href="mobile-pwa.html#cb572-4"></a><span class="co"> you may not use this file except in compliance with the License.</span></span>
+<span id="cb572-5"><a href="mobile-pwa.html#cb572-5"></a><span class="co"> You may obtain a copy of the License at</span></span>
+<span id="cb572-6"><a href="mobile-pwa.html#cb572-6"></a><span class="co"> http://www.apache.org/licenses/LICENSE-2.0</span></span>
+<span id="cb572-7"><a href="mobile-pwa.html#cb572-7"></a><span class="co"> Unless required by applicable law or agreed to in writing, software</span></span>
+<span id="cb572-8"><a href="mobile-pwa.html#cb572-8"></a><span class="co"> distributed under the License is distributed on an "AS IS" BASIS,</span></span>
+<span id="cb572-9"><a href="mobile-pwa.html#cb572-9"></a><span class="co"> WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span></span>
+<span id="cb572-10"><a href="mobile-pwa.html#cb572-10"></a><span class="co"> See the License for the specific language governing permissions and</span></span>
+<span id="cb572-11"><a href="mobile-pwa.html#cb572-11"></a><span class="co"> limitations under the License.</span></span>
+<span id="cb572-12"><a href="mobile-pwa.html#cb572-12"></a><span class="co">*/</span></span>
+<span id="cb572-13"><a href="mobile-pwa.html#cb572-13"></a></span>
+<span id="cb572-14"><a href="mobile-pwa.html#cb572-14"></a><span class="co">// Incrementing OFFLINE_VERSION will kick off the install event and force</span></span>
+<span id="cb572-15"><a href="mobile-pwa.html#cb572-15"></a><span class="co">// previously cached resources to be updated from the network.</span></span>
+<span id="cb572-16"><a href="mobile-pwa.html#cb572-16"></a><span class="kw">const</span> OFFLINE_VERSION <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb572-17"><a href="mobile-pwa.html#cb572-17"></a><span class="kw">const</span> CACHE_NAME <span class="op">=</span> <span class="st">"offline"</span><span class="op">;</span></span>
+<span id="cb572-18"><a href="mobile-pwa.html#cb572-18"></a><span class="co">// Customize this with a different URL if needed.</span></span>
+<span id="cb572-19"><a href="mobile-pwa.html#cb572-19"></a><span class="kw">const</span> OFFLINE_URL <span class="op">=</span> <span class="st">"offline.html"</span><span class="op">;</span></span>
+<span id="cb572-20"><a href="mobile-pwa.html#cb572-20"></a></span>
+<span id="cb572-21"><a href="mobile-pwa.html#cb572-21"></a><span class="va">self</span>.<span class="at">addEventListener</span>(<span class="st">"install"</span><span class="op">,</span> (event) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb572-22"><a href="mobile-pwa.html#cb572-22"></a>  <span class="va">event</span>.<span class="at">waitUntil</span>(</span>
+<span id="cb572-23"><a href="mobile-pwa.html#cb572-23"></a>    (<span class="kw">async</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb572-24"><a href="mobile-pwa.html#cb572-24"></a>      <span class="kw">const</span> cache <span class="op">=</span> <span class="cf">await</span> <span class="va">caches</span>.<span class="at">open</span>(CACHE_NAME)<span class="op">;</span></span>
+<span id="cb572-25"><a href="mobile-pwa.html#cb572-25"></a>      <span class="co">// Setting {cache: 'reload'} in the new request will ensure that the</span></span>
+<span id="cb572-26"><a href="mobile-pwa.html#cb572-26"></a>      <span class="co">// response isn't fulfilled from the HTTP cache; i.e., it will be from</span></span>
+<span id="cb572-27"><a href="mobile-pwa.html#cb572-27"></a>      <span class="co">// the network.</span></span>
+<span id="cb572-28"><a href="mobile-pwa.html#cb572-28"></a>      <span class="cf">await</span> <span class="va">cache</span>.<span class="at">add</span>(<span class="kw">new</span> <span class="at">Request</span>(OFFLINE_URL<span class="op">,</span> <span class="op">{</span> <span class="dt">cache</span><span class="op">:</span> <span class="st">"reload"</span> <span class="op">}</span>))<span class="op">;</span></span>
+<span id="cb572-29"><a href="mobile-pwa.html#cb572-29"></a>    <span class="op">}</span>)()</span>
+<span id="cb572-30"><a href="mobile-pwa.html#cb572-30"></a>  )<span class="op">;</span></span>
+<span id="cb572-31"><a href="mobile-pwa.html#cb572-31"></a>  <span class="co">// Force the waiting service worker to become the active service worker.</span></span>
+<span id="cb572-32"><a href="mobile-pwa.html#cb572-32"></a>  <span class="va">self</span>.<span class="at">skipWaiting</span>()<span class="op">;</span></span>
+<span id="cb572-33"><a href="mobile-pwa.html#cb572-33"></a><span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb572-34"><a href="mobile-pwa.html#cb572-34"></a></span>
+<span id="cb572-35"><a href="mobile-pwa.html#cb572-35"></a><span class="va">self</span>.<span class="at">addEventListener</span>(<span class="st">"activate"</span><span class="op">,</span> (event) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb572-36"><a href="mobile-pwa.html#cb572-36"></a>  <span class="va">event</span>.<span class="at">waitUntil</span>(</span>
+<span id="cb572-37"><a href="mobile-pwa.html#cb572-37"></a>    (<span class="kw">async</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb572-38"><a href="mobile-pwa.html#cb572-38"></a>      <span class="co">// Enable navigation preload if it's supported.</span></span>
+<span id="cb572-39"><a href="mobile-pwa.html#cb572-39"></a>      <span class="co">// See https://developers.google.com/web/updates/2017/02/navigation-preload</span></span>
+<span id="cb572-40"><a href="mobile-pwa.html#cb572-40"></a>      <span class="cf">if</span> (<span class="st">"navigationPreload"</span> <span class="kw">in</span> <span class="va">self</span>.<span class="at">registration</span>) <span class="op">{</span></span>
+<span id="cb572-41"><a href="mobile-pwa.html#cb572-41"></a>        <span class="cf">await</span> <span class="va">self</span>.<span class="va">registration</span>.<span class="va">navigationPreload</span>.<span class="at">enable</span>()<span class="op">;</span></span>
+<span id="cb572-42"><a href="mobile-pwa.html#cb572-42"></a>      <span class="op">}</span></span>
+<span id="cb572-43"><a href="mobile-pwa.html#cb572-43"></a>    <span class="op">}</span>)()</span>
+<span id="cb572-44"><a href="mobile-pwa.html#cb572-44"></a>  )<span class="op">;</span></span>
+<span id="cb572-45"><a href="mobile-pwa.html#cb572-45"></a></span>
+<span id="cb572-46"><a href="mobile-pwa.html#cb572-46"></a>  <span class="co">// Tell the active service worker to take control of the page immediately.</span></span>
+<span id="cb572-47"><a href="mobile-pwa.html#cb572-47"></a>  <span class="va">self</span>.<span class="va">clients</span>.<span class="at">claim</span>()<span class="op">;</span></span>
+<span id="cb572-48"><a href="mobile-pwa.html#cb572-48"></a><span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb572-49"><a href="mobile-pwa.html#cb572-49"></a></span>
+<span id="cb572-50"><a href="mobile-pwa.html#cb572-50"></a><span class="va">self</span>.<span class="at">addEventListener</span>(<span class="st">"fetch"</span><span class="op">,</span> (event) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb572-51"><a href="mobile-pwa.html#cb572-51"></a>  <span class="co">// We only want to call event.respondWith() if this is a navigation request</span></span>
+<span id="cb572-52"><a href="mobile-pwa.html#cb572-52"></a>  <span class="co">// for an HTML page.</span></span>
+<span id="cb572-53"><a href="mobile-pwa.html#cb572-53"></a>  <span class="cf">if</span> (<span class="va">event</span>.<span class="va">request</span>.<span class="at">mode</span> <span class="op">===</span> <span class="st">"navigate"</span>) <span class="op">{</span></span>
+<span id="cb572-54"><a href="mobile-pwa.html#cb572-54"></a>    <span class="va">event</span>.<span class="at">respondWith</span>(</span>
+<span id="cb572-55"><a href="mobile-pwa.html#cb572-55"></a>      (<span class="kw">async</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb572-56"><a href="mobile-pwa.html#cb572-56"></a>        <span class="cf">try</span> <span class="op">{</span></span>
+<span id="cb572-57"><a href="mobile-pwa.html#cb572-57"></a>          <span class="co">// First, try to use the navigation preload response if it's supported.</span></span>
+<span id="cb572-58"><a href="mobile-pwa.html#cb572-58"></a>          <span class="kw">const</span> preloadResponse <span class="op">=</span> <span class="cf">await</span> <span class="va">event</span>.<span class="at">preloadResponse</span><span class="op">;</span></span>
+<span id="cb572-59"><a href="mobile-pwa.html#cb572-59"></a>          <span class="cf">if</span> (preloadResponse) <span class="op">{</span></span>
+<span id="cb572-60"><a href="mobile-pwa.html#cb572-60"></a>            <span class="cf">return</span> preloadResponse<span class="op">;</span></span>
+<span id="cb572-61"><a href="mobile-pwa.html#cb572-61"></a>          <span class="op">}</span></span>
+<span id="cb572-62"><a href="mobile-pwa.html#cb572-62"></a></span>
+<span id="cb572-63"><a href="mobile-pwa.html#cb572-63"></a>          <span class="co">// Always try the network first.</span></span>
+<span id="cb572-64"><a href="mobile-pwa.html#cb572-64"></a>          <span class="kw">const</span> networkResponse <span class="op">=</span> <span class="cf">await</span> <span class="at">fetch</span>(<span class="va">event</span>.<span class="at">request</span>)<span class="op">;</span></span>
+<span id="cb572-65"><a href="mobile-pwa.html#cb572-65"></a>          <span class="cf">return</span> networkResponse<span class="op">;</span></span>
+<span id="cb572-66"><a href="mobile-pwa.html#cb572-66"></a>        <span class="op">}</span> <span class="cf">catch</span> (error) <span class="op">{</span></span>
+<span id="cb572-67"><a href="mobile-pwa.html#cb572-67"></a>          <span class="co">// catch is only triggered if an exception is thrown, which is likely</span></span>
+<span id="cb572-68"><a href="mobile-pwa.html#cb572-68"></a>          <span class="co">// due to a network error.</span></span>
+<span id="cb572-69"><a href="mobile-pwa.html#cb572-69"></a>          <span class="co">// If fetch() returns a valid HTTP response with a response code in</span></span>
+<span id="cb572-70"><a href="mobile-pwa.html#cb572-70"></a>          <span class="co">// the 4xx or 5xx range, the catch() will NOT be called.</span></span>
+<span id="cb572-71"><a href="mobile-pwa.html#cb572-71"></a>          <span class="va">console</span>.<span class="at">log</span>(<span class="st">"Fetch failed; returning offline page instead."</span><span class="op">,</span> error)<span class="op">;</span></span>
+<span id="cb572-72"><a href="mobile-pwa.html#cb572-72"></a></span>
+<span id="cb572-73"><a href="mobile-pwa.html#cb572-73"></a>          <span class="kw">const</span> cache <span class="op">=</span> <span class="cf">await</span> <span class="va">caches</span>.<span class="at">open</span>(CACHE_NAME)<span class="op">;</span></span>
+<span id="cb572-74"><a href="mobile-pwa.html#cb572-74"></a>          <span class="kw">const</span> cachedResponse <span class="op">=</span> <span class="cf">await</span> <span class="va">cache</span>.<span class="at">match</span>(OFFLINE_URL)<span class="op">;</span></span>
+<span id="cb572-75"><a href="mobile-pwa.html#cb572-75"></a>          <span class="cf">return</span> cachedResponse<span class="op">;</span></span>
+<span id="cb572-76"><a href="mobile-pwa.html#cb572-76"></a>        <span class="op">}</span></span>
+<span id="cb572-77"><a href="mobile-pwa.html#cb572-77"></a>      <span class="op">}</span>)()</span>
+<span id="cb572-78"><a href="mobile-pwa.html#cb572-78"></a>    )<span class="op">;</span></span>
+<span id="cb572-79"><a href="mobile-pwa.html#cb572-79"></a>  <span class="op">}</span></span>
+<span id="cb572-80"><a href="mobile-pwa.html#cb572-80"></a></span>
+<span id="cb572-81"><a href="mobile-pwa.html#cb572-81"></a>  <span class="co">// If our if() condition is false, then this fetch handler won't intercept the</span></span>
+<span id="cb572-82"><a href="mobile-pwa.html#cb572-82"></a>  <span class="co">// request. If there are any other fetch handlers registered, they will get a</span></span>
+<span id="cb572-83"><a href="mobile-pwa.html#cb572-83"></a>  <span class="co">// chance to call event.respondWith(). If no fetch handlers call</span></span>
+<span id="cb572-84"><a href="mobile-pwa.html#cb572-84"></a>  <span class="co">// event.respondWith(), the request will be handled by the browser as if there</span></span>
+<span id="cb572-85"><a href="mobile-pwa.html#cb572-85"></a>  <span class="co">// were no service worker involvement.</span></span>
+<span id="cb572-86"><a href="mobile-pwa.html#cb572-86"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>This service worker redirects the end user to the offline cached page whenever
-the app is offline, thereby offering a better user experience.</p>
+the app is offline, thereby offering a better user experience. It explicitly
+targets an <code>offline.html</code> page. Therefore, we strongly advise to keep the same file names.</p>
 <p>The next step is to mention and register the service worker. Framework7 has a dedicated module in the
 app configuration. We modify <code>init.js</code> and run <code><a href="https://rdrr.io/pkg/charpente/man/compress_js.html">compress_js()</a></code> to update the minified file:</p>
-<div class="sourceCode" id="cb567"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb567-1"><a href="mobile-pwa.html#cb567-1"></a>serviceWorker<span class="op">:</span> <span class="op">{</span></span>
-<span id="cb567-2"><a href="mobile-pwa.html#cb567-2"></a>  <span class="dt">path</span><span class="op">:</span> <span class="st">'service-worker.js'</span><span class="op">,</span></span>
-<span id="cb567-3"><a href="mobile-pwa.html#cb567-3"></a>  <span class="dt">scope</span><span class="op">:</span> <span class="st">'/'</span></span>
-<span id="cb567-4"><a href="mobile-pwa.html#cb567-4"></a><span class="op">}</span></span></code></pre></div>
-<p>The new standard impose to return a valid response when the app is offline. We are going
-to design a basic offline page:</p>
-<div class="sourceCode" id="cb568"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb568-1"><a href="mobile-pwa.html#cb568-1"></a><span class="dt">&lt;!DOCTYPE </span>html<span class="dt">&gt;</span></span>
-<span id="cb568-2"><a href="mobile-pwa.html#cb568-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
-<span id="cb568-3"><a href="mobile-pwa.html#cb568-3"></a>  <span class="kw">&lt;head&gt;</span></span>
-<span id="cb568-4"><a href="mobile-pwa.html#cb568-4"></a>    <span class="kw">&lt;meta</span><span class="ot"> charset=</span><span class="st">"utf-8"</span> <span class="kw">/&gt;</span></span>
-<span id="cb568-5"><a href="mobile-pwa.html#cb568-5"></a>    <span class="kw">&lt;meta</span><span class="ot"> http-equiv=</span><span class="st">"X-UA-Compatible"</span><span class="ot"> content=</span><span class="st">"IE=edge"</span> <span class="kw">/&gt;</span></span>
-<span id="cb568-6"><a href="mobile-pwa.html#cb568-6"></a>    <span class="kw">&lt;meta</span><span class="ot"> name=</span><span class="st">"viewport"</span><span class="ot"> content=</span><span class="st">"width=device-width, initial-scale=1"</span> <span class="kw">/&gt;</span></span>
-<span id="cb568-7"><a href="mobile-pwa.html#cb568-7"></a></span>
-<span id="cb568-8"><a href="mobile-pwa.html#cb568-8"></a>    <span class="kw">&lt;title&gt;</span>You are offline<span class="kw">&lt;/title&gt;</span></span>
-<span id="cb568-9"><a href="mobile-pwa.html#cb568-9"></a></span>
-<span id="cb568-10"><a href="mobile-pwa.html#cb568-10"></a>    <span class="co">&lt;!-- inline the webpage's stylesheet --&gt;</span></span>
-<span id="cb568-11"><a href="mobile-pwa.html#cb568-11"></a>    <span class="kw">&lt;style&gt;</span></span>
-<span id="cb568-12"><a href="mobile-pwa.html#cb568-12"></a>      body {</span>
-<span id="cb568-13"><a href="mobile-pwa.html#cb568-13"></a>        <span class="kw">font-family</span>: helvetica<span class="op">,</span> arial<span class="op">,</span> <span class="dv">sans-serif</span><span class="op">;</span></span>
-<span id="cb568-14"><a href="mobile-pwa.html#cb568-14"></a>        <span class="kw">margin</span>: <span class="dv">2</span><span class="dt">em</span><span class="op">;</span></span>
-<span id="cb568-15"><a href="mobile-pwa.html#cb568-15"></a>      }</span>
-<span id="cb568-16"><a href="mobile-pwa.html#cb568-16"></a></span>
-<span id="cb568-17"><a href="mobile-pwa.html#cb568-17"></a>      h1 {</span>
-<span id="cb568-18"><a href="mobile-pwa.html#cb568-18"></a>        <span class="kw">font-style</span>: <span class="dv">italic</span><span class="op">;</span></span>
-<span id="cb568-19"><a href="mobile-pwa.html#cb568-19"></a>        <span class="kw">color</span>: <span class="cn">#373fff</span><span class="op">;</span></span>
-<span id="cb568-20"><a href="mobile-pwa.html#cb568-20"></a>      }</span>
-<span id="cb568-21"><a href="mobile-pwa.html#cb568-21"></a></span>
-<span id="cb568-22"><a href="mobile-pwa.html#cb568-22"></a>      p {</span>
-<span id="cb568-23"><a href="mobile-pwa.html#cb568-23"></a>        <span class="kw">margin-block</span>: <span class="dv">1</span><span class="dt">rem</span><span class="op">;</span></span>
-<span id="cb568-24"><a href="mobile-pwa.html#cb568-24"></a>      }</span>
-<span id="cb568-25"><a href="mobile-pwa.html#cb568-25"></a></span>
-<span id="cb568-26"><a href="mobile-pwa.html#cb568-26"></a>      button {</span>
-<span id="cb568-27"><a href="mobile-pwa.html#cb568-27"></a>        <span class="kw">display</span>: <span class="dv">block</span><span class="op">;</span></span>
-<span id="cb568-28"><a href="mobile-pwa.html#cb568-28"></a>      }</span>
-<span id="cb568-29"><a href="mobile-pwa.html#cb568-29"></a>    <span class="kw">&lt;/style&gt;</span></span>
-<span id="cb568-30"><a href="mobile-pwa.html#cb568-30"></a>  <span class="kw">&lt;/head&gt;</span></span>
-<span id="cb568-31"><a href="mobile-pwa.html#cb568-31"></a>  <span class="kw">&lt;body&gt;</span></span>
-<span id="cb568-32"><a href="mobile-pwa.html#cb568-32"></a>    <span class="kw">&lt;h1&gt;</span>You are offline<span class="kw">&lt;/h1&gt;</span></span>
-<span id="cb568-33"><a href="mobile-pwa.html#cb568-33"></a></span>
-<span id="cb568-34"><a href="mobile-pwa.html#cb568-34"></a>    <span class="kw">&lt;p&gt;</span>Click the button below to try reloading.<span class="kw">&lt;/p&gt;</span></span>
-<span id="cb568-35"><a href="mobile-pwa.html#cb568-35"></a>    <span class="kw">&lt;button</span><span class="ot"> type=</span><span class="st">"button"</span><span class="kw">&gt;</span>⤾ Reload<span class="kw">&lt;/button&gt;</span></span>
-<span id="cb568-36"><a href="mobile-pwa.html#cb568-36"></a></span>
-<span id="cb568-37"><a href="mobile-pwa.html#cb568-37"></a>    <span class="co">&lt;!-- inline the webpage's javascript file --&gt;</span></span>
-<span id="cb568-38"><a href="mobile-pwa.html#cb568-38"></a>    <span class="kw">&lt;script&gt;</span></span>
-<span id="cb568-39"><a href="mobile-pwa.html#cb568-39"></a>      <span class="va">document</span>.<span class="at">querySelector</span>(<span class="st">"button"</span>).<span class="at">addEventListener</span>(<span class="st">"click"</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb568-40"><a href="mobile-pwa.html#cb568-40"></a>        <span class="va">window</span>.<span class="va">location</span>.<span class="at">reload</span>()<span class="op">;</span></span>
-<span id="cb568-41"><a href="mobile-pwa.html#cb568-41"></a>      <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb568-42"><a href="mobile-pwa.html#cb568-42"></a>    <span class="kw">&lt;/script&gt;</span></span>
-<span id="cb568-43"><a href="mobile-pwa.html#cb568-43"></a>  <span class="kw">&lt;/body&gt;</span></span>
-<span id="cb568-44"><a href="mobile-pwa.html#cb568-44"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb573"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb573-1"><a href="mobile-pwa.html#cb573-1"></a>serviceWorker<span class="op">:</span> <span class="op">{</span></span>
+<span id="cb573-2"><a href="mobile-pwa.html#cb573-2"></a>  <span class="dt">path</span><span class="op">:</span> <span class="st">'service-worker.js'</span><span class="op">,</span></span>
+<span id="cb573-3"><a href="mobile-pwa.html#cb573-3"></a>  <span class="dt">scope</span><span class="op">:</span> <span class="st">'/'</span></span>
+<span id="cb573-4"><a href="mobile-pwa.html#cb573-4"></a><span class="op">}</span></span></code></pre></div>
+<p>If the process is successful, you get the result shown in Figure <a href="mobile-pwa.html#fig:mobile-pwa-registered-sw">25.5</a>.</p>
+<div class="figure">
+<span id="fig:mobile-pwa-registered-sw"></span>
+<img src="images/mobile/mobile-pwa-registered-sw.png" alt="Registered service worker." width="100%"><p class="caption">
+FIGURE 25.5: Registered service worker.
+</p>
+</div>
+<p>The new standard imposes to return a valid response when the app is offline. The offline page is
+also copied from <a href="https://github.com/RinteRface/charpente">charpente</a>:</p>
+<div class="sourceCode" id="cb574"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb574-1"><a href="mobile-pwa.html#cb574-1"></a><span class="dt">&lt;!DOCTYPE </span>html<span class="dt">&gt;</span></span>
+<span id="cb574-2"><a href="mobile-pwa.html#cb574-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
+<span id="cb574-3"><a href="mobile-pwa.html#cb574-3"></a>  <span class="kw">&lt;head&gt;</span></span>
+<span id="cb574-4"><a href="mobile-pwa.html#cb574-4"></a>    <span class="kw">&lt;meta</span><span class="ot"> charset=</span><span class="st">"utf-8"</span> <span class="kw">/&gt;</span></span>
+<span id="cb574-5"><a href="mobile-pwa.html#cb574-5"></a>    <span class="kw">&lt;meta</span><span class="ot"> http-equiv=</span><span class="st">"X-UA-Compatible"</span><span class="ot"> content=</span><span class="st">"IE=edge"</span> <span class="kw">/&gt;</span></span>
+<span id="cb574-6"><a href="mobile-pwa.html#cb574-6"></a>    <span class="kw">&lt;meta</span><span class="ot"> name=</span><span class="st">"viewport"</span><span class="ot"> content=</span><span class="st">"width=device-width, initial-scale=1"</span> <span class="kw">/&gt;</span></span>
+<span id="cb574-7"><a href="mobile-pwa.html#cb574-7"></a></span>
+<span id="cb574-8"><a href="mobile-pwa.html#cb574-8"></a>    <span class="kw">&lt;title&gt;</span>You are offline<span class="kw">&lt;/title&gt;</span></span>
+<span id="cb574-9"><a href="mobile-pwa.html#cb574-9"></a></span>
+<span id="cb574-10"><a href="mobile-pwa.html#cb574-10"></a>    <span class="co">&lt;!-- inline the webpage's stylesheet --&gt;</span></span>
+<span id="cb574-11"><a href="mobile-pwa.html#cb574-11"></a>    <span class="kw">&lt;style&gt;</span></span>
+<span id="cb574-12"><a href="mobile-pwa.html#cb574-12"></a>      body {</span>
+<span id="cb574-13"><a href="mobile-pwa.html#cb574-13"></a>        <span class="kw">font-family</span>: helvetica<span class="op">,</span> arial<span class="op">,</span> <span class="dv">sans-serif</span><span class="op">;</span></span>
+<span id="cb574-14"><a href="mobile-pwa.html#cb574-14"></a>        <span class="kw">margin</span>: <span class="dv">2</span><span class="dt">em</span><span class="op">;</span></span>
+<span id="cb574-15"><a href="mobile-pwa.html#cb574-15"></a>      }</span>
+<span id="cb574-16"><a href="mobile-pwa.html#cb574-16"></a></span>
+<span id="cb574-17"><a href="mobile-pwa.html#cb574-17"></a>      h1 {</span>
+<span id="cb574-18"><a href="mobile-pwa.html#cb574-18"></a>        <span class="kw">font-style</span>: <span class="dv">italic</span><span class="op">;</span></span>
+<span id="cb574-19"><a href="mobile-pwa.html#cb574-19"></a>        <span class="kw">color</span>: <span class="cn">#373fff</span><span class="op">;</span></span>
+<span id="cb574-20"><a href="mobile-pwa.html#cb574-20"></a>      }</span>
+<span id="cb574-21"><a href="mobile-pwa.html#cb574-21"></a></span>
+<span id="cb574-22"><a href="mobile-pwa.html#cb574-22"></a>      p {</span>
+<span id="cb574-23"><a href="mobile-pwa.html#cb574-23"></a>        <span class="kw">margin-block</span>: <span class="dv">1</span><span class="dt">rem</span><span class="op">;</span></span>
+<span id="cb574-24"><a href="mobile-pwa.html#cb574-24"></a>      }</span>
+<span id="cb574-25"><a href="mobile-pwa.html#cb574-25"></a></span>
+<span id="cb574-26"><a href="mobile-pwa.html#cb574-26"></a>      button {</span>
+<span id="cb574-27"><a href="mobile-pwa.html#cb574-27"></a>        <span class="kw">display</span>: <span class="dv">block</span><span class="op">;</span></span>
+<span id="cb574-28"><a href="mobile-pwa.html#cb574-28"></a>      }</span>
+<span id="cb574-29"><a href="mobile-pwa.html#cb574-29"></a>    <span class="kw">&lt;/style&gt;</span></span>
+<span id="cb574-30"><a href="mobile-pwa.html#cb574-30"></a>  <span class="kw">&lt;/head&gt;</span></span>
+<span id="cb574-31"><a href="mobile-pwa.html#cb574-31"></a>  <span class="kw">&lt;body&gt;</span></span>
+<span id="cb574-32"><a href="mobile-pwa.html#cb574-32"></a>    <span class="kw">&lt;h1&gt;</span>You are offline<span class="kw">&lt;/h1&gt;</span></span>
+<span id="cb574-33"><a href="mobile-pwa.html#cb574-33"></a></span>
+<span id="cb574-34"><a href="mobile-pwa.html#cb574-34"></a>    <span class="kw">&lt;p&gt;</span>Click the button below to try reloading.<span class="kw">&lt;/p&gt;</span></span>
+<span id="cb574-35"><a href="mobile-pwa.html#cb574-35"></a>    <span class="kw">&lt;button</span><span class="ot"> type=</span><span class="st">"button"</span><span class="kw">&gt;</span>⤾ Reload<span class="kw">&lt;/button&gt;</span></span>
+<span id="cb574-36"><a href="mobile-pwa.html#cb574-36"></a></span>
+<span id="cb574-37"><a href="mobile-pwa.html#cb574-37"></a>    <span class="co">&lt;!-- inline the webpage's javascript file --&gt;</span></span>
+<span id="cb574-38"><a href="mobile-pwa.html#cb574-38"></a>    <span class="kw">&lt;script&gt;</span></span>
+<span id="cb574-39"><a href="mobile-pwa.html#cb574-39"></a>      <span class="va">document</span>.<span class="at">querySelector</span>(<span class="st">"button"</span>).<span class="at">addEventListener</span>(<span class="st">"click"</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb574-40"><a href="mobile-pwa.html#cb574-40"></a>        <span class="va">window</span>.<span class="va">location</span>.<span class="at">reload</span>()<span class="op">;</span></span>
+<span id="cb574-41"><a href="mobile-pwa.html#cb574-41"></a>      <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb574-42"><a href="mobile-pwa.html#cb574-42"></a>    <span class="kw">&lt;/script&gt;</span></span>
+<span id="cb574-43"><a href="mobile-pwa.html#cb574-43"></a>  <span class="kw">&lt;/body&gt;</span></span>
+<span id="cb574-44"><a href="mobile-pwa.html#cb574-44"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
+<p>Now, let’s audit our app again: congrats! Our app is installable, reliable, although
+further PWA optimization may be provided.</p>
+<div class="figure">
+<span id="fig:mobile-pwa-audit-final"></span>
+<img src="images/mobile/mobile-pwa-audit-final.png" alt="Installable shinyMobile app." width="100%"><p class="caption">
+FIGURE 25.6: Installable shinyMobile app.
+</p>
 </div>
 </div>
-<div id="automated-approach" class="section level2">
+</div>
+<div id="handle-the-installation" class="section level2">
 <h2>
-<span class="header-section-number">25.2</span> Automated approach<a class="anchor" aria-label="anchor" href="#automated-approach"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.3</span> Handle the installation<a class="anchor" aria-label="anchor" href="#handle-the-installation"><i class="fas fa-link"></i></a>
 </h2>
-<p><a href="https://github.com/RinteRface/charpente">charpente</a> has tools to help designing a PWA. The <code>set_pwa</code> function is a wrapper
-that does all the previously mentioned step in only one line of code. There are however few
-prerequisites:</p>
-<ul>
-<li>The app must belong to a package.</li>
-<li>The function must target the app directory.</li>
-</ul>
-<div id="with-shinymobile" class="section level3">
-<h3>
-<span class="header-section-number">25.2.1</span> With <code>{shinyMobile}</code><a class="anchor" aria-label="anchor" href="#with-shinymobile"><i class="fas fa-link"></i></a>
-</h3>
-<p>As a reminder, the demonstration apps are located within the <code>inst/examples</code> folder.
-We create the <code>pwa-app</code> sub-folder and the <code>app.R</code> file:</p>
-<div class="sourceCode" id="cb569"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://shiny.rstudio.com">shiny</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a></span><span class="op">)</span>
+<p>Once the installation criteria are met, the web browser raises the <code>beforeinstallprompt</code> event.
+To check it, we edit the <code>init.js</code> script and add:</p>
+<div class="sourceCode" id="cb575"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb575-1"><a href="mobile-pwa.html#cb575-1"></a><span class="kw">let</span> deferredPrompt<span class="op">;</span></span>
+<span id="cb575-2"><a href="mobile-pwa.html#cb575-2"></a><span class="va">window</span>.<span class="at">addEventListener</span>(<span class="st">'beforeinstallprompt'</span><span class="op">,</span> (e) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb575-3"><a href="mobile-pwa.html#cb575-3"></a>  <span class="co">// Prevent the mini-infobar from appearing on mobile</span></span>
+<span id="cb575-4"><a href="mobile-pwa.html#cb575-4"></a>  <span class="va">e</span>.<span class="at">preventDefault</span>()<span class="op">;</span></span>
+<span id="cb575-5"><a href="mobile-pwa.html#cb575-5"></a>  <span class="co">// Stash the event so it can be triggered later.</span></span>
+<span id="cb575-6"><a href="mobile-pwa.html#cb575-6"></a>  deferredPrompt <span class="op">=</span> e<span class="op">;</span></span>
+<span id="cb575-7"><a href="mobile-pwa.html#cb575-7"></a>  <span class="va">app</span>.<span class="va">toast</span>.<span class="at">create</span>(<span class="op">{</span></span>
+<span id="cb575-8"><a href="mobile-pwa.html#cb575-8"></a>    <span class="dt">text</span><span class="op">:</span> <span class="st">'You can install the app!'</span><span class="op">,</span></span>
+<span id="cb575-9"><a href="mobile-pwa.html#cb575-9"></a>    <span class="dt">position</span><span class="op">:</span> <span class="st">'center'</span><span class="op">,</span></span>
+<span id="cb575-10"><a href="mobile-pwa.html#cb575-10"></a>    <span class="dt">closeButton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb575-11"><a href="mobile-pwa.html#cb575-11"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb575-12"><a href="mobile-pwa.html#cb575-12"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>It is a great opportunity to propose a custom installation experience.</p>
 
-<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">f7_page</span><span class="op">(</span>
-  <span class="st">"Test"</span>,
-  navbar <span class="op">=</span> <span class="fu">f7_navbar</span><span class="op">(</span><span class="st">"Title"</span><span class="op">)</span>,
-  toolbar <span class="op">=</span> <span class="fu">f7_toolbar</span><span class="op">(</span><span class="op">)</span>,
-  title <span class="op">=</span> <span class="st">"shinyMobile"</span>
-<span class="op">)</span>
-
-<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
-<span class="fu"><a href="https://shiny.rstudio.com/reference/shiny/latest/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
-<p>Then we set the PWA configuration:</p>
-<div class="sourceCode" id="cb570"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/set_pwa.html">set_pwa</a></span><span class="op">(</span><span class="st">"inst/examples/pwa-app"</span><span class="op">)</span></code></pre></div>
-<p>This function generates a <code>manifest.webmanifest</code> file, downloads the Google PWA compatibility
-script, adds a custom dependency pointing to the <code>manifest.webmanifest</code> file and a <code>144x144</code> icon file,
-copies a boilerplate <code>service-worker.js</code> with its <code>offline.html</code> page and optionally registers the
-service worker (code borrowed from <a href="https://web.dev/offline-fallback-page/#registering-the-service-worker">web.dev</a>:</p>
-<div class="sourceCode" id="cb571"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb571-1"><a href="mobile-pwa.html#cb571-1"></a><span class="va">window</span>.<span class="at">addEventListener</span>(<span class="st">'load'</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb571-2"><a href="mobile-pwa.html#cb571-2"></a>  <span class="cf">if</span> (<span class="st">'serviceWorker'</span> <span class="kw">in</span> navigator) <span class="op">{</span></span>
-<span id="cb571-3"><a href="mobile-pwa.html#cb571-3"></a>    <span class="va">navigator</span>.<span class="va">serviceWorker</span>.<span class="at">register</span>(<span class="st">'service-worker.js'</span>)<span class="op">;</span></span>
-<span id="cb571-4"><a href="mobile-pwa.html#cb571-4"></a>  <span class="op">};</span></span>
-<span id="cb571-5"><a href="mobile-pwa.html#cb571-5"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
-<p>In the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> case, as Framework7 already registers any linked service
-worker, we don’t need that initialization script. Therefore, we actually call:</p>
-<div class="sourceCode" id="cb572"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/set_pwa.html">set_pwa</a></span><span class="op">(</span><span class="st">"inst/examples/pwa-app"</span>, register_service_worker <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
-<p>Importantly, this functions does not handle icon creation. There are tools such as
-<a href="https://appsco.pe/developer/splash-screens">appsco</a> and
-<a href="https://app-manifest.firebaseapp.com">app-manifest</a>, to create
-those custom icons and splash screens, if you need to.</p>
-</div>
-<div id="without-shinymobile" class="section level3">
-<h3>
-<span class="header-section-number">25.2.2</span> Without <code>{shinyMobile}</code><a class="anchor" aria-label="anchor" href="#without-shinymobile"><i class="fas fa-link"></i></a>
-</h3>
-<p>To show that the process is generalizable to any HTML template, even vanilla shiny,
-let’s consider the following example.</p>
-
-</div>
 </div>
 </div>
 
@@ -492,18 +539,15 @@ let’s consider the following example.</p>
     <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
       <ul class="nav navbar-nav">
 <li><a class="nav-link" href="#mobile-pwa"><span class="header-section-number">25</span> {shinyMobile} and PWA</a></li>
+<li><a class="nav-link" href="#introduction-5"><span class="header-section-number">25.1</span> Introduction</a></li>
 <li>
-<a class="nav-link" href="#manual-approach"><span class="header-section-number">25.1</span> Manual approach</a><ul class="nav navbar-nav">
-<li><a class="nav-link" href="#create-the-manifest"><span class="header-section-number">25.1.1</span> Create the manifest</a></li>
-<li><a class="nav-link" href="#service-worker-and-offline-page"><span class="header-section-number">25.1.2</span> Service worker and offline page</a></li>
+<a class="nav-link" href="#charpente-and-pwa-tools"><span class="header-section-number">25.2</span> {charpente} and PWA tools</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#create-the-manifest"><span class="header-section-number">25.2.1</span> Create the manifest</a></li>
+<li><a class="nav-link" href="#google-pwa-compatibility"><span class="header-section-number">25.2.2</span> Google PWA compatibility</a></li>
+<li><a class="nav-link" href="#service-worker-and-offline-page"><span class="header-section-number">25.2.3</span> Service worker and offline page</a></li>
 </ul>
 </li>
-<li>
-<a class="nav-link" href="#automated-approach"><span class="header-section-number">25.2</span> Automated approach</a><ul class="nav navbar-nav">
-<li><a class="nav-link" href="#with-shinymobile"><span class="header-section-number">25.2.1</span> With {shinyMobile}</a></li>
-<li><a class="nav-link" href="#without-shinymobile"><span class="header-section-number">25.2.2</span> Without {shinyMobile}</a></li>
-</ul>
-</li>
+<li><a class="nav-link" href="#handle-the-installation"><span class="header-section-number">25.3</span> Handle the installation</a></li>
 </ul>
 
       <div class="book-extra">
