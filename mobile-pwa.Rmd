@@ -209,12 +209,6 @@ is to include at least one icon of size 144x144. All other elements are generate
 which is extremely convenient. Indeed, having to handle all possible screen sizes and different OS is particularly
 tricky, repetitive and not interesting.
 
-The web manifest included in the `head` in the following order:
-
-```html
-<script async src="path/to/pwacompat.min.js"></script>
-```
-
 The HTML dependency is downloaded with `create_dependency("pwacompat", options = charpente_options(bundle = FALSE))`.
 Don't forget to update the `add_dependencies` list by including the two new dependencies:
 
@@ -462,11 +456,14 @@ knitr::include_graphics("images/mobile/mobile-pwa-audit-final.png")
 ```
 
 ## Handle the installation
+It is a great opportunity to propose a [custom](https://developers.google.com/web/fundamentals/app-install-banners/native) 
+installation experience. 
+
 __Note__: To be able to install the app, make sure to replace `start_url` by the url
  where the app is deployed like `https://dgranjon.shinyapps.io/installable-pwa-app/` for instance.
  Missing that step would cause an issue during the service worker registration. 
-Once the installation criteria are met, the web browser raises the `beforeinstallprompt` event.
-To check it, we edit the `init.js` script and add:
+Once the installation criteria are met, the web browser raises the `beforeinstallprompt` event, except
+on iOS platform, that is not yet compatible. To check it, we edit the `init.js` script and add:
 
 ```javascript
 let deferredPrompt;
@@ -475,14 +472,85 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   // Stash the event so it can be triggered later.
   deferredPrompt = e;
-  app.toast.create({
-    text: 'You can install the app!',
-    position: 'center',
-    closeButton: true,
-  });
 });
 ```
 
+This code adds an event listener to the window, prevents it from showing at start with `e.preventDefault` and
+captures it in an external variable called `deferredPrompt`. After, we create our custom piece of UI that will
+trigger the `prompt` install. We can benefit from the rich Framework7 interface and display
+a [toast](https://framework7.io/docs/toast.html) containing an install button. The instantiation
+is fairly simple and follows the pattern `app.<COMPONENT>.create(parameters)`:
 
-It is a great opportunity to propose a [custom](https://developers.google.com/web/fundamentals/app-install-banners/native) 
-installation experience. 
+```javascript
+// Create custom install UI
+var installToast = app.toast.create({
+  position: 'center',
+  text: '<button id="install-button" class="toast-button button color-green">Install</button>',
+});
+```
+
+We give it an id so as to call it later. We edit the `beforeinstallprompt` event listener to show
+the toast:
+
+```javascript
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Stash the event so it can be triggered later.
+  deferredPrompt = e;
+  // Show install trigger
+  installToast.open();
+});
+```
+
+__Note__: with jQuery like `$(window).on('beforeinstallprompt', ...)`, 
+we would capture the event with `e.originalEvent`!
+
+Then we register a second event listener, which fires on the toast button click.
+We should wait a bit of time so that the toast exists with `app.utils.nextTick`,
+which is, as a reminder, an internal equivalent to `setTimeout`. We first close the 
+toast, call the prompt method on the deferred event and log the result:
+
+```javascript
+app.utils.nextTick(function() {
+  $('#install-button').on('click', function() {
+    // close install toast
+    installToast.close();
+    if (!deferredPrompt) {
+      // The deferred prompt isn't available.
+      return;
+    }
+    // Show the install prompt.
+    deferredPrompt.prompt();
+    // Log the result
+    deferredPrompt.userChoice.then((result) => {
+      console.log('👍', 'userChoice', result);
+      // Reset the deferred prompt variable, since
+      // prompt() can only be called once.
+      deferredPrompt = null;
+    });
+  });
+}, 500);
+```
+
+We run `compress_js()` and deploy the app to shinyapps.io. Figure \@ref(fig:mobile-pwa-installable)
+illustrates the install prompt window that appears to install the app. Once installed, the `beforeinstallprompt`
+event does not fire anymore and the app may be launched as a standalone app (Figure \@ref(fig:mobile-pwa-installed))
+
+```{r mobile-pwa-installable, echo=FALSE, fig.cap='Install prompt window.', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-pwa-installable.png")
+```
+
+```{r mobile-pwa-installed, echo=FALSE, fig.cap='Installed PWA on macOSX.', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-pwa-installed.png")
+```
+
+On Figure \@ref(fig:mobile-pwa-installed), the blue window color corresponds to the `tags$meta(name = "theme-color", content = "#2196f3")`,
+of the `f7_page` layout element. 
+
+
+The `installable-pwa-test` [repository](https://github.com/DivadNojnarg/installable-pwa-test) 
+contains the final code to reproduce the previous steps.
+
+## Further recommandation
