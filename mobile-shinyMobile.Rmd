@@ -258,7 +258,7 @@ and add the following piece of JS inside:
 
 ```javascript
 $( document ).ready(function() {
-  var app = new Framework7({
+  app = new Framework7({
     // App root element
     root: '#app',
     // App Name
@@ -268,6 +268,9 @@ $( document ).ready(function() {
 });
 ```
 
+__Note__: we don't assign `app` to a variable to make it globally accessible by any script!
+It is relevant since app may be needed almost everywhere. 
+
 This script creates the app instance so as to be able to use [methods](https://framework7.io/docs/app.html#app-methods-properties),
 get other information, interact with layout elements and listen to app events (offline, online, ...). 
 Since the root element is a direct child of the body, the `root` property is not
@@ -275,7 +278,7 @@ mandatory. The full configuration list may be found [here](https://framework7.io
 The next step is to initialize the main view, we add this line right after the app creation:
 
 ```javascript
-var mainView = app.views.create('.view-main');
+mainView = app.views.create('.view-main');
 ```
 
 Once done, we compress the corresponding JS file to create the `shinyMobile.min.js` code
@@ -397,7 +400,7 @@ The app is able to emit events whenever relevant like `init`, `resize`, `online`
 allows to add interactivity:
 
 ```javascript
-var app = new Framework7({
+app = new Framework7({
   on: {
     init: function () {
       console.log('App initialized');
@@ -430,7 +433,7 @@ than a `setTimeout`. At this point it should look like this:
 ```javascript
 $( document ).ready(function() {
  // create app instance
- var app = new Framework7({
+ app = new Framework7({
     // App root element
     root: '#app',
     // App Name
@@ -443,7 +446,7 @@ $( document ).ready(function() {
   });
 
   // init main view
-  var mainView = app.views.create('.view-main');
+  mainView = app.views.create('.view-main');
 
 
   var notification = app.notification.create({
@@ -665,7 +668,7 @@ config = JSON.parse(config.html());
 We can accordingly update the app initialization:
 
 ```javascript
-var app = new Framework7({
+app = new Framework7({
     // App root element
     root: '#app',
     // App Name
@@ -694,7 +697,7 @@ and `FALSE` (R) are converted to `true` and `false` (JS), which avoids unnecessa
 In theory, we could do:
 
 ```javascript
-var app = new Framework7(config);
+app = new Framework7(config);
 ```
 
 which assumes that the user exactly knows what to provide in the list, especially mandatory elements. 
@@ -1006,7 +1009,7 @@ $( document ).ready(function() {
  config = JSON.parse(config.html());
 
  // create app instance
- var app = new Framework7({
+ app = new Framework7({
     // App root element
     root: '#app',
     // App Name
@@ -1034,7 +1037,7 @@ $( document ).ready(function() {
   });
 
   // init main view
-  var mainView = app.views.create('.view-main');
+  mainView = app.views.create('.view-main');
 
 
   var notification = app.notification.create({
@@ -1180,3 +1183,36 @@ knitr::include_graphics("images/mobile/mobile-shinymobile-dark.png")
 
 We have now set all base pieces. In the next chapter, we see how to make `{shinyMobile}` apps
 as progressive web apps.
+
+
+## Handle multiple scripts
+
+### Scoping rules
+We only have only one JS file, namely `init.js`. How do we handle multiple files, especially scoping rules?
+The code inside `init.js` is wrapped in a main function that waits the document to be ready before interacting with the DOM. This is necessary since the configuration is retrieved from a `script` DOM element inserted when the application starts, thus not immediately available. If you try to remove the `$( document ).ready(function(...)});`, an error is raised since the config cannot be properly retrieved (timing issue). 
+
+As already mentioned above, if you think an object is to be reused in multiple scripts with
+different scopes, you can omit the `var` so that the element is global and accessible from anywhere.
+
+
+### Order matters {#shinyMobile-order-matters}
+Assume we want to move the `init.js` notifications to another script, say `notifications.js`.
+When we call `build_js`, the terser treats them by alphabetical order meaning notifications code appears
+after the init code in the final JS code. This is fine because `app` is created within `init.js` and called
+later in `notifications.js`. Now, we create a third script with another component, `component.js`:
+
+```javascript
+app.component.create(parameters);
+```
+
+`build_js` aggregates `component.js` and `init.js` in that order, which raises an error since `app` 
+is used before being defined. Remember that `build_js` has a __files__ parameter to specify a custom order and 
+we could do as below to properly concatenate files:
+
+```{r, eval=FALSE}
+js_files <- list.files("srcjs")
+init_js <- which(js_files == "init.js")
+component_js <- which(js_files == "component.js")
+js_files <- js_files[-c(init_js, component_js)]
+build_js(files = paste0("srcjs/", c("init.js", "component.js", jsFiles)))
+```
