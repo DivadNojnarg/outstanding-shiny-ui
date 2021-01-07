@@ -3,13 +3,16 @@ title: "Outstanding User Interfaces with Shiny"
 author: "David Granjon"
 date: "`r Sys.Date()`"
 documentclass: krantz
-bibliography: [book.bib, packages.bib, externalPackages.bib]
+bibliography: [book.bib, packages.bib]
 biblio-style: apalike
 link-citations: yes
 colorlinks: yes
 lot: yes
 lof: yes
 site: bookdown::bookdown_site
+output:
+  - bookdown::gitbook
+  - rmarkdown::md_document
 description: "A book about deeply customizing Shiny app for production."
 favicon: images/favicon.ico
 github-repo: DivadNojnarg/outstanding-shiny-ui
@@ -34,22 +37,15 @@ box_args <- function(
 
 # Welcome {-}
 
-This book is still under active development and intended for a Q2 release in the [R Series](https://www.routledge.com/go/the-r-series) by Chapman
+This book is still under active development and intended for a 2021 Q2 release in the [R Series](https://www.routledge.com/go/the-r-series) by Chapman
 & Hall.
-
-
-## Disclaimer {-}
-
-::: {.importantblock data-latex=""}
-This book is not an HTML/Javascript/CSS course and won't make you become a web developer! Instead, it provides a _survival kit_ to customize Shiny. I am sure however that readers will want to explore more about these topics.
-:::
 
 
 ## Is this book for me? {-}
 
 Before going further, the reader must:
 
-  - Be comfortable with R structures, functional and object oriented programming ([R6](https://r6.r-lib.org/))
+  - Be comfortable with basic R structures and concepts, functional and object oriented programming ([R6](https://r6.r-lib.org/))
   - Have solid knowledge of [Shiny](https://mastering-shiny.org)
   
   
@@ -57,8 +53,8 @@ Basic knowledge in HTML and JavaScript is a plus but not mandatory.
 
 If you fulfill the above prerequisites, you should read this book if you answer yes to the following questions:
 
-  - Do you want to know how to develop shiny apps with a professional look and feel?
-  - Have you ever wondered how to design new input widgets?
+  - Do you want to know how to develop shiny apps with a more professional look and feel?
+  - Have you ever wondered how to design new input widgets to unleash interactivity?
   - Are you simply curious about what happens under the hood?
   
 
@@ -68,13 +64,116 @@ This book will help you to:
 
   - Manipulate Shiny tags from R to create custom layouts
   - Harness the power of CSS and JavaScript to quickly design apps standing out from the pack
-  - Discover the steps to import and convert existing web frameworks like [Bootstrap 4](https://getbootstrap.com/), [framework7](https://framework7.io/) and more
+  - Discover the steps to import and convert existing web frameworks like [Bootstrap 4](https://getbootstrap.com/), [framework7](https://framework7.io/)
   - Learn how Shiny internally deals with inputs
   - Learn more about less documented Shiny mechanisms (websockets, sessions, ...)
+  
+
+## Why another Shiny related book? {-}
+
+There are various Shiny focused resources introducing [basic](https://shiny.rstudio.com/tutorial/) as well as advanced topics such as [modules](https://shiny.rstudio.com/articles/#modules) and [Javascript/R](https://js4shiny.com) interactions, however, handling advanced user interfaces design was never an emphasis. Clients often desire custom templates, yet this generally exceeds core features of Shiny (not out of the box). 
+
+Generally, R App developers lack a significant background in web development and often find this requirement overwhelming. It was this sentiment that motivated writing this book, namely to provide readers the necessary knowledge to extend Shiny's layout, input widgets and output elements. This project officially started at the end of 2018 but was stopped when Joe Cheng revealed the upcoming [Mastering Shiny Book](https://mastering-shiny.org). Fortunately, the later, does not cover a lot about the customization of Shiny user interfaces. Besides, this book may constitute a good complement to the work in progress [Engineering Production-Grade Shiny Apps](https://engineering-shiny.org) by the ThinkR team, where the link between Shiny and CSS/JavaScript is covered. For a deep dive into JavaScript and R interactions, the [upcoming book](https://javascript-for-r.com/) by John Coene covers topics like htmlWidgets, interactive documents and computations.
+
+## Book structure {-}
+
+This book is organized into six parts. 
+
+  - Part 1 demonstrates the link between Shiny and the classic web languages like HTML, CSS and JavaScript. We finish by exploring the dependencies behind Shiny (Bootstrap, jQuery, ...)
+  - In part 2, we dive into the `{htmltools}` [@R-htmltools] package, providing functions to create and manipulate HTML tags from R as well as manage web dependencies
+  - Part 3 focuses on CSS and SASS, showcasing examples from the R community like `{fresh}` [@R-fresh] and `{bslib}` [@R-bslib], to beautify apps with only few lines of code
+  - Part 4 contains chapters dedicated to the Shiny input system where we highlight some partially hidden features like websockets. This part starts with a JavaScript introduction that might be skipped if necessary!
+  - Part 5 focuses on the development of a new template for Shiny by demonstrating examples from the `{tablerDash}` [@R-tablerDash] package, being a serious refreshment to `{shinydashboard}` [@R-shinydashboard]. These, and more may be explored further as part of the [RinteRface](https://rinterface.com/) project.
+  - Part 6 dives into mobile web development through a practical study involving the `{shinyMobile}` package [@R-shinyMobile]
+  
+## Code structure {#welcome-code-structure}
+This book has a side package containing all the necessary material to run the code without having to reload each previous snippet.
+
+```{r, eval=FALSE}
+remotes::install_github("DivadNojnarg/outstanding-shiny-ui-code
+")
+```
+
+It covers Chapters \@ref(shiny-input-system), \@ref(shiny-custom-handler) and the whole Practice section.
+
+There is another good reason for this package: provide a robust method to bundle JavaScript/CSS code along side any shiny app. Indeed, it is quite tempting to proceed as below:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+    "$(function() {
+      Shiny.addCustomMessageHandler('hello', function(message) {     alert(message); 
+      });
+    });
+    "
+  ),
+  actionButton("go", "Send")
+)
+
+server <- function(input, output, session) {
+  observeEvent(input$go, {
+    session$sendCustomMessage("hello", message = "plop")
+  })
+}
+
+shinyApp(ui, server)
+```
+
+It is fine if the app purpose is a simple demonstration. In our case, since we aim at providing reusable template elements, we need a better approach, that will be described later.
+
+## Preliminary exercices {-}
+Before starting with technical details, we propose to play a little game. Among all the images shown, what are the ones corresponding to shiny apps?
+
+```{r shiny-guess2, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default"}
+knitr::include_graphics("images/intro/nifty.png")
+knitr::include_graphics("images/intro/virtual_patient.png")
+```
+
+```{r shiny-guess3, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default"}
+knitr::include_graphics("images/intro/covid-tracker.png")
+knitr::include_graphics("images/intro/tabler.png")
+```
+
 
 ## Extra material {-}
 
+This book may serve as material for workshops. See below a list of recent events.
+
+### e-Rum 2020 {-}
 [Novartis](https://www.novartis.com) associates Mustapha Larbaoui and David Granjon gave a workshop entitled "Advanced User Interfaces for Shiny Developers" at the latest 2020 virtual [e-Rum](https://2020.erum.io/program/workshops/) conference whose detailed agenda is available [here](https://github.com/Novartis/Advanced-User-Interfaces-for-Shiny-Developers). This two hours workshop takes a lot of inspiration on this book. An [RStudio Cloud](https://rstudio.cloud) dedicated project is deployed [here](https://rstudio.cloud/project/1395473) and slides are located [here](https://rinterface.com/shiny/talks/eRum2020/dg/index.html).
+
+### R/Pharma 2020 {-}
+This books served as resource for the 2020 [R/Pharma](https://rinpharma.com/workshops/) **Unleash Shiny** workshop held by John Coene, Colin Fay and David Granjon. Slides are available [here](https://rinterface.com/shiny/talks/RPharma2020/) and exercises accessible from [here](https://github.com/RinteRface/Unleash-Shiny). This workshop expects an higher level than the e-Rum one.
+
+## About RinteRface {-}
+The [RinteRface](https://rinterface.com/) project is an initiative aiming to provide one of the most famous HTML [templates](https://github.com/RinteRface) to Shiny. Everything started by the collaboration of [John Coene](https://john-coene.com/) and [David Granjon](https://divadnojnarg.github.io/) early 2018 on `{shinybulma}` [@R-shinybulma] to officially release RinteRface November 2018 with `{shinydashboardPlus}` [@R-shinydashboardPlus], `{bs4Dash}` [@R-bs4Dash] as line-up packages.
+
+```{r rinterface-release, echo=FALSE, fig.cap='Official release of RinteRface, November 28 2018', out.width='100%'}
+knitr::include_graphics("images/intro/rinterface_release.png")
+```
+
+The biggest RinteRface accomplishment is probably the work in progress `{shinyMobile}` package, which was initially called `{shinyF7}`, in collaboration with the [dreamRs](https://www.dreamrs.fr/) team.
+
+Since 2019, RinteRface has been involved in various R related events like local R meetups or conferences ([Zurich R User Group](https://www.meetup.com/fr-FR/Zurich-R-User-Group/), [baselR](https://www.meetup.com/BaselR/), [useR2019](https://user2019.r-project.org/), [satRdayNeuchatel2020](https://neuchatel2020.satrdays.org/), [e-Rum2020](https://2020.erum.io/), [RPharma2020](https://rinpharma.com/)).
+
+RinteRface is a contributor in the [Shiny Developers Series](https://shinydevseries.com/post/episode-4-rinterface/), hosted by Eric Nantz, also known as the [theRcast
+](https://r-podcast.org/).
+
+RinteRface work has been awarded several times at the 2 latest shiny contests (2019 and 2020), through contributions like:
+
+  - A virtual [lab](https://community.rstudio.com/t/shiny-contest-submission-a-virtual-lab-for-teaching-physiology/25348) for teaching physiology (2019), the Apps.Physiol [plateform](https://rinterface.com/AppsPhysiol.html), fuelled by `{bs4Dash}` and hosted in `{CaPO4Sim}` [@R-CaPO4Sim]
+
+```{r virtual-patient, echo=FALSE, fig.cap='The virtual patient simulator of {CaPO4Sim}', out.width='100%'}
+knitr::include_graphics("images/intro/virtual_patient_mobile.png")
+```
+  
+  - `{deminR}` [@R-deminR], a [minesweeper](https://community.rstudio.com/t/deminr-a-minesweeper-for-r-2020-shiny-contest-submission/56356) for R (2020), powered by `{shinyMobile}`
+  
+```{r deminR, echo=FALSE, fig.cap='{deminR}, a minesweeper for R', out.width='100%'}
+knitr::include_graphics("images/intro/deminR_light.png")
+```
+
+RinteRface is very grateful to the R community and this book is a sort of acknowledgment! 
 
 ## Acknowledgements {-}
 - I am very grateful to Douglas Robinson for proof reading the book and fixing many typos it contained
@@ -100,6 +199,19 @@ library(scales)
 library(dplyr)
 library(apexcharter)
 library(shinyWidgets)
+library(charpente)
+library(bs4Dash)
+library(shinyMobile)
+library(shinybulma)
+library(deminR)
+library(CaPO4Sim)
+library(shinydashboardPlus)
+library(golem)
+library(tablerDash)
+library(blogdown)
+library(httpuv)
+library(websocket)
+library(bslib)
 ```
 
 ```{r include=FALSE}

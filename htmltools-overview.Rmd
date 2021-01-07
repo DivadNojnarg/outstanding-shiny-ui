@@ -1,37 +1,43 @@
 # htmltools overview {#htmltools-overview}
 
-## HTML Tags
+`{htmltools}` [@R-htmltools] is a R package designed to:
 
-`{htmltools}` [@R-htmltools] contains tools to write HTML tags that were introduced in Chapter \@ref(web-intro-html):
+  - Generate HTML tags from R
+  - Handle web dependencies (see chapter \@ref(htmltools-dependencies))
 
-```{r, eval = FALSE}
+Historically, `{htmltools}` was extracted out of `{shiny}` [@R-shiny] to be able to extend it, that is developing custom HTML tags, importing extra dependencies from the web. That's why, both packages have many common functions! At the moment, `{htmltools}` does not have any user guide, although being a key package for all web things!
+
+## Writing HTML Tags from R
+
+`{htmltools}` provides the necessary functions to write HTML tags that were introduced in Chapter \@ref(web-intro-html). In R, it is even more convenient than raw HTML since their is no opening/closing tag, a simple function call instead:
+
+```{r}
 div()
 ```
 
-If you had to gather multiple tags together, prefer `tagList()` as `list()`, although the HTML output is the same. The first has the shiny.tag.list class in addition to list. The `{golem}`  package [@R-golem] (see also http://golemverse.org) allows to test if an R object is a tag list. In this case, using a list would cause the test fail.
+does produce an HTML `<div></div>` tag. Inside the function call, all named elements will become `attributes`, whereas unnamed elements will become children. In some cases, tags may have empty attributes like `<input disabled>`. In that case,
+the corresponding R code is `input(disabled = NA)`.
 
 ## Notations
 Whether to use `tags$div` or `div` depends if the tag is exported by default.
-For instance, you could use `htmltools::div` but not `htmltools::nav` since nav does not have a dedicated function (only for p, h1, h2, h3, h4, h5, h6, a, br, div, span, pre, code, img, strong, em, hr). 
-Rather use `htmltools::tags$nav`. Alternatively, there exists a function (in shiny and htmltools) 
-called `withTags()`. Wrapping your code in this function enables you to use `withTags(nav(), ...)` instead of `tags$nav()`, thereby omitting the `tags$` prefixes.
+For instance, you could use `htmltools::div` but not `htmltools::nav` since nav does not have a dedicated function (only for `p`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `a`, `br`, `div`, `span`, `pre`, `code`, `img`, `strong`, `em`, `hr`). 
+Rather prefer `htmltools::tags$nav`. Alternatively, there exists a function (in shiny and htmltools) 
+called `withTags`. Wrapping your code in this function allows code like this `withTags(nav(), ...)` instead of `tags$nav()`, thereby omitting the `tags$` prefixes. 
+If you had to gather multiple tags together, choose `tagList()` over `list()`, although the HTML output is the same. The first has the `shiny.tag.list` class in addition to `list`. Package like `{golem}` [@R-golem] (see also http://golemverse.org) allows to test if an R object is a tag list. In this case, using a list would cause the test fail.
 
 ## Adding new tags
 The `tag` function allows to add extra HTML tags not already defined. You may use it as follows:
 
-```{r, eval = FALSE}
-tag("test", list(class = "test", p("Custom Tag")))
-# structure below
-█─tag 
-├─"test" 
-└─█─list 
-├─class = "test" 
-└─█─p 
-└─"Custom Tag" 
+```{r}
+customTag <- tag("test", list(class = "test", p("Custom Tag")))
+str(customTag)
+customTag
 ```
 
+Good practice is to check whether the created tag is in line with the HTML validation [rules](https://validator.w3.org/). 
+
 ## Alternative way to write tags
-htmltools comes with the `HTML()` function that you can feed with raw HTML:
+`{htmltools}` comes with the `HTML()` function that you can feed with raw HTML:
 
 ```{r, eval = FALSE}
 HTML('<div>Blabla</div>')
@@ -44,10 +50,10 @@ class(div("Blabla"))
 ```
 
 You will not be able to use tag related functions, as in the following parts.
-Therefore, I strongly recommand using R and not mixing HTML in R. Interestingly, if
+Therefore, I strongly recommend using R and not mixing HTML in R. Interestingly, if
 you want to convert raw HTML to R code, there is a Shiny App developed by Alan
 Dipert from RStudio, namely [html2R](https://github.com/alandipert/html2r). There
-are some issues, non standard attributes (like `data-toggle`) are not correctly processed but there are [solutions](https://github.com/alandipert/html2r/issues/2). This will save you precious time!
+are some issues, non standard attributes (like `data-toggle`) are not correctly processed but there are [solutions](https://github.com/alandipert/html2r/issues/2). This will save you precious time! A more recent approach is developed in section \@ref(workflow-charpente) and has be internally used to develop some of the RinteRface [templates](https://github.com/RinteRface).
 
 ```{r, echo = FALSE}
 knitr::include_app("https://alandipert.shinyapps.io/html2r/", height = "600px")
@@ -58,12 +64,12 @@ knitr::include_app("https://alandipert.shinyapps.io/html2r/", height = "600px")
 
 ### Tags structure
 
-According to the `tag` function, a tag has:
+A tag is defined by:
 
-- a name such as span, div, h1 ... `tag$name`
-- some attributes, which you can access with `tag$attribs`
-- children, which you can access with `tag$children`
-- a class, namely "shiny.tag"
+  - A name such as span, div, h1 ... `tag$name`
+  - Some attributes, which can be accessed with `tag$attribs`
+  - Children, which you can be accessed with `tag$children`
+  - A class, namely `shiny.tag`
 
 For instance:
 
@@ -85,13 +91,13 @@ myTag$children
 class(myTag)
 ```
 
-How to modify the class of the second child, namely span?
+How to modify the class of the second child?
 
 ```{r, eval = FALSE}
 second_children <- myTag$children[[2]]
 second_children$attribs$class <- "adult"
 myTag
-# Hummm, this is not working ...
+# This is not working ...
 ```
 
 Why is this not working? By assigning `myTag$children[[2]]` to second_children, `second_children$attribs$class <- "adult"` modifies the class of the copy and not the original object. Thus we do:
@@ -101,30 +107,28 @@ myTag$children[[2]]$attribs$class <- "adult"
 myTag
 ```
 
-In the following section we explore helper functions, such as `tagAppendChild` from htmltools.
-
-
 ### Useful functions for tags
 
-htmltools and Shiny have powerful functions to easily add attributes to tags, check for existing attributes, get attributes and add other siblings to a list of tags.
+`{htmltools}` and `{shiny}` have powerful functions to seamlessly manipulate tags.
 
 #### Add attributes
 
-- `tagAppendAttributes`: this function allow you to add a new attribute to the current tag.
+- `tagAppendAttributes`: this function allows to add a new attribute to the current tag.
 
-For instance, assuming you created a div for which you forgot to add an id attribute:
+For instance, assuming we created a div without any id attribute:
 
 ```{r, eval = FALSE}
 mydiv <- div("Where is my brain")
 mydiv <- tagAppendAttributes(mydiv, id = "here_it_is")
 ```
 
-You can pass as many attributes as you want, including non standard attributes such as `data-toggle` (see Bootstrap 3 tabs for instance):
+You can pass as many attributes as you want, including non standard attributes such as `data-toggle` (see Bootstrap 3 [tabs](https://www.w3schools.com/bootstrap/bootstrap_ref_js_collapse.asp) for instance):
 
 ```{r, eval = FALSE}
-mydiv <- tagAppendAttributes(mydiv, `data-toggle` = "tabs")
-# even though you could proceed as follows
-mydiv$attribs[["aria-controls"]] <- "home"
+mydiv <- tagAppendAttributes(mydiv, list(`data-toggle` = "tabs", class = "myclass"))
+# even though you could proceed as follows but this requires 2 steps
+mydiv$attribs[["data-toggle"]] <- "tabs"
+mydiv$attribs$class <- "myclass"
 ```
 
 #### Check if tag has specific attribute
@@ -140,6 +144,8 @@ has_class
 has_class <- mydiv %>% tagHasAttribute("class")
 has_class
 ```
+
+In practice, this function is useful when testing tag elements as shown in chapter \@ref(custom-templates-testing).
 
 #### Get all attributes 
 
@@ -179,6 +185,8 @@ mydiv <- div(class = "parent", id = "mother", "Not the mama!!!")
 otherTag <- span("I am your child")
 mydiv <- tagAppendChild(mydiv, otherTag)
 ```
+
+#### Build your own functions
 
 You might wonder why there is no `tagRemoveChild` or `tagRemoveAttributes`.
 Let's look at the `tagAppendChild`
@@ -220,7 +228,19 @@ mydiv <- div(class = "parent", id = "mother", "Not the mama!!!", "Hey!")
 
 Alternatively, we could also create a `tagRemoveChildren` function. Also notice that the function raises an error if the provided tag does not have children. 
 
-### Other interesting functions
+The `tagAppendChild` is not able to insert at a specific position. We could draft the `tagInsertChild` building on top of the base R `append` function:
+
+```{r, eval=FALSE}
+tagInsertChild <- function(tag, child, position) {
+  tag$children <- append(tag$children, list(child), position - 1)
+  tag
+}
+
+tagInsertChild(p(span("hello")), a(), 1)
+tagInsertChild(p(span("hello")), a(), 2)
+```
+
+### Other functions
 The [Golem](https://github.com/ThinkR-open/golem/blob/dev/inst/utils/golem_utils_ui.R) package written by [thinkr](https://thinkr.fr) contains neat functions to edit your tags. 
 
 Particularly, the `tagRemoveAttributes`:

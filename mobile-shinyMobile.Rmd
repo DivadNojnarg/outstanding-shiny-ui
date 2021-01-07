@@ -1,0 +1,1182 @@
+# Reconstruct `{shinyMobile}` {#mobile-shinyMobile}
+
+__Disclaimer__: This section has been written and tested with Framework7 `5.7.14`.
+Some feature may change in future releases.
+
+## Introduction to Framework7
+Framework7 is the HTML/CSS/JavaScript engine that fuels `{shinyMobile}`. 
+It is a flexible toolkit to build native looking web apps or progressive
+web apps (PWA). It has an incredibly rich ecosystem:
+
+  - Provides a core JavaScript API, React API, Vue API, Svelte API.
+  - A CLI to ease the creation of PWA, provide boilerplate and started templates.
+  - A full set of native [icons](https://framework7.io/icons/).
+  - Hundreds of components with different look for iOS and material design, even desktop. 
+  - A comprehensive set of [documentation](https://framework7.io/docs/). 
+  - A supportive [community](https://forum.framework7.io/). 
+
+## Initiate the package
+This is time to initialize the package structure and extract the Framework7 dependencies.
+To get an idea of the package file structure, we run:
+
+```{r}
+library(charpente)
+get_dependency_assets("framework7")
+```
+
+We browse to the [package](https://framework7.io/docs/package.html) structure page,
+which provides details about necessary components. We are going to use the bundle version since
+the lite approach is missing several components. We therefore only need `framework7.bundle.min.js` and
+`framework7.bundle.min.css`, which is the default options of `create_dependency`:
+
+```{r, eval=FALSE}
+path <- file.path(tempdir(), "shinyMobile")
+create_charpente(path, license = "mit")
+```
+
+Once the package created and opened, we download Framework7 dependencies. We specify
+the latest stable version that is `5.7.14` and we target `bundle.min` files since minified
+files do not contain the code to make all components working:
+
+```{r, eval=FALSE}
+create_dependency("framework7", tag = "5.7.14", options = charpente_options(bundle = TRUE))
+```
+
+which generates the `framework7-dependencies.R` script:
+
+```{r, eval=FALSE}
+add_framework7_deps <- function(tag) {
+ framework7_deps <- htmltools::htmlDependency(
+  name = "framework7",
+  version = "5.7.14",
+  src = c(file = "framework7-5.7.14"),
+  script = "js/framework7.bundle.min.js",
+  stylesheet = "css/framework7.bundle.min.css",
+  package = "shinyMobile",
+ )
+ htmltools::tagList(tag, framework7_deps)
+}
+```
+
+
+## Framework7 Layouts
+Framework7 has 3 predefined layouts (Figure \@ref(fig:mobile-framework7-layouts)):
+
+  - Single page layout.
+  - Multi tabs layout.
+  - Split layout: this template is focused for tablet/desktop use. 
+  It is composed of a sidebar and a main panel.
+  
+```{r mobile-framework7-layouts, echo=FALSE, fig.cap='Framework7 layouts', out.width='33%', fig.align = "default", fig.show = "hold"}
+knitr::include_graphics("images/mobile/mobile-shinymobile-single-layout.png")
+knitr::include_graphics("images/mobile/mobile-shinymobile-tabs-layout.png")
+knitr::include_graphics("images/mobile/mobile-shinymobile-split-layout.png")
+```
+
+Let's start simple and select the single page layout, whose corresponding HTML is 
+given by:
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Required meta tags-->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Color theme for statusbar (Android only) -->
+    <meta name="theme-color" content="#2196f3">
+    <!-- Your app title -->
+    <title>My App</title>
+    <!-- Path to Framework7 Library Bundle CSS -->
+    <link rel="stylesheet" href="path/to/framework7.bundle.min.css">
+    <!-- Path to your custom app styles-->
+    <link rel="stylesheet" href="path/to/my-app.css">
+  </head>
+  <body>
+    <!-- App root element -->
+    <div id="app">
+
+      <!-- Your main view, should have "view-main" class -->
+      <div class="view view-main">
+        <!-- Initial Page, "data-name" contains page name -->
+        <div data-name="home" class="page">
+
+          <!-- Top Navbar -->
+          <div class="navbar">
+            <div class="navbar-bg"></div>
+            <div class="navbar-inner">
+              <div class="title">Awesome App</div>
+            </div>
+          </div>
+
+          <!-- Bottom Toolbar -->
+          <div class="toolbar toolbar-bottom">
+            <div class="toolbar-inner">
+              <!-- Toolbar links -->
+              <a href="#" class="link">Link 1</a>
+              <a href="#" class="link">Link 2</a>
+            </div>
+          </div>
+
+          <!-- Scrollable page content -->
+          <div class="page-content">
+            <p>Page content goes here</p>
+            <!-- Link to another page -->
+            <a href="/about/">About app</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Path to Framework7 Library Bundle JS-->
+    <script type="text/javascript" src="path/to/framework7.bundle.min.js"></script>
+    <!-- Path to your app js-->
+    <script type="text/javascript" src="path/to/my-app.js"></script>
+  </body>
+</html>
+```
+
+The `head` tag contains meta tags, some of them required for the PWA features. 
+The most important part is the dependencies that will be included there. Note that
+the order matters: Framework7 dependencies go first, other dependencies follow. 
+The `body` tag is composed of several layers. The first one is the `app` root element, which
+is crucial to the template initialization. We'll come back on that point in the next section. 
+Then we find the `view view-main` component, inside which we find the `page`. The page contains
+the `navbar`, `toolbar` (bottom bar) and the `page content`. Framework7 inserts JavaScript code
+at the end of the body. Don't worry, we can include them in the `head` as well. 
+
+Using `html_2_R` we convert the above code to R and extract the `f7_page` function. We replace
+the title content by a title parameter, we remove all CSS and JS links since we add
+them with the `add_dependencies` function applied to `body`. The page content is contained in a `...` parameter.
+We also move the navbar and toolbar content to create 2 other layout functions:
+
+```{r}
+f7_page <- function(..., navbar, toolbar, title = NULL) {
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+      ),
+      tags$meta(
+        name = "apple-mobile-web-app-capable",
+        content = "yes"
+      ),
+      tags$meta(
+        name = "theme-color",
+        content = "#2196f3"
+      ),
+      tags$title(title)
+    ),
+    add_dependencies(
+      tags$body(
+        tags$div(
+          id = "app",
+          tags$div(
+            class = "view view-main",
+            tags$div(
+              class = "page",
+              navbar,
+              toolbar,
+              tags$div(
+                class = "page-content",
+                ...
+              )
+            )
+          )
+        )
+      ),
+      deps = "framework7",
+    )
+  )
+}
+```
+
+Below are the `navbar` and `toolbar` components. The navbar has only a title parameter and
+the toolbar may contain items in a `...` parameter. In practice they may contain more element
+but this is enough for now:
+
+```{r}
+f7_navbar <- function(title) {
+  tags$div(
+    class = "navbar",
+    tags$div(class = "navbar-bg"),
+    tags$div(
+      class = "navbar-inner",
+      tags$div(
+        class = "title",
+        title
+      )
+    )
+  )
+}
+
+f7_toolbar <- function(...) {
+  tags$div(
+    class = "toolbar toolbar-bottom",
+    tags$div(
+      class = "toolbar-inner",
+      ...
+    )
+  )
+}
+```
+
+Don't forget to regularly insert roxygen documentation with the insert roxygen skeleton 
+RStudio feature. 
+
+At that point, we can try to run a simple shiny app. Best practice is to save the `app.R` file in
+the `inst/examples` folder:
+
+```{r, eval=FALSE}
+devtools::load_all()
+library(shiny)
+
+ui <- f7_page(
+  "Test",
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile"
+)
+
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+which displays nothing, but returns no error. We are actually missing the app initialization step.
+
+## App initialization
+This step is mandatory to activate all template components (router, panels, ...).
+We create a custom script with `create_js`:
+
+```{r, eval=FALSE}
+create_js("init")
+```
+
+and add the following piece of JS inside:
+
+```javascript
+$( document ).ready(function() {
+  var app = new Framework7({
+    // App root element
+    root: '#app',
+    // App Name
+    name: 'My App',
+    // other options
+  });
+});
+```
+
+This script creates the app instance so as to be able to use [methods](https://framework7.io/docs/app.html#app-methods-properties),
+get other information, interact with layout elements and listen to app events (offline, online, ...). 
+Since the root element is a direct child of the body, the `root` property is not
+mandatory. The full configuration list may be found [here](https://framework7.io/docs/app.html).
+The next step is to initialize the main view, we add this line right after the app creation:
+
+```javascript
+var mainView = app.views.create('.view-main');
+```
+
+Once done, we compress the corresponding JS file to create the `shinyMobile.min.js` code
+and update the `f7_page` to include the new dependency, after the Framework7 one:
+
+```{r, eval=FALSE}
+build_js()
+
+# updated f7_page
+f7_page <- function(..., navbar, toolbar, title = NULL) {
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+      ),
+      tags$meta(
+        name = "apple-mobile-web-app-capable",
+        content = "yes"
+      ),
+      tags$meta(
+        name = "theme-color",
+        content = "#2196f3"
+      ),
+      tags$title(title)
+    ),
+    add_dependencies(
+      tags$body(
+        tags$div(
+          id = "app",
+          tags$div(
+            class = "view view-main",
+            tags$div(
+              class = "page",
+              navbar,
+              toolbar,
+              tags$div(
+                class = "page-content",
+                ...
+              )
+            )
+          )
+        )
+      ),
+      deps = c("framework7", "shinyMobile"),
+    )
+  )
+}
+
+devtools::load_all()
+```
+
+If you run the previous app again, it should work as shown on Figure \@ref(fig:mobile-shinyMobile-firstapp).
+The right panel displays the developer tools inside which we can seamlessly debug the JS code, by
+leveraging source maps. 
+
+```{r mobile-shinyMobile-firstapp, echo=FALSE, fig.cap='First working {shinyMobile} app', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-shinyMobile-firstapp.png")
+```
+
+From now, we can add a welcome notification message leveraging the [notification](https://framework7.io/docs/notification.html) API.
+There are 2 steps:
+
+  - Create the notification instance with `app.notification.create(parameters)`.
+  - Tell the app to open the notification at start with `app.notification.open()`.
+  
+We add the following code to `init.js` and call `build_js()`:
+```javascript
+var notification = app.notification.create({
+  text: 'Welcome to shinyMobile!',
+  on: {
+    opened: function () {
+      console.log('Notification opened')
+    }
+  }
+}).open();
+```
+
+It will open at start up and close on swipe gesture. The Framework7 API is quite easy to
+understand and extremely powerful.
+
+## App configuration
+The [app](https://framework7.io/docs/app.html) object has a tremendous amount of methods and parameters.
+In this section, we briefly describe the most significant and how to set it up.
+Among all parameters, there are metadata parameters like __name__ and __version__. Once the app initialized, all
+app parameters are accessible with the `.` notation. For instance, if you setup a version number it is accessible 
+with `app.version`.
+
+### Global theme
+
+One of the most important parameter is the __theme__ that controls the overall app design (Figure \@ref(fig:mobile-framework7-themes)):
+
+  - `ios` corresponds the iOS design.
+  - `md` to material design.
+  - `aurora` to a desktop optimized design.
+  
+The good new is that if this parameter is set to `auto`, Framework7 will detect the
+current device and accordingly adapt the design. Nothing prevents you from forcing the
+iOS layout on android devices, even though being irrelevant. Interestingly, one may recover the
+current device with `app.device`. There are many properties to [review](https://framework7.io/docs/device.html).
+
+
+```{r mobile-framework7-themes, echo=FALSE, fig.cap='Framework7 skins: iOS (left), md (right).', out.width='50%', fig.align = "default", fig.show = "hold"}
+knitr::include_graphics("images/mobile/mobile-shinymobile-slider-ios.png")
+knitr::include_graphics("images/mobile/mobile-shinymobile-slider-md.png")
+```
+
+### Global data and methods
+The __data__ parameters allows to pass parameters between all scripts. This is a convenient place
+to store global options and we will use it in the theming section. Similarly __methods__ hosts all global
+app methods. This are function you may re-use in different parts. As mentioned above we respectively access them 
+with `app.data` and `app.methods`. 
+
+__Important note__: this feature has been removed since Framework7 6.0.0!
+
+### Events
+The app is able to emit events whenever relevant like `init`, `resize`, `online`, `offline`, which
+allows to add interactivity:
+
+```javascript
+var app = new Framework7({
+  on: {
+    init: function () {
+      console.log('App initialized');
+    },
+    // other events
+  }
+});
+```
+
+### Components configuration
+All Framework7 components are highly customizable. Yet, if you know that some 
+parameters are not going to change, it is a good idea to make them global and share
+across all instances. For instance, notifications have global options. Let's add this code
+to the `init.js` script inside the `var app = new Framework7({ ... })`:
+
+```javascript
+notification: {
+  title: 'My App',
+  closeTimeout: 3000,
+}
+```
+
+This means all notifications will close after 3 seconds and have the `My App` title.
+We add another notification to the `init.js` script with a delay of 1 second so as to
+test this global feature. Note the use of internal Framework7 [utils](https://framework7.io/docs/utils.html#nexttick) 
+`app.utils.nextTick`, 
+which is nothing more
+than a `setTimeout`. At this point it should look like this:
+
+```javascript
+$( document ).ready(function() {
+ // create app instance
+ var app = new Framework7({
+    // App root element
+    root: '#app',
+    // App Name
+    name: 'My App',
+    // other options
+    notification: {
+      title: 'My App',
+      closeTimeout: 3000,
+    }
+  });
+
+  // init main view
+  var mainView = app.views.create('.view-main');
+
+
+  var notification = app.notification.create({
+    text: 'Hello, how are you?',
+    on: {
+      opened: function () {
+        console.log('Notification opened');
+      }
+    }
+  }).open();
+  
+  
+  var otherMessage = app.notification.create({
+    text: 'You look great!'
+  });
+  
+  // equivalent to setTimeout ...
+  app.utils.nextTick(function() {
+    otherMessage.open();
+  }, 1000);
+  
+});
+```
+
+
+
+### Other elements
+Framework7 provides mobile specific modules like `touch`, which is a long press event (here 750 ms).
+This is something you can usually do on many apps. To activate that feature, we pass
+the following configuration to the app parameters list:
+
+```javascript
+touch: {
+  tapHold: true,
+}
+```
+
+To test that component, we create a button element and add it the `taphold` event in `init.js`:
+
+```javascript
+$('#mybutton').on('taphold', function () {
+  app.dialog.alert('Tap hold fired!');
+});
+```
+
+The `app.R` script should look like:
+
+```{r, eval=FALSE}
+ui <- f7_page(
+  "Test",
+  tags$div(
+    class = "list inset",
+    tags$ul(
+      tags$li(
+        tags$a(
+          href = "#",
+          id = "mybutton",
+          class = "list-button color-red",
+          "Large Red Button"
+        )
+      )
+    )
+  ),
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile"
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+Once the app is running don't forget to open the developer tools and
+set the device on mobile mode (iPhone or android) since `taphold` does not fire
+on desktop (Figure \@ref(fig:mobile-shinyMobile-taphold)). 
+
+```{r mobile-shinyMobile-taphold, echo=FALSE, fig.cap='Long press or taphold event', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-shinyMobile-taphold.png")
+```
+
+An important remark is the click handling in Framework7. Framework7 has its own internal [router](https://framework7.io/docs/view.html) that allows to pass data between pages and perform quite
+advanced actions. While extremely convenient for classic web apps, 
+this feature is not completely suited for Shiny that does not natively support multi pages apps. 
+The recent [work](https://github.com/ColinFay/brochure) in the field is promising and works well
+with `{shinyMobile}` (see [here](https://github.com/RinteRface/shinyMobile/issues/136)) but this is out of the scope of this chapter. The internal router has strong implications, for instance clicking on 
+`<a href="https://www.google.com/">Click me</a>` will fail, while it works like
+a charm for a classic shiny app, as shown below:
+```{r, eval=FALSE}
+mylink <- a(class = "external", href = "https://www.google.com/", "Click me")
+
+# shinyMobile
+ui <- f7_page(
+  mylink,
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile"
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+
+# classic shiny
+ui <- fluidPage(mylink)
+shinyApp(ui, server)
+```
+
+To fix this issue, we may pass a valid CSS selector to the `externalLinks` property of the clicks module like:
+
+```javascript
+clicks: {
+  externalLinks: '.external',
+}
+```
+
+__Note__: one might be tempted to target all `a` elements: this is extremely dangerous, as it also target tabs navigation, which eventually fails!
+
+Add this code to the `init.js` and try the app again. 
+
+
+### Allow end-user configuration
+In the above sections, we described some parameters to configure the app. Yet, 
+we did setup all values directly in JavaScript. How do we allow the end user to provide
+external values?
+
+The idea is the following:
+
+  - We create an options parameter in the `f7_page` function which accepts a list
+  of parameters.
+  - We convert it to the JSON format and store it in a tag. Ideally next to the `body` element.
+  - We recover those data on the JS side and update the app initialization method.
+  
+The `f7_page` may be adapted:
+
+```{r, eval=FALSE}
+f7_page <- function(..., navbar, toolbar, title = NULL, options = NULL) {
+
+  config_tag <- tags$script(
+    type = "application/json",
+    `data-for` = "app",
+    jsonlite::toJSON(
+      x = options,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+
+  # create body_tag
+  body_tag <- tags$body(
+    tags$div(
+      id = "app",
+      tags$div(
+        class = "view view-main",
+        tags$div(
+          class = "page",
+          navbar,
+          toolbar,
+          tags$div(
+            class = "page-content",
+            ...
+          )
+        )
+      )
+    ),
+    config_tag
+  )
+
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+      ),
+      tags$meta(
+        name = "apple-mobile-web-app-capable",
+        content = "yes"
+      ),
+      tags$meta(
+        name = "theme-color",
+        content = "#2196f3"
+      ),
+      tags$title(title)
+    ),
+    add_dependencies(
+      body_tag,
+      deps = c("framework7", "shinyMobile")
+    )
+  )
+}
+```
+
+The above code deserves some explanations. We exploit a method already defined in section \@ref(secondary-inputs).
+We convert the options list to a JSON with `jsonlite::toJSON` and embed it in a script tag. 
+The `data-for` attribute with the unique id guarantees the uniqueness of our configuration script.
+
+```{r, eval=FALSE}
+config_tag <- shiny::tags$script(
+    type = "application/json",
+    `data-for` = "app",
+    jsonlite::toJSON(
+      x = options,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+```
+
+We then create an intermediate `body_tag` component where we insert the configuration tag.
+On the JS side, the data collection must occur before the app initialization and is quite easy
+with the jQuery `find` method:
+
+```javascript
+var config = $(document).find("script[data-for='app']");
+config = JSON.parse(config.html());
+```
+
+We can accordingly update the app initialization:
+
+```javascript
+var app = new Framework7({
+    // App root element
+    root: '#app',
+    // App Name
+    name: 'My App',
+    version: config .version,
+    // other options
+    theme: config.theme,
+    notification: {
+      title: 'My App',
+      closeTimeout: 3000,
+    },
+    touch: {
+      tapHold: config.taphold,
+    },
+    clicks: {
+      externalLinks: '.external',
+    },
+  });
+```
+
+What happens if the user forgets to supply the version number? `data.version` is undefined
+and the app still works! The biggest advantage of this approach is the fact that all `TRUE`
+and `FALSE` (R) are converted to `true` and `false` (JS), which avoids unnecessary conversion steps.
+
+
+In theory, we could do:
+
+```javascript
+var app = new Framework7(config);
+```
+
+which assumes that the user exactly knows what to provide in the list, especially mandatory elements. 
+Knowing the crazy number of options, it might be slightly too complex for a new user. 
+What we suggest is to extract the most important components as direct `f7_page` parameters and 
+keep less important parameters in the options list. For example, 
+if you think that __theme__ is super important (and it truly is), you could do:
+
+```{r, eval=FALSE}
+f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"), 
+                    title = NULL, options = NULL) {
+
+  theme <- match.arg(theme)
+  options$theme <- theme
+  
+  config_tag <- shiny::tags$script(
+    type = "application/json",
+    `data-for` = "app",
+    jsonlite::toJSON(
+      x = options,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+  
+# ...
+  
+}
+```
+
+which makes the API a bit more accessible (event though more complex to maintain) 
+and you only need to add one line of documentation in the roxygen part. 
+It would be disheartening to redirect them to the Framework7 API documentation and have to 
+look for the relevant option!
+
+Don't forget that since `config` is an object, 
+you may add any other properties, methods, on the fly with the `.` notation or `app.utils.extend`.
+
+## Theming and colors
+Framework7 has 15 color [themes](https://framework7.io/docs/color-themes.html?theme=light&bars=empty&color=%09+%23673ab7) with a dark/light global appearance. To apply them, we add `color-theme-COLOR` to the
+parent element. Best practice is to target the `body` since its the parent of all the page
+content. This ensures global consistency. The dark theme is triggered by adding the
+`theme-dark` class to `html`. Since `body` belongs to `f7_page` but not `html` (added by
+Shiny at startup), we can apply the color in R but the dark mode has to be activated
+from JS:
+
+```{r, eval=FALSE}
+f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"), 
+                    color = NULL, title = NULL, options = NULL) {
+  
+  body_cl <- NULL
+  if (!is.null(color)) body_cl <- sprintf("color-theme-color")
+  
+  # Modify the body tag to add a class
+  tags$body(
+    class = body_cl,
+    tags$div(
+      id = "app",
+      tags$div(
+        class = "view view-main",
+        tags$div(
+          class = "page",
+          navbar,
+          toolbar,
+          tags$div(
+            class = "page-content",
+            ...
+          )
+        )
+      )
+    ),
+    config_tag
+  )
+  
+  # ...
+  
+}
+```
+
+This approach assumes the user to pass the color name as parameter like `pink`, `yellow`.
+What if we want to allow more flexibility and add any existing HEX color? 
+Framework7 has tools, namely `app.utils.colorThemeCSSProperties`, that is a JS method
+creating the required CSS on the fly depending on the provided HEX color. For instance, if we select a
+cyberpunk green color:
+
+```javascript
+app.utils.colorThemeCSSProperties('#42f5a1');
+// /* Custom color theme */
+// {
+//   "--f7-theme-color": "#42f5a1";
+//   "--f7-theme-color-rgb": "66, 245, 161";
+//   "--f7-theme-color-shade": "#1bf38e";
+//   "--f7-theme-color-tint": "#69f7b4";
+// }
+```
+
+The commented code has to be injected in the app CSS. I personally don't think its a problem
+to look for a specific HEX code, knowing that many tools can help. Therefore, I prefer the
+second approach. We edit the `init.js` code by adding the following JS snippet:
+
+```javascript
+if (config.hasOwnProperty('color')) {
+  var colorCSS = app.utils.colorThemeCSSProperties(config.color);
+  $('<style>')
+    .prop('type', 'text/css')
+    .html(`:root {
+      --f7-theme-color: ${colorCSS["--f7-theme-color"]};
+      --f7-theme-color-rgb: ${colorCSS["--f7-theme-color-rgb"]};
+      --f7-theme-color-shade: ${colorCSS["--f7-theme-color-shade"]};
+      --f7-theme-color-tint: ${colorCSS["--f7-theme-color-tint"]};
+    }`)
+    .appendTo("head");
+}
+```
+
+`config.hasOwnProperty('color')` ensures that this code does not run if color is missing from the
+provided config. Then, we generate an object containing the theme color properties with `app.utils.colorThemeCSSProperties(config.color)`.
+Importantly, as this is an object, we can't insert it in a string. However, we can extract its
+properties 1 by 1 to generate the relevant piece of CSS. Then we add a `style` tag to the `head`
+containing the following CSS rule:
+
+```css
+/* Custom color theme */
+:root {
+  --f7-theme-color: #42f5a1;
+  --f7-theme-color-rgb: 66, 245, 161;
+  --f7-theme-color-shade: #1bf38e;
+  --f7-theme-color-tint: #69f7b4;
+}
+```
+
+For each property like `--f7-theme-color`, we recover the corresponding value in the
+`colorCSS` object, that is `colorCSS["--f7-theme-color"]`. Once done, recompile the JS
+with `build_js` and try with the following app:
+
+```{r, eval=FALSE}
+devtools::load_all()
+
+ui <- f7_page(
+    tags$div(
+        class = "list inset",
+        tags$ul(
+            tags$li(
+                tags$a(
+                    href = "#",
+                    id = "mybutton",
+                    class = "list-button",
+                    "Large Green Button"
+                )
+            )
+        )
+    ),
+    navbar = f7_navbar("Title"),
+    toolbar = f7_toolbar(),
+    title = "shinyMobile",
+    options = list(theme = "ios", version = "1.0.0", taphold = TRUE, color = "#42f5a1")
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+We can go further and apply the `filled` theme, which is a reverted design where all
+`navbar`, `toolbar`, ... are filled with the theme color. For this, we need to add the following CSS:
+
+```css
+/* Invert navigation bars to fill style */
+:root,
+:root.theme-dark,
+:root .theme-dark {
+  --f7-bars-bg-color: var(--f7-theme-color);
+  --f7-bars-bg-color-rgb: var(--f7-theme-color-rgb);
+  --f7-bars-translucent-opacity: 0.9;
+  --f7-bars-text-color: #fff;
+  --f7-bars-link-color: #fff;
+  --f7-navbar-subtitle-text-color: rgba(255,255,255,0.85);
+  --f7-bars-border-color: transparent;
+  --f7-tabbar-link-active-color: #fff;
+  --f7-tabbar-link-inactive-color: rgba(255,255,255,0.54);
+  --f7-sheet-border-color: transparent;
+  --f7-tabbar-link-active-border-color: #fff;
+}
+.appbar,
+.navbar,
+.toolbar,
+.subnavbar,
+.calendar-header,
+.calendar-footer {
+  --f7-touch-ripple-color: var(--f7-touch-ripple-white);
+  --f7-link-highlight-color: var(--f7-link-highlight-white);
+  --f7-button-text-color: #fff;
+  --f7-button-pressed-bg-color: rgba(255,255,255,0.1);
+}
+.navbar-large-transparent,
+.navbar-large.navbar-transparent {
+  --f7-navbar-large-title-text-color: #000;
+
+  --r: 0;
+  --g: 122;
+  --b: 255;
+  --progress: var(--f7-navbar-large-collapse-progress);
+  --f7-bars-link-color: rgb(
+    calc(var(--r) + (255 - var(--r)) * var(--progress)),
+    calc(var(--g) + (255 - var(--g)) * var(--progress)),
+    calc(var(--b) + (255 - var(--b)) * var(--progress))
+  );
+}
+.theme-dark .navbar-large-transparent,
+.theme-dark .navbar-large.navbar-transparent {
+  --f7-navbar-large-title-text-color: #fff;
+}
+```
+
+Like above, we do this on the JS side in `init.js`:
+
+```javascript
+if (!config.hasOwnProperty('filled')) config.filled = false;
+if (config.filled) {
+  var filledCSS = `
+    :root,
+    :root.theme-dark,
+    :root .theme-dark {
+      --f7-bars-bg-color: var(--f7-theme-color);
+      --f7-bars-bg-color-rgb: var(--f7-theme-color-rgb);
+      --f7-bars-translucent-opacity: 0.9;
+      --f7-bars-text-color: #fff;
+      --f7-bars-link-color: #fff;
+      --f7-navbar-subtitle-text-color: rgba(255,255,255,0.85);
+      --f7-bars-border-color: transparent;
+      --f7-tabbar-link-active-color: #fff;
+      --f7-tabbar-link-inactive-color: rgba(255,255,255,0.54);
+      --f7-sheet-border-color: transparent;
+      --f7-tabbar-link-active-border-color: #fff;
+    }
+    .appbar,
+    .navbar,
+    .toolbar,
+    .subnavbar,
+    .calendar-header,
+    .calendar-footer {
+      --f7-touch-ripple-color: var(--f7-touch-ripple-white);
+      --f7-link-highlight-color: var(--f7-link-highlight-white);
+      --f7-button-text-color: #fff;
+      --f7-button-pressed-bg-color: rgba(255,255,255,0.1);
+    }
+    .navbar-large-transparent,
+    .navbar-large.navbar-transparent {
+      --f7-navbar-large-title-text-color: #000;
+    
+      --r: 0;
+      --g: 122;
+      --b: 255;
+      --progress: var(--f7-navbar-large-collapse-progress);
+      --f7-bars-link-color: rgb(
+        calc(var(--r) + (255 - var(--r)) * var(--progress)),
+        calc(var(--g) + (255 - var(--g)) * var(--progress)),
+        calc(var(--b) + (255 - var(--b)) * var(--progress))
+      );
+    }
+    .theme-dark .navbar-large-transparent,
+    .theme-dark .navbar-large.navbar-transparent {
+      --f7-navbar-large-title-text-color: #fff;
+  }`;
+  
+  $('<style>')
+    .prop('type', 'text/css')
+    .html(`${filledCSS}`)
+    .appendTo("head");
+}
+```
+
+The result is displayed on Figure \@reg(fig:mobile-shinyMobile-theming). Don't forget 
+to pass the `filled` property to the config list.
+
+```{r mobile-shinyMobile-theming, echo=FALSE, fig.cap='Filled green color theme', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-shinyMobile-theming.png")
+```
+
+Let's finish this section with the dark mode. We leverage the Framework7 app method 
+element since we could also toggle the dark mode under other circumstances. We add a
+`toggleDarkTheme` function to the methods object then trigger it depending on the value
+of the config. If the user don't provide any value, we set `config.dark` to `false`:
+
+```javascript
+app.methods = {
+  toggleDarkTheme: function () {
+    var self = this;
+    var $html = self.$('html');
+    $html.toggleClass('theme-dark');
+  }
+}
+
+if (!config.hasOwnProperty('dark')) config.dark = false;
+
+if (config.dark) {
+  app.methods.toggleDarkTheme();
+}
+
+```
+
+
+At this point `init.js` should be:
+
+```javascript
+$( document ).ready(function() {
+ // collect all data elements stored in body
+ var config = $(document).find("script[data-for='app']");
+ config = JSON.parse(config.html());
+
+ // create app instance
+ var app = new Framework7({
+    // App root element
+    root: '#app',
+    // App Name
+    name: 'My App',
+    version: config.version,
+    // other options
+    theme: config.theme,
+    notification: {
+      title: 'My App',
+      closeTimeout: 3000,
+    },
+    touch: {
+      tapHold: config.taphold,
+    },
+    clicks: {
+      externalLinks: '.external',
+    },
+    methods: {
+      toggleDarkTheme: function () {
+        var self = this;
+        var $html = self.$('html');
+        $html.toggleClass('theme-dark');
+      }
+    },
+  });
+
+  // init main view
+  var mainView = app.views.create('.view-main');
+
+
+  var notification = app.notification.create({
+    text: 'Hello, how are you?',
+    on: {
+      opened: function () {
+        console.log('Notification opened');
+      }
+    }
+  }).open();
+
+  var otherMessage = app.notification.create({
+    text: 'You look great!'
+  });
+
+  // equivalent to setTimeout ...
+  app.utils.nextTick(function() {
+    otherMessage.open();
+  }, 1000);
+
+  // taphold test
+  $('#mybutton').on('taphold', function () {
+    app.dialog.alert('Tap hold fired!');
+  });
+
+  // Set color theme
+  if (config.hasOwnProperty('color')) {
+    var colorCSS = app.utils.colorThemeCSSProperties(config.color);
+    $('<style>')
+      .prop('type', 'text/css')
+      .html(`:root {
+        --f7-theme-color: ${colorCSS["--f7-theme-color"]};
+        --f7-theme-color-rgb: ${colorCSS["--f7-theme-color-rgb"]};
+        --f7-theme-color-shade: ${colorCSS["--f7-theme-color-shade"]};
+        --f7-theme-color-tint: ${colorCSS["--f7-theme-color-tint"]};
+      }`)
+      .appendTo("head");
+  }
+
+  // Filled theme
+  if (!config.hasOwnProperty('filled')) config.filled = false;
+  if (config.filled) {
+    var filledCSS = `
+      :root,
+      :root.theme-dark,
+      :root .theme-dark {
+        --f7-bars-bg-color: var(--f7-theme-color);
+        --f7-bars-bg-color-rgb: var(--f7-theme-color-rgb);
+        --f7-bars-translucent-opacity: 0.9;
+        --f7-bars-text-color: #fff;
+        --f7-bars-link-color: #fff;
+        --f7-navbar-subtitle-text-color: rgba(255,255,255,0.85);
+        --f7-bars-border-color: transparent;
+        --f7-tabbar-link-active-color: #fff;
+        --f7-tabbar-link-inactive-color: rgba(255,255,255,0.54);
+        --f7-sheet-border-color: transparent;
+        --f7-tabbar-link-active-border-color: #fff;
+      }
+      .appbar,
+      .navbar,
+      .toolbar,
+      .subnavbar,
+      .calendar-header,
+      .calendar-footer {
+        --f7-touch-ripple-color: var(--f7-touch-ripple-white);
+        --f7-link-highlight-color: var(--f7-link-highlight-white);
+        --f7-button-text-color: #fff;
+        --f7-button-pressed-bg-color: rgba(255,255,255,0.1);
+      }
+      .navbar-large-transparent,
+      .navbar-large.navbar-transparent {
+        --f7-navbar-large-title-text-color: #000;
+      
+        --r: 0;
+        --g: 122;
+        --b: 255;
+        --progress: var(--f7-navbar-large-collapse-progress);
+        --f7-bars-link-color: rgb(
+          calc(var(--r) + (255 - var(--r)) * var(--progress)),
+          calc(var(--g) + (255 - var(--g)) * var(--progress)),
+          calc(var(--b) + (255 - var(--b)) * var(--progress))
+        );
+      }
+      .theme-dark .navbar-large-transparent,
+      .theme-dark .navbar-large.navbar-transparent {
+        --f7-navbar-large-title-text-color: #fff;
+    }`;
+    
+    $('<style>')
+      .prop('type', 'text/css')
+      .html(`${filledCSS}`)
+      .appendTo("head");
+  }
+
+  // dark mode
+  if (!config.hasOwnProperty('dark')) config.dark = false;
+  if (config.dark) {
+    app.methods.toggleDarkTheme();
+  }
+});
+```
+
+and the dark mode app example:
+
+```{r, eval=FALSE}
+ui <- f7_page(
+    tags$div(
+        class = "list inset",
+        tags$ul(
+            tags$li(
+                tags$a(
+                    href = "#",
+                    id = "mybutton",
+                    class = "list-button",
+                    "Large Green Button"
+                )
+            )
+        )
+    ),
+    navbar = f7_navbar("Title"),
+    toolbar = f7_toolbar(),
+    title = "shinyMobile",
+    options = list(
+      theme = "ios", 
+      version = "1.0.0", 
+      taphold = TRUE, 
+      color = "#42f5a1", 
+      filled = TRUE, 
+      dark = TRUE
+    )
+)
+
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+```
+
+The overall expected result is shown Figure \@ref(fig:mobile-shinyMobile-dark).
+
+```{r mobile-shinyMobile-dark, echo=FALSE, fig.cap='Dark mode in {shinyMobile}', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-shinymobile-dark.png")
+```
+
+We have now set all base pieces. In the next chapter, we see how to make `{shinyMobile}` apps
+as progressive web apps.

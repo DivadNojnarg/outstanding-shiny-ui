@@ -1,11 +1,11 @@
-# Introduction to {charpente} {#custom-templates-package} 
+# Introduction to {charpente} {#workflow-charpente} 
 
 ```{r workflow-charpente-hex, echo=FALSE, fig.cap='The {charpente} package', fig.align = 'center', out.width='25%'}
 knitr::include_graphics("images/workflow/charpente-hex.png")
 ```
 
 ## Motivations
-Translating an HTML template into an R API requires the creation of a package. As stated in Chapter \@ref(intro), this is not a good practice to proceed as follows:
+Translating an HTML template into an R API requires the creation of a package. As stated in Chapter \@ref(welcome-code-structure), this is not a good practice to proceed as follows:
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -87,14 +87,757 @@ Imagine if we had to repeat the process for more than twenty components. The pac
   - Design unit tests to guaranty code robustness and improve long term plan
   - Relevant file organization
   
-## Step by step
-[{charpente}](https://github.com/RinteRface/charpente) is a game changer for custom template creation.
+
+## General idea
+[{charpente}](https://github.com/RinteRface/charpente) is a game changer for custom template creation. 
+It is not yet on CRAN but has been widely used to help developing RinteRface packages.
+`{charpente}`, it drastically:
+
+  - Eases the import of external dependencies.
+  - Speeds up the HTML to R conversion, which is quite frankly a rather boring process,
+  allowing to focus on the features rather than the syntax. This feature builds on top of the
+  `{html2R}` shiny app by Alan Dipert, already mentioned in Chapter \@ref(htmltools-overview).
+  
+Let's try below with `html_2_R`:
+
+```{r}
+library(charpente)
+html_2_R('<div class="divclass" id = "someid"></div>')
+```
+
+`html_2_R` has a __prefix__ parameter which adds a `tags$` prefix if TRUE. It is 
+TRUE by default which prevents errors with unexported Shiny tags like `nav`.
 
 
+The second main benefice of `{charpente}` is the dependency management system.
+
+## A case study: `{shinybulma}`
+In the following, we'll illustrate `{charpente}`'s workflow, through the R in Pharma workshop [exercises](https://github.com/RinteRface/Unleash-Shiny-Exercise-1) focused on `{shinybulma}`.
+
+[bulma](https://bulma.io/) is a more and more popular open source CSS framework for the web. 
+Importantly, there **isn't** any JavaScript helper in the bulma core. 
+We'll see later that the recent [bulma JS](https://bulmajs.tomerbe.co.uk/) provides such feature. 
+For now, we only focus on HTML and CSS.
+
+To initialize a `{charpente}` package, we do:
 
 ```{r, eval = FALSE}
-library(charpente)
 path <- file.path(tempdir(), "mypkg")
-create_charpente(path)
-# TO FINISH
+create_charpente(path, license = "mit")
+```
+
+This sets up a minimal viable package with git and optionally github remote setup, 
+Figure \@ref(fig:workflow-charpente-pkg). 
+
+```{r workflow-charpente-pkg, echo=FALSE, fig.cap='Package structure for {charpente}', fig.align = 'center', out.width='100%'}
+knitr::include_graphics("images/workflow/charpente-pkg.png")
+```
+
+By default, the package `DESCRIPTION` `Imports` field has `shiny`, `htmltools` and
+`utils`. `{charpente}` is never required to be a dependency of your package since it might
+be invasive. 
+
+In the `./R` folder, `{charpente}` creates a `mypkg-utils.R` script containing:
+
+  - Tools to facilitate HTML dependency management like `add_dependencies` (see corresponding section below),
+  `processDeps`. 
+  - Some validation functions mentioned in Chapter \@ref(custom-templates-testing).
+
+### Build the HTML dependency
+The interested reader will have a look at the **Getting started [guide](https://bulma.io/documentation/overview/start/)**,
+so as to know more how to get bulma. To install bulma dependencies, there are several ways: 
+
+  - The CDN method (content delivery network) which consists in getting dependencies from a dedicated server. 
+  Files are not stored locally which may be a problem if one does not have internet.
+  - The local method consists in downloading the production files (minified CSS).
+  - Using npm that installs bulma sources as well as production files. It means one can modify
+  sources at anytime, which is not recommended since it would be hard to 
+  maintain. 
+  
+In our case, we show the two first methods, the third being out of the scope of this book. 
+
+As shown in previous Chapter \ref(custom-templates-dependencies), 
+we could build the bulma dependency as follows:
+
+```{r, eval=FALSE}
+library(htmltools)
+bulma_deps <- htmlDependency(
+  name = ...,
+  version = ...,
+  src = c(href = ...),
+  stylesheet = ...
+)
+
+add_bulma_deps <- function(tag) {
+  tagList(..., ...)
+}
+```
+
+but this already takes too much time. This is where `{charpente}` comes into play. 
+Specifically, the `create_dependency` function automatically download/points to the specified dependency by just providing its name. It means you have to know what you are looking for. Best practice is to have a look at the [jsdelivr](https://www.jsdelivr.com/) website (`{charpente}` is built on top of jsdelivr) and find the good repository, as shown Figure \@ref(fig:workflow-jsdelivr-bulma). `create_dependency` also creates the `add_<DEP_NAME>_deps` function in a `<DEP_NAME>--dependencies.R` script and opens it.
+
+`charpente_options(local = FALSE)` allows to fine tune the behavior. If local is FALSE,
+`{charpente}` points to the CDN without downloading any file. It is substantially faster than
+the local option but requires an internet connection. Package developers will prefer the
+`local = TRUE` to ensure dependencies are always accessible.
+Extra parameters like __tag__ control the downloaded version since HTML templates
+may have several flavors. It is always good to be able to test multiple versions and select
+the best option. 
+  
+```{r workflow-jsdelivr-bulma, echo=FALSE, fig.cap='jsdelivr result for bulma', fig.align = 'center', out.width='100%'}
+knitr::include_graphics("images/workflow/jsdelivr-bulma.png")
+```
+Once satisfied, we simply run the below code to get the latest version, or a specific 
+version if __tag__ is used:
+
+```{r, eval=FALSE}
+# CDN method 
+create_dependency("bulma", options = charpente_options(local = FALSE))
+create_dependency("bulma", tag = "0.7.0", options = charpente_options(local = FALSE))
+
+# local method (default)
+create_dependency("bulma")
+
+```
+
+Moreover, `create_dependency` is able to filter all files, through the `charpente_options`:
+
+  - __minified__ targets all files with `.min`, if TRUE.
+  - __bundle__ targets all files containing `.bundle`, if TRUE.
+  - __lite__ targets files with `lite` keyword, if TRUE.
+  - __rtl__ target all files with `.rtl`, if TRUE. rtl design stands for right to left
+  and is common in some countries for instance. 
+  
+You may imagine that `charpente_options` targets `.min` files by default. If you don't find
+any script, you probably have to change options. For instance, some templates
+like Bootstrap and Framework7 have `bundle.min` files (`charpente_options(bunlde = TRUE)`), whereas bulma doesn't.
+
+
+We can test our new dependency:
+
+```{r, eval=FALSE}
+devtools::load_all()
+findDependencies(add_bulma_deps(div()))
+```
+
+which works like a charm. If you chose the local option, you also get an `inst/bulma-<BULMA-VERSION>` folder
+with all relevant files sorted by type. The `bulma-dependencies.R` script contains the 
+newly created `add_bulma_deps` function, either pointing to the CDN or the local 
+files, depending on the chosen strategy:
+
+```{r, eval=FALSE}
+# local dependency script output
+
+#' bulma dependencies utils
+#'
+#' @description This function attaches bulma. dependencies to the given tag
+#'
+#' @param tag Element to attach the dependencies.
+#'
+#' @importFrom htmltools tagList htmlDependency
+#' @export
+add_bulma_deps <- function(tag) {
+ bulma_deps <- htmlDependency(
+  name = "bulma",
+  version = "0.9.1",
+  src = c(file = "bulma-0.9.1"),
+  stylesheet = "css/bulma.min.css",
+  package = "mypkg",
+ )
+ tagList(tag, bulma_deps)
+}
+
+# CDN dependencies
+
+#' bulma dependencies utils
+#'
+#' @description This function attaches bulma. dependencies to the given tag
+#'
+#' @param tag Element to attach the dependencies.
+#'
+#' @importFrom htmltools tagList htmlDependency
+#' @export
+add_bulma_deps <- function(tag) {
+ bulma_deps <- htmlDependency(
+  name = "bulma",
+  version = "0.9.1",
+  src = c(href = "https://cdn.jsdelivr.net/npm/bulma@0.9.1/"),
+  stylesheet = "css/bulma.min.css"
+ )
+ tagList(tag, bulma_deps)
+}
+```
+
+`{charpente}` sets the roxygen skeleton so that you don't have to worry about function
+imports. 
+
+
+### Set up the minimal page template
+According to the bulma [documentation](https://bulma.io/documentation/overview/start/#starter-template), the starter page template is:
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hello Bulma!</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">
+          Hello World
+        </h1>
+        <p class="subtitle">
+          My first website with <strong>Bulma</strong>!
+        </p>
+      </div>
+    </section>
+  </body>
+</html>
+```
+
+Adding some `{charpente}` magic with `html_2_R`, we set the path parameter to `/html` to get the entire template. We, replace `...` by the appropriate content (see above). Since the copied HTML contains double quotations marks like `<p class="subtitle"></p>`, we put the string in single quotation marks.
+
+```{r}
+html_2_R(
+  '<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hello Bulma!</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">
+          Hello World
+        </h1>
+        <p class="subtitle">
+          My first website with <strong>Bulma</strong>!
+        </p>
+      </div>
+    </section>
+  </body>
+</html>
+  ',
+  path = "/html"
+)
+```
+
+**Note**: at run time, shiny adds `html` around the UI, thereby making it not necessary to include. 
+We also don't need the `link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css")` 
+since `add_bulma_deps` does already attach the dependencies to the page. The `prefix` parameter
+is set to TRUE by default so that we don't have to worry about whether tags functions are exported
+by shiny (see Chapter \@ref(htmltools-overview)).
+
+The `bulma_page` function is defined below, that we save in the `R` package folder:
+
+```{r}
+bulma_page <- function(..., title = NULL) {
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1"
+      ),
+      tags$title(title)
+    ),
+    add_bulma_deps(tags$body(...)) 
+  )
+}
+```
+
+With some practice, going from step one to the bulma page templates literally takes three minutes,
+while it would have taken more than 30 minutes by hand. At any time, you may replace
+the dependency with another version. Be careful, since `{charpente}` does not make snapshots
+of old versions. 
+
+
+### Exercise: add bulmaJS
+As stated in the above, bulma only contains CSS things! It means we need
+either to develop custom JS code to add interactivity or rely on any third party existing API. 
+[bulma JS](https://bulmajs.tomerbe.co.uk/) is one of these!
+
+1. Using `{charpente}`, create a bulma js dependency. We point to [vizuaalog/bulmajs](https://bulmajs.tomerbe.co.uk/) since some bulmajs already exist and are not what we want. Run the following code in the R console.
+
+```{r bulmajs-deps, eval=FALSE}
+create_dependency(...)
+```
+
+Notice how many files are added to the dependency. Below, we only work with **notifications**:
+
+  - Only keep `notification.js` and remove all the unnecessary files
+  - Only keep `bulma.js` that gather all plugins in 1 script. 
+  
+The best practice is usually to **keep only what we need** since some scripts may be **heavy to load**!
+
+2. Run `devtools::load_all()`. Modify the below code to test the newly created dependency. Hint: toggle the HTML inspector to check all appropriate dependencies are there!
+```{r bulmajs-deps-test, eval=FALSE}
+ui <- bulma_page()
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+### Add custom JS
+Notifications are always useful to send user feedback. Shiny has a notification system through `shiny::showNotification`. Like Shiny, Bulma [notifications](https://bulmajs.tomerbe.co.uk/docs/0.11/2-core-components/notification/) are entirely built from JS (no need for any HTML code).
+
+The API works as follows:
+
+  - `Bulma(target).notification(config)` creates the notification based on a JSON option list (config). 
+  `target` expects a jQuery selector.
+  - `show` toggles the newly instantiated notification
+  
+In other words the below code attaches the notification to the `body`:
+
+```javascript
+Bulma('body').notification({
+  body: 'Example notification',
+  color: 'info'
+}).show();
+```
+  
+In the following we design the R interface and JavaScript handler (which is no more than an event listener). 
+`{charpente}` has a function that creates both pieces, namely `create_custom_handler`:
+
+```{r, eval=FALSE}
+create_custom_handler("notification")
+```
+
+We obtain the `notification-handler.R` script:
+
+```{r, eval=FALSE}
+send_notification_message <- function(id = NULL, options = NULL, session = shiny::getDefaultReactiveDomain()) {
+ message <- list(
+  # your logic
+ )
+ 
+ session$sendCustomMessage(type = "notification", message)
+}
+```
+
+and the corresponding JavaScript piece in `notification.js`, 
+derived from the `{golem}` `add_js_handler` function:
+
+```javascript
+$(function() {
+  Shiny.addCustomMessageHandler('notification', function(message) {
+ 
+  });
+});
+```
+
+By default, the JS file is created in the `srcjs` directory. This is a special directory
+where we store all JavaScript files that depend on the package author. For instance, 
+bulmaJS is an external dependency and is very unlikely to be edited by the package author. For that reason, 
+it remains in the `inst` folder like all other external dependencies.
+
+### Add custom input/output bindings
+In part \@ref(secondary-inputs), we created better `{shinydashboard}` boxes that one
+may programmatically collapse, close and restore. Until know, there was no way to 
+setup an input binding skeleton and one had to copy and paste each time the same
+code. `{charpente}` has a `create_input_binding` and `create_output_binding` (functions that
+you can also find in the development version of `{golem}`). Contrary to the custom handler case,
+`create_input_binding` only generate the JavaScript piece since the R part is highly variable from
+one input to another. To get a plug and play box input binding we call:
+
+```{r, eval=FALSE}
+create_input_binding("boxBinding")
+```
+
+which gives the `input-boxBinding.js` script in the `srcjs` folder:
+
+```javascript
+var boxBinding = new Shiny.InputBinding();
+$.extend(boxBinding, {
+  find: function(scope) {
+    // JS logic $(scope).find('whatever')
+  },
+  getValue: function(el) {
+    // JS code to get value
+  },
+  setValue: function(el, value) {
+    // JS code to set value
+  },
+  receiveMessage: function(el, data) {
+    // this.setValue(el, data);
+  },
+  subscribe: function(el, callback) {
+    $(el).on('click.boxBinding', function(e) {
+      callback();
+    });
+
+  },
+  unsubscribe: function(el) {
+    $(el).off('.boxBinding');
+  }
+});
+Shiny.inputBindings.register(boxBinding, 'shiny.whatever');
+```
+
+This function has multiple options:
+
+  - __initialized__ is FALSE by default. If TRUE, it adds an `initialized` method
+  to the binding. 
+  - __dev__ adds some `console.log` elements whenever relevant to help in the debugging 
+  process.
+  - __event__ is a list containing events related to the binding. By default, it generates
+  a `click` event without any rate policy. To add extra events we do 
+  `list(name = c("click", "whatever"), rate_policy = c(FALSE, TRUE))`. 
+  
+Similarly, the `create_output_binding` function creates a ready to use output binding JS script, 
+in the `srcjs` folder (`create_output_binding("menuOutput")`):
+
+```javascript
+var menuOutput = new Shiny.OutputBinding();
+$.extend(menuOutput, {
+  find: function(scope) {
+    // JS logic $(scope).find('whatever')
+  },
+  renderValue: function(el, data) {
+    // JS logic
+  }
+});
+Shiny.outputBindings.register(menuOutput, 'shiny.whatever');
+```
+
+### Organize your JS code
+This naturally leads us to this part which is about JS code organization. Shiny developers
+may have a lot of custom scripts, and it is generally a bad idea to put them all
+under `inst`. Instead, we put them in `srcjs`, concatenate and minify them to create one big
+`file.min.js` in the `inst` folder. This is better for performance since file size matter in JS.
+
+The dreamRs team developed a tool to seamlessly format, organize, validate CSS and JS code, that is
+[{jstools}](https://github.com/dreamRs/jstools). Interestingly, it has 2 addins allowing to quickly
+format and validate a given JS file. 
+
+```{r, eval=FALSE}
+remotes::install_github("dreamRs/jstools")
+```
+
+We are going to create a second custom handler with `{charpente}` and reorganize
+the whole JS code:
+
+```{r, eval=FALSE}
+create_custom_handler("modal")
+```
+
+Now there should be two JS scripts in the `srcjs` folder. Below, we use a compressor, namely
+[terser](https://terser.org/), that optimizes and compresses our code for the web browser, at a price to be less
+human readable.  It also provides source maps that are crucial to the debugging process, 
+thereby making it possible to reconstruct the original JS code starting from a minified script:
+
+```{r, eval=FALSE}
+library(jstools)
+mypkgJS <- list.files(
+  path = "srcjs",
+  recursive = TRUE,
+  full.names = TRUE
+)
+
+# /inst is already created by create_charpente
+outputDir <- "inst/mypkg-0.0.0.9000"
+dir.create(outputDir)
+
+# Concat + Compress + source maps ----------------------------------------------------------------
+
+terser_file(
+  input = mypkgJS,
+  output = sprintf("%s/mypkg.min.js", outputDir),
+  options = terser_options(
+    sourceMap = list(
+      root = "../../mypkg-build",
+      filename = "mypkg.min.js",
+      url = "mypkg.min.js.map",
+      includeSources = TRUE
+    )
+  )
+)
+```
+
+`terser_file` takes all raw JS files as input, generate a minified/optimized script as well
+as source maps available at `mypkg.min.js.map`. The __root__ parameter indicates their location
+on the server once the shiny app running. 
+
+To highlight source maps role, let's run the below app:
+
+```{r, eval=FALSE}
+ui <- bulma_page(title = "test")
+server <- function(input, output) {}
+shinyApp(ui, server)
+```
+
+We open the developer tools and navigate to the `Sources` panel, as illustrated on 
+Figure \@ref(fig:workflow-sourcemaps-bulma). The script `mypkg.min.js` is not human readable but the generated source map
+allows to reconstruct the original code, which location is under the `mypkg-build` folder. From
+there, we can access any mapped script and start the debugging process like setting break points.
+
+```{r workflow-sourcemaps-bulma, echo=FALSE, fig.cap='Source maps ease the debugging process', fig.align = 'center', out.width='100%'}
+knitr::include_graphics("images/workflow/sourcemaps-bulma.png")
+```
+
+
+The good new is that `{charpente}` can automate this task:
+
+```{r, eval=FALSE}
+build_js()
+devtools::load_all()
+```
+
+By default `build_js` generates production ready JS files:
+
+  - Parses, compresses, mangles all JS files and concatenate them in 1 big minified file called
+  `mypkg.min.js`. 
+  - Creates associated source maps (default). If you don't want to expose the code,
+  pass `source_maps = FALSE`. 
+  - Other options are possible. One can definitely decide to not mangle the files (easier debugging),
+  in that case pass `mangle = FALSE`. The list of available options is [here](https://github.com/terser/terser).
+  
+If __mode__ is `dev`, the files are simply aggregated and beautified.
+
+Additionally, this creates the `mypkg-dependencies.R` file containing the HTML 
+dependency pointing to the newly generated JS file:
+
+```{r, eval=FALSE}
+#' mypkg dependencies utils
+#'
+#' @description This function attaches mypkg dependencies to the given tag
+#'
+#' @param tag Element to attach the dependencies.
+#'
+#' @importFrom utils packageVersion
+#' @importFrom htmltools tagList htmlDependency
+#' @export
+add_mypkg_deps <- function(tag) {
+ mypkg_deps <- htmlDependency(
+  name = "mypkg",
+  version = packageVersion("mypkg"),
+  src = c(file = "mypkg-0.0.0.9000"),
+  script = "js/mypkg.min.js",
+  package = "mypkg",
+ )
+ tagList(tag, mypkg_deps)
+}
+```
+
+Switching between `prod` and `dev` automatically updates the `mypkg-dependencies.R` file.
+
+__Disclaimer__: there is not yet similar process for CSS. This is still work in progress. 
+
+Other tools exist like [`{packer}`](https://github.com/JohnCoene/packer) by John Coene, 
+which leverages [webpack](https://webpack.js.org/) to handle JS code.
+
+### Combine multiple dependencies
+`add_dependencies` allows to select any dependency available in the `./R` folder, 
+provided that they follow the convention `<depName>_dependencies.R` 
+(which is always the case if you use `{charpente}`):
+
+```{r, eval=FALSE}
+#' Attach all created dependencies in the ./R directory to the provided tag
+#'
+#' This function only works if there are existing dependencies. Otherwise,
+#' an error is raised.
+#'
+#' @param tag Tag to attach the dependencies.
+#' @param deps Dependencies to add. Expect a vector of names. If NULL, all dependencies
+#' are added.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'  library(htmltools)
+#'  findDependencies(add_dependencies(div()))
+#'  findDependencies(add_dependencies(div(), deps = "bulma"))
+#' }
+add_dependencies <- function(tag, deps = NULL) {
+  if (is.null(deps)) {
+    temp_names <- list.files("./R", pattern = "dependencies.R$")
+    deps <- unlist(lapply(temp_names, stringr::str_split_n, pattern = "-", n = 1))
+  }
+
+  if (length(deps) == 0) stop("No dependencies found.")
+
+  deps <- lapply(deps, function(x) {
+    temp <- eval(
+      parse(
+        text = sprintf("htmltools::findDependencies(add_%s_deps(htmltools::div()))", x)
+      )
+    )
+    # this assumes all add_*_deps function only add 1 dependency
+    temp[[1]]
+  })
+
+  htmltools::tagList(tag, deps)
+}
+```
+
+For instance 
+`add_dependencies(div(), deps = c("bulma", "bulmajs"))` adds bulma (first) and 
+bulmajs dependencies to a `div` tag. You may change the order as you want since most 
+of the time, the order matters. We update `bulma_page` to benefit from that feature:
+
+```{r, eval=FALSE}
+bulma_page <- function(..., title = NULL) {
+  tagList(
+    tags$head(
+      tags$meta(charset = "utf-8"),
+      tags$meta(
+        name = "viewport",
+        content = "width=device-width, initial-scale=1"
+      ),
+      tags$title(title)
+    ),
+    add_dependencies(
+      tags$body(...),
+      deps = c("bulma", "mypkg")
+    ) 
+  )
+}
+```
+
+As mentioned above, `add_dependencies` belongs to the `mypkg-utils.R` script
+so that you don't have to import charpente in the `DESCRIPTION` `Imports` field.
+
+### Other `{charpente}` helpers
+Let's finish this section by listing other useful `{charpente}` tools. 
+We know `create_dependency` to install an external dependency. 
+As shown earlier, this code installs bulma dependencies:
+
+```{r, eval=FALSE}
+create_dependency("bulma")
+```
+
+However, we don't necessarily know all package versions and may need
+`bulma 0.9.1` or `bulma 0.7.0`. `get_dependency_versions` allows to look for
+all existing versions:
+
+```{r}
+get_dependency_versions("bulma")
+get_dependency_versions("bulma", latest = TRUE)
+```
+
+Specifying `latest = TRUE` ensures to recover the very last __stable__ version 
+(it excludes alpha/beta versions).
+
+You may explore also the dependency files with `get_dependency_assets`, even for 
+a specific version with __tag__:
+
+```{r}
+get_dependency_assets("bulma")
+```
+
+This is helpful to further fine tune `charpente_options`, as stated previously. It is indeed possible
+that you don't want bundles, minified, lite or rtl versions of scripts. Internally, `create_dependency`
+relies on `get_dependency_assets`. 
+
+`get_installed_dependency` allows to inspect which dependencies are installed. It only works
+if the dependencies were created locally, that is `charpente_options(local = TRUE)`.
+
+Finally, one may ask how to update a given dependency. `update_dependency` does this, provided that
+the dependency is installed locally. By default, it installs the latest version of the targeted dependency. 
+It gives a diagnosis comparing the current installed version
+with the latest available version. The are 3 possible cases: dependencies are up to date
+and `update_dependency("bulma")` yields:
+
+```
+ℹ Trying with https://data.jsdelivr.com/v1/package/npm/bulma
+✓ Success!
+──────────────────────────────────────────────────────────────────────────────
+Error in update_dependency("bulma") : Versions are identical
+```
+
+The installed dependencies are outdated (we have 0.7.0 with `create_dependency("bulma", tag = "0.7.0", options = charpente_options(local = TRUE))`), the function shows the targeted version as well as
+the last one:
+
+```
+ℹ Trying with https://data.jsdelivr.com/v1/package/npm/bulma
+✓ Success!
+──────────────────────────────────────────────────────────────────────────────
+ℹ current version: 0.7.0 ||
+target version: 0.9.1 ||
+latest version: 0.9.1
+! Upgrading bulma to 0.9.1
+✓ Directory inst/bulma-0.9.1/css successfully created
+! Remove existing file R/bulma-dependencies.R
+```
+
+The last use case is a downgrade, which may be possible if the package maintainer realizes
+that the dependency version is too unstable. In the following, we have `bulma-0.9.1` installed 
+and downgrade to 0.7.0 with `update_dependency("bulma", version_target = "0.7.0")`:
+
+
+```
+ℹ Trying with https://data.jsdelivr.com/v1/package/npm/bulma
+✓ Success!
+──────────────────────────────────────────────────────────────────────────────
+ℹ current version: 0.9.1 ||
+target version: 0.7.0 ||
+latest version: 0.9.1
+! Downgrading bulma to 0.7.0
+✓ Directory inst/bulma-0.7.0/css successfully created
+! Remove existing file R/bulma-dependencies.R
+```
+
+
+## Other tips
+### Validate JavaScript
+We could not finish this chapter without mentioning tools to validate JavaScript code. [JSHint](https://jshint.com), which comes with [{jstools}](https://github.com/dreamRs/jstools). Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
+
+```{r}
+shinyMobileJS <- system.file(sprintf("shinyMobile-%s/js/shinyMobile.js", packageVersion("shinyMobile")), package = "shinyMobile")
+jshint_file(input = shinyMobileJS, options = jshint_options(jquery = TRUE, globals = list("Shiny", "app")))
+```
+
+You may fine tune the `jshint_file` behavior with the [`jshint_options`](https://jshint.com/docs/options/). One is often tempted to call `eval` in JS code, which will result in a JSHint error. An option called `evil` exists to disable the corresponding test. However, we recommend to play the game, accept those error and try to fix them instead of cheating with options! An important remark about validation is that it does not check whether your code
+does what it should do. It just focus on checking whether the code runs! To test
+the JavaScript behavior, please refer to Chapter \@ref(custom-templates-testing-js). 
+Be extremely careful: if we consider the example mentioned in section \@ref(broken-shiny-app-debug), the
+following code is valid JavaScript:
+
+```javascript
+const sendNotif = (message, type, duration) => {
+  Shiny.notification.show({
+    html: `<strong>${message}</strong>`,
+    type: type,
+    duration: duration
+  });
+};
+
+sendNotif('Hello')
+```
+
+and will pass the validation step without any error:
+
+```{r}
+jshint(
+  "const sendNotif = (message, type, duration) => {
+  Shiny.notification.show({
+    html: `<strong>${message}</strong>`,
+    type: type,
+    duration: duration
+  });
+  };
+  sendNotif('Hello');
+  ",
+  options = jshint_options(
+    esversion = 6,
+    jquery = TRUE, 
+    globals = list("Shiny", "app")
+  )
+)
+```
+
+Yet the code won't work since `Shiny.notification` does not exist.
+
+### Beautify JS code
+If you work with the RStudio IDE, your JS code maybe sometimes messy with bad indentation.
+`{jstools}` also provides a function and addin to fix the problem. `prettier_js(code)` and 
+`prettier_file(input = "path/to/file.js", output = "path/to/reformated.js")` does this. 
+I often use the `Prettier` addin which is way faster than typing the function call (Figure \@ref(fig:workflow-pretty-js)). 
+
+```{r workflow-pretty-js, echo=FALSE, fig.cap='Better JS formatting', fig.align = 'center', out.width='50%'}
+knitr::include_graphics("images/workflow/pretty-js.png")
 ```

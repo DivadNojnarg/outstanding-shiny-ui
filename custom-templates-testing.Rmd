@@ -365,19 +365,307 @@ Notice how the 3 above tests elegantly fail. The provided context ("validate wid
 
 
 ### Testing template behavior
+Testing the JavaScript behavior is one of the biggest challenge to validate a template. If the 
+R component has been carefully validated, it does not mean that its JavaScript effects
+are! For instance, let's consider the `tabler_progress`  that may be updated with `update_tabler_progress`:
 
-DO DO (with crrry)
+  - How do we check whether the progress value is correctly set?
+  
+#### R side
+Testing the R side is quite easy. Let's recall the `update_tabler_progress` function:
 
-## Testing JavaScript
-We could not finish this chapter without mentionning tools to validate JavaScript code. We will particularly focus on [JSHint](https://jshint.com), which has a R [wrapper](https://github.com/dreamRs/jstools), nicely provided by the dreamRs team. Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
-
-```{r, eval = FALSE}
-bindings <- list.files(
-  path = system.file("framework7-5.5.0/input-bindings", package = "shinyMobile"),
-  recursive = TRUE,
-  full.names = TRUE
-)
-jshint_file(input = bindings, options = jshint_options(jquery = TRUE, globals = list("Shiny", "app")))
+```{r, eval=FALSE}
+update_tabler_progress <- function(id, value, session = shiny::getDefaultReactiveDomain()) {
+  message <- list(id = session$ns(id), value = value)
+  session$sendCustomMessage(type = "update-progress", message)
+}
 ```
 
-You may fine tune the `jshint_file` behavior with the [`jshint_options`](https://jshint.com/docs/options/). One is often tempted to call `eval` in JS code, which will result in a JSHint error. An option called `evil` exists to disable the corresponding test. However, we recommand to play the game, accept those error and try to fix them instead of cheating with options!
+This function does 2 things:
+
+  - Captures the id of the targeted progress and its new value
+  - Sends the message the JS
+
+The test consists in checking whether we send all elements to the session. We first create
+a dummy session environment which contains `ns` to mimic the `session$ns` function
+and `sendCustomMessage` to test the message handler part:
+
+```{r, eval=FALSE}
+session <- as.environment(
+  list(
+    ns = identity,
+    sendCustomMessage = function(type, message) {
+      session$lastCustomMessage <- list(type = type, message = message)
+    }
+  )
+)
+```
+
+Here, `sendCustomMessage` simply stores the last sent message in `session$lastCustomMessage`.
+
+We then call `update_tabler_progress` with some random parameters and capture the
+last sent message in the `res` variable:
+
+```{r, eval=FALSE}
+update_tabler_progress(id = "myprogress", value = 10, session = session)
+res <- session$lastCustomMessage
+```
+
+Importantly, don't forget to set the session parameter to `session`, otherwise,
+it will default to `shiny::getDefaultReactiveDomain` that is `NULL`.
+
+This is time to set expectations:
+
+  - `res` must be a list of length 2.
+  - The expected custom handler type is `update-progress`.
+  - The sent value is 10.
+  - The sent id is `myprogress`.
+  
+and translate into `{testthat}`:
+
+```{r, eval=FALSE}
+test_that("update progress works", {
+  
+  session <- as.environment(
+    list(
+      ns = identity,
+      sendCustomMessage = function(type, message) {
+        session$lastCustomMessage <- list(type = type, message = message)
+      }
+    )
+  )
+  
+  update_tabler_progress(id = "myprogress", value = 10, session = session)
+  res <- session$lastCustomMessage
+  
+  expect_length(res, 2)
+  expect_equal(res$type, "update-progress")
+  expect_length(res$message, 2)
+  expect_equal(res$message$id, "myprogress")
+  expect_equal(res$message$value, 10)
+})
+```
+
+This test being set, it ensures to seamlessly capture any breaking change in the API.
+
+#### JS side {#custom-templates-testing-js}
+In the following, we have to test whether this piece of JS works as expected:
+
+```javascript
+Shiny.addCustomMessageHandler('update-progress', function(message) {
+  $('#' + message.id)
+    .css('width', message.value +'%')
+    .attr('aria-valuenow', message.value);
+});
+```
+
+We are going to leverage the `{crrry}` packages developed by Colin Fay from ThinkR.
+Overall, [`{crrry}`](https://github.com/ColinFay/crrry) is an adaptation of [`{crrri}`](https://github.com/RLesur/crrri) for `{shiny}`, which is a native Chrome Remote Interface in R using the Chrome Debugging Protocol. In other words, it provides tools to programmatically control
+the web browser and do many things like inspecting a web page, 
+taking screenshots, testing... You may know `{shinytest}` that relies on another technology,
+phantomjs. The latter does not play well with `Bootstrap 4` templates, that's why we'll not use it
+here. 
+
+`{crrry}` is already introduced in the `Engineering Production-Grade Shiny Apps` [book](https://engineering-shiny.org/step-secure.html#testing-the-interactive-logic). 
+
+The first step is to run the `update_tabler_progress` example locally and add the returned
+url to the following code. We run the app in another process with `{processx}`:
+
+```{r, eval=FALSE}
+p <- processx::process$new(
+  "Rscript", 
+  c( "-e",  "options('shiny.port'= 3515);OSUICode::update_tabler_progress_example()" )
+)
+
+Sys.sleep(2)
+
+p$is_alive()
+```
+
+That way, we can run our test in the main R process, after checking that `p` is alive (here the app
+loads immediately but you may wait some time if there are computations):
+
+```{r, eval=FALSE}
+library(crrry)
+library(testthat)
+test <- crrry::CrrryOnPage$new(
+  chrome_bin = pagedown::find_chrome(),
+  chrome_port = httpuv::randomPort(),
+  url = "http://localhost:3515/",
+  headless = TRUE
+)
+```
+
+We wait Shiny to be ready:
+
+```{r, eval=FALSE}
+test$wait_for_shiny_ready()
+```
+
+Note the `--remote-debugging-port=31683` that gives the link to the Chrome devtools link
+to inspect the current app, as shown Figure \@ref(fig:tabler-crrry-debug). 
+
+
+```{r tabler-crrry-debug, echo=FALSE, fig.cap='Tabler progress bar debug tools', out.width='100%'}
+knitr::include_graphics("images/practice/tabler-crrry-debug.png")
+```
+It is now time to write the JS testing logic. We know that moving the slider triggers
+the `update_tabler_progress` function. This is how we change the slider value,
+thanks to the noUiSlider [API](https://refreshless.com/nouislider/slider-read-write/#section-setting):
+
+```javascript
+var slider = document.getElementById('progress_value');
+slider.noUiSlider.set(50);
+```
+
+We use `call_js` to update the slider value within our testing pipeline:
+
+```{r, eval=FALSE}
+test$call_js(
+  "var slider = document.getElementById('progress_value');
+   slider.noUiSlider.set(50);
+  "
+)
+```
+
+According to Figure \@ref(fig:tabler-crrry-debug-2), the slider is properly updated,
+the progress bar also seems to have the expected value.
+
+```{r tabler-crrry-debug-2, echo=FALSE, fig.cap='Updated slider', out.width='100%'}
+knitr::include_graphics("images/practice/tabler-crrry-debug-2.png")
+```
+
+We recover the progress value knowing that it is contained in the `aria-valuenow`
+attribute, as a string. We have to convert it to a number with `parseInt`:
+
+```{r, eval=FALSE}
+val <- test$call_js(
+  "parseInt($('#progress1').attr('aria-valuenow'));
+  "
+)
+expect_equal(val$result$value, 50)
+
+# stop the test whenever satisfied
+test$stop()
+```
+
+The test pass, meaning that our `update_tabler_progress`, especially the associated
+custom message handler, works. This test was simple and did not involve any input elements.
+Yet, `{crrry}` also support setting input values with `shiny_set_input(id, value)`.
+
+
+### Test input bindings
+We decide to add more complexity and show how to test a home made input binding. We are going to
+test the tabler navbar JavaScript logic developed in Chapter \@ref(custom-templates-inputs-navbar). 
+Before starting to test, we define the expectations:
+
+  - If no `tabler_navbar_menu_item` is selected by default, at start, the first item is selected.
+  It must have the `active` class on it. We have to check whether the first `<a class="nav-link">` 
+  has the active class.
+  - Moreover, if one item is selected at start, we have to make sure this item has the `active` class.
+  - We have to ensure that clicking on another link switch the currently selected link so that
+  the corresponding input on the R side is properly updated.
+  - When we call `update_tabler_tab_item` we have to check whether the active link is
+  successfully changed.
+  - Each time a navbar item is active, the corresponding body `tabler_tab_item` must hold the
+  `active show` class, to make sure the tab content is visible. Only on tab may have those classes at a time.
+  
+As described above, we run our app in another R process, so as to keep the main process
+for the test:
+
+
+```{r, eval=FALSE}
+p <- processx::process$new(
+  "Rscript", 
+  c( "-e",  "options('shiny.port'= 3515);OSUICode::update_tabler_navbar_example()" )
+)
+
+Sys.sleep(2)
+
+p$is_alive()
+
+test <- crrry::CrrryOnPage$new(
+  chrome_bin = pagedown::find_chrome(),
+  chrome_port = httpuv::randomPort(),
+  url = "http://localhost:3515/",
+  headless = TRUE
+)
+
+test$wait_for_shiny_ready()
+```
+
+At start, no link was selected, meaning we expect the first link to be active and shown. The navbar
+may be targeted using the `navbar-nav` class and we use `find` to locate the active child which must
+have the `nav-link active` classes. We also control that only 1 item is selected by inspecting the length
+of the active nav link items. 
+We extract its index with `index` which is contained in the `data-value` attribute:
+
+```{r, eval=FALSE}
+active <- test$call_js("$('.navbar-nav').find('.nav-link.active').length")
+expect_equal(active$result$value, 1)
+
+test$wait_for_shiny_ready()
+
+res1 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+expect_equal(res1$result$value, "tab1")
+```
+
+Now let's see whether to body tab has the good index. We target the `tab-content` class and look
+for the element having `active show` classes. We recover its id which contains the tab name:
+
+```{r, eval=FALSE}
+res2 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+expect_equal(res1$result$value, res2$result$value)
+```
+
+We programmatically change the active tab by clicking on the second link. Below we use
+`.nav-link:eq(1)` to select the second link but we could use `.nav-link:not(.active)` since
+we only have 2 links. We also recover the index of the selected link and the corresponding tab. If 
+everything happens well, we expect their value to be 2:
+
+```{r, eval=FALSE}
+test$call_js("$('.navbar-nav .nav-link:eq(1)').click();")
+
+res3 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+expect_equal(res3$result$value, "tab2")
+
+test$wait_for_shiny_ready()
+
+res4 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+expect_equal(res3$result$value, res4$result$value)
+```
+
+We then click on the "change tab" button, that has the `update` id. The latter,
+actually triggers `update_tabler_tab_item`. We also want to check its behavior and expect
+to be back on tab 1:
+
+```{r, eval=FALSE}
+test$call_js("$('#update').click();")
+
+res5 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+expect_equal(res5$result$value, "tab1")
+
+test$wait_for_shiny_ready()
+
+res6 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+expect_equal(res5$result$value, res6$result$value)
+```
+
+If the test is successful, it means that the `receiveMessage` and `setValue` methods
+work as expected. We finally test the input value by setting its value to `tab2` with `shiny_set_input`.
+All Shiny input values are stored in the `Shiny.shinyapp.$inputValues` object, as shown in Chapter \@ref(shiny-input-lifecycle):
+
+```{r, eval=FALSE}
+test$shiny_set_input("current_tab", "tab2")
+tab_input <- test$call_js("Shiny.shinyapp.$inputValues.current_tab")
+expect_equal(tab_input$result$value, "tab2")
+test$stop()
+```
+
+This does not effect the navbar but triggers the notification.
+
+
+As an exercise, we leave the reader to write a test to check the app behavior when
+the second tab is active at start. 
+
+

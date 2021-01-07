@@ -1,7 +1,324 @@
-# Custom handlers: from R to JavaScript {#shiny-custom-handler}
-Shiny provides tools to ease the communication between R and JavaScript, as illustrated in section \@ref(shiny-websocket). How does R send messages to JavaScript?
+# Dynamically manage content with handlers {#shiny-custom-handler}
 
-We already discussed the usage of `sendInputMessage()` in the input binding section \@ref(shiny-input-system). The other important method is `sendCustomMessage(type, message)`. It works by pair with the JS method `Shiny.AddCustomMessageHandler`, linked with the type parameter.
+The three previous chapters are largely dedicated to Shiny input elements. Yet, not everything is input in Shiny. This chapter shows how one may leverage the internal Shiny JavaScript tools to build highly interactive and optimized interfaces. 
+
+## Introduction
+
+As shown in the Mastering Shiny [book](https://mastering-shiny.org/action-dynamic.html), there exists tools to update UI components from the server. You can use all `update<INPUT_NAME>` functions like `updateTextInput` but also what I call secondary input related function like `updateTabsetPanel`. Why secondary input? Since they are not inputs, strictly speaking. For instance when you fill an inscription form on a website, it contains a lot of inputs like select, text, numeric, date, so that your data is ultimately stored in a database for later use. A `tabsetPanel` is a simple way to spread multiple elements on different panels and usually gather them by topic. In Shiny, it is always interesting to associate an input to it, as shown in the previous chapter \@ref(secondary-inputs), so as to be able to trigger sophisticated actions on the server side, whenever necessary. In order not to confuse the reader, primary inputs like `actionButton` have an id, accessible through `inputId`, while secondary inputs simply have `id`. 
+
+Other tools to manage your UI consist in `toggle` functions like `hideTab`, `showTab`, the limit being the very few number of them, which often obliges us to use packages like `shinyjs` [@R-shinyjs] or write custom JavaScript code. `insertUI/removeUI` allows to dynamically insert or remove any element, anywhere. 
+
+## The renderUI case
+One may know the `renderUI/uiOutput` that allows to render any HTML block from the server. While the `update<INPUT_NAME>` and `toggle` tools are component specific, meaning they only target the element to modify, `renderUI/uiOutput` re-renders the whole block each time an associated reactive dependency is invalidated, even though only a little part should be re-rendered. This approach is usually to avoid since it implies poor performances. Let's see below, where I simulate a computationally intensive task for three seconds, corresponding to the time to obtain the slider value:
+
+```{r, eval=FALSE}
+library(shiny)
+ui <- fluidPage(
+  uiOutput("moreControls")
+)
+
+server <- function(input, output) {
+  
+  sliderValue <- reactive({
+    # computationally intensive task
+    Sys.sleep(3)
+    1
+  })
+  
+  output$moreControls <- renderUI({
+    sliderInput("n", "N", sliderValue(), 1000, 500)
+  })
+}
+shinyApp(ui, server)
+```
+
+The same example with the `updateSliderInput` functions:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  sliderInput("n", "N", 100, 1000, 500)
+)
+
+server <- function(input, output, session) {
+  
+  sliderValue <- reactive({
+    # computationally intensive task
+    Sys.sleep(3)
+    50
+  })
+  
+  observeEvent(sliderValue(), {
+    updateSliderInput(
+      session,
+      "n",
+      value = sliderValue()
+    )
+  })
+}
+shinyApp(ui, server)
+```
+
+The first approach's biggest problem is the absence of anything for 3 seconds, which may discourage the end user. Although not ideal, the second approach is already much better. 
+
+
+Below is an very naive and dirty example where `renderUI` makes the entire dropdown menu re-render each time something changes in the `renderUI` expression, which may not be optimal. For instance in React, we only re-render what needs to be [updated](https://en.reactjs.org/docs/rendering-elements.html#react-only-updates-whats-necessary)! Run the app below, open the HTML inspector and click to add 1 message. Notice that the entire block is updated, whereas only the corresponding HTML element should (Figure \@ref(fig:render-ui-1)). No doubt that any advanced user see a place for `insertUI`.
+
+```{r, eval=FALSE}
+library(bs4Dash)
+library(tibble)
+
+new_message <- tibble(
+  message = "New message",
+  from = "Paul",
+  src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+  time = "yesterday",
+  status = "success",
+  type = "message"
+)
+
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = uiOutput("messages", container = tags$li)
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(actionButton("add", "Add message"))
+  ),
+  server = function(input, output) {
+    
+    messages <- reactiveValues(
+      items = tibble(
+        message = rep("A message", 10),
+        from = LETTERS[1:10],
+        src = rep("https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg", 10),
+        time = rep("yesterday", 10),
+        status = rep("success", 10),
+        type = rep("message", 10)
+      )
+    )
+    
+    observeEvent(input$add, {
+      messages$items <- add_row(messages$items, new_message)
+    })
+    
+    output$messages <- renderUI({
+      dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr",
+        lapply(seq_len(nrow(messages$items)), function(r) {
+          temp <- messages$items[r, ]
+          dropdownMenuItem(
+            message = temp$message,
+            from = temp$from, 
+            time = temp$time,
+            status = temp$status,
+            type = temp$type,
+            src = temp$src
+          )
+        })
+      )
+    })
+  }
+)
+```
+```{r render-ui-1, echo=FALSE, fig.cap='renderUI is not specific', out.width='100%'}
+knitr::include_graphics("images/survival-kit/render-ui-1.png")
+```
+
+This non specificity property justifies why you should avoid this method as much as possible, as it overloads the server. Later in this chapter, we leverage custom handlers to solve this problem. Overall, it's more work, maybe more complex but ensures to be specific and more optimized.
+
+## Other Shiny handlers {#insert-ui}
+As mentioned in Chapter \@ref(update-input-lifecycle), all `update<INPUT_NAME>` functions are Shiny defined messages handlers. 
+
+### The insertUI case
+Under the hood, `insertUI` sends a R [message](https://github.com/rstudio/shiny/blob/master/R/shiny.R#L1696) through `session$sendInsertUI`, via the websocket:
+
+```{r, eval=FALSE}
+
+session$sendInsertUI(
+  selector = selector, 
+  multiple = multiple, 
+  where = where, 
+  content = processDeps(ui, session)
+)
+
+sendInsertUI = function(selector, multiple, where, content) {
+  private$sendMessage(
+    `shiny-insert-ui` = list(
+      selector = selector,
+      multiple = multiple,
+      where = where,
+      content = content
+    )
+  )
+}
+```
+
+The content has been treated with `shiny:::processDeps` that:
+
+  - Finds and resolve any HTML dependency, as shown in Chapter \@ref(htmltools-dependencies).
+  - For each dependency, makes sure the corresponding files can be accessed on the server with `createWebDependency` and `addResourcePath`. 
+  - Returns a list of the HTML element and dependencies. The HTML will be accessed by `message.content.html` and dependencies by `message.content.deps`.
+  
+On the UI side, Shiny has a predefined message [handler](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L670):
+
+```javascript
+addMessageHandler('shiny-insert-ui', function(message) {
+  var targets = $(message.selector);
+  if (targets.length === 0) {
+    // render the HTML and deps to a null target, so
+    // the side-effect of rendering the deps, singletons,
+    // and <head> still occur
+    console.warn('The selector you chose ("' + message.selector +
+                 '") could not be found in the DOM.');
+    exports.renderHtml(message.content.html, $([]), message.content.deps);
+  } else {
+    targets.each(function (i, target) {
+      exports.renderContent(target, message.content, message.where);
+      return message.multiple;
+    });
+  }
+})
+```
+
+It checks whether the provided selector corresponds to multiple DOM elements. If at least 1 item is found, it calls `renderContent(html, el, dependencies)` that triggers `renderHtml(html, el, dependencies)`:
+
+  - Processes the provided HTML (treat the head, body and singletons).
+  - Renders all given dependencies into the page's [head](https://github.com/rstudio/shiny/blob/master/srcjs/output_binding_html.js#L241).
+  - Insert the HTML into the page at the position provided in the `insertUI` __where__ parameter. Internally this calls the `insertAdjacentHTML` method. 
+  - Initialize any input and bind them to the scope and send the value to the server so that output/observers are invalidated. Outputs are also bound. If this step is missed the newly inserted input won't react, so is the related output and any observer.
+  
+Keep `renderContent` and `renderHtml` in mind, we'll use them in section \@ref(custom-ui-functions).
+  
+### Example 
+Going back to the previous example, why don't we just go for `insertUI`:
+
+```{r, eval=FALSE}
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr"
+      )
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(actionButton("add", "Add dropdown item"))
+  ),
+  server = function(input, output, session) {
+    
+    observeEvent(input$add, {
+      insertUI(
+        selector = ".dropdown-menu > .dropdown-item.dropdown-footer",
+        where = "beforeBegin",
+        ui = dropdownMenuItem(
+          inputId = paste0("triggerAction_", input$add),
+          message = paste("message", input$add),
+          from = "Divad Nojnarg",
+          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+          time = "today",
+          status = "danger",
+          type = "message"
+        )
+      )
+    })
+  }
+)
+```
+
+Well, if the item is inserted, the item counter as well as the dropdown text are not, as depicted Figure \@ref(fig:insertUI-1)! We can't blame `insertUI` for this, since this is the fault of the `{bs4Dash}` component that actually has interconnected HTML pieces. Indeed, the `dropdownMenu` function generates HTML, detecting the number of `dropdownMenuItem`. This works well when the app fires but the component is not able to maintain an up to date state. 
+
+```{r insertUI-1, echo=FALSE, fig.cap='insertUI is not enough specific', out.width='100%'}
+knitr::include_graphics("images/survival-kit/insertUI-1.png")
+```
+
+We may fix that by adding extra `insertUI()` and `removeUI()` to replace those parts (`insertUI()` does not update the targeted item). Moreover, you we must set correct priority for each `observeEvent` (try to remove them, it will fail) to ensure that _remove_ happens before _insert_. 
+
+```{r, eval=FALSE}
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr"
+      )
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(actionButton("add", "Add dropdown item"))
+  ),
+  server = function(input, output, session) {
+    
+    observeEvent(input$add, {
+      insertUI(
+        selector = ".dropdown-menu > .dropdown-item.dropdown-footer",
+        where = "beforeBegin",
+        ui = dropdownMenuItem(
+          inputId = paste0("triggerAction_", input$add),
+          message = paste("message", input$add),
+          from = "Divad Nojnarg",
+          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+          time = "today",
+          status = "danger",
+          type = "message"
+        )
+      )
+    })
+    
+    # remove old badge
+    observeEvent(input$add, {
+      removeUI(selector = ".badge-danger.navbar-badge")
+    }, priority = 1)
+    
+    # insert new badge
+    observeEvent(input$add, {
+      insertUI(
+        selector = "[data-toggle=\"dropdown\"]",
+        where = "beforeEnd",
+        ui = tags$span(class = "badge badge-danger navbar-badge", input$add)
+      )
+    })
+    
+    
+    # remove old text counter
+    observeEvent(input$add, {
+      removeUI(selector = ".dropdown-item.dropdown-header")
+    }, priority = 1)
+    
+    # insert new text counter
+    observeEvent(input$add, {
+      insertUI(
+        selector = ".dropdown-menu",
+        where = "afterBegin",
+        ui = tags$span(class="dropdown-item dropdown-header", sprintf("%s Items", input$add))
+      )
+    })
+    
+  }
+)
+```
+
+So many `observeEvent` for a simple action! Imagine if we had 10 similar tasks... Isn't there a way to do all of this at once, thereby reducing the server code? In general setting priorities in `observeEvent` is a rather bad smell of poorly designed shiny app.
+
+It seems that we have to create our own message handler! 
+
+## Custom handlers
+
+Custom handlers are a specific category of message handlers, as they are user defined.
+
+### Theory
+Shiny provides tools to ease the communication between R and JavaScript, as illustrated in section \@ref(shiny-websocket). We already discussed the usage of `sendInputMessage()` in the input binding section \@ref(shiny-input-system). The other important method is `sendCustomMessage(type, message)`. It works by pair with the JS method `Shiny.AddCustomMessageHandler`, linked with the type parameter.
 
 ```{r, eval=FALSE}
 say_hello_to_js <- function(text, session = getDefaultReactiveDomain()) {
@@ -9,7 +326,7 @@ say_hello_to_js <- function(text, session = getDefaultReactiveDomain()) {
 }
 ```
 
-The JavaScript receptor is defined below:
+The JavaScript part is defined below:
 
 ```javascript
 $(function() {
@@ -19,19 +336,17 @@ $(function() {
 });
 ```
 
-The shiny app below will simply print a welcome message every 5 seconds. We obviously set `options(shiny.trace = TRUE)`. Figure \@ref(fig:shiny-custom-message) summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/say_hello.R).
+The shiny app below will simply print a welcome message every 5 seconds. We obviously set `options(shiny.trace = TRUE)` so as to capture all messages sent between R and JS. Figure \@ref(fig:shiny-custom-message) summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/say_hello.R).
 
 ```{r, eval=FALSE}
 shinyAppDir(system.file("chapter6/say_hello", package = "OSUICode"))
 ```
 
-You will find a whole chapter dedicated to custom handlers here \@ref(custom-templates-interactivity).
-
-```{r shiny-custom-message, echo=FALSE, fig.cap='From R to JavaScript'}
+```{r shiny-custom-message, echo=FALSE, fig.cap='From R to JavaScript', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-custom-message.png")
 ```
 
-Combining `Shiny.setInputValue`, `Shiny.addCustomMessageHandler`, here is a fun example
+Combining `Shiny.setInputValue` and `Shiny.addCustomMessageHandler`, here is a fun example
 that sets the body background as a result of a simple button click.
 We defined 3 JS pieces:
 
@@ -101,4 +416,638 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+```
+
+A whole chapter is dedicated to custom handlers, with a practical example \@ref(custom-templates-interactivity).
+
+
+### Toward custom UI management functions {#custom-ui-functions}
+
+#### An insertDropdownItem function
+In this example, we go back to the `{bs4Dash}` `dropdownMenu` issue, discussed earlier
+in the chapter. We propose a method involving only custom message handlers.
+
+```{r, eval=FALSE}
+insertDropdownItem <- function(item, session = shiny::getDefaultReactiveDomain()) {
+  session$sendCustomMessage("add-dropdown-item", message = as.character(item))
+}
+```
+
+We create the `insertDropdownItem` function with 2 parameters:
+
+  - item, the HTML element we want to insert in the DOM.
+  - session, used to send a message to JavaScript with `session$sendCustomMessage`.
+  
+We don't use `processDeps` as it is very unlikely that our `dropdownMenuItem` contains any extra dependency. item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a type, that is 'add-dropdown-item', to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
+
+```javascript
+$(function() {
+  Shiny.addCustomMessageHandler('add-dropdown-item', function(message) {
+    // convert string to HTML
+    var itemTag = $.parseHTML(message)[0];
+    $(itemTag).insertBefore($('.dropdown-item.dropdown-footer'));
+    // since we do not re-render the dropdown, we must update its item counter
+    var $items = $('button.dropdown-item').length;
+    $('.dropdown-item.dropdown-header').html($items + ' Items');
+    $('.nav-item.dropdown').find('.navbar-badge').html($items);
+  });
+});
+```
+
+We recover the sent message on the JS side with `Shiny.addCustomMessageHandler`, then parse the string to HTML with `$.parseHTML` and insert it before the footer (that is the next UI element of the dropdown body). We also update dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. These two extra JS steps save us to create extra `observeEvent` on the server, as shown before. The `dropdownMenu` is modified so that dependencies are attached:
+
+```{r, eval=FALSE}
+dropdownDeps <- function() {
+  htmltools::htmlDependency(
+    name = "bs4-dropdown",
+    version = "1.0.0",
+    src = c(file = "chapter6/add-dropdown-item"),
+    script = "add-dropdown-item.js",
+    package = "OSUICode"
+  )
+}
+
+dropdownMenu <- function(..., show = FALSE, labelText = NULL, src = NULL,
+                         status = c("primary", "warning", "danger", "info", "success"),
+                         menuIcon = "bell", align = "right") {
+
+  status <- match.arg(status)
+  items <- list(...)
+  n_items <- length(items)
+  # remove the divider from the last item
+  #items[[n_items]][[2]] <- NULL
+
+  labelText <- n_items
+
+  tagList(
+    dropdownDeps(),
+    shiny::tags$li(
+      class = if (isTRUE(show)) "nav-item dropdown show" else "nav-item dropdown",
+      shiny::tags$a(
+        class = "nav-link",
+        `data-toggle` = "dropdown",
+        href = "#",
+        shiny::icon(menuIcon),
+        shiny::tags$span(
+          class = paste0("badge badge-", status, " navbar-badge"),
+          labelText
+        )
+      ),
+      shiny::tags$div(
+        class = if (isTRUE(show)) {
+          sprintf("dropdown-menu dropdown-menu-lg dropdown-menu-%s show", align)
+        } else {
+          sprintf("dropdown-menu dropdown-menu-lg dropdown-menu-%s", align)
+        },
+        shiny::tags$span(
+          class = "dropdown-item dropdown-header",
+          paste0(n_items, " Items")
+        ),
+        shiny::tags$div(class = "dropdown-divider"),
+        ...,
+        shiny::tags$a(
+          class = "dropdown-item dropdown-footer",
+          href = src,
+          target = "_blank",
+          "See more"
+        )
+      )
+    )
+  )
+}
+```
+
+You may run the example yourself. Note we load `{OSUICode}` to overwrite the `{bs4Dash}` function:
+
+```{r, eval=FALSE}
+# shinyAppDir(system.file("chapter6/add-dropdown-item", package = "OSUICode"))
+library(OSUICode)
+
+shinyApp(
+  ui = bs4DashPage(
+    navbar = bs4DashNavbar(
+      rightUi = dropdownMenu(
+        show = FALSE,
+        status = "danger",
+        src = "https://www.google.fr"
+      )
+    ),
+    sidebar = bs4DashSidebar(),
+    controlbar = bs4DashControlbar(),
+    footer = bs4DashFooter(),
+    title = "test",
+    body = bs4DashBody(actionButton("add", "Add dropdown item"))
+  ),
+  server = function(input, output, session) {
+
+    observeEvent(input$add, {
+      insertDropdownItem(
+        dropdownMenuItem(
+          inputId = paste0("triggerAction_", input$add),
+          message = paste("message", input$add),
+          from = "Divad Nojnarg",
+          src = "https://adminlte.io/themes/v3/dist/img/user3-128x128.jpg",
+          time = "today",
+          status = "danger",
+          type = "message"
+        )
+      )
+    })
+  }
+)
+```
+
+This solution significantly lightens the server code since everything may be done on the JS side in one step. 
+
+#### A chat system for shinydashboardPlus
+
+User messages in `{shinydashboardPlus}` (latest devel version) provide an easy way to create a chat system within a shiny app. `userMessages` hosts the main container while `userMessage` are the message elements. All of this is pure HTML:
+
+```html
+<div class="direct-chat-msg">
+  <div class="direct-chat-info clearfix">
+    <span class="direct-chat-name pull-left">Alexander Pierce</span>
+    <span class="direct-chat-timestamp pull-right">23 Jan 2:00 pm</span>
+  </div>
+  <!-- /.direct-chat-info -->
+  <img class="direct-chat-img" src="dist/img/user1-128x128.jpg" alt="message user image">
+                      <!-- /.direct-chat-img -->
+  <div class="direct-chat-text">Is this template really for free? That's unbelievable!
+  </div>
+  <!-- /.direct-chat-text -->
+</div>
+```
+
+Given that no JavaScript API is available to handle messages, that is send/receive/edit/remove any message, we are going to design a custom R/JavaScript API step by step. 
+
+##### HTML elements
+The message container is a simple `div` element:
+
+```html
+<div class="direct-chat-messages">...</div>
+```
+
+where `...` receives all messages. From the AdminLTE demonstration [page](https://adminlte.io/themes/AdminLTE/index2.html), the class `direct-chat-warning` gives the yellow color to the sent messages, while received messages are always gray. In `{shinydashboardPlus}`, the container is defined as below:
+
+```{r, eval=FALSE}
+userMessages <- function(..., id = NULL, status, width = 4, height = NULL) {
+  cl <- "direct-chat-messages direct-chat"
+  if (!is.null(height)) shiny::validateCssUnit(height)
+  if (!is.null(status)) {
+    validateStatus(status)
+    cl <- paste0(cl, " direct-chat-", status)
+  }
+  msgtag <- shiny::tags$div(
+    class = cl, 
+    ..., 
+    style = if (!is.null(height)) {
+      sprintf("height: %s; overflow-y: auto;", height)
+    } else {
+      "height: 100%;"
+    }
+  )
+  
+  shiny::tags$div(
+    id = id,
+    class = if (!is.null(width)) paste0("col-sm-", width),
+    msgtag
+  )
+  
+}
+```
+
+The most important element is the __id__ parameter that makes the link with the custom message handler on the JavaScript side. The message element is defined as:
+
+```{r eval=FALSE}
+userMessage <- function(..., author, date = NULL, 
+                        image = NULL, type = c("sent", "received")) {
+  
+  type <- match.arg(type)
+  messageCl <- "direct-chat-msg"
+  if (type == "sent") messageCl <- paste0(messageCl, " right")
+  
+  # message info
+  messageInfo <- shiny::tags$div(
+    class = "direct-chat-info clearfix",
+    shiny::tags$span(
+      class = if (type == "right") {
+        "direct-chat-name pull-right"
+      } else {
+        "direct-chat-name"
+      }, 
+      author
+    ),
+    if (!is.null(date)) {
+      shiny::tags$span(
+        class = if (type == "right") {
+          "direct-chat-timestamp right"
+        } else {
+          "direct-chat-timestamp"
+        }, 
+        date
+      )
+    }
+  )
+  
+  # message Text
+  messageTxt <- shiny::tags$div(class = "direct-chat-text", ...)
+  
+  # message author image
+  messageImg <- shiny::tags$img(class = "direct-chat-img", src = image)
+  
+  shiny::tags$div(
+    class = messageCl,
+    messageInfo,
+    messageImg, 
+    messageTxt
+  )
+}
+```
+
+There are 3 parts:
+
+  - The author tag, defined in the `messageInfo` variable.
+  - The message itself, defined in the `messageTxt` variable.
+  - The author image, contained in the `messageImg` variable.
+
+The class of the message varies depending whether it is received or sent, which actually changes its position (left or right). 
+
+Note the corresponding HTML classes like `direct-chat-text` since we will use them in JS.
+
+##### Handle interactions
+`userMessages` and `userMessage` alone only provide a static API. Let's design an `updateMessages` function that offers way to update the message container. That function must allow to:
+
+  - Add any message to the list.
+  - Remove any existing message.
+  - Update a given message.
+  
+For now, we assume to add only one message at a time. `updateMessages` is linked to any `userMessages` container by the __id__ parameter. In order to delete/update a message, we need to define an __index__ parameter. Don't forget that R starts from 1 while JS starts from 0. Consequently, we have to decrease the R index by 1 so that JS receives the correct number. We must also provide a content slot so as to update any existing message content. The content has to be compatible we the `userMessage` structure. We expect the user to pass a list like:
+
+```{r, eval=FALSE}
+list(
+  author = "David",
+  date = "Now",
+  image = "https://i.pinimg.com/originals/f1/15/df/f115dfc9cab063597b1221d015996b39.jpg",
+  type = "received",
+  text = tagList(
+    sliderInput(
+      "obs", 
+      "Number of observations:",
+      min = 0, 
+      max = 1000, 
+      value = 500
+    ),
+    plotOutput("distPlot")
+  )
+```
+
+Interestingly, we may offer the ability to add input/output element in the message content (as shown above) with dependencies that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the `processDeps` function on the R side for all elements with `lapply` function. Finally, the message is going to be sent with `session$sendCustomMessage`:
+
+```{r, eval=FALSE}
+updateUserMessages <- function(id, action = c("add", "remove", "update"), 
+                               index = NULL, content = NULL, 
+                               session = shiny::getDefaultReactiveDomain()) {
+  action <- match.arg(action)
+  
+  content <- lapply(content, function(c) {
+    if (inherits(c, "shiny.tag") || inherits(c, "shiny.tag.list")) {
+      # necessary if the user pass input/output with deps
+      # that are not yet available in the page before inserting the new tag
+      c <- processDeps(c, session)
+    }
+    c
+  })
+  
+  session$sendCustomMessage(
+    "user-messages", 
+    list(
+      id = session$ns(id), 
+      action = action, 
+      index = index,
+      body = content
+    )
+  )
+}
+```
+
+We have to send the container __id__ so as to be able to select the good target on the JS side. Note the `session$ns` that actually make sure this function can work within shiny modules. 
+
+As a reminder, the message handler name has to be the same on the JS side!
+
+Now we are all done for the R side but still have to design the JS interface. The first step is to create a custom message handler skeleton:
+
+```javascript
+Shiny.addCustomMessageHandler("user-messages", function(message) {
+  // JS logic
+});
+```
+
+where the message parameter is actually the message sent through the R `updateUserMessages` function. We recall that is we send a list, it is converted into a JS object. Therefore, to access the container id element, we do:
+
+```javascript
+message.id
+```
+
+and similarly for other elements. There may be nested list, for instance the message content is one, which is not very complex to handle: we simply use the `.` JS notation to access lower level elements, that is `message.content.text` for the message text. 
+
+The second step is to store all message elements in variables, which may be separated by commas. This step is not mandatory but improves the code readability:
+
+```javascript
+Shiny.addCustomMessageHandler("user-messages", function(message) {
+  var id = message.id, action = message.action, content = message.body, index = message.index;
+});
+```
+
+In the following we show how to process any message content. For sake of simplicity, we assume to be able to only edit the message text. 
+As mentioned earlier, there are 2 possible cases:
+
+  - The text is simple text or simple HTML without any extra dependency, we do nothing more than storing it into a meaningful variable.
+  - The text is a list of shiny tags containing input/output with extra dependencies like `sliderInput`, we have to use the `renderHtml` method to correctly process the missing dependencies passed from R via `processDeps` in `updateUserMessages`.
+  
+This yields:
+
+```javascript
+Shiny.addCustomMessageHandler("user-messages", function(message) {
+  var id = message.id, action = message.action, content = message.body, index = message.index;
+  
+  if (content.hasOwnProperty("text")) {
+    var text;
+    if (content.text.html === undefined) {
+      text = content.text;
+    } else {
+      text = Shiny.renderHtml(content.text.html, $([]), content.text.deps).html;
+    } 
+  }
+  
+});
+```
+
+Note the `hasOwnProperty` that checks whether content has a text property. 
+
+
+Then, the next step is to consider the multiple options provided by the user (update, add, remove). We consider the simplest case, that is `remove` a message. We remind the reader that the __action__ contains the user choice in `updateUserMessages`. What do we need to remove a given message:
+
+  - It's index contained in the __index__ variable.
+  - The container __id__.
+  - Remember/notice that a message has the `direct-chat-msg` class.
+  - Use the `remove` jQuery method.
+  
+We therefore target the main container with `$("#" + id)`, look for its messages with `find(".direct-chat-msg")`, specify the target using `eq(index - 1)` (index is the R value) and apply the remove method:
+
+```javascript
+if (action === "remove") {
+  $("#" + id).find(".direct-chat-msg").eq(index - 1).remove();
+}
+```
+
+We could add more security with `console.warn` whenever the user wants to delete a message that does not exist. We leave it to the reader as an exercise. 
+
+The second case is to add a new message. In that case, we define new variables containing the
+author, the date, the image and the message type. Below is a reminder of the message HTML structure:
+
+```html
+<div class="direct-chat-msg">
+  <div class="direct-chat-info clearfix">
+    <span class="direct-chat-name pull-left">AUTHOR (TO REPLACE)</span>
+    <span class="direct-chat-timestamp pull-right">DATE (TO REPLACE)</span>
+  </div>
+  <!-- /.direct-chat-info -->
+  <img class="direct-chat-img" src="IMAGE URL (TO REPLACE)" alt="message user image">
+                      <!-- /.direct-chat-img -->
+  <div class="direct-chat-text">MAIN CONTENT (TO REPLACE)
+  </div>
+  <!-- /.direct-chat-text -->
+</div>
+```
+
+In our JS logic, we use the same template and replace any relevant element (see capital letters) 
+by the previously created variables. We might use the string interpolation but this is not compatible with all
+web browsers. We wrap all of these elements in a `direct-chat-msg` div which class may vary depending
+on the message type. If sent, the class is `direct-chat-msg right` and `direct-chat-msg` otherwise.
+The final step is to target the main container with `$("#" + id)`, look for the messages slot `find(".direct-chat-messages")` (the message container is nested in the main wrapper) and `append` it 
+to the DOM. We used `append` which add the message at the end but could choose `prepend` to add on top
+of all other messages. This behavior may be defined by the programmer with no option for the end-user.
+Alternatively, the developer could expose an external parameter to control the add position. 
+
+```javascript
+// other condition before ...
+else if (action === "add") {
+  var author = content.author, date = content.date, image = content.image, type = content.type;
+      
+  // build the new message 
+  var newMessage = '<div class="direct-chat-info clearfix">' +
+    '<span class="direct-chat-name">' + author + '</span>' +
+    '<span class="direct-chat-timestamp" style="margin-left: 4px">' + date + '</span>' + '</div>' +
+    '<img class="direct-chat-img" src="' + image + '"/>' + 
+    '<div class="direct-chat-text">' + text + '</div>'
+    
+  // build wrapper
+  var newMessageWrapper;
+  if (type === "sent") {
+    newMessageWrapper = '<div class="direct-chat-msg right">' + newMessage + '</div>'
+  } else {
+    newMessageWrapper = '<div class="direct-chat-msg">' + newMessage + '</div>'
+  }
+  
+  // append message
+  $("#" + id).find(".direct-chat-messages").append(newMessageWrapper);
+}
+```
+
+Finally, the last case is to update a given message. As stated above, we assume to only edit the
+message text and the date. To update the message, we target the messages container with `$("#" + id)`,
+look for all texts with `find(".direct-chat-text")`, refine our choice by targeting the good element with
+`eq(index - 1)`, call `replaceWith` containing the new text element. 
+
+```javascript
+else if (action === "update") {
+      
+  // today's date
+  var d = new Date();
+  var month = d.getMonth() + 1;
+  var day = d.getDate();
+  var today = d.getFullYear() + '/' +
+    ((''+month).length<2 ? '0' : '') + month + '/' +
+    ((''+day).length<2 ? '0' : '') + day;
+    
+  // we assume only text may be updated. Does not make sense to modify author
+  
+  $("#" + id)
+    .find(".direct-chat-text")
+    .eq(index - 1)
+    .replaceWith('<div class="direct-chat-text"><small class="text-red">(modified: ' + today +')</small><br>' +  text + '</div>')
+}
+```
+
+Don't forget to unbind, re-initialize and bind all inputs by calling `Shiny.unbindAll();`, `Shiny.initializeInputs();` and
+`Shiny.bindAll();`. If you ommit this part, the newly inserted input/output elements won't work!
+
+
+The whole JS code may be found below:
+
+
+```javascript
+// userMessages
+  // ------------------------------------------------------------------
+  // This code creates acustom handler for userMessages
+  Shiny.addCustomMessageHandler("user-messages", function(message) {
+    var id = message.id, action = message.action, content = message.body, index = message.index;
+    
+    // message text
+    // We use Shiny.renderHtml to handle the case where the user pass input/outputs in the updated content that require a new dependency not available in the 
+    // page at startup. 
+    if (content.hasOwnProperty("text")) {
+      var text;
+      if (content.text.html === undefined) {
+        text = content.text;
+      } else {
+        text = Shiny.renderHtml(content.text.html, $([]), content.text.deps).html;
+      } 
+    }
+    
+    // unbind all
+    Shiny.unbindAll();
+    
+    if (action === "remove") {
+      $("#" + id).find(".direct-chat-msg").eq(index - 1).remove();
+    } else if (action === "add") {
+      var author = content.author, date = content.date, image = content.image, type = content.type;
+      
+      // build the new message 
+      var newMessage = '<div class="direct-chat-info clearfix">' +
+        '<span class="direct-chat-name">' + author + '</span>' +
+        '<span class="direct-chat-timestamp" style="margin-left: 4px">' + date + '</span>' + '</div>' +
+        '<img class="direct-chat-img" src="' + image + '"/>' + 
+        '<div class="direct-chat-text">' + text + '</div>'
+        
+      // build wrapper
+      var newMessageWrapper;
+      if (type === "sent") {
+        newMessageWrapper = '<div class="direct-chat-msg right">' + newMessage + '</div>'
+      } else {
+        newMessageWrapper = '<div class="direct-chat-msg">' + newMessage + '</div>'
+      }
+      
+      // append message
+      $("#" + id).find(".direct-chat-messages").append(newMessageWrapper);
+    } else if (action === "update") {
+      
+      // today's date
+      var d = new Date();
+      var month = d.getMonth() + 1;
+      var day = d.getDate();
+      var today = d.getFullYear() + '/' +
+        ((''+month).length<2 ? '0' : '') + month + '/' +
+        ((''+day).length<2 ? '0' : '') + day;
+        
+      // we assume only text may be updated. Does not make sense to modify author/date
+      
+      $("#" + id)
+        .find(".direct-chat-text")
+        .eq(index - 1)
+        .replaceWith('<div class="direct-chat-text"><small class="text-red">(modified: ' + today +')</small><br>' +  text + '</div>')
+    }
+    
+    // Calls .initialize() for all of the input objects in all input bindings,
+    // in the given scope (document)
+    Shiny.initializeInputs();
+    Shiny.bindAll(); // bind all inputs/outputs
+  });
+```
+
+as well as a demonstration:
+
+```{r, eval=FALSE}
+library(shinydashboard)
+library(shinydashboardPlus)
+ 
+ shinyApp(
+  ui = dashboardPage(
+    dashboardHeader(),
+    dashboardSidebar(),
+    dashboardBody(
+      fluidRow(
+        actionButton("remove", "Remove message"),
+        actionButton("add", "Add message"),
+        actionButton("update", "Update message")
+      ),
+      numericInput("index", "Message index:", 1, min = 1, max = 3),
+      br(),
+      br(),
+      userMessages(
+        width = 6,
+        status = "danger",
+        id = "message",
+        userMessage(
+          author = "Alexander Pierce",
+          date = "20 Jan 2:00 pm",
+          image = "https://adminlte.io/themes/AdminLTE/dist/img/user1-128x128.jpg",
+          type = "received",
+          "Is this template really for free? That's unbelievable!"
+        ),
+        userMessage(
+          author = "Sarah Bullock",
+          date = "23 Jan 2:05 pm",
+          image = "https://adminlte.io/themes/AdminLTE/dist/img/user3-128x128.jpg",
+          type = "sent",
+          "You better believe it!"
+        )
+      )
+    ),
+    title = "user Message"
+  ),
+  server = function(input, output, session) {
+    observeEvent(input$remove, {
+      updateUserMessages("message", action = "remove", index = input$index)
+    })
+    observeEvent(input$add, {
+      updateUserMessages(
+        "message", 
+        action = "add", 
+        content = list(
+          author = "David",
+          date = "Now",
+          image = "https://i.pinimg.com/originals/f1/15/df/f115dfc9cab063597b1221d015996b39.jpg",
+          type = "received",
+          text = tagList(
+           sliderInput(
+            "obs", 
+            "Number of observations:",
+            min = 0, 
+            max = 1000, 
+            value = 500
+           ),
+           plotOutput("distPlot")
+          )
+        )
+      )
+    })
+    
+    output$distPlot <- renderPlot({
+     hist(rnorm(input$obs))
+    })
+    
+    observeEvent(input$update, {
+      updateUserMessages(
+        "message", 
+        action = "update", 
+        index = input$index,
+        content = list(
+         text = tagList(
+          appButton(
+           inputId = "reload",
+           label = "Click me!", 
+           icon = icon("sync"), 
+           dashboardBadge(1, color = "orange")
+          )
+         )
+        )
+      )
+    })
+    
+    observeEvent(input$reload, {
+     showNotification("Yeah!", duration = 1, type = "default")
+    })
+  }
+ )
 ```
