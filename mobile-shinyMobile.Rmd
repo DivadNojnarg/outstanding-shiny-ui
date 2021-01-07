@@ -531,12 +531,12 @@ knitr::include_graphics("images/mobile/mobile-shinyMobile-taphold.png")
 An important remark is the click handling in Framework7. Framework7 has its own internal [router](https://framework7.io/docs/view.html) that allows to pass data between pages and perform quite
 advanced actions. While extremely convenient for classic web apps, 
 this feature is not completely suited for Shiny that does not natively support multi pages apps. 
-The recent [work](https://github.com/ColinFay/brochure) in the field is promising and works well
+The recent [work](https://github.com/ColinFay/brochure) in the field is promising and plays well
 with `{shinyMobile}` (see [here](https://github.com/RinteRface/shinyMobile/issues/136)) but this is out of the scope of this chapter. The internal router has strong implications, for instance clicking on 
-`<a href="https://www.google.com/">Click me</a>` will fail, while it works like
-a charm for a classic shiny app, as shown below:
+`<a href="https://www.google.com/">Click me</a>` will fail (while it works like
+a charm for a classic shiny app), as shown below:
 ```{r, eval=FALSE}
-mylink <- a(class = "external", href = "https://www.google.com/", "Click me")
+mylink <- a(href = "https://www.google.com/", "Click me")
 
 # shinyMobile
 ui <- f7_page(
@@ -555,7 +555,7 @@ ui <- fluidPage(mylink)
 shinyApp(ui, server)
 ```
 
-To fix this issue, we may pass a valid CSS selector to the `externalLinks` property of the clicks module like:
+To fix this issue, Framerwork7 has a `clicks` module options, that we may pass any valid CSS selector to the `externalLinks` property. Below is the default configuration:
 
 ```javascript
 clicks: {
@@ -563,9 +563,9 @@ clicks: {
 }
 ```
 
-__Note__: one might be tempted to target all `a` elements: this is extremely dangerous, as it also target tabs navigation, which eventually fails!
-
-Add this code to the `init.js` and try the app again. 
+__Note__: one might be tempted to target all `a` elements: this is a bad idea, 
+as it also target tabs navigation, which eventually fails! Therefore, it is best 
+practice to add the `external` class to all the necessary links like `a(href = "https://www.google.com/", "Click me", class = "external")`
 
 
 ### Allow end-user configuration
@@ -673,7 +673,7 @@ app = new Framework7({
     root: '#app',
     // App Name
     name: 'My App',
-    version: config .version,
+    version: config.version,
     // other options
     theme: config.theme,
     notification: {
@@ -683,24 +683,23 @@ app = new Framework7({
     touch: {
       tapHold: config.taphold,
     },
-    clicks: {
-      externalLinks: '.external',
-    },
   });
 ```
 
 What happens if the user forgets to supply the version number? `data.version` is undefined
 and the app still works! The biggest advantage of this approach is the fact that all `TRUE`
 and `FALSE` (R) are converted to `true` and `false` (JS), which avoids unnecessary conversion steps.
+However, we are still missing many potential configuration options. For instance, with the above code,
+only `root`, `name`, `version`, `theme`, `notifications`, `touch` are considered. If the user
+provides any other option, it is ignored.
 
-
-In theory, we could do:
+In theory, we could do to make sure all elements are considered:
 
 ```javascript
 app = new Framework7(config);
 ```
 
-which assumes that the user exactly knows what to provide in the list, especially mandatory elements. 
+It assumes that the user exactly knows what to provide in the list, especially mandatory elements. 
 Knowing the crazy number of options, it might be slightly too complex for a new user. 
 What we suggest is to extract the most important components as direct `f7_page` parameters and 
 keep less important parameters in the options list. For example, 
@@ -731,10 +730,84 @@ f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"),
 which makes the API a bit more accessible (event though more complex to maintain) 
 and you only need to add one line of documentation in the roxygen part. 
 It would be disheartening to redirect them to the Framework7 API documentation and have to 
-look for the relevant option!
+look for the relevant option! 
+
+Alternatively, you could also put all parameters in __options__ 
+but provide a default value for `f7Page` like:
+
+```{r, eval=FALSE}
+\itemize{
+#'  \item \code{theme}: App skin: "ios", "md", "auto" or "aurora".
+#'  \item \code{dark}: Dark layout. TRUE or FALSE.
+#'  \item \code{filled}: Whether to fill the \link{f7Navbar} and \link{f7Toolbar} with
+#'  the current selected color. FALSE by default.
+#'  \item \code{color}: Color theme: See \url{http://framework7.io/docs/color-themes.html}.
+#'  Expect a name like blue or red. If NULL, use the default color.
+#'  \item \code{pullToRefresh}: Whether to active the pull to refresh feature. Default to FALSE.
+#'  See \url{https://v5.framework7.io/docs/pull-to-refresh.html#examples}.
+#'  \item \code{iosTranslucentBars}: Enable translucent effect (blur background) on navigation bars for iOS theme (on iOS devices).
+#'  FALSE by default.
+#' }
+#' Touch module options \url{https://v5.framework7.io/docs/app.html#app-parameters}:
+#' \itemize {
+#'  \item \code{tapHold}:  It triggers (if enabled) after a sustained, complete touch event.
+#'  By default it is disabled. Note, that Tap Hold is a part of built-in Fast Clicks library,
+#'  so Fast Clicks should be also enabled.
+#'  \item \code{tapHoldDelay}: Determines how long (in ms) the user must hold their tap before the taphold event is fired on the target element.
+#'  Default to 750 ms.
+#'  \item \code{iosTouchRipple}: Default to FALSE. Enables touch ripple effect for iOS theme.
+#' }
+#' Navbar options \url{https://v5.framework7.io/docs/navbar.html#navbar-app-parameters}:
+#' \itemize {
+#'  \item \code{iosCenterTitle}: Default to TRUE. When enabled then it will try to position
+#'  title at the center in iOS theme. Sometime (with some custom design) it may not needed.
+#'  \item \code{hideOnPageScroll}: Default to FALSE. Will hide Navbars on page scroll.
+#' }
+#' Toolbar options \url{https://v5.framework7.io/docs/toolbar-tabbar.html#toolbar-app-parameters}:
+#' \itemize {
+#'  \item \code{hideOnPageScroll}: Default to FALSE. Will hide tabs on page scroll.
+#' }
+#'
+#' In any case, you must follow the same structure as provided in the function arguments.
+f7Page <- function(
+  # other parameters are not mentionned
+  options = list(
+    theme = c("ios", "md", "auto", "aurora"),
+    dark = TRUE,
+    filled = FALSE,
+    color = "#007aff",
+    touch = list(
+      tapHold = TRUE,
+      tapHoldDelay = 750,
+      iosTouchRipple = FALSE
+    ),
+    iosTranslucentBars = FALSE,
+    navbar = list(
+      iosCenterTitle = TRUE,
+      hideNavOnPageScroll = TRUE
+    ),
+    toolbar = list(
+      hideNavOnPageScroll = FALSE
+    ),
+    # whatever option ...
+  )
+) {
+  # function body ...
+}
+
+```
+
+and do `app = new Framework7(config);` on the JS side. 
+
+This is a good compromise since it avoids to create too many parameters, without sacrificing the
+documentation. 
 
 Don't forget that since `config` is an object, 
 you may add any other properties, methods, on the fly with the `.` notation or `app.utils.extend`.
+
+You finally may ask why we put `dark`, `color` and `filled` in the options list given they
+are not part of the app API parameters. As any unknown parameter is not considered
+by the `Framework7` class, we can safely keep them here, which is easier to treat on the JS side.
 
 ## Theming and colors
 Framework7 has 15 color [themes](https://framework7.io/docs/color-themes.html?theme=light&bars=empty&color=%09+%23673ab7) with a dark/light global appearance. To apply them, we add `color-theme-COLOR` to the
@@ -970,7 +1043,7 @@ if (config.filled) {
 }
 ```
 
-The result is displayed on Figure \@reg(fig:mobile-shinyMobile-theming). Don't forget 
+The result is displayed on Figure \@ref(fig:mobile-shinyMobile-theming). Don't forget 
 to pass the `filled` property to the config list.
 
 ```{r mobile-shinyMobile-theming, echo=FALSE, fig.cap='Filled green color theme', out.width='100%'}
@@ -983,7 +1056,7 @@ element since we could also toggle the dark mode under other circumstances. We a
 of the config. If the user don't provide any value, we set `config.dark` to `false`:
 
 ```javascript
-app.methods = {
+config.methods = {
   toggleDarkTheme: function () {
     var self = this;
     var $html = self.$('html');
@@ -1004,37 +1077,25 @@ At this point `init.js` should be:
 
 ```javascript
 $( document ).ready(function() {
- // collect all data elements stored in body
- var config = $(document).find("script[data-for='app']");
- config = JSON.parse(config.html());
+  // collect all data elements stored in body
+  var config = $(document).find("script[data-for='app']");
+  config = JSON.parse(config.html());
 
- // create app instance
- app = new Framework7({
-    // App root element
-    root: '#app',
-    // App Name
-    name: 'My App',
-    version: config.version,
-    // other options
-    theme: config.theme,
-    notification: {
-      title: 'My App',
-      closeTimeout: 3000,
-    },
-    touch: {
-      tapHold: config.taphold,
-    },
-    clicks: {
-      externalLinks: '.external',
-    },
-    methods: {
-      toggleDarkTheme: function () {
+  // always erase existing root value just in case the user changes the root.
+  // This may be harmful
+  config.root = "#app";
+  
+  // store app methods
+  config.methods =  {
+      toggleDarkTheme: function() {
         var self = this;
-        var $html = self.$('html');
-        $html.toggleClass('theme-dark');
+        var $html = self.$("html");
+        $html.toggleClass("theme-dark");
       }
-    },
-  });
+    };
+
+  // create app instance
+  app = new Framework7(config);
 
   // init main view
   mainView = app.views.create('.view-main');
