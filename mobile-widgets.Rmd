@@ -1,1 +1,214 @@
 # Design widgets {#mobile-widgets}
+Framework7 brings dozen of different widgets like a photo browser, virtual lists (high performance lists),
+messages, notifications, toasts, ...
+
+Looking at the [documentation](https://v5.framework7.io/docs/), the API is most of the time
+always the same that is, we create the widget:
+
+```javascript
+app.widget.create(parameters);
+```
+
+and we update, open or close it later:
+
+```javascript
+app.widget.update(newParameters);
+app.widget.open();
+app.widget.close();
+```
+
+I must admit, there are few deviations like the navbar (`app.navbar.show()`) or the dialog but we have enough common points to
+design a main wrapper that creates any widget and update/open/close it.
+
+What we do below significantly simplify the R/JS API at a price to slightly reduce the
+customization. 
+
+## Build the UI
+We know that JavaScript must receive a configuration object to create the widget instance.
+As shown earlier in this book, there is a simple way to achieve this. Let's consider the [gauge](https://v5.framework7.io/docs/gauge.html) example. 
+
+On the UI side, we expect to have:
+
+```html
+<div class="gauge"></div>
+```
+
+Upon instantiating, Framework7 populates this container with the relevant tags.
+The `f7_gauge` function creates a `div` tag with the `gauge` class as well as a configuration
+tag:
+
+```{r, eval=FALSE}
+f7Gauge <- function(id, value, options = NULL) {
+
+  if (is.null(options$valueText)) options$valueText <- paste(options$value, "%")
+
+  gaugeProps <- c(list(value = value), options)
+
+  gaugeConfig <- shiny::tags$script(
+    type = "application/json",
+    `data-for` = id,
+    jsonlite::toJSON(
+      x = gaugeProps,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+
+  shiny::tags$div(
+    class = "gauge",
+    id = id,
+    gaugeConfig
+  )
+}
+```
+
+We provide a default for the `valueText` option that should display the current
+value followed by a `%` symbol. Note that the class is crucial to target the relevant tag on the JS side. 
+All other widgets will moreless follow the same scheme.
+
+
+## Widgets without preexisting UI
+There are few widgets like toasts, notifications that don't have any predefined UI
+element when the app starts. In this case, we simply send the configuration to JS, through
+the `session`:
+
+```{r, eval=FALSE}
+f7Notif <- function(text, options = NULL, session = shiny::getDefaultReactiveDomain()) {
+
+  if (!is.null(options$icon)) options$icon <- as.character(options$icon)
+
+  message <- c(list(text = text), options)
+  # see my-app.js function
+  session$sendCustomMessage(
+    type = "notification",
+    message = jsonlite::toJSON(
+      message,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
+    )
+  )
+
+}
+```
+
+Pay attention to the `icon` element: we can't convert shiny tags to JSON, so they
+must be converted to character first. If you multiple parameters may contain tags,
+you must treat them accordingly!
+
+## Initialize the widget
+On the JS side, we create an array containing all compatible widget names in two categories:
+
+```javascript
+const uiWidgets = ["gauge", "swiper", "searchbar"];
+const serverWidgets = ["toast", "photoBrowser", "notification"];
+const widgets = uiWidgets.concat(serverWidgets);
+```
+
+We then define the `activateWidget` function, only considering UI widgets. This function
+takes the current widget as parameter and checks whether it is part of the `uiWidgets` array:
+
+```javascript
+if (uiWidgets.indexOf(widget) > -1) {
+  // Do things
+}
+```
+
+As there may be multiple widgets of the same time to initialize, we must loop through all
+possible elements. This is where the class is important and must match the widget name.
+For instance, the gauge has the `gauge` class and the methods are always `app.gauge.`.
+How do we loop through multiple widgets? We use the jQuery `each` method:
+
+```javascript
+if (uiWidgets.indexOf(widget) > -1) {
+  $("." + widget).each(function() {
+    // Do things
+  }
+}
+```
+
+We see that `$("." + widget)` gives `$(".gauge)` when the widget is a gauge, which
+will target all gauges one by one. Then for each gauge, we extract the configuration containing
+all options passed by the end user. Remember that each element has a unique id. 
+We extract the current element `$(this)` in the `$el` variable and search for a 
+script tag pointing to the unique tag having `$el.attr("id")` as id. The configuration is parsed
+to convert it to an object. Note that most of the time, Framework7 expects to have a `el`
+attributes which simply contains the CSS selector of the current element, 
+in other words its unique id `'#' + $el.attr("id")`:
+
+```javascript
+if (uiWidgets.indexOf(widget) > -1) {
+  $("." + widget).each(function() {
+    var $el = $(this);
+    var config = $(document).find(
+      "script[data-for='" + $el.attr("id") + "']"
+    );
+    config = JSON.parse(config.html());
+    // add the id
+    config.el = '#' + $el.attr("id");
+  }
+}
+```
+
+The final step is to initialize the widget, which is quite straightforward if we notice that
+`app.gauge` is the same as `app["gauge"]`. We obtain the general code:
+
+```javascript
+app[widget].create(config);
+```
+
+For the server widgets, it is even simpler. We recover the message with a `Shiny.addCustomMessageHandler("type", callback)` and
+initialize it. The only possible source of problem is the custom message `type` that must be the same 
+as the one specified in the R function with `session$sendCustomMessage("type", message)`. We create
+an `else` statement following the `if` condition:
+
+```javascript
+Shiny.addCustomMessageHandler(widget, function(message) {
+  app[widget].create(message).open();
+});
+```
+
+As shown in the above code, we can also immediately open the widget by chaining methods. 
+
+The full JavaScript code may be found below.
+
+```javascript
+// Instantiate a widget
+activateWidget = function(widget) {
+  // Handle ui side widgets
+  if (uiWidgets.indexOf(widget) > -1) {
+    $("." + widget).each(function() {
+      var $el = $(this);
+      var config = $(document).find(
+        "script[data-for='" + $el.attr("id") + "']"
+      );
+      config = JSON.parse(config.html());
+      // add the id
+      config.el = '#' + $el.attr("id");
+
+      // feed the create method
+      app[widget].create(config);
+    });
+  } else {
+    // This concerns toasts, notifications, photoBrowser, ...
+    // that don't have any UI element in the DOM before creating
+    // the widget instance.
+    Shiny.addCustomMessageHandler(widget, function(message) {
+      app[widget].create(message).open();
+    });
+  }
+};
+```
+
+The final step is to activate all widgets. We proceed with a loop:
+
+```javascript
+// Loop over all widgets to activate them
+widgets.forEach(function(w) {
+  activateWidget(w);
+});
+```
+
+## Update widgets
+We would like to develop a similar generalized interface to update any element in the DOM.
+Instead of having `update_f7_gauge`, `update_f7_notification`, ... we want an `update_f7_instance` function. 
+

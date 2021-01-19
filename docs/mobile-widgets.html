@@ -81,7 +81,177 @@
 <h1>
 <span class="header-section-number">26</span> Design widgets<a class="anchor" aria-label="anchor" href="#mobile-widgets"><i class="fas fa-link"></i></a>
 </h1>
+<p>Framework7 brings dozen of different widgets like a photo browser, virtual lists (high performance lists),
+messages, notifications, toasts, …</p>
+<p>Looking at the <a href="https://v5.framework7.io/docs/">documentation</a>, the API is most of the time
+always the same that is, we create the widget:</p>
+<div class="sourceCode" id="cb593"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb593-1"><a href="mobile-widgets.html#cb593-1"></a><span class="va">app</span>.<span class="va">widget</span>.<span class="at">create</span>(parameters)<span class="op">;</span></span></code></pre></div>
+<p>and we update, open or close it later:</p>
+<div class="sourceCode" id="cb594"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb594-1"><a href="mobile-widgets.html#cb594-1"></a><span class="va">app</span>.<span class="va">widget</span>.<span class="at">update</span>(newParameters)<span class="op">;</span></span>
+<span id="cb594-2"><a href="mobile-widgets.html#cb594-2"></a><span class="va">app</span>.<span class="va">widget</span>.<span class="at">open</span>()<span class="op">;</span></span>
+<span id="cb594-3"><a href="mobile-widgets.html#cb594-3"></a><span class="va">app</span>.<span class="va">widget</span>.<span class="at">close</span>()<span class="op">;</span></span></code></pre></div>
+<p>I must admit, there are few deviations like the navbar (<code>app.navbar.show()</code>) or the dialog but we have enough common points to
+design a main wrapper that creates any widget and update/open/close it.</p>
+<p>What we do below significantly simplify the R/JS API at a price to slightly reduce the
+customization.</p>
+<div id="build-the-ui" class="section level2">
+<h2>
+<span class="header-section-number">26.1</span> Build the UI<a class="anchor" aria-label="anchor" href="#build-the-ui"><i class="fas fa-link"></i></a>
+</h2>
+<p>We know that JavaScript must receive a configuration object to create the widget instance.
+As shown earlier in this book, there is a simple way to achieve this. Let’s consider the <a href="https://v5.framework7.io/docs/gauge.html">gauge</a> example.</p>
+<p>On the UI side, we expect to have:</p>
+<div class="sourceCode" id="cb595"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb595-1"><a href="mobile-widgets.html#cb595-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"gauge"</span><span class="kw">&gt;&lt;/div&gt;</span></span></code></pre></div>
+<p>Upon instantiating, Framework7 populates this container with the relevant tags.
+The <code>f7_gauge</code> function creates a <code>div</code> tag with the <code>gauge</code> class as well as a configuration
+tag:</p>
+<div class="sourceCode" id="cb596"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">f7Gauge</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">value</span>, <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
 
+  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">options</span><span class="op">$</span><span class="va">valueText</span><span class="op">)</span><span class="op">)</span> <span class="va">options</span><span class="op">$</span><span class="va">valueText</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">options</span><span class="op">$</span><span class="va">value</span>, <span class="st">"%"</span><span class="op">)</span>
+
+  <span class="va">gaugeProps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>value <span class="op">=</span> <span class="va">value</span><span class="op">)</span>, <span class="va">options</span><span class="op">)</span>
+
+  <span class="va">gaugeConfig</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">tags</a></span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
+    type <span class="op">=</span> <span class="st">"application/json"</span>,
+    `data-for` <span class="op">=</span> <span class="va">id</span>,
+    <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span>
+      x <span class="op">=</span> <span class="va">gaugeProps</span>,
+      auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>,
+      json_verbatim <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+
+  <span class="fu">shiny</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">tags</a></span><span class="op">$</span><span class="fu">div</span><span class="op">(</span>
+    class <span class="op">=</span> <span class="st">"gauge"</span>,
+    id <span class="op">=</span> <span class="va">id</span>,
+    <span class="va">gaugeConfig</span>
+  <span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>We provide a default for the <code>valueText</code> option that should display the current
+value followed by a <code>%</code> symbol. Note that the class is crucial to target the relevant tag on the JS side.
+All other widgets will moreless follow the same scheme.</p>
+</div>
+<div id="widgets-without-preexisting-ui" class="section level2">
+<h2>
+<span class="header-section-number">26.2</span> Widgets without preexisting UI<a class="anchor" aria-label="anchor" href="#widgets-without-preexisting-ui"><i class="fas fa-link"></i></a>
+</h2>
+<p>There are few widgets like toasts, notifications that don’t have any predefined UI
+element when the app starts. In this case, we simply send the configuration to JS, through
+the <code>session</code>:</p>
+<div class="sourceCode" id="cb597"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">f7Notif</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">text</span>, <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://shiny.rstudio.com/reference/shiny/latest/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+
+  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">options</span><span class="op">$</span><span class="va">icon</span><span class="op">)</span><span class="op">)</span> <span class="va">options</span><span class="op">$</span><span class="va">icon</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">options</span><span class="op">$</span><span class="va">icon</span><span class="op">)</span>
+
+  <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>text <span class="op">=</span> <span class="va">text</span><span class="op">)</span>, <span class="va">options</span><span class="op">)</span>
+  <span class="co"># see my-app.js function</span>
+  <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>
+    type <span class="op">=</span> <span class="st">"notification"</span>,
+    message <span class="op">=</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span>
+      <span class="va">message</span>,
+      auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>,
+      json_verbatim <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="op">}</span></code></pre></div>
+<p>Pay attention to the <code>icon</code> element: we can’t convert shiny tags to JSON, so they
+must be converted to character first. If you multiple parameters may contain tags,
+you must treat them accordingly!</p>
+</div>
+<div id="initialize-the-widget" class="section level2">
+<h2>
+<span class="header-section-number">26.3</span> Initialize the widget<a class="anchor" aria-label="anchor" href="#initialize-the-widget"><i class="fas fa-link"></i></a>
+</h2>
+<p>On the JS side, we create an array containing all compatible widget names in two categories:</p>
+<div class="sourceCode" id="cb598"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb598-1"><a href="mobile-widgets.html#cb598-1"></a><span class="kw">const</span> uiWidgets <span class="op">=</span> [<span class="st">"gauge"</span><span class="op">,</span> <span class="st">"swiper"</span><span class="op">,</span> <span class="st">"searchbar"</span>]<span class="op">;</span></span>
+<span id="cb598-2"><a href="mobile-widgets.html#cb598-2"></a><span class="kw">const</span> serverWidgets <span class="op">=</span> [<span class="st">"toast"</span><span class="op">,</span> <span class="st">"photoBrowser"</span><span class="op">,</span> <span class="st">"notification"</span>]<span class="op">;</span></span>
+<span id="cb598-3"><a href="mobile-widgets.html#cb598-3"></a><span class="kw">const</span> widgets <span class="op">=</span> <span class="va">uiWidgets</span>.<span class="at">concat</span>(serverWidgets)<span class="op">;</span></span></code></pre></div>
+<p>We then define the <code>activateWidget</code> function, only considering UI widgets. This function
+takes the current widget as parameter and checks whether it is part of the <code>uiWidgets</code> array:</p>
+<div class="sourceCode" id="cb599"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb599-1"><a href="mobile-widgets.html#cb599-1"></a><span class="cf">if</span> (<span class="va">uiWidgets</span>.<span class="at">indexOf</span>(widget) <span class="op">&gt;</span> <span class="dv">-1</span>) <span class="op">{</span></span>
+<span id="cb599-2"><a href="mobile-widgets.html#cb599-2"></a>  <span class="co">// Do things</span></span>
+<span id="cb599-3"><a href="mobile-widgets.html#cb599-3"></a><span class="op">}</span></span></code></pre></div>
+<p>As there may be multiple widgets of the same time to initialize, we must loop through all
+possible elements. This is where the class is important and must match the widget name.
+For instance, the gauge has the <code>gauge</code> class and the methods are always <code>app.gauge.</code>.
+How do we loop through multiple widgets? We use the jQuery <code>each</code> method:</p>
+<div class="sourceCode" id="cb600"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb600-1"><a href="mobile-widgets.html#cb600-1"></a><span class="cf">if</span> (<span class="va">uiWidgets</span>.<span class="at">indexOf</span>(widget) <span class="op">&gt;</span> <span class="dv">-1</span>) <span class="op">{</span></span>
+<span id="cb600-2"><a href="mobile-widgets.html#cb600-2"></a>  <span class="at">$</span>(<span class="st">"."</span> <span class="op">+</span> widget).<span class="at">each</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb600-3"><a href="mobile-widgets.html#cb600-3"></a>    <span class="co">// Do things</span></span>
+<span id="cb600-4"><a href="mobile-widgets.html#cb600-4"></a>  <span class="op">}</span></span>
+<span id="cb600-5"><a href="mobile-widgets.html#cb600-5"></a><span class="op">}</span></span></code></pre></div>
+<p>We see that <code>$("." + widget)</code> gives <code>$(".gauge)</code> when the widget is a gauge, which
+will target all gauges one by one. Then for each gauge, we extract the configuration containing
+all options passed by the end user. Remember that each element has a unique id.
+We extract the current element <code>$(this)</code> in the <code>$el</code> variable and search for a
+script tag pointing to the unique tag having <code>$el.attr("id")</code> as id. The configuration is parsed
+to convert it to an object. Note that most of the time, Framework7 expects to have a <code>el</code>
+attributes which simply contains the CSS selector of the current element,
+in other words its unique id <code>'#' + $el.attr("id")</code>:</p>
+<div class="sourceCode" id="cb601"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb601-1"><a href="mobile-widgets.html#cb601-1"></a><span class="cf">if</span> (<span class="va">uiWidgets</span>.<span class="at">indexOf</span>(widget) <span class="op">&gt;</span> <span class="dv">-1</span>) <span class="op">{</span></span>
+<span id="cb601-2"><a href="mobile-widgets.html#cb601-2"></a>  <span class="at">$</span>(<span class="st">"."</span> <span class="op">+</span> widget).<span class="at">each</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb601-3"><a href="mobile-widgets.html#cb601-3"></a>    <span class="kw">var</span> $el <span class="op">=</span> <span class="at">$</span>(<span class="kw">this</span>)<span class="op">;</span></span>
+<span id="cb601-4"><a href="mobile-widgets.html#cb601-4"></a>    <span class="kw">var</span> config <span class="op">=</span> <span class="at">$</span>(document).<span class="at">find</span>(</span>
+<span id="cb601-5"><a href="mobile-widgets.html#cb601-5"></a>      <span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">$el</span>.<span class="at">attr</span>(<span class="st">"id"</span>) <span class="op">+</span> <span class="st">"']"</span></span>
+<span id="cb601-6"><a href="mobile-widgets.html#cb601-6"></a>    )<span class="op">;</span></span>
+<span id="cb601-7"><a href="mobile-widgets.html#cb601-7"></a>    config <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">config</span>.<span class="at">html</span>())<span class="op">;</span></span>
+<span id="cb601-8"><a href="mobile-widgets.html#cb601-8"></a>    <span class="co">// add the id</span></span>
+<span id="cb601-9"><a href="mobile-widgets.html#cb601-9"></a>    <span class="va">config</span>.<span class="at">el</span> <span class="op">=</span> <span class="st">'#'</span> <span class="op">+</span> <span class="va">$el</span>.<span class="at">attr</span>(<span class="st">"id"</span>)<span class="op">;</span></span>
+<span id="cb601-10"><a href="mobile-widgets.html#cb601-10"></a>  <span class="op">}</span></span>
+<span id="cb601-11"><a href="mobile-widgets.html#cb601-11"></a><span class="op">}</span></span></code></pre></div>
+<p>The final step is to initialize the widget, which is quite straightforward if we notice that
+<code>app.gauge</code> is the same as <code>app["gauge"]</code>. We obtain the general code:</p>
+<div class="sourceCode" id="cb602"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb602-1"><a href="mobile-widgets.html#cb602-1"></a>app[widget].<span class="at">create</span>(config)<span class="op">;</span></span></code></pre></div>
+<p>For the server widgets, it is even simpler. We recover the message with a <code>Shiny.addCustomMessageHandler("type", callback)</code> and
+initialize it. The only possible source of problem is the custom message <code>type</code> that must be the same
+as the one specified in the R function with <code>session$sendCustomMessage("type", message)</code>. We create
+an <code>else</code> statement following the <code>if</code> condition:</p>
+<div class="sourceCode" id="cb603"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb603-1"><a href="mobile-widgets.html#cb603-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(widget<span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb603-2"><a href="mobile-widgets.html#cb603-2"></a>  app[widget].<span class="at">create</span>(message).<span class="at">open</span>()<span class="op">;</span></span>
+<span id="cb603-3"><a href="mobile-widgets.html#cb603-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>As shown in the above code, we can also immediately open the widget by chaining methods.</p>
+<p>The full JavaScript code may be found below.</p>
+<div class="sourceCode" id="cb604"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb604-1"><a href="mobile-widgets.html#cb604-1"></a><span class="co">// Instantiate a widget</span></span>
+<span id="cb604-2"><a href="mobile-widgets.html#cb604-2"></a>activateWidget <span class="op">=</span> <span class="kw">function</span>(widget) <span class="op">{</span></span>
+<span id="cb604-3"><a href="mobile-widgets.html#cb604-3"></a>  <span class="co">// Handle ui side widgets</span></span>
+<span id="cb604-4"><a href="mobile-widgets.html#cb604-4"></a>  <span class="cf">if</span> (<span class="va">uiWidgets</span>.<span class="at">indexOf</span>(widget) <span class="op">&gt;</span> <span class="dv">-1</span>) <span class="op">{</span></span>
+<span id="cb604-5"><a href="mobile-widgets.html#cb604-5"></a>    <span class="at">$</span>(<span class="st">"."</span> <span class="op">+</span> widget).<span class="at">each</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb604-6"><a href="mobile-widgets.html#cb604-6"></a>      <span class="kw">var</span> $el <span class="op">=</span> <span class="at">$</span>(<span class="kw">this</span>)<span class="op">;</span></span>
+<span id="cb604-7"><a href="mobile-widgets.html#cb604-7"></a>      <span class="kw">var</span> config <span class="op">=</span> <span class="at">$</span>(document).<span class="at">find</span>(</span>
+<span id="cb604-8"><a href="mobile-widgets.html#cb604-8"></a>        <span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">$el</span>.<span class="at">attr</span>(<span class="st">"id"</span>) <span class="op">+</span> <span class="st">"']"</span></span>
+<span id="cb604-9"><a href="mobile-widgets.html#cb604-9"></a>      )<span class="op">;</span></span>
+<span id="cb604-10"><a href="mobile-widgets.html#cb604-10"></a>      config <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">config</span>.<span class="at">html</span>())<span class="op">;</span></span>
+<span id="cb604-11"><a href="mobile-widgets.html#cb604-11"></a>      <span class="co">// add the id</span></span>
+<span id="cb604-12"><a href="mobile-widgets.html#cb604-12"></a>      <span class="va">config</span>.<span class="at">el</span> <span class="op">=</span> <span class="st">'#'</span> <span class="op">+</span> <span class="va">$el</span>.<span class="at">attr</span>(<span class="st">"id"</span>)<span class="op">;</span></span>
+<span id="cb604-13"><a href="mobile-widgets.html#cb604-13"></a></span>
+<span id="cb604-14"><a href="mobile-widgets.html#cb604-14"></a>      <span class="co">// feed the create method</span></span>
+<span id="cb604-15"><a href="mobile-widgets.html#cb604-15"></a>      app[widget].<span class="at">create</span>(config)<span class="op">;</span></span>
+<span id="cb604-16"><a href="mobile-widgets.html#cb604-16"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb604-17"><a href="mobile-widgets.html#cb604-17"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb604-18"><a href="mobile-widgets.html#cb604-18"></a>    <span class="co">// This concerns toasts, notifications, photoBrowser, ...</span></span>
+<span id="cb604-19"><a href="mobile-widgets.html#cb604-19"></a>    <span class="co">// that don't have any UI element in the DOM before creating</span></span>
+<span id="cb604-20"><a href="mobile-widgets.html#cb604-20"></a>    <span class="co">// the widget instance.</span></span>
+<span id="cb604-21"><a href="mobile-widgets.html#cb604-21"></a>    <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(widget<span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb604-22"><a href="mobile-widgets.html#cb604-22"></a>      app[widget].<span class="at">create</span>(message).<span class="at">open</span>()<span class="op">;</span></span>
+<span id="cb604-23"><a href="mobile-widgets.html#cb604-23"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb604-24"><a href="mobile-widgets.html#cb604-24"></a>  <span class="op">}</span></span>
+<span id="cb604-25"><a href="mobile-widgets.html#cb604-25"></a><span class="op">};</span></span></code></pre></div>
+<p>The final step is to activate all widgets. We proceed with a loop:</p>
+<div class="sourceCode" id="cb605"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb605-1"><a href="mobile-widgets.html#cb605-1"></a><span class="co">// Loop over all widgets to activate them</span></span>
+<span id="cb605-2"><a href="mobile-widgets.html#cb605-2"></a><span class="va">widgets</span>.<span class="at">forEach</span>(<span class="kw">function</span>(w) <span class="op">{</span></span>
+<span id="cb605-3"><a href="mobile-widgets.html#cb605-3"></a>  <span class="at">activateWidget</span>(w)<span class="op">;</span></span>
+<span id="cb605-4"><a href="mobile-widgets.html#cb605-4"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+</div>
+<div id="update-widgets" class="section level2">
+<h2>
+<span class="header-section-number">26.4</span> Update widgets<a class="anchor" aria-label="anchor" href="#update-widgets"><i class="fas fa-link"></i></a>
+</h2>
+<p>We would like to develop a similar generalized interface to update any element in the DOM.
+Instead of having <code>update_f7_gauge</code>, <code>update_f7_notification</code>, … we want an <code>update_f7_instance</code> function.</p>
+
+</div>
 </div>
 
 
@@ -92,7 +262,13 @@
 <div class="next"><a href="going-further-reactR.html"><span class="header-section-number">27</span> R + Shiny + React: welcome {reactR}</a></div>
 </div></main><div class="col-md-3 col-lg-2 d-none d-md-block sidebar sidebar-chapter">
     <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
-      <ul class="nav navbar-nav"><li><a class="nav-link" href="#mobile-widgets"><span class="header-section-number">26</span> Design widgets</a></li></ul>
+      <ul class="nav navbar-nav">
+<li><a class="nav-link" href="#mobile-widgets"><span class="header-section-number">26</span> Design widgets</a></li>
+<li><a class="nav-link" href="#build-the-ui"><span class="header-section-number">26.1</span> Build the UI</a></li>
+<li><a class="nav-link" href="#widgets-without-preexisting-ui"><span class="header-section-number">26.2</span> Widgets without preexisting UI</a></li>
+<li><a class="nav-link" href="#initialize-the-widget"><span class="header-section-number">26.3</span> Initialize the widget</a></li>
+<li><a class="nav-link" href="#update-widgets"><span class="header-section-number">26.4</span> Update widgets</a></li>
+</ul>
 
       <div class="book-extra">
         <ul class="list-unstyled">
@@ -113,7 +289,7 @@
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2021-01-15.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It waslast built on 2021-01-19.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
