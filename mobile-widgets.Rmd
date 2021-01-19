@@ -92,11 +92,19 @@ f7Notif <- function(text, options = NULL, session = shiny::getDefaultReactiveDom
 ```
 
 Pay attention to the `icon` element: we can't convert shiny tags to JSON, so they
-must be converted to character first. If you multiple parameters may contain tags,
+must be converted to character first. If multiple parameters should contain tags,
 you must treat them accordingly!
 
 ## Initialize the widget
-On the JS side, we create an array containing all compatible widget names in two categories:
+On the JS side, we create a new script, `widgets.js` 
+
+```{r, eval=FALSE}
+library(charpente)
+create_js("widgets")
+```
+
+We set an array containing all compatible widget names in two categories and concatenate
+in a `widgets` element:
 
 ```javascript
 const uiWidgets = ["gauge", "swiper", "searchbar"];
@@ -104,8 +112,8 @@ const serverWidgets = ["toast", "photoBrowser", "notification"];
 const widgets = uiWidgets.concat(serverWidgets);
 ```
 
-We then define the `activateWidget` function, only considering UI widgets. This function
-takes the current widget as parameter and checks whether it is part of the `uiWidgets` array:
+We then define the `activateWidget` function, only considering UI widgets. 
+Since we have two widgets categories, this function first checks whether the widget is part of the `uiWidgets` array:
 
 ```javascript
 if (uiWidgets.indexOf(widget) > -1) {
@@ -159,7 +167,7 @@ app[widget].create(config);
 For the server widgets, it is even simpler. We recover the message with a `Shiny.addCustomMessageHandler("type", callback)` and
 initialize it. The only possible source of problem is the custom message `type` that must be the same 
 as the one specified in the R function with `session$sendCustomMessage("type", message)`. We create
-an `else` statement following the `if` condition:
+an `else` statement following the `if` condition and put that code inside:
 
 ```javascript
 Shiny.addCustomMessageHandler(widget, function(message) {
@@ -212,3 +220,203 @@ widgets.forEach(function(w) {
 We would like to develop a similar generalized interface to update any element in the DOM.
 Instead of having `update_f7_gauge`, `update_f7_notification`, ... we want an `update_f7_instance` function. 
 
+We leverage the `app.data` element that stores all instances by widget type. In the previous part,
+we already created a cache for tooltips, so let's do it for gauges:
+
+```javascript
+config.data = function() {
+  return {
+    // any other widget type to cache ...
+    gauge: []
+  };
+};
+```
+
+At that step, the array name must be the same as the app method. For instance,
+we have `app.gauge`, which means that we should create `config.data.gauge` and not `config.data.gauges`,
+as it would lead to errors later.
+
+Once the cache is available, we have to modify the JavaScript that creates the widget instance,
+to store the new instance in the cache. We add the following code, where w refers to the widget instance:
+
+```javascript
+// ui widgets
+app.data[widget][$el.attr("id")] = w;
+// server widgets
+app.data[widget][message.id] = w;
+```
+
+Only the `id` location differs depending on the widget definition (ui vs server).
+
+The `activateWidget` function should be:
+
+```javascript
+// Instantiate a widget
+activateWidget = function(widget) {
+  // Handle ui side widgets
+  if (uiWidgets.indexOf(widget) > -1) {
+    $("." + widget).each(function() {
+      var $el = $(this);
+      var config = $(document).find(
+        "script[data-for='" + $el.attr("id") + "']"
+      );
+      config = JSON.parse(config.html());
+      // add the id
+      config.el = '#' + $el.attr("id");
+
+      // feed the create method
+      var w = app[widget].create(config);
+      // Store the widget instance in the app data cache
+      app.data[widget][$el.attr("id")] = w;
+    });
+  } else {
+    // This concerns toasts, notifications, photoBrowser, ...
+    // that don't have any UI element in the DOM before creating
+    // the widget instance.
+    Shiny.addCustomMessageHandler(widget, function(message) {
+      var w = app[widget].create(message);
+      app.data[widget][message.id] = w;
+      w.open();
+    });
+  }
+};
+```
+
+Once done, this is time to design `update_f7_instance`. The R code sends a message to
+the current session containing:
+
+  - The id of the element to update.
+  - The new configuration.
+  
+Since we send a JSON, the hardest part is to correctly process shiny tags. How do we
+track shiny tags. As a reminder, let's run the code below:
+
+```{r}
+class(shiny::div())
+class(shiny::tagList(shiny::div(), shiny::h1()))
+```
+
+For each configuration element, we must check whether its class contains `shiny.tag` or `shiny.tag.list` and convert it to a character. Moreover, it may contain a nested list like:
+
+```{r, eval = FALSE}
+options = list(
+  buttons = list(
+   list(
+     text = "Notification",
+     icon = f7Icon("info"),
+     color = NULL
+   )
+  )
+)
+```
+
+In that case, our function must be recursive and call itself whenever an item having the `list` class
+is found. If the element is simple text, numeric, we return it as is.
+
+We finally get:
+
+```{r, eval=FALSE}
+update_f7_instance <- function(id, options, session = shiny::getDefaultReactiveDomain()) {
+
+  # Convert any shiny tag into character so that toJSON does not cry
+  listRenderTags <- function(l) {
+    lapply(
+      X = l,
+      function(x) {
+        if (inherits(x, c("shiny.tag", "shiny.tag.list"))) {
+          as.character(x)
+        } else if (inherits(x, "list")) {
+          # Recursive part
+          listRenderTags(x)
+        } else {
+          x
+        }
+      }
+    )
+  }
+  options <- listRenderTags(options)
+
+  message <- list(id = id, options = options)
+  sendCustomMessage("update-instance", message, session)
+}
+```
+
+On the JS side, we receive the message (still in the `widget.js` script):
+
+```javascript
+Shiny.addCustomMessageHandler('update-instance', function(message) {
+  // Treat message ...
+});
+```
+
+All widgets are stored by type in the app data, for instance, the element having for unique id
+`mygauge` is located in `app.data["gauge"]["mygauge"]`. As there is no easy way to recover the widget type
+given its id, the first step of the message handler is to find where our instance is located. We design a
+nested for loop. The outer loop scans all app.data properties (ie widget categories) and the inner loop
+scans all existing instances for each category. Whenever, the `message.id` matches the instance
+name, we store the corresponding widget category in a variable:
+
+```javascript
+var instanceFamily;
+for (const property in app.data) {
+  for (const e in app.data[property]) {
+    if (e === message.id) {
+      instanceFamily = property;
+    }
+  }
+}
+```
+
+We then access the old instance using the newly defined variable and the `message.id`.
+We capture its parameters located in `oldInstance.params`. From there, multiple options are available:
+
+  - We extend the old configuration by the new one.
+  - We entirely overwrite the existing options. 
+  
+Below, we decided to merge the old and new configurations using `app.utils.extend`:
+
+```javascript
+var oldInstance = app.data[instanceFamily][message.id];
+var oldConfig = oldInstance.params;
+var newConfig = app.utils.extend(oldConfig,  message.options);
+```
+
+The next step is to destroy the old instance, initialize the new instance and refresh 
+the `app.data` cache:
+
+```javascript
+// Destroy old instance
+oldInstance.destroy();
+// Create new config
+var newInstance = app[instanceFamily].create(newConfig);
+// Update app data
+app.data[instanceFamily][message.id] = newInstance;
+```
+
+The whole code is located below:
+
+```javascript
+Shiny.addCustomMessageHandler('update-instance', function(message) {
+  // Recover in which array is stored the given instance.
+  // Uniqueness is ensured since HTML id are supposed to be unique.
+  var instanceFamily;
+  for (const property in app.data) {
+    for (const e in app.data[property]) {
+      if (e === message.id) {
+        instanceFamily = property;
+      }
+    }
+  }
+
+  var oldInstance = app.data[instanceFamily][message.id];
+  var oldConfig = oldInstance.params;
+  var newConfig = app.utils.extend(oldConfig,  message.options);
+
+  // Destroy old instance
+  oldInstance.destroy();
+  // Create new config
+  var newInstance = app[instanceFamily].create(newConfig);
+  // Update app data
+  app.data[instanceFamily][message.id] = newInstance;
+});
+```
