@@ -38,7 +38,7 @@ The `f7_gauge` function creates a `div` tag with the `gauge` class as well as a 
 tag:
 
 ```{r, eval=FALSE}
-f7Gauge <- function(id, value, options = NULL) {
+f7_gauge <- function(id, value, options = NULL) {
 
   if (is.null(options$valueText)) options$valueText <- paste(options$value, "%")
 
@@ -73,20 +73,13 @@ element when the app starts. In this case, we simply send the configuration to J
 the `session`:
 
 ```{r, eval=FALSE}
-f7Notif <- function(text, options = NULL, session = shiny::getDefaultReactiveDomain()) {
+f7_notif <- function(id, text, options = NULL, session = shiny::getDefaultReactiveDomain()) {
 
   if (!is.null(options$icon)) options$icon <- as.character(options$icon)
 
-  message <- c(list(text = text), options)
+  message <- c(list(id = id, text = text), options)
   # see my-app.js function
-  session$sendCustomMessage(
-    type = "notification",
-    message = jsonlite::toJSON(
-      message,
-      auto_unbox = TRUE,
-      json_verbatim = TRUE
-    )
-  )
+  sendCustomMessage("notification", message, session)
 
 }
 ```
@@ -221,13 +214,14 @@ We would like to develop a similar generalized interface to update any element i
 Instead of having `update_f7_gauge`, `update_f7_notification`, ... we want an `update_f7_instance` function. 
 
 We leverage the `app.data` element that stores all instances by widget type. In the previous part,
-we already created a cache for tooltips, so let's do it for gauges:
+we already created a cache for tooltips, so let's do it for gauges and notifications:
 
 ```javascript
 config.data = function() {
   return {
     // any other widget type to cache ...
-    gauge: []
+    gauge: [],
+    notification: []
   };
 };
 ```
@@ -381,16 +375,32 @@ var oldConfig = oldInstance.params;
 var newConfig = app.utils.extend(oldConfig,  message.options);
 ```
 
-The next step is to destroy the old instance, initialize the new instance and refresh 
+The next step is to close the old instance if it belongs to a server widget (it may happen
+that the widget is configured not to be automatically close. This avoids widgets to overlap), 
+destroy the old instance, initialize the new instance and refresh 
 the `app.data` cache:
 
 ```javascript
+// Also close old instance
+if (serverWidgets.indexOf(instanceFamily) > -1) {
+  oldInstance.close();
+}
 // Destroy old instance
 oldInstance.destroy();
 // Create new config
 var newInstance = app[instanceFamily].create(newConfig);
 // Update app data
 app.data[instanceFamily][message.id] = newInstance;
+```
+
+We may also want to open the new instance if it's generated from the server like toasts or
+notifications:
+
+```javascript
+// Open new instance if required
+if (serverWidgets.indexOf(instanceFamily) > -1) {
+  newInstance.open();
+}
 ```
 
 The whole code is located below:
@@ -416,6 +426,10 @@ Shiny.addCustomMessageHandler('update-instance', function(message) {
   oldInstance.destroy();
   // Create new config
   var newInstance = app[instanceFamily].create(newConfig);
+  // Open new instance if required
+  if (serverWidgets.indexOf(instanceFamily) > -1) {
+    newInstance.open();
+  }
   // Update app data
   app.data[instanceFamily][message.id] = newInstance;
 });
