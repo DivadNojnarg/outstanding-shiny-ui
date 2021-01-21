@@ -40,9 +40,9 @@ tag:
 ```{r, eval=FALSE}
 f7_gauge <- function(id, value, options = NULL) {
 
-  if (is.null(options[["valueText"]])) options[["valueText"]] <- paste(value, "%")
+  if (is.null(options[["valueText"]])) options[["valueText"]] <- paste(value * 100, "%")
 
-  gaugeProps <- c(list(value = value / 100), options)
+  gaugeProps <- c(list(value = value), options)
 
   gaugeConfig <- shiny::tags$script(
     type = "application/json",
@@ -484,4 +484,54 @@ Shiny.addCustomMessageHandler('update-instance', function(message) {
   // Update app data
   app.data[instanceFamily][message.id] = newInstance;
 });
+```
+
+Below is an example showing how to update a gauge from the server. As you may notice, this
+approach is not perfect as the user has to explicitly update the `valueText` field so that
+it reflects the new value. Similarly, you may ask why the gauge value has to be between 0 and 1,
+instead of 0 and 100. The reason comes from the Framework7 API. One might be tempted to convert the value inside `f7_gauge` (so that the user only provides number between 0 and 100), but
+this would also mean to manually convert the value in the `update_f7_instance` function later. As stated in previous chapters, there is always a compromise to do between a simple API easy to maintain (for the developer) and user experience. This issue may/should be solved by a comprehensive documentation.
+
+```{r, eval=FALSE}
+ui <- f7_page(
+  f7_gauge(
+    "mygauge", 
+    value = 0.1,
+    options = list(
+      type  = "semicircle",
+      borderColor = "#2196f3",
+      borderWidth = 10,
+      valueFontSize = 41,
+      valueTextColor = "#2196f3",
+      labelText = "amount of something"
+    )
+  ),
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile",
+  options = list(
+    theme = "ios",
+    version = "1.0.0",
+    taphold = TRUE,
+    color = "#42f5a1",
+    filled = TRUE,
+    dark = TRUE
+  )
+)
+
+server <- function(input, output, session) {
+  observe({
+    Sys.sleep(2)
+    update_f7_instance(
+      "mygauge", 
+      options = list(
+        value = 0.75, 
+        valueText = "75 %", 
+        labelText = "New label!"
+      )
+    )
+  })
+}
+
+shinyApp(ui, server)
 ```

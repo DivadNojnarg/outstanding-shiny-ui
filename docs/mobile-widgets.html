@@ -108,9 +108,9 @@ tag:</p>
 <div class="sourceCode" id="cb596"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">f7_gauge</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">value</span>, <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
 
-  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">options</span><span class="op">[[</span><span class="st">"valueText"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="va">options</span><span class="op">[[</span><span class="st">"valueText"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">value</span>, <span class="st">"%"</span><span class="op">)</span>
+  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">options</span><span class="op">[[</span><span class="st">"valueText"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="va">options</span><span class="op">[[</span><span class="st">"valueText"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="va">value</span> <span class="op">*</span> <span class="fl">100</span>, <span class="st">"%"</span><span class="op">)</span>
 
-  <span class="va">gaugeProps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>value <span class="op">=</span> <span class="va">value</span> <span class="op">/</span> <span class="fl">100</span><span class="op">)</span>, <span class="va">options</span><span class="op">)</span>
+  <span class="va">gaugeProps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>value <span class="op">=</span> <span class="va">value</span><span class="op">)</span>, <span class="va">options</span><span class="op">)</span>
 
   <span class="va">gaugeConfig</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">tags</a></span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
     type <span class="op">=</span> <span class="st">"application/json"</span>,
@@ -476,6 +476,53 @@ the <code>app.data</code> cache:</p>
 <span id="cb621-21"><a href="mobile-widgets.html#cb621-21"></a>  <span class="co">// Update app data</span></span>
 <span id="cb621-22"><a href="mobile-widgets.html#cb621-22"></a>  <span class="va">app</span>.<span class="at">data</span>[instanceFamily][<span class="va">message</span>.<span class="at">id</span>] <span class="op">=</span> newInstance<span class="op">;</span></span>
 <span id="cb621-23"><a href="mobile-widgets.html#cb621-23"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>Below is an example showing how to update a gauge from the server. As you may notice, this
+approach is not perfect as the user has to explicitly update the <code>valueText</code> field so that
+it reflects the new value. Similarly, you may ask why the gauge value has to be between 0 and 1,
+instead of 0 and 100. The reason comes from the Framework7 API. One might be tempted to convert the value inside <code>f7_gauge</code> (so that the user only provides number between 0 and 100), but
+this would also mean to manually convert the value in the <code>update_f7_instance</code> function later. As stated in previous chapters, there is always a compromise to do between a simple API easy to maintain (for the developer) and user experience. This issue may/should be solved by a comprehensive documentation.</p>
+<div class="sourceCode" id="cb622"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">f7_page</span><span class="op">(</span>
+  <span class="fu">f7_gauge</span><span class="op">(</span>
+    <span class="st">"mygauge"</span>, 
+    value <span class="op">=</span> <span class="fl">0.1</span>,
+    options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+      type  <span class="op">=</span> <span class="st">"semicircle"</span>,
+      borderColor <span class="op">=</span> <span class="st">"#2196f3"</span>,
+      borderWidth <span class="op">=</span> <span class="fl">10</span>,
+      valueFontSize <span class="op">=</span> <span class="fl">41</span>,
+      valueTextColor <span class="op">=</span> <span class="st">"#2196f3"</span>,
+      labelText <span class="op">=</span> <span class="st">"amount of something"</span>
+    <span class="op">)</span>
+  <span class="op">)</span>,
+  navbar <span class="op">=</span> <span class="fu">f7_navbar</span><span class="op">(</span><span class="st">"Title"</span><span class="op">)</span>,
+  toolbar <span class="op">=</span> <span class="fu">f7_toolbar</span><span class="op">(</span><span class="op">)</span>,
+  title <span class="op">=</span> <span class="st">"shinyMobile"</span>,
+  options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+    theme <span class="op">=</span> <span class="st">"ios"</span>,
+    version <span class="op">=</span> <span class="st">"1.0.0"</span>,
+    taphold <span class="op">=</span> <span class="cn">TRUE</span>,
+    color <span class="op">=</span> <span class="st">"#42f5a1"</span>,
+    filled <span class="op">=</span> <span class="cn">TRUE</span>,
+    dark <span class="op">=</span> <span class="cn">TRUE</span>
+  <span class="op">)</span>
+<span class="op">)</span>
+
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://shiny.rstudio.com/reference/shiny/latest/observe.html">observe</a></span><span class="op">(</span><span class="op">{</span>
+    <span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html">Sys.sleep</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>
+    <span class="fu">update_f7_instance</span><span class="op">(</span>
+      <span class="st">"mygauge"</span>, 
+      options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+        value <span class="op">=</span> <span class="fl">0.75</span>, 
+        valueText <span class="op">=</span> <span class="st">"75 %"</span>, 
+        labelText <span class="op">=</span> <span class="st">"New label!"</span>
+      <span class="op">)</span>
+    <span class="op">)</span>
+  <span class="op">}</span><span class="op">)</span>
+<span class="op">}</span>
+
+<span class="fu"><a href="https://shiny.rstudio.com/reference/shiny/latest/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 
 </div>
 </div>
