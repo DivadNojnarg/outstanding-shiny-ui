@@ -40,9 +40,9 @@ tag:
 ```{r, eval=FALSE}
 f7_gauge <- function(id, value, options = NULL) {
 
-  if (is.null(options$valueText)) options$valueText <- paste(options$value, "%")
+  if (is.null(options[["valueText"]])) options[["valueText"]] <- paste(value, "%")
 
-  gaugeProps <- c(list(value = value), options)
+  gaugeProps <- c(list(value = value / 100), options)
 
   gaugeConfig <- shiny::tags$script(
     type = "application/json",
@@ -64,7 +64,9 @@ f7_gauge <- function(id, value, options = NULL) {
 
 We provide a default for the `valueText` option that should display the current
 value followed by a `%` symbol. Note that the class is crucial to target the relevant tag on the JS side. 
-All other widgets will moreless follow the same scheme.
+All other widgets will moreless follow the same scheme. Be careful about partial matching
+with the `$` operator. This is the reason why we used `[[` instead: with `$`, `valueText` would be
+matched with `valueTextColor`, leading to misleading behavior.
 
 
 ## Widgets without preexisting UI
@@ -73,11 +75,11 @@ element when the app starts. In this case, we simply send the configuration to J
 the `session`:
 
 ```{r, eval=FALSE}
-f7_notif <- function(id, text, options = NULL, session = shiny::getDefaultReactiveDomain()) {
+f7_notif <- function(id = NULL, text, options = NULL, session = shiny::getDefaultReactiveDomain()) {
 
   if (!is.null(options$icon)) options$icon <- as.character(options$icon)
 
-  message <- c(list(id = id, text = text), options)
+  message <- c(dropNulls(list(id = id, text = text)), options)
   # see my-app.js function
   sendCustomMessage("notification", message, session)
 
@@ -164,11 +166,30 @@ an `else` statement following the `if` condition and put that code inside:
 
 ```javascript
 Shiny.addCustomMessageHandler(widget, function(message) {
+  if (message.id !== undefined) {
+    message.on = {
+      opened: function() {
+        Shiny.setInputValue(message.id, true);
+      },
+      closed: function() {
+        Shiny.setInputValue(message.id, false);
+        app.data[widget][message.id].destroy();
+      }
+    }; 
+  }
+
   app[widget].create(message).open();
 });
 ```
 
-As shown in the above code, we can also immediately open the widget by chaining methods. 
+As shown in the above code, we can also immediately open the widget by chaining methods. Moreover, it 
+is always good practice to let Shiny know about the widget state, that is whether it is currently
+opened. This is the reason why we added a `on` property to the message. All widgets trigger events, 
+for instance notifications have the `notification:opened` and `notification:closed`. For each event, 
+we set an input value on the fly, with `Shiny.setInputValue`. This way, the template users are
+able to know exactly when the widget is closed or opened and trigger any subsequent action.
+This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
+
 
 The full JavaScript code may be found below.
 
@@ -194,6 +215,17 @@ activateWidget = function(widget) {
     // that don't have any UI element in the DOM before creating
     // the widget instance.
     Shiny.addCustomMessageHandler(widget, function(message) {
+      if (message.id !== undefined) {
+        message.on = {
+          opened: function() {
+            Shiny.setInputValue(message.id, true);
+          },
+          closed: function() {
+            Shiny.setInputValue(message.id, false);
+            app.data[widget][message.id].destroy();
+          }
+        }; 
+      }
       app[widget].create(message).open();
     });
   }
@@ -209,19 +241,50 @@ widgets.forEach(function(w) {
 });
 ```
 
+Let's try below with a notification example, where we capture the state of the notification
+in an input element:
+
+```{r, eval=FALSE}
+library(shiny)
+ui <- f7_page(
+  navbar = f7_navbar("Title"),
+  toolbar = f7_toolbar(),
+  title = "shinyMobile",
+  options = list(
+    theme = "ios",
+    version = "1.0.0",
+    taphold = TRUE,
+    color = "#42f5a1",
+    filled = TRUE,
+    dark = TRUE
+  )
+)
+
+server <- function(input, output, session) {
+  observe({
+    f7_notif(id = "welcome", "Helloooooo", options = list(closeTimeout = 2000))
+  })
+  
+  observeEvent(input$welcome, {
+    shiny::showNotification(sprintf("Notification is %s", input$welcome))
+  })
+}
+
+shinyApp(ui, server)
+```
+
 ## Update widgets
 We would like to develop a similar generalized interface to update any element in the DOM.
-Instead of having `update_f7_gauge`, `update_f7_notification`, ... we want an `update_f7_instance` function. 
+Instead of having `update_f7_gauge`, `update_f7_swiper`, ... we want an `update_f7_instance` function. 
 
 We leverage the `app.data` element that stores all instances by widget type. In the previous part,
-we already created a cache for tooltips, so let's do it for gauges and notifications:
+we already created a cache for tooltips, so let's do it for gauges:
 
 ```javascript
 config.data = function() {
   return {
     // any other widget type to cache ...
-    gauge: [],
-    notification: []
+    gauge: []
   };
 };
 ```
@@ -236,11 +299,9 @@ to store the new instance in the cache. We add the following code, where w refer
 ```javascript
 // ui widgets
 app.data[widget][$el.attr("id")] = w;
-// server widgets
-app.data[widget][message.id] = w;
 ```
 
-Only the `id` location differs depending on the widget definition (ui vs server).
+This manipulation does not make sense for server widgets!
 
 The `activateWidget` function should be:
 
@@ -268,8 +329,18 @@ activateWidget = function(widget) {
     // that don't have any UI element in the DOM before creating
     // the widget instance.
     Shiny.addCustomMessageHandler(widget, function(message) {
+      if (message.id !== undefined) {
+        message.on = {
+          opened: function() {
+            Shiny.setInputValue(message.id, true);
+          },
+          closed: function() {
+            Shiny.setInputValue(message.id, false);
+            app.data[widget][message.id].destroy();
+          }
+        }; 
+      }
       var w = app[widget].create(message);
-      app.data[widget][message.id] = w;
       w.open();
     });
   }
@@ -290,15 +361,15 @@ class(shiny::div())
 class(shiny::tagList(shiny::div(), shiny::h1()))
 ```
 
-For each configuration element, we must check whether its class contains `shiny.tag` or `shiny.tag.list` and convert it to a character. Moreover, it may contain a nested list like:
+For each configuration element, we must check whether its class contains `shiny.tag` or `shiny.tag.list` and convert it to a character. Moreover, it may contain a nested list like this:
 
 ```{r, eval = FALSE}
 options = list(
   buttons = list(
    list(
-     text = "Notification",
+     text = "Some text",
      icon = f7Icon("info"),
-     color = NULL
+     color = "pink"
    )
   )
 )
@@ -375,32 +446,16 @@ var oldConfig = oldInstance.params;
 var newConfig = app.utils.extend(oldConfig,  message.options);
 ```
 
-The next step is to close the old instance if it belongs to a server widget (it may happen
-that the widget is configured not to be automatically close. This avoids widgets to overlap), 
-destroy the old instance, initialize the new instance and refresh 
+The next step is to destroy the old instance, initialize the new instance and refresh 
 the `app.data` cache:
 
 ```javascript
-// Also close old instance
-if (serverWidgets.indexOf(instanceFamily) > -1) {
-  oldInstance.close();
-}
 // Destroy old instance
 oldInstance.destroy();
 // Create new config
 var newInstance = app[instanceFamily].create(newConfig);
 // Update app data
 app.data[instanceFamily][message.id] = newInstance;
-```
-
-We may also want to open the new instance if it's generated from the server like toasts or
-notifications:
-
-```javascript
-// Open new instance if required
-if (serverWidgets.indexOf(instanceFamily) > -1) {
-  newInstance.open();
-}
 ```
 
 The whole code is located below:
@@ -426,10 +481,6 @@ Shiny.addCustomMessageHandler('update-instance', function(message) {
   oldInstance.destroy();
   // Create new config
   var newInstance = app[instanceFamily].create(newConfig);
-  // Open new instance if required
-  if (serverWidgets.indexOf(instanceFamily) > -1) {
-    newInstance.open();
-  }
   // Update app data
   app.data[instanceFamily][message.id] = newInstance;
 });
