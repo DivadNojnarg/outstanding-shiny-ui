@@ -10,17 +10,19 @@ As of today, this feature still require development version (github) of `{shiny}
 ## Plug and play customization
 Like `{fresh}`, `{bslib}` offers a high level set of functions allowing to quickly customize shiny apps. For many users, this step will be enough. `bs_theme` allows to seamlessly modify the main CSS properties like:
 
-  - The background color.
-  - The foreground color.
+  - The background color, namely `bg`.
+  - The foreground color, namely `fg`.
   - Change default theme colors, also called [accents](https://getbootstrap.com/docs/4.1/utilities/colors/).
-  - Modify the font.
+  - Modify the [font](https://rstudio.github.io/bslib/articles/theming.html#main-colors-fonts). This leverages the `font_google`, `font_face` and `font_link` functions. In practice,
+  `font_google` also allows to cache the font resources so that they are always available to the user. 
   
 Additionally, it gives the flexibility to choose Bootstrap version with `version_default`. As shown in Chapter \@ref(web-dependencies), Shiny primarily relies on Bootstrap 3. This function has 3 flavors:
 
   - Bootstrap 3, with `"3"`.
   - Bootstrap 4 + compatibility with Bootstrap 3, with `"4"`.
   
-Advanced users appreciate a `...` slot to add extra variables through `bs_add_variables`. 
+Advanced users appreciate a `...` slot to add extra variables through `bs_add_variables`, with literally hundreds
+of choices.
 
 ```{r, eval=FALSE}
 library(bslib)
@@ -74,7 +76,12 @@ knitr::include_graphics("images/beautify/bootstraplib-theme-preview.png")
 Passing `with_themer = TRUE` will show a live theming tools to modify the current theme.
 
 ## Dynamic theming
-Now, let's say you design an app and want to give the choice between the vanilla shiny design and your new cyberpunk theme, created in the previous section. We leverage the new `session$setCurrentTheme` tool that allows to pass `{bslib}` generated themes to JavaScript through the session object. Our Shiny app contains a toggle that is either TRUE or FALSE. On the JavaScript side, we first create a custom shiny input with `Shiny.setInputValue` that get the current mode value from the toggle. If TRUE, then the custom theme is applied by `session$setCurrentTheme` in an `observeEvent`.
+Now, let's say you design an app and want to give the choice between the vanilla shiny design and your new cyberpunk theme, created in the previous section. We leverage the new `session$setCurrentTheme` tool that allows to pass `{bslib}` generated themes to JavaScript through the session object. Our Shiny app contains a toggle, which value is either TRUE or FALSE. On the JavaScript side, we first create a custom shiny input with `Shiny.setInputValue` that get the current mode value from the toggle. If TRUE, then the custom theme is applied by `session$setCurrentTheme` in an `observeEvent`.
+
+As the `{bslib}` theme does not apply to static plots (they are not HTML element, thus not part of the DOM), we leverage [`{thematic}`](https://rstudio.github.io/thematic/), that in short,
+provides a sort of CSS interface for base R plots, ggplot and lattice. Specifically, in the 
+Shiny context, we choose `thematic_shiny()`. By default, it sets the appropriate background,
+foreground and accent colors, like `{bslib}`.
 
 ```{r, eval=FALSE}
 library(thematic)
@@ -99,14 +106,17 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   observeEvent(input$custom_mode, {
     session$setCurrentTheme(
-      if (isTRUE(input$custom_mode)) neon_theme else default
+      if (input$custom_mode) neon_theme else default
     )
   })
   
   output$distPlot <- renderPlot({
+    Sys.sleep(2)
     hist(rnorm(input$obs))
   })
 }
 thematic_shiny()
 shinyApp(ui, server)
 ```
+
+__Note__: An issue with `shiny::bindCache` described [here](https://github.com/rstudio/shiny/issues/3208), with shiny 1.6.
