@@ -85,9 +85,8 @@ foreground and accent colors, like `{bslib}`.
 
 ```{r, eval=FALSE}
 library(thematic)
-default <- bs_theme()
-ui <- fluidPage(
-  theme = default, 
+
+theme_toggle <- function() {
   div(
     class = "custom-control custom-switch", 
     tags$input(
@@ -97,7 +96,13 @@ ui <- fluidPage(
     tags$label(
       "Custom mode?", `for` = "custom_mode", class = "custom-control-label"
     )
-  ),
+  )
+}
+
+default <- bs_theme()
+ui <- fluidPage(
+  theme = default, 
+  theme_toggle(),
   sliderInput("obs", "Number of observations:",
     min = 0, max = 1000, value = 500
   ),
@@ -120,3 +125,143 @@ shinyApp(ui, server)
 ```
 
 __Note__: An issue with `shiny::bindCache` described [here](https://github.com/rstudio/shiny/issues/3208), with shiny 1.6.
+
+
+## Custom elements
+For other elements than core shiny components like `numericInput` or `{thematic}` compatible elements such as `plotOutput`,
+`{bslib}` provides tools to create dynamically themeable custom components. 
+
+Let's take the example of a simple card where the Sass code is defined below:
+
+  - `.supercard` has a shadow, takes half of the page width and has a fixed height.
+  Notice the `background-color` that takes the value of the `$primary` SAAS variable,
+  inherited from Bootstrap 4. 
+  - `.supercard_body` adds padding to the card body content.
+
+```scss
+.supercard {
+    box-shadow: 0 4px 10px 0 rgb(0, 0, 0), 0 4px 20px 0 rgb(0, 0, 0);
+    width: 50%;
+    height: 200px;
+    background-color: $primary;
+    
+    .supercard_body {
+      padding: 0.01em 16px;
+    }
+}
+```
+
+Below, for convenience, we put that Sass code inside a R string, even though best practice would
+be to save it in a file and compile it with `sass::sass_file`. 
+
+```{r}
+sass_str <- "
+  .supercard {
+    box-shadow: 0 4px 10px 0 rgb(0, 0, 0), 0 4px 20px 0 rgb(0, 0, 0);
+    width: 50%;
+    height: 200px;
+    
+    background-color: $primary;
+    .supercard_body {
+      padding: 0.01em 16px;
+    }
+}"
+```
+
+
+If you try to run `sass::sass(input = sass_str)`,
+it will fail, as `$primary` is not defined. Now the goal is to link this custom Sass code
+to the main app theme, created with `bs_theme`. We leverage the `bs_dependency` function where:
+
+  - `input` refers to a list of Sass rules, that is `sass_str` in our example.
+  - `theme` is a theme generated with `bs_theme`.
+  - `name` and `version` are metadata.
+  
+In case we are not in a `{bslib}` context, ie the app does not pass a `bs_theme` element,
+we create a fallback containing the card CSS code.
+
+```{r}
+library(htmltools)
+super_card_dependency <- function(theme) {
+  
+  dep_name <- "supercard"
+  dep_version <- "1.0.0"
+  
+  if (is_bs_theme(theme)) {
+    bs_dependency(
+      input = sass_str,
+      theme = theme,
+      name = dep_name,
+      version = dep_version
+    )
+  } else {
+    htmlDependency(
+      name = dep_name,
+      version = dep_version,
+      src = "supercard-1.0.0/css",
+      stylesheet = "super-card.css",
+      package = "OSUICode"
+    )
+  }
+}
+```
+
+As shown, in Chapter \@ref(htmltools-dependencies), we have to add this dependency to the card
+tag. Importantly, we wrap it inside `bs_dependency_defer` that enables us to dynamically update the theme on the server
+side, each time `session$setCurrentTheme` is invoked. 
+
+```{r}
+super_card <- function(...) {
+  div(
+    class = "supercard",
+    div(class = "supercard_body", ...),
+    bs_dependency_defer(super_card_dependency)
+  )
+}
+```
+
+We then create two simple theme, namely
+white and dark and run the app:
+
+```{r, eval=FALSE}
+white_theme <- bs_theme()
+dark_theme <- white_theme %>% 
+  bs_theme_update(bg = "black", fg = "white", primary = "orange")
+
+
+ui <- fluidPage(
+  theme = white_theme,
+  theme_toggle(),
+  br(),
+  super_card("Hello World!")
+)
+
+server <- function(input, output, session) {
+  observeEvent(input$custom_mode, {
+    session$setCurrentTheme(
+      if (input$custom_mode) dark_theme else white_theme
+    )
+  })
+}
+
+shinyApp(ui, server)
+```
+
+The reader is invited to exploit the `run_with_themer` capabilities, that allows
+to dynamically modify the current them, as shown Figure \@ref(fig:bslib-custom-component).
+
+```{r bslib-custom-component, echo=FALSE, fig.cap='bs_theme_preview with custom component', out.width='100%'}
+knitr::include_graphics("images/beautify/bslib-custom-component.png")
+```
+
+Below, we try without passing any theme to `fluidPage`:
+
+```{r}
+ui <- fluidPage(super_card("Hello World!"))
+server <- function(input, output) {}
+shinyApp(ui, server)
+```
+
+
+## Further resources
+The reader will refer to the `{bslib}` various [vignettes](https://rstudio.github.io/bslib/articles/theming.html).

@@ -166,9 +166,8 @@ Shiny context, we choose <code><a href="https://rstudio.github.io/thematic/refer
 foreground and accent colors, like <a href="https://rstudio.github.io/bslib/">bslib</a>.</p>
 <div class="sourceCode" id="cb188"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://rstudio.github.io/thematic/">thematic</a></span><span class="op">)</span>
-<span class="va">default</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_theme.html">bs_theme</a></span><span class="op">(</span><span class="op">)</span>
-<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
-  theme <span class="op">=</span> <span class="va">default</span>, 
+
+<span class="va">theme_toggle</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span>
     class <span class="op">=</span> <span class="st">"custom-control custom-switch"</span>, 
     <span class="va">tags</span><span class="op">$</span><span class="fu">input</span><span class="op">(</span>
@@ -178,7 +177,13 @@ foreground and accent colors, like <a href="https://rstudio.github.io/bslib/">bs
     <span class="va">tags</span><span class="op">$</span><span class="fu">label</span><span class="op">(</span>
       <span class="st">"Custom mode?"</span>, `for` <span class="op">=</span> <span class="st">"custom_mode"</span>, class <span class="op">=</span> <span class="st">"custom-control-label"</span>
     <span class="op">)</span>
-  <span class="op">)</span>,
+  <span class="op">)</span>
+<span class="op">}</span>
+
+<span class="va">default</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_theme.html">bs_theme</a></span><span class="op">(</span><span class="op">)</span>
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  theme <span class="op">=</span> <span class="va">default</span>, 
+  <span class="fu">theme_toggle</span><span class="op">(</span><span class="op">)</span>,
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput</a></span><span class="op">(</span><span class="st">"obs"</span>, <span class="st">"Number of observations:"</span>,
     min <span class="op">=</span> <span class="fl">0</span>, max <span class="op">=</span> <span class="fl">1000</span>, value <span class="op">=</span> <span class="fl">500</span>
   <span class="op">)</span>,
@@ -199,6 +204,140 @@ foreground and accent colors, like <a href="https://rstudio.github.io/bslib/">bs
 <span class="fu"><a href="https://rstudio.github.io/thematic/reference/thematic_on.html">thematic_shiny</a></span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p><strong>Note</strong>: An issue with <code><a href="https://rdrr.io/pkg/shiny/man/bindCache.html">shiny::bindCache</a></code> described <a href="https://github.com/rstudio/shiny/issues/3208">here</a>, with shiny 1.6.</p>
+</div>
+<div id="custom-elements" class="section level2">
+<h2>
+<span class="header-section-number">8.4</span> Custom elements<a class="anchor" aria-label="anchor" href="#custom-elements"><i class="fas fa-link"></i></a>
+</h2>
+<p>For other elements than core shiny components like <code>numericInput</code> or <a href="https://rstudio.github.io/thematic/">thematic</a> compatible elements such as <code>plotOutput</code>,
+<a href="https://rstudio.github.io/bslib/">bslib</a> provides tools to create dynamically themeable custom components.</p>
+<p>Let’s take the example of a simple card where the Sass code is defined below:</p>
+<ul>
+<li>
+<code>.supercard</code> has a shadow, takes half of the page width and has a fixed height.
+Notice the <code>background-color</code> that takes the value of the <code>$primary</code> SAAS variable,
+inherited from Bootstrap 4.</li>
+<li>
+<code>.supercard_body</code> adds padding to the card body content.</li>
+</ul>
+<pre class="scss"><code>.supercard {
+    box-shadow: 0 4px 10px 0 rgb(0, 0, 0), 0 4px 20px 0 rgb(0, 0, 0);
+    width: 50%;
+    height: 200px;
+    background-color: $primary;
+    
+    .supercard_body {
+      padding: 0.01em 16px;
+    }
+}</code></pre>
+<p>Below, for convenience, we put that Sass code inside a R string, even though best practice would
+be to save it in a file and compile it with <code><a href="https://rdrr.io/pkg/sass/man/sass_import.html">sass::sass_file</a></code>.</p>
+<div class="sourceCode" id="cb190"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">sass_str</span> <span class="op">&lt;-</span> <span class="st">"
+  .supercard {
+    box-shadow: 0 4px 10px 0 rgb(0, 0, 0), 0 4px 20px 0 rgb(0, 0, 0);
+    width: 50%;
+    height: 200px;
+    
+    background-color: $primary;
+    .supercard_body {
+      padding: 0.01em 16px;
+    }
+}"</span></code></pre></div>
+<p>If you try to run <code><a href="https://rdrr.io/pkg/sass/man/sass.html">sass::sass(input = sass_str)</a></code>,
+it will fail, as <code>$primary</code> is not defined. Now the goal is to link this custom Sass code
+to the main app theme, created with <code>bs_theme</code>. We leverage the <code>bs_dependency</code> function where:</p>
+<ul>
+<li>
+<code>input</code> refers to a list of Sass rules, that is <code>sass_str</code> in our example.</li>
+<li>
+<code>theme</code> is a theme generated with <code>bs_theme</code>.</li>
+<li>
+<code>name</code> and <code>version</code> are metadata.</li>
+</ul>
+<p>In case we are not in a <a href="https://rstudio.github.io/bslib/">bslib</a> context, ie the app does not pass a <code>bs_theme</code> element,
+we create a fallback containing the card CSS code.</p>
+<div class="sourceCode" id="cb191"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/htmltools">htmltools</a></span><span class="op">)</span>
+<span class="va">super_card_dependency</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">theme</span><span class="op">)</span> <span class="op">{</span>
+  
+  <span class="va">dep_name</span> <span class="op">&lt;-</span> <span class="st">"supercard"</span>
+  <span class="va">dep_version</span> <span class="op">&lt;-</span> <span class="st">"1.0.0"</span>
+  
+  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_theme.html">is_bs_theme</a></span><span class="op">(</span><span class="va">theme</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+    <span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_dependency.html">bs_dependency</a></span><span class="op">(</span>
+      input <span class="op">=</span> <span class="va">sass_str</span>,
+      theme <span class="op">=</span> <span class="va">theme</span>,
+      name <span class="op">=</span> <span class="va">dep_name</span>,
+      version <span class="op">=</span> <span class="va">dep_version</span>
+    <span class="op">)</span>
+  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+    <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
+      name <span class="op">=</span> <span class="va">dep_name</span>,
+      version <span class="op">=</span> <span class="va">dep_version</span>,
+      src <span class="op">=</span> <span class="st">"supercard-1.0.0/css"</span>,
+      stylesheet <span class="op">=</span> <span class="st">"super-card.css"</span>,
+      package <span class="op">=</span> <span class="st">"OSUICode"</span>
+    <span class="op">)</span>
+  <span class="op">}</span>
+<span class="op">}</span></code></pre></div>
+<p>As shown, in Chapter <a href="htmltools-dependencies.html#htmltools-dependencies">4</a>, we have to add this dependency to the card
+tag. Importantly, we wrap it inside <code>bs_dependency_defer</code> that enables us to dynamically update the theme on the server
+side, each time <code>session$setCurrentTheme</code> is invoked.</p>
+<div class="sourceCode" id="cb192"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">super_card</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span>
+    class <span class="op">=</span> <span class="st">"supercard"</span>,
+    <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span>class <span class="op">=</span> <span class="st">"supercard_body"</span>, <span class="va">...</span><span class="op">)</span>,
+    <span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_dependency.html">bs_dependency_defer</a></span><span class="op">(</span><span class="va">super_card_dependency</span><span class="op">)</span>
+  <span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>We then create two simple theme, namely
+white and dark and run the app:</p>
+<div class="sourceCode" id="cb193"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">white_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_theme.html">bs_theme</a></span><span class="op">(</span><span class="op">)</span>
+<span class="va">dark_theme</span> <span class="op">&lt;-</span> <span class="va">white_theme</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_theme.html">bs_theme_update</a></span><span class="op">(</span>bg <span class="op">=</span> <span class="st">"black"</span>, fg <span class="op">=</span> <span class="st">"white"</span>, primary <span class="op">=</span> <span class="st">"orange"</span><span class="op">)</span>
+
+
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  theme <span class="op">=</span> <span class="va">white_theme</span>,
+  <span class="fu">theme_toggle</span><span class="op">(</span><span class="op">)</span>,
+  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">br</a></span><span class="op">(</span><span class="op">)</span>,
+  <span class="fu">super_card</span><span class="op">(</span><span class="st">"Hello World!"</span><span class="op">)</span>
+<span class="op">)</span>
+
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">custom_mode</span>, <span class="op">{</span>
+    <span class="va">session</span><span class="op">$</span><span class="fu">setCurrentTheme</span><span class="op">(</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">custom_mode</span><span class="op">)</span> <span class="va">dark_theme</span> <span class="kw">else</span> <span class="va">white_theme</span>
+    <span class="op">)</span>
+  <span class="op">}</span><span class="op">)</span>
+<span class="op">}</span>
+
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p>The reader is invited to exploit the <code>run_with_themer</code> capabilities, that allows
+to dynamically modify the current them, as shown Figure <a href="beautify-with-bootstraplib.html#fig:bslib-custom-component">8.2</a>.</p>
+<div class="figure">
+<span id="fig:bslib-custom-component"></span>
+<img src="images/beautify/bslib-custom-component.png" alt="bs_theme_preview with custom component" width="100%"><p class="caption">
+FIGURE 8.2: bs_theme_preview with custom component
+</p>
+</div>
+<p>Below, we try without passing any theme to <code>fluidPage</code>:</p>
+<div class="sourceCode" id="cb194"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span><span class="fu">super_card</span><span class="op">(</span><span class="st">"Hello World!"</span><span class="op">)</span><span class="op">)</span>
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<pre><code>## 
+## Listening on http://127.0.0.1:6385</code></pre>
+<div class="inline-figure"><img src="outstanding-shiny-ui_files/figure-html/unnamed-chunk-73-1.png" width="672"></div>
+</div>
+<div id="further-resources" class="section level2">
+<h2>
+<span class="header-section-number">8.5</span> Further resources<a class="anchor" aria-label="anchor" href="#further-resources"><i class="fas fa-link"></i></a>
+</h2>
+<p>The reader will refer to the <a href="https://rstudio.github.io/bslib/">bslib</a> various <a href="https://rstudio.github.io/bslib/articles/theming.html">vignettes</a>.</p>
 
 </div>
 </div>
@@ -212,6 +351,8 @@ foreground and accent colors, like <a href="https://rstudio.github.io/bslib/">bs
 <li><a class="nav-link" href="#disclaimer"><span class="header-section-number">8.1</span> Disclaimer</a></li>
 <li><a class="nav-link" href="#plug-and-play-customization"><span class="header-section-number">8.2</span> Plug and play customization</a></li>
 <li><a class="nav-link" href="#dynamic-theming"><span class="header-section-number">8.3</span> Dynamic theming</a></li>
+<li><a class="nav-link" href="#custom-elements"><span class="header-section-number">8.4</span> Custom elements</a></li>
+<li><a class="nav-link" href="#further-resources"><span class="header-section-number">8.5</span> Further resources</a></li>
 </ul>
 
       <div class="book-extra">
@@ -229,7 +370,7 @@ foreground and accent colors, like <a href="https://rstudio.github.io/bslib/">bs
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-01-25.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-01-26.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">

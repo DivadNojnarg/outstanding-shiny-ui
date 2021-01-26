@@ -101,79 +101,79 @@ calls <code>location.reload()</code> upon click.
 we don’t lose any input, output elements. This button calls <code>Shiny.shinyapp.reconnect()</code> upon click.</p>
 <p>First thing first, how do we know when shiny is disconnected? As described in Chapter <a href="shiny-intro.html#shiny-intro">11</a>,
 whenever the client socket connection is closed, for any reason, the <code>shiny:disconnected</code> <a href="https://shiny.rstudio.com/articles/js-events.html">event</a> is triggered:</p>
-<div class="sourceCode" id="cb623"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb623-1"><a href="mobile-going-further.html#cb623-1"></a><span class="va">socket</span>.<span class="at">onclose</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb623-2"><a href="mobile-going-further.html#cb623-2"></a>  <span class="co">// These things are needed only if we've successfully opened the</span></span>
-<span id="cb623-3"><a href="mobile-going-further.html#cb623-3"></a>  <span class="co">// websocket.</span></span>
-<span id="cb623-4"><a href="mobile-going-further.html#cb623-4"></a>  <span class="cf">if</span> (hasOpened) <span class="op">{</span></span>
-<span id="cb623-5"><a href="mobile-going-further.html#cb623-5"></a>    <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
-<span id="cb623-6"><a href="mobile-going-further.html#cb623-6"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:disconnected'</span><span class="op">,</span></span>
-<span id="cb623-7"><a href="mobile-going-further.html#cb623-7"></a>      <span class="dt">socket</span><span class="op">:</span> socket</span>
-<span id="cb623-8"><a href="mobile-going-further.html#cb623-8"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb623-9"><a href="mobile-going-further.html#cb623-9"></a></span>
-<span id="cb623-10"><a href="mobile-going-further.html#cb623-10"></a>    <span class="va">self</span>.<span class="at">$notifyDisconnected</span>()<span class="op">;</span></span>
-<span id="cb623-11"><a href="mobile-going-further.html#cb623-11"></a>  <span class="op">}</span></span>
-<span id="cb623-12"><a href="mobile-going-further.html#cb623-12"></a></span>
-<span id="cb623-13"><a href="mobile-going-further.html#cb623-13"></a>  <span class="va">self</span>.<span class="at">onDisconnected</span>()<span class="op">;</span> <span class="co">// Must be run before self.$removeSocket()</span></span>
-<span id="cb623-14"><a href="mobile-going-further.html#cb623-14"></a>  <span class="va">self</span>.<span class="at">$removeSocket</span>()<span class="op">;</span></span>
-<span id="cb623-15"><a href="mobile-going-further.html#cb623-15"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb630"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb630-1"><a href="mobile-going-further.html#cb630-1"></a><span class="va">socket</span>.<span class="at">onclose</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb630-2"><a href="mobile-going-further.html#cb630-2"></a>  <span class="co">// These things are needed only if we've successfully opened the</span></span>
+<span id="cb630-3"><a href="mobile-going-further.html#cb630-3"></a>  <span class="co">// websocket.</span></span>
+<span id="cb630-4"><a href="mobile-going-further.html#cb630-4"></a>  <span class="cf">if</span> (hasOpened) <span class="op">{</span></span>
+<span id="cb630-5"><a href="mobile-going-further.html#cb630-5"></a>    <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
+<span id="cb630-6"><a href="mobile-going-further.html#cb630-6"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:disconnected'</span><span class="op">,</span></span>
+<span id="cb630-7"><a href="mobile-going-further.html#cb630-7"></a>      <span class="dt">socket</span><span class="op">:</span> socket</span>
+<span id="cb630-8"><a href="mobile-going-further.html#cb630-8"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb630-9"><a href="mobile-going-further.html#cb630-9"></a></span>
+<span id="cb630-10"><a href="mobile-going-further.html#cb630-10"></a>    <span class="va">self</span>.<span class="at">$notifyDisconnected</span>()<span class="op">;</span></span>
+<span id="cb630-11"><a href="mobile-going-further.html#cb630-11"></a>  <span class="op">}</span></span>
+<span id="cb630-12"><a href="mobile-going-further.html#cb630-12"></a></span>
+<span id="cb630-13"><a href="mobile-going-further.html#cb630-13"></a>  <span class="va">self</span>.<span class="at">onDisconnected</span>()<span class="op">;</span> <span class="co">// Must be run before self.$removeSocket()</span></span>
+<span id="cb630-14"><a href="mobile-going-further.html#cb630-14"></a>  <span class="va">self</span>.<span class="at">$removeSocket</span>()<span class="op">;</span></span>
+<span id="cb630-15"><a href="mobile-going-further.html#cb630-15"></a><span class="op">}</span></span></code></pre></div>
 <p>This allows us to listen to that event on the JS side:</p>
-<div class="sourceCode" id="cb624"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb624-1"><a href="mobile-going-further.html#cb624-1"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">"shiny:disconnected"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb624-2"><a href="mobile-going-further.html#cb624-2"></a>  <span class="co">// Do things</span></span>
-<span id="cb624-3"><a href="mobile-going-further.html#cb624-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb631"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb631-1"><a href="mobile-going-further.html#cb631-1"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">"shiny:disconnected"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb631-2"><a href="mobile-going-further.html#cb631-2"></a>  <span class="co">// Do things</span></span>
+<span id="cb631-3"><a href="mobile-going-further.html#cb631-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>The next step is to remove the default shiny reconnect elements. They are added by the
 <code>onDisconnected</code> method, that adds a disconnect overlay (gray-out screen) and optionally a
 reconnect notification:</p>
-<div class="sourceCode" id="cb625"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb625-1"><a href="mobile-going-further.html#cb625-1"></a><span class="kw">this</span>.<span class="at">onDisconnected</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb625-2"><a href="mobile-going-further.html#cb625-2"></a>  <span class="co">// Add gray-out overlay, if not already present</span></span>
-<span id="cb625-3"><a href="mobile-going-further.html#cb625-3"></a>  <span class="kw">var</span> $overlay <span class="op">=</span> <span class="at">$</span>(<span class="st">'#shiny-disconnected-overlay'</span>)<span class="op">;</span></span>
-<span id="cb625-4"><a href="mobile-going-further.html#cb625-4"></a>  <span class="cf">if</span> (<span class="va">$overlay</span>.<span class="at">length</span> <span class="op">===</span> <span class="dv">0</span>) <span class="op">{</span></span>
-<span id="cb625-5"><a href="mobile-going-further.html#cb625-5"></a>    <span class="at">$</span>(<span class="va">document</span>.<span class="at">body</span>).<span class="at">append</span>(<span class="st">'&lt;div id="shiny-disconnected-overlay"&gt;&lt;/div&gt;'</span>)<span class="op">;</span></span>
-<span id="cb625-6"><a href="mobile-going-further.html#cb625-6"></a>  <span class="op">}</span></span>
-<span id="cb625-7"><a href="mobile-going-further.html#cb625-7"></a></span>
-<span id="cb625-8"><a href="mobile-going-further.html#cb625-8"></a>  <span class="co">// To try a reconnect, both the app (this.$allowReconnect) and the</span></span>
-<span id="cb625-9"><a href="mobile-going-further.html#cb625-9"></a>  <span class="co">// server (this.$socket.allowReconnect) must allow reconnections, or</span></span>
-<span id="cb625-10"><a href="mobile-going-further.html#cb625-10"></a>  <span class="co">// session$allowReconnect("force") was called. The "force" option should</span></span>
-<span id="cb625-11"><a href="mobile-going-further.html#cb625-11"></a>  <span class="co">// only be used for testing.</span></span>
-<span id="cb625-12"><a href="mobile-going-further.html#cb625-12"></a>  <span class="cf">if</span> ((<span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="kw">true</span> <span class="op">&amp;&amp;</span> <span class="kw">this</span>.<span class="va">$socket</span>.<span class="at">allowReconnect</span> <span class="op">===</span> <span class="kw">true</span>) <span class="op">||</span></span>
-<span id="cb625-13"><a href="mobile-going-further.html#cb625-13"></a>      <span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="st">"force"</span>)</span>
-<span id="cb625-14"><a href="mobile-going-further.html#cb625-14"></a>  <span class="op">{</span></span>
-<span id="cb625-15"><a href="mobile-going-further.html#cb625-15"></a>    <span class="kw">var</span> delay <span class="op">=</span> <span class="va">reconnectDelay</span>.<span class="at">next</span>()<span class="op">;</span></span>
-<span id="cb625-16"><a href="mobile-going-further.html#cb625-16"></a>    <span class="va">exports</span>.<span class="at">showReconnectDialog</span>(delay)<span class="op">;</span></span>
-<span id="cb625-17"><a href="mobile-going-further.html#cb625-17"></a>    <span class="kw">this</span>.<span class="at">$scheduleReconnect</span>(delay)<span class="op">;</span></span>
-<span id="cb625-18"><a href="mobile-going-further.html#cb625-18"></a>  <span class="op">}</span></span>
-<span id="cb625-19"><a href="mobile-going-further.html#cb625-19"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb632"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb632-1"><a href="mobile-going-further.html#cb632-1"></a><span class="kw">this</span>.<span class="at">onDisconnected</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb632-2"><a href="mobile-going-further.html#cb632-2"></a>  <span class="co">// Add gray-out overlay, if not already present</span></span>
+<span id="cb632-3"><a href="mobile-going-further.html#cb632-3"></a>  <span class="kw">var</span> $overlay <span class="op">=</span> <span class="at">$</span>(<span class="st">'#shiny-disconnected-overlay'</span>)<span class="op">;</span></span>
+<span id="cb632-4"><a href="mobile-going-further.html#cb632-4"></a>  <span class="cf">if</span> (<span class="va">$overlay</span>.<span class="at">length</span> <span class="op">===</span> <span class="dv">0</span>) <span class="op">{</span></span>
+<span id="cb632-5"><a href="mobile-going-further.html#cb632-5"></a>    <span class="at">$</span>(<span class="va">document</span>.<span class="at">body</span>).<span class="at">append</span>(<span class="st">'&lt;div id="shiny-disconnected-overlay"&gt;&lt;/div&gt;'</span>)<span class="op">;</span></span>
+<span id="cb632-6"><a href="mobile-going-further.html#cb632-6"></a>  <span class="op">}</span></span>
+<span id="cb632-7"><a href="mobile-going-further.html#cb632-7"></a></span>
+<span id="cb632-8"><a href="mobile-going-further.html#cb632-8"></a>  <span class="co">// To try a reconnect, both the app (this.$allowReconnect) and the</span></span>
+<span id="cb632-9"><a href="mobile-going-further.html#cb632-9"></a>  <span class="co">// server (this.$socket.allowReconnect) must allow reconnections, or</span></span>
+<span id="cb632-10"><a href="mobile-going-further.html#cb632-10"></a>  <span class="co">// session$allowReconnect("force") was called. The "force" option should</span></span>
+<span id="cb632-11"><a href="mobile-going-further.html#cb632-11"></a>  <span class="co">// only be used for testing.</span></span>
+<span id="cb632-12"><a href="mobile-going-further.html#cb632-12"></a>  <span class="cf">if</span> ((<span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="kw">true</span> <span class="op">&amp;&amp;</span> <span class="kw">this</span>.<span class="va">$socket</span>.<span class="at">allowReconnect</span> <span class="op">===</span> <span class="kw">true</span>) <span class="op">||</span></span>
+<span id="cb632-13"><a href="mobile-going-further.html#cb632-13"></a>      <span class="kw">this</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="st">"force"</span>)</span>
+<span id="cb632-14"><a href="mobile-going-further.html#cb632-14"></a>  <span class="op">{</span></span>
+<span id="cb632-15"><a href="mobile-going-further.html#cb632-15"></a>    <span class="kw">var</span> delay <span class="op">=</span> <span class="va">reconnectDelay</span>.<span class="at">next</span>()<span class="op">;</span></span>
+<span id="cb632-16"><a href="mobile-going-further.html#cb632-16"></a>    <span class="va">exports</span>.<span class="at">showReconnectDialog</span>(delay)<span class="op">;</span></span>
+<span id="cb632-17"><a href="mobile-going-further.html#cb632-17"></a>    <span class="kw">this</span>.<span class="at">$scheduleReconnect</span>(delay)<span class="op">;</span></span>
+<span id="cb632-18"><a href="mobile-going-further.html#cb632-18"></a>  <span class="op">}</span></span>
+<span id="cb632-19"><a href="mobile-going-further.html#cb632-19"></a><span class="op">}</span></span></code></pre></div>
 <p>To remove them, there are multiple alternatives. The easiest way is to wait
 for the client to be connected, that is listening to <code>shiny:connected</code>, and set the <code>Shiny.shinyapp.onDisconnected</code> method
 to only add the gray overlay.</p>
 <p><strong>Note</strong>: before modifying any vanilla shiny elements, make sure to check all the possible
 side effects!</p>
-<div class="sourceCode" id="cb626"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb626-1"><a href="mobile-going-further.html#cb626-1"></a><span class="co">// remove shiny reconnect stuff;</span></span>
-<span id="cb626-2"><a href="mobile-going-further.html#cb626-2"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">"shiny:connected"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb626-3"><a href="mobile-going-further.html#cb626-3"></a>  <span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="at">onDisconnected</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb626-4"><a href="mobile-going-further.html#cb626-4"></a>    <span class="co">// Add gray-out overlay, if not already present</span></span>
-<span id="cb626-5"><a href="mobile-going-further.html#cb626-5"></a>    <span class="kw">var</span> $overlay <span class="op">=</span> <span class="at">$</span>(<span class="st">'#shiny-disconnected-overlay'</span>)<span class="op">;</span></span>
-<span id="cb626-6"><a href="mobile-going-further.html#cb626-6"></a>    <span class="cf">if</span> (<span class="va">$overlay</span>.<span class="at">length</span> <span class="op">===</span> <span class="dv">0</span>) <span class="op">{</span></span>
-<span id="cb626-7"><a href="mobile-going-further.html#cb626-7"></a>      <span class="at">$</span>(<span class="va">document</span>.<span class="at">body</span>).<span class="at">append</span>(<span class="st">'&lt;div id="shiny-disconnected-overlay"&gt;&lt;/div&gt;'</span>)<span class="op">;</span></span>
-<span id="cb626-8"><a href="mobile-going-further.html#cb626-8"></a>    <span class="op">}</span></span>
-<span id="cb626-9"><a href="mobile-going-further.html#cb626-9"></a>  <span class="op">};</span></span>
-<span id="cb626-10"><a href="mobile-going-further.html#cb626-10"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb633"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb633-1"><a href="mobile-going-further.html#cb633-1"></a><span class="co">// remove shiny reconnect stuff;</span></span>
+<span id="cb633-2"><a href="mobile-going-further.html#cb633-2"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">"shiny:connected"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb633-3"><a href="mobile-going-further.html#cb633-3"></a>  <span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="at">onDisconnected</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb633-4"><a href="mobile-going-further.html#cb633-4"></a>    <span class="co">// Add gray-out overlay, if not already present</span></span>
+<span id="cb633-5"><a href="mobile-going-further.html#cb633-5"></a>    <span class="kw">var</span> $overlay <span class="op">=</span> <span class="at">$</span>(<span class="st">'#shiny-disconnected-overlay'</span>)<span class="op">;</span></span>
+<span id="cb633-6"><a href="mobile-going-further.html#cb633-6"></a>    <span class="cf">if</span> (<span class="va">$overlay</span>.<span class="at">length</span> <span class="op">===</span> <span class="dv">0</span>) <span class="op">{</span></span>
+<span id="cb633-7"><a href="mobile-going-further.html#cb633-7"></a>      <span class="at">$</span>(<span class="va">document</span>.<span class="at">body</span>).<span class="at">append</span>(<span class="st">'&lt;div id="shiny-disconnected-overlay"&gt;&lt;/div&gt;'</span>)<span class="op">;</span></span>
+<span id="cb633-8"><a href="mobile-going-further.html#cb633-8"></a>    <span class="op">}</span></span>
+<span id="cb633-9"><a href="mobile-going-further.html#cb633-9"></a>  <span class="op">};</span></span>
+<span id="cb633-10"><a href="mobile-going-further.html#cb633-10"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>We edit the previous disconnected event listener to add a custom Framework7 toast, which closes
 upon click:</p>
-<div class="sourceCode" id="cb627"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb627-1"><a href="mobile-going-further.html#cb627-1"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">"shiny:disconnected"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span>    </span>
-<span id="cb627-2"><a href="mobile-going-further.html#cb627-2"></a>  <span class="kw">var</span> reconnectToast <span class="op">=</span> <span class="va">app</span>.<span class="at">toast</span></span>
-<span id="cb627-3"><a href="mobile-going-further.html#cb627-3"></a>    .<span class="at">create</span>(<span class="op">{</span></span>
-<span id="cb627-4"><a href="mobile-going-further.html#cb627-4"></a>      <span class="dt">icon</span><span class="op">:</span> <span class="st">'&lt;i class="icon f7-icons"&gt;bolt_fill&lt;/i&gt;'</span><span class="op">,</span></span>
-<span id="cb627-5"><a href="mobile-going-further.html#cb627-5"></a>      <span class="dt">position</span><span class="op">:</span> <span class="st">"center"</span><span class="op">,</span></span>
-<span id="cb627-6"><a href="mobile-going-further.html#cb627-6"></a>      <span class="dt">text</span><span class="op">:</span></span>
-<span id="cb627-7"><a href="mobile-going-further.html#cb627-7"></a>        <span class="st">'Oups... disconnected &lt;/br&gt; &lt;/br&gt; &lt;div class="row"&gt;&lt;button onclick="Shiny.shinyapp.reconnect();" class="toast-button button color-green col"&gt;Reconnect&lt;/button&gt;&lt;button onclick="location.reload();" class="toast-button button color-red col"&gt;Reload&lt;/button&gt;&lt;/div&gt;'</span></span>
-<span id="cb627-8"><a href="mobile-going-further.html#cb627-8"></a>    <span class="op">}</span>)</span>
-<span id="cb627-9"><a href="mobile-going-further.html#cb627-9"></a>    .<span class="at">open</span>()<span class="op">;</span></span>
-<span id="cb627-10"><a href="mobile-going-further.html#cb627-10"></a></span>
-<span id="cb627-11"><a href="mobile-going-further.html#cb627-11"></a>    <span class="co">// close toast whenever a choice is made ...</span></span>
-<span id="cb627-12"><a href="mobile-going-further.html#cb627-12"></a>    <span class="at">$</span>(<span class="st">".toast-button"</span>).<span class="at">on</span>(<span class="st">"click"</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb627-13"><a href="mobile-going-further.html#cb627-13"></a>      <span class="va">reconnectToast</span>.<span class="at">close</span>()<span class="op">;</span></span>
-<span id="cb627-14"><a href="mobile-going-further.html#cb627-14"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb627-15"><a href="mobile-going-further.html#cb627-15"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb634"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb634-1"><a href="mobile-going-further.html#cb634-1"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">"shiny:disconnected"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span>    </span>
+<span id="cb634-2"><a href="mobile-going-further.html#cb634-2"></a>  <span class="kw">var</span> reconnectToast <span class="op">=</span> <span class="va">app</span>.<span class="at">toast</span></span>
+<span id="cb634-3"><a href="mobile-going-further.html#cb634-3"></a>    .<span class="at">create</span>(<span class="op">{</span></span>
+<span id="cb634-4"><a href="mobile-going-further.html#cb634-4"></a>      <span class="dt">icon</span><span class="op">:</span> <span class="st">'&lt;i class="icon f7-icons"&gt;bolt_fill&lt;/i&gt;'</span><span class="op">,</span></span>
+<span id="cb634-5"><a href="mobile-going-further.html#cb634-5"></a>      <span class="dt">position</span><span class="op">:</span> <span class="st">"center"</span><span class="op">,</span></span>
+<span id="cb634-6"><a href="mobile-going-further.html#cb634-6"></a>      <span class="dt">text</span><span class="op">:</span></span>
+<span id="cb634-7"><a href="mobile-going-further.html#cb634-7"></a>        <span class="st">'Oups... disconnected &lt;/br&gt; &lt;/br&gt; &lt;div class="row"&gt;&lt;button onclick="Shiny.shinyapp.reconnect();" class="toast-button button color-green col"&gt;Reconnect&lt;/button&gt;&lt;button onclick="location.reload();" class="toast-button button color-red col"&gt;Reload&lt;/button&gt;&lt;/div&gt;'</span></span>
+<span id="cb634-8"><a href="mobile-going-further.html#cb634-8"></a>    <span class="op">}</span>)</span>
+<span id="cb634-9"><a href="mobile-going-further.html#cb634-9"></a>    .<span class="at">open</span>()<span class="op">;</span></span>
+<span id="cb634-10"><a href="mobile-going-further.html#cb634-10"></a></span>
+<span id="cb634-11"><a href="mobile-going-further.html#cb634-11"></a>    <span class="co">// close toast whenever a choice is made ...</span></span>
+<span id="cb634-12"><a href="mobile-going-further.html#cb634-12"></a>    <span class="at">$</span>(<span class="st">".toast-button"</span>).<span class="at">on</span>(<span class="st">"click"</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb634-13"><a href="mobile-going-further.html#cb634-13"></a>      <span class="va">reconnectToast</span>.<span class="at">close</span>()<span class="op">;</span></span>
+<span id="cb634-14"><a href="mobile-going-further.html#cb634-14"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb634-15"><a href="mobile-going-further.html#cb634-15"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>Result is shown Figure <a href="mobile-going-further.html#fig:mobile-disconnect-custom">27.2</a>.</p>
 <div class="figure" style="text-align: center">
 <span id="fig:mobile-disconnect-custom"></span>
@@ -184,10 +184,10 @@ FIGURE 27.2: Vanilla Shiny disconnect screen.
 <p>The above JS code ignores the user reconnect <a href="https://shiny.rstudio.com/articles/reconnecting.html">setup</a> and proposes
 to reconnect regardless of the <code>session$allowReconnect</code> configuration. If you want to keep the
 original behavior, you may add the following condition before showing the toast:</p>
-<div class="sourceCode" id="cb628"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb628-1"><a href="mobile-going-further.html#cb628-1"></a><span class="cf">if</span> ((<span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="kw">true</span> <span class="op">&amp;&amp;</span> <span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="va">$socket</span>.<span class="at">allowReconnect</span> <span class="op">===</span> <span class="kw">true</span>) <span class="op">||</span></span>
-<span id="cb628-2"><a href="mobile-going-further.html#cb628-2"></a>      <span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="st">"force"</span>) <span class="op">{</span></span>
-<span id="cb628-3"><a href="mobile-going-further.html#cb628-3"></a>  <span class="co">// Toast logic</span></span>
-<span id="cb628-4"><a href="mobile-going-further.html#cb628-4"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb635"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb635-1"><a href="mobile-going-further.html#cb635-1"></a><span class="cf">if</span> ((<span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="kw">true</span> <span class="op">&amp;&amp;</span> <span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="va">$socket</span>.<span class="at">allowReconnect</span> <span class="op">===</span> <span class="kw">true</span>) <span class="op">||</span></span>
+<span id="cb635-2"><a href="mobile-going-further.html#cb635-2"></a>      <span class="va">Shiny</span>.<span class="va">shinyapp</span>.<span class="at">$allowReconnect</span> <span class="op">===</span> <span class="st">"force"</span>) <span class="op">{</span></span>
+<span id="cb635-3"><a href="mobile-going-further.html#cb635-3"></a>  <span class="co">// Toast logic</span></span>
+<span id="cb635-4"><a href="mobile-going-further.html#cb635-4"></a><span class="op">}</span></span></code></pre></div>
 
 </div>
 </div>
@@ -224,7 +224,7 @@ original behavior, you may add the following condition before showing the toast:
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-01-25.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-01-26.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
