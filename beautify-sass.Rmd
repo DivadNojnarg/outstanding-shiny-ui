@@ -1,9 +1,362 @@
 # Introduction to SASS {#beautify-sass}
-One of the main problem with CSS is to handle the growing number of files and the code repetition. Nowadays, web developers mainly use CSS preprocessors like [SASS](https://sass-lang.com/guide), that stands for "Syntactically Awesome Style Sheets ", providing access to variables,  mathematical operators, nesting, thereby reducing the code complexity and extending the possibilities. [Rstudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package, which makes it possible to use in Shiny apps or Rmarkdown documents. 
+One of the main problem with CSS is to handle the growing number of files and the code repetition. Nowadays, web developers mainly use CSS preprocessors like [Sass](https://sass-lang.com/guide), that stands for "Syntactically Awesome Style Sheets ", providing access to variables,  mathematical operators, nesting, thereby reducing the code complexity and extending the possibilities. [Rstudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package, which makes it possible to use Sass in Shiny apps or Rmarkdown documents. 
 
+
+## Getting started
+While we could use Sass from the terminal, we leverage the `{sass}` package features to stay in R.
+To install the `{sass}`, we run:
+
+```{r, eval=FALSE}
+install.packages("sass")
+# OR
+remotes::install_github("rstudio/sass")
+```
+
+We then use the `sass()` function whose `input` parameter accepts:
+
+  - A R string like `a { color: pink}`.
+  - A named `list()`.
+  - A file passed with `sass_file()`, imports with `sass_import()`.
+  - More complex structures.
+  
+```{r}
+library(sass)
+sass(input = ".element-class { color: pink;}")
+```
 
 ## Variables
+Let us consider the following example:
 
-## Loops
+```css
+.class-1{
+  color: #33BEFF;
+}
 
-## Conditions
+.class-2{
+  background-color: #33BEFF;
+}
+```
+
+Shouldn't this be easier? Imagine if we had hundreds of elements with the same color.
+What happens in case the color changes? Do we have to update all properties by hand?
+
+If we let the Sass variable `$my-color`:
+
+```scss
+$my-color: purple;
+.class-1{
+  color: $my-color;
+}
+.class-2{
+  background-color: $my-color;
+}
+```
+
+we can quickly solve that problem. With `{sass}`, we obtain:
+
+```{r}
+var <- "$my-color: purple;"
+rule1 <- ".class-1{ color: $my-color; }"
+rule2 <- ".class-2{ background-color: $my-color; }"
+sass(input = list(var, rule1, rule2))
+```
+
+## Partials and Modules
+It is best practice to save useful code snippets in one place, and reuse them 
+at anytime and anywhere. Sass allows to define partials, like `_partial.css`, with the leading
+underscore, which avoids this file to be converted into CSS. Later, partials are called
+with `@import <PARTIAL_NAME>` (you may also find `@use`, the latter not being handled
+by `LibSass`, which fuels`{sass}`), thereby significantly reducing code duplication.
+
+Modules are pieces of Sass files that are later converted into CSS, reducing file size to a minimum. 
+Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/bootstrap/blob/main/scss/bootstrap.scss):
+
+```scss
+/*!
+ * Bootstrap v5.0.0-beta1 (https://getbootstrap.com/)
+ * Copyright 2011-2021 The Bootstrap Authors
+ * Copyright 2011-2021 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
+ */
+
+// scss-docs-start import-stack
+// Configuration
+@import "functions";
+@import "variables";
+@import "mixins";
+@import "utilities";
+
+// Layout & components
+@import "root";
+@import "reboot";
+@import "type";
+@import "images";
+@import "containers";
+@import "grid";
+@import "tables";
+@import "forms";
+@import "buttons";
+@import "transitions";
+@import "dropdown";
+@import "button-group";
+@import "nav";
+@import "navbar";
+@import "card";
+@import "accordion";
+@import "breadcrumb";
+@import "pagination";
+@import "badge";
+@import "alert";
+@import "progress";
+@import "list-group";
+@import "close";
+@import "toasts";
+@import "modal";
+@import "tooltip";
+@import "popover";
+@import "carousel";
+@import "spinners";
+
+// Helpers
+@import "helpers";
+
+// Utilities
+@import "utilities/api";
+// scss-docs-end import-stack
+```
+
+which is better to read and easier to maintain than the original `bootstrap.css` with 10717 lines of code!
+
+
+## Mixins and Functions
+
+### Mixins
+To make a 90 degrees rotation in CSS, we have to write:
+
+```
+.element {
+  -webkit-transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
+  transform: rotate(90deg);
+}
+```
+
+which is tedious. Mixins allow to encapsulate the logic into a reusable unit:
+
+```scss
+@mixin transform($property, ...) {
+  -webkit-transform: $property;
+  -ms-transform: $property;
+  transform: $property;
+}
+
+.element1 { @include transform(rotate(90deg)); }
+```
+
+The mixin starts with a `@mixin` keyword followed by its name and parameters. 
+It is called with `@include <MIXIN_NAME(PARMS)>`, very similar to a function declaration, excepts that
+it must return a CSS rule.
+
+
+```{r}
+mixin <- "@mixin transform($property) {
+  -webkit-transform: $property;
+  -ms-transform: $property;
+  transform: $property;
+}"
+rule <- ".element1 { @include transform(rotate(90deg)); }"
+sass(input = list(mixin, rule))
+```
+
+### Functions
+
+TODO
+
+## Extend/Inheritance
+We consider 2 alerts with the color as only difference. As we can't capture multiple properties
+inside one single Sass variable, we introduce the `extend` concept, which permits to import
+CSS properties inside multiple rules. We first define a generic `alerts-common` rule,
+prefixed by the `%` symbol. It contains several rules and variables:
+
+```scss
+%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}
+
+
+.alert-red {
+  @extend %alerts-common;
+  color: red;
+}
+
+.alert-green {
+  @extend %alerts-common;
+  color: green;
+}
+
+```
+
+Let's translate this into R:
+
+```{r}
+y_padding <- "$alert-padding-y: 5px;"
+x_padding <- "$alert-padding-x: 10px;"
+b_margin <- "$alert-margin-bottom: 2px;"
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+alert_red <- ".alert-red {
+  @extend %alerts-common;
+  color: red;
+}
+"
+alert_green <- ".alert-green {
+  @extend %alerts-common;
+  color: green;
+}
+"
+sass(input = list(y_padding, x_padding, b_margin, common, alert_red, alert_green))
+```
+
+This method avoids to multiply classes on elements such as `.alert-common .alert-red ...`.
+Yet, there is still duplication as we could have programmatically generated the two alert 
+classes with a loop. 
+
+## Flow Controls
+These are elements aiming at fine tuning mixins and functions behavior.  
+### If and else
+Like in every programming language `if` and `else` control the execution of a code block, depending
+on some conditions. 
+Below, we only want to conditionally control a shadow property, depending on the alert color:
+
+```scss
+@mixin add-shadow($box-color) {
+  @if box-color == red {
+    box-shadow: 
+      0 4px 10px 0 rgb(255, 0, 0), 
+      0 4px 20px 0 rgb(255, 0, 0);
+  } @else if $box-color == green {
+    box-shadow: 
+      0 4px 10px 0 rgb(0, 255, 0), 
+      0 4px 20px 0 rgb(0, 255, 0);
+  }
+}
+
+.alert-red {
+  @extend %alerts-common;
+  color: red;
+  @include add-shadow($box-color: red);
+}
+
+.alert-green {
+  @extend %alerts-common;
+  color: green;
+  @include add-shadow($box-color: green);
+}
+```
+
+
+```{r}
+add_shadow <- "@mixin add-shadow($box-color) {
+  @if $box-color == red {
+    box-shadow: 
+      0 4px 10px 0 rgb(255, 0, 0), 
+      0 4px 20px 0 rgb(255, 0, 0);
+  } @else if $box-color == green {
+    box-shadow: 
+      0 4px 10px 0 rgb(0, 255, 0), 
+      0 4px 20px 0 rgb(0, 255, 0);
+  }
+}
+"
+y_padding <- "$alert-padding-y: 5px;"
+x_padding <- "$alert-padding-x: 10px;"
+b_margin <- "$alert-margin-bottom: 2px;"
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+alert_red <- ".alert-red {
+  @extend %alerts-common;
+  color: red;
+  @include add-shadow($box-color: red);
+}
+"
+alert_green <- ".alert-green {
+  @extend %alerts-common;
+  color: green;
+  @include add-shadow($box-color: green);
+}
+"
+sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alert_red, alert_green))
+```
+
+### Loops
+#### Each
+We would like to create the alert class with only one rule. We first define a list of colors in Sass and
+call the `@each`:
+
+```scss
+$colors: red, green;
+
+@each $color in $colors {
+  .alert-#{$color} {
+    color: green;
+    @include add-shadow($box-color: $color);
+  }
+}
+```
+
+The structure is the same as the JavaScript loop. 
+
+```{r}
+add_shadow <- "@mixin add-shadow($box-color) {
+  @if $box-color == red {
+    box-shadow: 
+      0 4px 10px 0 rgb(255, 0, 0), 
+      0 4px 20px 0 rgb(255, 0, 0);
+  } @else if $box-color == green {
+    box-shadow: 
+      0 4px 10px 0 rgb(0, 255, 0), 
+      0 4px 20px 0 rgb(0, 255, 0);
+  }
+}
+"
+y_padding <- "$alert-padding-y: 5px;"
+x_padding <- "$alert-padding-x: 10px;"
+b_margin <- "$alert-margin-bottom: 2px;"
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+alerts_rule <- "$colors: red, green;
+@each $color in $colors {
+  .alert-#{$color} {
+    @extend %alerts-common;
+    color: green;
+    @include add-shadow($box-color: $color);
+  }
+}
+"
+sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alerts_rule))
+```
+
+It becomes even more powerful while working with maps like `$font-weights: ("regular": 400, "medium": 500, "bold": 700);`, ie by key/value [pairs](https://sass-lang.com/documentation/at-rules/control/each#with-maps). 
+`@each` is as convenient as `lapply` or `map` functions to chain repetitive rules creation.
+
+#### For
+However, it is not straightforward to count up or down with `@each`. This is precisely where
+`@for` fills the gap. The generic scheme is: 
+
+```scss
+@for <variable> from <expression> to <expression> { ... } 
+@for <variable> from <expression> through <expression> { ... }
+```
+
+`to` exludes the last number while `through` includes it.
