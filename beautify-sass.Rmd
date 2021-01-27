@@ -2,7 +2,7 @@
 One of the main problem with CSS is to handle the growing number of files and the code repetition. Nowadays, web developers mainly use CSS preprocessors like [Sass](https://sass-lang.com/guide), that stands for "Syntactically Awesome Style Sheets ", providing access to variables,  mathematical operators, nesting, thereby reducing the code complexity and extending the possibilities. [Rstudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package, which makes it possible to use Sass in Shiny apps or Rmarkdown documents. 
 
 
-## Getting started
+## Getting started with Sass
 While we could use Sass from the terminal, we leverage the `{sass}` package features to stay in R.
 To install the `{sass}`, we run:
 
@@ -24,7 +24,7 @@ library(sass)
 sass(input = ".element-class { color: pink;}")
 ```
 
-## Variables
+### Variables
 Let us consider the following example:
 
 ```css
@@ -61,10 +61,10 @@ rule2 <- ".class-2{ background-color: $my-color; }"
 sass(input = list(var, rule1, rule2))
 ```
 
-## Partials and Modules
+### Partials and Modules
 It is best practice to save useful code snippets in one place, and reuse them 
 at anytime and anywhere. Sass allows to define partials, like `_partial.css`, with the leading
-underscore, which avoids this file to be converted into CSS. Later, partials are called
+underscore, which avoids it to be converted into CSS. Partials are subsequently called
 with `@import <PARTIAL_NAME>` (you may also find `@use`, the latter not being handled
 by `LibSass`, which fuels`{sass}`), thereby significantly reducing code duplication.
 
@@ -127,10 +127,16 @@ Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/boots
 
 which is better to read and easier to maintain than the original `bootstrap.css` with 10717 lines of code!
 
+In practice, we will often end up with a main Sass file and compile it as follows:
 
-## Mixins and Functions
+```{r, eval=FALSE}
+sass(sass_file("main.scss"))
+```
 
-### Mixins
+
+### Mixins and Functions
+
+#### Mixins
 To make a 90 degrees rotation in CSS, we have to write:
 
 ```
@@ -168,7 +174,7 @@ rule <- ".element1 { @include transform(rotate(90deg)); }"
 sass(input = list(mixin, rule))
 ```
 
-### Functions
+#### Functions
 Sass offers many built-In [modules](https://sass-lang.com/documentation/modules) containing 
 ready to use functions for colors, numbers, strings, lists, maps, ...Some functions like
 `rgb` are global, so that we don't have to import the corresponding module. 
@@ -203,7 +209,7 @@ sass("
 ")
 ```
 
-## Extend/Inheritance
+### Extend/Inheritance
 We consider 2 alerts with the color as only difference. As we can't capture multiple properties
 inside one single Sass variable, we introduce the `extend` concept, which permits to import
 CSS properties inside multiple rules. We first define a generic `alerts-common` rule,
@@ -257,9 +263,9 @@ This method avoids to multiply classes on elements such as `.alert-common .alert
 Yet, there is still duplication as we could have programmatically generated the two alert 
 classes with a loop. 
 
-## Flow Controls
+### Flow Controls
 These are elements aiming at fine tuning mixins and functions behavior.  
-### If and else
+#### If and else
 Like in every programming language `if` and `else` control the execution of a code block, depending
 on some conditions. 
 Below, we only want to conditionally control a shadow property, depending on the alert color:
@@ -327,8 +333,8 @@ alert_green <- ".alert-green {
 sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alert_red, alert_green))
 ```
 
-### Loops
-#### Each
+#### Loops
+##### Each
 We would like to create the alert class with only one rule. We first define a list of colors in Sass and
 call the `@each`:
 
@@ -384,7 +390,7 @@ sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alerts_rul
 It becomes even more powerful while working with maps like `$font-weights: ("regular": 400, "medium": 500, "bold": 700);`, ie by key/value [pairs](https://sass-lang.com/documentation/at-rules/control/each#with-maps). 
 `@each` is as convenient as `lapply` or `map` functions to chain repetitive rules creation.
 
-#### For
+##### For
 However, it is not straightforward to count up or down with `@each`. This is precisely where
 `@for` fills the gap. The generic scheme is: 
 
@@ -393,4 +399,173 @@ However, it is not straightforward to count up or down with `@each`. This is pre
 @for <variable> from <expression> through <expression> { ... }
 ```
 
-`to` exludes the last number while `through` includes it.
+`to` excludes the last number while `through` includes it.
+
+
+## `{sass}` best practices 
+As it's best practice, especially for debugging purposes, to include assets as HTML
+dependencies, it is a good idea to organize the Sass variable definition, function/mixins in layers, leveraging the `sass_layer` function:
+
+```{r}
+var <- "$my-color: purple !default"
+rule1 <- ".class-1{ color: $my-color; }"
+rule2 <- ".class-2{ background-color: $my-color; }"
+layer1 <- sass_layer(
+  default = var,
+  rules = c(rule1, rule2)
+)
+```
+
+Besides, `sass_layer` provide options like:
+
+  - `declarations` containing any function, mixin elements, in a `sass_file` for instance. 
+  - `html_deps` that attaches a single or a list of HTML dependencies to the provided Sass code. (See below)
+  
+```{r, eval = FALSE}
+sass_layer(
+  html_deps = htmltools::htmlDependency(
+    name = "my-dep", 
+    version = "1.0.0",
+    package = "mypkg",
+    src = "path",
+    ...
+  )
+)
+```
+
+Ultimately, multiple layers may be bundled with `sass_bundle`:
+
+```{r}
+var2 <- "$my-color: blue !default"
+layer2 <- sass_layer(
+  default = var2,
+  rules = c(rule1, rule2)
+)
+
+
+my_bundle <- sass_bundle(layer1 = layer1, layer2 = layer1)
+my_bundle
+
+sass(my_bundle)
+```
+
+and `sass_bundle_remove`
+removes a given layer from the bundle, provided that you passed a named list to `sass_bundle`. 
+This allows other developers to reuse and modify predefined layers:
+
+
+```{r}
+my_bundle <- sass_bundle_remove(my_bundle, "layer2")
+sass(my_bundle)
+```
+
+## From Sass to CSS
+`sass` can generate CSS from Sass by passing an `output` parameter pointing to the path where
+to generate the CSS file. Best practice consists in enabling compression and source maps. We discuss
+this later in the book in Chapter \@ref(workflow-charpente). Overall those steps makes the code faster to load and easier to debug:
+
+```{r}
+sass(
+  list(
+   "$color: pink;",
+   ".a { color: $color; }" 
+  ),
+  options = sass_options(
+    output_style = "compressed",
+    source_map_embed = TRUE
+  )
+)
+```
+
+
+```{r, eval=FALSE}
+sass(
+  sass_file("main.scss"),
+  "<OUTPUT PATH>",
+  options = sass_options(
+    output_style = "compressed",
+    source_map_embed = TRUE
+  )
+)
+```
+
+
+## Sass and Shiny
+Now let's go back to Shiny! How do we include Sass code in a Shiny app? There are multiple situations:
+
+  1. You simply want to style a shiny app. 
+  2. You developed a template with custom JS and Sass/CSS to be reused by other developers.
+  
+The first option is rather simple since the Sass code is compiled with `sass` before the shiny apps is launched. The resulting code may be either a string or a CSS file (within the `www` folder), to be included in the `head`. To
+make it easier to test on the reader side, we create a temporary folder where the Sass code is compiled.
+We then create a simple app file which is run with `runApp`: 
+
+```{r, eval=FALSE}
+path <- file.path(tempdir(), "myApp")
+dir.create(sprintf("%s/www", path), recursive = TRUE)
+sass(
+  list(
+   c("$color: pink;", "$size: 30px;"),
+   c(".awesome-link { 
+        color: $color; 
+        font-size: $size; 
+        &:hover{
+          color: green;
+        }
+      }"
+    )
+  ), 
+  output = sprintf("%s/www/main.min.css", path),
+  options = sass_options(
+    output_style = "compressed",
+    source_map_embed = TRUE
+  )
+)
+
+file.create(sprintf("%s/app.R", path))
+
+app_code <- 'library(shiny)
+
+ui <- fluidPage(
+  tags$head(
+    tags$link(href = "main.min.css", rel = "stylesheet", type = "text/css")
+  ),
+  a("Hello Shiny!", class = "awesome-link")
+)
+
+server <- function(input, output) {}
+shinyApp(ui, server)
+'
+writeLines(app_code, sprintf("%s/app.R", path))
+
+runApp(sprintf("%s", path))
+```
+
+Source maps allow us to see the original Sass code, as shown Figure \@ref(fig:sass-inspect). 
+`sass_options` gives the flexibility to fine tune the CSS output and source map configuration. 
+
+```{r sass-inspect, echo=FALSE, fig.cap='Inspect Sass code in the web browser', out.width='100%'}
+knitr::include_graphics("images/beautify/sass-inspect.png")
+```
+
+The second option requires to run `sass` passing an `output` file within the package. Then, the generated CSS
+is included in an HTML dependency, to be shipped with the template:
+
+```{r, eval=FALSE}
+sass(
+  sass_file("main.scss"),
+  "<OUTPUT PATH>",
+  options = sass_options(
+    output_style = "compressed",
+    source_map_embed = TRUE
+  )
+)
+
+my_css_deps <- htmltools::htmlDependency(
+  name = "my-style", 
+  version = "1.0.0",
+  package = "mypkg",
+  src = "ASSETS PATH",
+  stylesheet = "main.css"
+)
+```
