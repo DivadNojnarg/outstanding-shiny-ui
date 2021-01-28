@@ -61,6 +61,10 @@ rule2 <- ".class-2{ background-color: $my-color; }"
 sass(input = list(var, rule1, rule2))
 ```
 
+__Note__: it is good practice to add the `default!` tag after the variable definition, if you want
+to let others modify it: `"$my-color: purple !default;"`
+
+
 ### Partials and Modules
 It is best practice to save useful code snippets in one place, and reuse them 
 at anytime and anywhere. Sass allows to define partials, like `_partial.css`, with the leading
@@ -744,4 +748,100 @@ ui <- dashboardPage(
 )
 
 shinyApp(ui, server)
+```
+
+### Customize `{shinybulma}`
+For convenience, the Sass code is already included in the book side [package](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/tree/master/inst/sass/bulma).
+The goal is to change the main color palette that comprises:
+
+  - primary
+  - info
+  - success
+  - warning
+  - danger
+  
+In total, bulma exposes 419 Sass [variables](https://bulma.io/documentation/customize/concepts/)!
+
+Among all files, we locate the main variables file and select the relevant variables you want to modify.
+Notice you can retrieve all those information: [initial variables](https://bulma.io/documentation/customize/variables/#initial-variables) and [derived variables](https://bulma.io/documentation/customize/variables/#variables).
+
+We assign them new [values](https://blog.depositphotos.com/neon-color-palettes.html): 
+
+```css
+$turquoise: #03a4ff;
+$cyan: #e705be;
+$green: #f3d6e9;
+$yellow: #fdaf2c;
+$red: #ff483e;
+$scheme-main: hsl(0, 0%, 4%);
+```
+
+Particularly, we target the main body color hosted by `$scheme-main`. Instead of pointing
+to `$white`, we change its value to the default `$black`. We then Compile the new CSS with `sass`: 
+
+```{r}
+css <- sass(
+  sass_layer(
+    default = c(
+      "$turquoise: #03a4ff;",
+      "$cyan: #e705be;",
+      "$green: #f3d6e9;",
+      "$yellow: #fdaf2c;",
+      "$red: #ff483e;",
+      "$scheme-main: hsl(0, 0%, 10%);"
+      
+    ),
+    rules = sass_file(input = system.file("sass/bulma/bulma.sass", package = "OSUICode"))
+  )
+)
+```
+
+Finally, we try the new theme in the following app, shown on Figure \@ref(fig:sass-bulma-tiles):
+
+```{r, eval=FALSE}
+#remotes::install_github("RinteRface/shinybulma")
+
+library(shinybulma)
+
+shinyApp(
+  ui = bulmaPage(
+    tags$head(tags$style(css)),
+    bulmaSection(
+      bulmaTileAncestor(
+        bulmaTileParent(
+          vertical = TRUE,
+          bulmaTileChild(
+            bulmaTitle("Tile 1"),
+            p("Put some data here"),
+            color = "link"
+          ),
+          bulmaTileChild(
+            bulmaTitle("Tile 2"),
+            "Hi Bulma!",
+            color = "danger"
+          )
+        ),
+        bulmaTileParent(
+          vertical = TRUE,
+          bulmaTileChild(
+            bulmaTitle("Tile 3"),
+            p("Put some data here"),
+            color = "warning"
+          ),
+          bulmaTileChild(
+            bulmaTitle("Tile 3"),
+            ("Put some data here"),
+            color = "info"
+          )
+        )
+      )
+    )
+  ),
+  server = function(input, output) {}
+)
+```
+
+
+```{r sass-bulma-tiles, echo=FALSE, fig.cap='Custom bulma theme', out.width='100%'}
+knitr::include_graphics("images/beautify/sass-bulma-tiles.png")
 ```
