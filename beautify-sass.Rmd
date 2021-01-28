@@ -554,7 +554,7 @@ is included in an HTML dependency, to be shipped with the template:
 ```{r, eval=FALSE}
 sass(
   sass_file("main.scss"),
-  "<OUTPUT PATH>",
+  "<OUTPUT PATH>/main.css",
   options = sass_options(
     output_style = "compressed",
     source_map_embed = TRUE
@@ -565,7 +565,183 @@ my_css_deps <- htmltools::htmlDependency(
   name = "my-style", 
   version = "1.0.0",
   package = "mypkg",
-  src = "ASSETS PATH",
+  src = "<OUTPUT PATH>",
   stylesheet = "main.css"
 )
+```
+
+
+## Examples
+
+### Customize `{bs4Dash}` colors
+`{bs4Dash}` is a Bootstrap 4 dashboard template built on top of the [AdminLTE3](https://adminlte.io/themes/v3/) HTML template. `{shinydashboard}` is powered by the previous version, that is [AdminLTE2](https://adminlte.io/themes/AdminLTE/index2.html), which make it somehow `{bs4Dash}`'s big brother!
+AdminLTE3 relies on Sass and all files are stored [here](https://github.com/ColorlibHQ/AdminLTE/tree/master/build/scss). Particularly, 
+all variables are located in the `_variables.scss` partial. Since we can decompose our
+Sass code in multiple layers thanks to `{sass}`, we can seamlessly customize the theme color
+variables listed below:
+
+```css
+$blue: #0073b7 !default;
+$lightblue: #3c8dbc !default;
+$navy: #001f3f !default;
+$teal: #39cccc !default;
+$olive: #3d9970 !default;
+$lime: #01ff70 !default;
+$orange: #ff851b !default;
+$fuchsia: #f012be !default;
+$purple: #605ca8 !default;
+$maroon: #d81b60 !default;
+$black: #111 !default;
+$gray-x-light: #d2d6de !default;
+```
+
+Let's provide our own default with some custom [colors](https://colorswall.com/palette/66354/):
+
+```css
+$blue: #136377 !default;
+$olive: #d8bc66 !default;
+$lime: #fcec0c !default;
+$orange: #978d01 !default;
+$maroon: #58482c !default;
+$gray-x-light: #d1c5c0 !default;
+```
+
+Now we would have to recompile the whole AdminLTE3 Sass code to account for these changes.
+It means, all scss assets must be accessible somewhere: this is what the `{fresh}` package is doing under the [hoods](https://github.com/dreamRs/fresh/blob/master/R/create_theme.R).
+No worries, we'll come back on `{fresh}` in the next Chapter. For now, we rely on the `{fresh}` Sass code stored at
+`system.file("assets/AdminLTE-3.0.4/AdminLTE.scss", package = "fresh")`:
+
+```{r, eval=FALSE}
+library(bs4Dash)
+
+css <- sass(
+  sass_layer(
+    default = c(
+      "$lightblue: #136377 !default;",
+      "$olive: #d8bc66 !default;",
+      "$lime: #fcec0c !default;",
+      "$orange: #978d01 !default;",
+      "$maroon: #58482c !default;",
+      "$gray-x-light: #d1c5c0 !default;"
+    ),
+    rules = sass_file(
+      input = system.file("assets/AdminLTE-3.0.4/AdminLTE.scss", package = "fresh")
+    )
+  )
+)
+
+
+ui <- dashboardPage(
+  dashboardHeader(title = "Custom colors"),
+  dashboardSidebar(),
+  dashboardBody(
+    tags$head(tags$style(css)),
+    # Boxes need to be put in a row (or column)
+    fluidRow(
+      box(plotOutput("plot1", height = 250), status = "olive"),
+
+      box(
+        status = "lightblue",
+        title = "Controls",
+        sliderInput("slider", "Number of observations:", 1, 100, 50)
+      )
+    )
+  )
+)
+
+server <- function(input, output) {
+  set.seed(122)
+  histdata <- rnorm(500)
+
+  output$plot1 <- renderPlot({
+    data <- histdata[seq_len(input$slider)]
+    hist(data)
+  })
+}
+
+shinyApp(ui, server)
+```
+
+You probably noticed a potential issue. We indeed have to rely on a specific version, 
+namely `3.0.4`, that is not necessarily the one we want. Therefore, an alternative could 
+be to download the Sass files from the AdminLTE3, store them in a temp folder and recompile
+the code from that folder with new variables. As AdminLTE3 depends on a very specific version 
+of Bootstrap 4, `4.5.3`, we also have to recover those dependencies in a separate folder. 
+We finally edit the original `adminlte.scss` to change the Bootstrap Sass path:
+
+```css
+/*!
+ *   AdminLTE v3.1.0-rc
+ *   Author: Colorlib
+ *   Website: AdminLTE.io <https://adminlte.io>
+ *   License: Open source - MIT <https://opensource.org/licenses/MIT>
+ */
+
+// Bootstrap
+// ---------------------------------------------------
+@import "../bootstrap/scss/functions";
+@import "bootstrap-variables";
+@import "../bootstrap/scss/bootstrap";
+
+// Variables and Mixins
+// ---------------------------------------------------
+@import "variables";
+@import "mixins";
+
+@import "parts/core";
+@import "parts/components";
+@import "parts/extra-components";
+@import "parts/pages";
+@import "parts/plugins";
+@import "parts/miscellaneous";
+```
+
+In the below demonstration, in addition to change the theme colors, we also modified the
+`$sidebar-dark-bg` [variable](https://github.com/ColorlibHQ/AdminLTE/blob/master/build/scss/_variables.scss#L112) to be `$lightblue` and `$sidebar-light-bg` to `$lime`:
+
+```{r, eval=FALSE}
+temp_path <- file.path(tempdir())
+dir.create(file.path(temp_path, "adminlte"))
+setwd(file.path(temp_path, "adminlte"))
+system("wget -r -np -k --cut-dirs=4 -nH https://cdn.jsdelivr.net/npm/admin-lte@3.1.0-rc/build/scss/")
+dir.create(file.path(temp_path, "bootstrap/scss"), recursive = TRUE)
+setwd(file.path(temp_path, "bootstrap/scss"))
+system("wget -r -np -k --cut-dirs=3 -nH https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/scss/")
+adminlte_scss <- sprintf("%s/adminlte/adminlte.scss", temp_path)
+
+css <- sass(
+  sass_layer(
+    default = c(
+      "$lightblue: #136377 !default;",
+      "$olive: #d8bc66 !default;",
+      "$lime: #fcec0c !default;",
+      "$orange: #978d01 !default;",
+      "$maroon: #58482c !default;",
+      "$gray-x-light: #d1c5c0 !default;",
+      "$sidebar-dark-bg: $lightblue !default;",
+      "$sidebar-light-bg: $lime !default;"
+    ),
+    rules = sass_file(input = adminlte_scss)
+  )
+)
+
+ui <- dashboardPage(
+  dashboardHeader(title = "Custom colors"),
+  dashboardSidebar(),
+  dashboardBody(
+    tags$head(tags$style(css)),
+    # Boxes need to be put in a row (or column)
+    fluidRow(
+      box(plotOutput("plot1", height = 250), status = "olive"),
+
+      box(
+        status = "lightblue",
+        title = "Controls",
+        sliderInput("slider", "Number of observations:", 1, 100, 50)
+      )
+    )
+  )
+)
+
+shinyApp(ui, server)
 ```
