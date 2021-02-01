@@ -309,13 +309,15 @@ remotes::install_github("react-R/reactR")
 ```
 
 ### Scaffold inputs
+
+#### Setup
 `{reactR}` exposes the `scaffoldReactShinyInput` that creates the necessary pieces of code
 to get started with the input development (see Figure \@ref(fig:reactR-init-input)):
 
-  - A `<input_name>.R` file containing the input skeleton as well as its related update function.
+  - An `<input_name>.R` file containing the input skeleton as well as its related update function.
   It also creates a custom HTML dependency pointing to the input JS logic.
   - A `jsx` file with a boilerplate to start developing the input JS logic.
-  - A `package.json` file containing dependencies. 
+  - A `package.json` file containing dependencies.
 
 Besides, providing an optional dependency with a name and version taken from npm installs
 all necessary dependencies in the `package.json` file. 
@@ -323,32 +325,33 @@ all necessary dependencies in the `package.json` file.
 In our case, we want to build on top of Argon from [here](https://www.npmjs.com/package/argon-design-system-react):
 
 ```{r, eval=FALSE}
-library(reactR)
 path <- file.path(tempdir(), "mypkg")
 usethis::create_package(path, rstudio = TRUE)
-scaffoldReactShinyInput("argon_action_button", list(name = "argon-design-system-react", version = "1.1.0"))
+reactR::scaffoldReactShinyInput("argon_action_button", list(name = "argon-design-system-react", version = "1.1.0"))
 ```
 
 ```{r reactR-init-input, echo=FALSE, fig.cap='Package initialization with {reactR}', out.width='100%'}
 knitr::include_graphics("images/going-further/reactR-init-input.png")
 ```
 
-Note that `{reactR}` provides `webpack` as JS manager. To build the JS code we go to the
-terminal tab and run:
+Note that `{reactR}` provides `webpack` as JS manager. To build the JS code we go to the RStudio
+terminal tab (or any terminal) and run at the package root:
 
 ```
 yarn install
 yarn run webpack
 ```
 
-to install all dependencies in the `package.json` file and create a `package-lock.json` file. If you ever used `{renv}`, this is very similar and guarantees isolation of your package. All dependencies are stored in the `node_modules` folder.
+This installs all dependencies listed in the `package.json` file and create a `package-lock.json` file. If you ever used `{renv}`, this is very similar and guarantees isolation of your package. All dependencies are stored in the `node_modules` folder.
 
-__Note__: I encountered few case where the `yarn install` failed. In that case, you may 
-try `npm i argon-design-system-react`.
+__Note__: I encountered few cases where the `yarn install` failed. In that case, you may 
+try `npm i argon-design-system-react` and also check your VPN settings.
 
-The `run webpack` triggers the compilation of JS to production ready code. The webpack configuration is located in `webpack.config.js`, if you want to customize the build pipeline. The generated JS file is stored in an HTML dependencies, located in the `<input_name>.R` file. 
+The `run webpack` command triggers compiles the JS in production ready code. Should you need to customize the build pipeline, the webpack configuration is located in `webpack.config.js`. On the R side, the generated JS file is referenced in an HTML dependencies, located in the `<input_name>.R` file. 
 
-It's time to develop the logic. The documentation provides a [boilerplate](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/documentation/buttons):
+
+#### Implement the input JS logic
+It's time to develop the logic. The Argon documentation provides a [boilerplate](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/documentation/buttons), which we slightly simplified, as show below:
 
 ```jsx
 import { reactShinyInput } from 'reactR';
@@ -366,10 +369,78 @@ function ArgonButton() {
 reactShinyInput('.argon_action_button', 'mypkg.argon_action_button', ArgonButton);
 ```
 
-For now, let's just erase the boilerplate `argon_action_button.jsx` with the above code an recompile with 
-`yarn run webpack`.
+Notice the first two lines where we import the `reactShinyInput` function from the `{reactR}` JS core and [`reactstrap`](https://reactstrap.github.io/), a React powered Bootstrap 4 library. `reactShinyInput` provides
+a wrapper to automatically bind the input element. This is extremely convenient as it allows to solely focus on the component logic rather than binding it to the shiny system. It takes three parameters:
 
-which we converted to function instead of class. If you wonder what is [`reactstrap`](https://reactstrap.github.io/), it is basically a React powered Bootstrap 4 library. We also have to tell Shiny we want to
+  - The element class which is obtained from the R side by `createReactShinyInput`.
+  - The input binding name which is useful to store a reference in the `Shiny.InputBindings` registry.
+  - The React component function. 
+  - There is an optional fourth parameter allowing to pass custom options like
+  rate [policies](https://github.com/react-R/reactR/blob/master/srcjs/input.js#L137). 
+  
+Overall, [`reactShinyInput`](https://github.com/react-R/reactR/blob/master/srcjs/input.js#L72) extends the `Shiny.InputBinding` class by providing extra methods like:
+  
+```js
+getInputConfiguration(el) {
+  return $(el).data('configuration');
+}
+setInputConfiguration(el, configuration) {
+  $(el).data('configuration', configuration);
+}
+```
+
+`getInputConfiguration` and `setInputConfiguration`, respectively get and set the user provided configuration,
+passed in the `createReactShinyInput` R side function. Under the hood, in addition to ship the `{reactR}`, React, ReactTools HTML dependencies (and any user defined custom dependency), `createReactShinyInput` does generate
+three tag elements:
+
+  - The first tag is the element placeholder containing the unique id. React will insert 
+  the component inside this target with `ReactDOM.render`. 
+  - The second tag is a script containing the value passed as JSON. 
+  - The second tag is a script containing the configuration, also passed as JSON.
+  
+```{r}
+reactR::createReactShinyInput(
+  inputId = "plop", 
+  class = "myinput", 
+  dependencies = htmltools::findDependencies(icon("bicycle")), 
+  default = 0, 
+  configuration = list(a = 1, b = "test"), 
+  container = div
+)
+```
+  
+The configuration and values are processed in the `initialize` method, which is a great place since it is 
+called before the input is bound:
+
+```js
+$(el).data('value', JSON.parse($(el).next().text()));
+$(el).data('configuration', JSON.parse($(el).next().next().text()));
+```
+
+They are stored in the corresponding data attributes. The most important part is the `render` method that
+creates the React element , based upon its configuration, value and renders it in the DOM:
+
+```js
+render(el) {
+  const element = React.createElement(component, {
+    configuration: this.getInputConfiguration(el),
+    value: this.getValue(el),
+    setValue: this.setValue.bind(this, el),
+    el: el
+  });
+  ReactDOM.render(element, el);
+}
+```
+
+The `render` method is called once inside `subscribe` and also each time the element is updated
+with `receiveMessage`. 
+
+Interestingly, `setValue` is made available to the React component. You'll see below, this is 
+particularly handy to seamlessly update the input value directly inside the component. 
+
+For now, let's just erase the `{creatR}` boilerplate (`argon_action_button.jsx`) with the above code an recompile with `yarn run webpack`.
+
+which we converted to function instead of class. We also have to tell Shiny we want to
 use Bootstrap 4 instead of Bootstrap 3, through the `bslib::bs_theme` function:
 
 ```{r, eval=FALSE}
@@ -458,7 +529,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-We may also update the update input boilerplate since we don't change the button value:
+We may also modify the update input boilerplate since we don't change the button value:
 
 ```{r, eval=FALSE}
 update_argon_action_button <- function(session, inputId, configuration = NULL) {
@@ -492,6 +563,54 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 ```
+
+
+#### Exercise
+1. Add a `size`, `outline` and `icon` (from fontawesome) parameters to the `ArgonButton` component in the corresponding R script.
+Hint: the `icon` parameter is the trickiest one. You might find helpful to capture its HTML dependency with `htmltools::htmlDependencies(iconTag)` so as to properly render it. In HTML `icon("bicycle")` produces `<i class="fa fa-bicycle" role="presentation" aria-label="bicycle icon"></i>`. However, in React we want `<i className="fa fa-bicycle />`. Therefore, you will have to extract the icon class and send it to JS in the configuration list.
+2. Implement the logic on the JS side. Hint: you may use the below code:
+
+```jsx
+import { reactShinyInput } from 'reactR';
+// reactstrap components
+import { Button } from "reactstrap";
+
+function ArgonButton({configuration, value, setValue}) {
+  let iconTag, btnCl, innerTag;
+  if (...) {
+    btnCl = "btn-icon";
+    innerTag = <>
+      <span className="btn-inner--icon">
+        <i className=... />
+      </span>
+      <span className="btn-inner--text">...</span>
+    </>;
+  } else {
+    innerTag = configuration.label;
+  }
+
+  let outlined;
+  if (...) {
+    outlined = true;
+  }
+
+  return (
+    <Button
+      color={configuration.status}
+      type="button"
+      className=...
+      outline=...
+      size=...
+      onClick={() => setValue(value + 1)}>
+      {innerTag}
+    </Button>
+  );
+}
+
+reactShinyInput('.argon_action_button', 'mypkg.argon_action_button', ArgonButton);
+```
+
+
 
 ### Toward custom components
 Creating custom components in Shiny is not that easy. If we assume we want to create
