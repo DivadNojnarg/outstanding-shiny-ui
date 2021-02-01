@@ -292,12 +292,209 @@ Now that you get a better understanding of how React works, let's see how to use
 Shiny. 
 
 ## Introduction to `{reactR}`
+The React ecosystem is rich and provides many plug and play boilerplate. For instance,
+`{reactable}` is an HTML widget developed on top of the [`react-table`](https://github.com/tannerlinsley/react-table) library. What about the modern React Argon design [system](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/), shown Figure \@ref(fig:argon-design-react).
+
+```{r argon-design-react, echo=FALSE, fig.cap='Argon design template with React', out.width='100%'}
+knitr::include_graphics("images/going-further/argon-design-react.png")
+```
+
+In this part, we see how to leverage `{reactR}` to bring Argon design React to Shiny.
+
+To install `{reactR}`:
+
+```{r, eval=FALSE}
+install.packages("reactR")
+remotes::install_github("react-R/reactR")
+```
 
 ### Scaffold inputs
+`{reactR}` exposes the `scaffoldReactShinyInput` that creates the necessary pieces of code
+to get started with the input development (see Figure \@ref(fig:reactR-init-input)):
+
+  - A `<input_name>.R` file containing the input skeleton as well as its related update function.
+  It also creates a custom HTML dependency pointing to the input JS logic.
+  - A `jsx` file with a boilerplate to start developing the input JS logic.
+  - A `package.json` file containing dependencies. 
+
+Besides, providing an optional dependency with a name and version taken from npm installs
+all necessary dependencies in the `package.json` file. 
+  
+In our case, we want to build on top of Argon from [here](https://www.npmjs.com/package/argon-design-system-react):
+
+```{r, eval=FALSE}
+library(reactR)
+path <- file.path(tempdir(), "mypkg")
+usethis::create_package(path, rstudio = TRUE)
+scaffoldReactShinyInput("argon_action_button", list(name = "argon-design-system-react", version = "1.1.0"))
+```
+
+```{r reactR-init-input, echo=FALSE, fig.cap='Package initialization with {reactR}', out.width='100%'}
+knitr::include_graphics("images/going-further/reactR-init-input.png")
+```
+
+Note that `{reactR}` provides `webpack` as JS manager. To build the JS code we go to the
+terminal tab and run:
+
+```
+yarn install
+yarn run webpack
+```
+
+to install all dependencies in the `package.json` file and create a `package-lock.json` file. If you ever used `{renv}`, this is very similar and guarantees isolation of your package. All dependencies are stored in the `node_modules` folder.
+
+__Note__: I encountered few case where the `yarn install` failed. In that case, you may 
+try `npm i argon-design-system-react`.
+
+The `run webpack` triggers the compilation of JS to production ready code. The webpack configuration is located in `webpack.config.js`, if you want to customize the build pipeline. The generated JS file is stored in an HTML dependencies, located in the `<input_name>.R` file. 
+
+It's time to develop the logic. The documentation provides a [boilerplate](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/documentation/buttons):
+
+```jsx
+import { reactShinyInput } from 'reactR';
+// reactstrap components
+import { Button } from "reactstrap";
+
+function ArgonButton() {
+  return (
+    <Button color="primary" type="button">
+      Button
+    </Button>
+  );
+}
+
+reactShinyInput('.argon_action_button', 'mypkg.argon_action_button', ArgonButton);
+```
+
+For now, let's just erase the boilerplate `argon_action_button.jsx` with the above code an recompile with 
+`yarn run webpack`.
+
+which we converted to function instead of class. If you wonder what is [`reactstrap`](https://reactstrap.github.io/), it is basically a React powered Bootstrap 4 library. We also have to tell Shiny we want to
+use Bootstrap 4 instead of Bootstrap 3, through the `bslib::bs_theme` function:
+
+```{r, eval=FALSE}
+devtools::document()
+devtools::load_all()
+library(shiny)
+library(mypkg)
+
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  argon_action_button("plop")
+)
+
+server <- function(input, output, session) {
+  
+}
+
+shinyApp(ui, server)
+```
+
+The button is looking good, even though not doing anything special yet. The next part
+consists in making it interactive. On the JS side, we edit the code to add three input parameters to the
+ArgonButton component:
+
+  - __value__ is the button count. The initial value is provided by the `default` slot on the R side (see below). 
+  - __configuration__ contains various user provided properties like the color status, outline style, ...
+  - __setValue__ is a way to increment the button value. Letting `setValue(value + 1)`,
+  ensures to increment the button value by 1 unit each click. 
+
+```jsx
+import { reactShinyInput } from 'reactR';
+// reactstrap components
+import { Button } from "reactstrap";
+
+function ArgonButton({configuration, value, setValue}) {
+  return (
+    <Button color={configuration.status} type="button" onClick={() => setValue(value + 1)}>
+      {configuration.label}
+    </Button>
+  );
+}
+
+reactShinyInput('.argon_action_button', 'mypkg.argon_action_button', ArgonButton);
+```
+
+
+On the R side, we remove the `default` parameter from the external API but keep it to
+set the initial value to 0, like for `shiny::actionButton`. Status and label are stored
+in the configuration name list. Be careful! names matter since they are recovered on the JS side
+with `configuration.prop_name`:
+
+```{r, eval=FALSE}
+argon_action_button <- function(inputId, label, status = "primary") {
+  reactR::createReactShinyInput(
+    inputId,
+    "argon_action_button",
+    htmltools::htmlDependency(
+      name = "argon_action_button-input",
+      version = "1.0.0",
+      src = "www/mypkg/argon_action_button",
+      package = "mypkg",
+      script = "argon_action_button.js"
+    ),
+    default = 0,
+    configuration = list(
+      label = label,
+      status = status
+    ),
+    htmltools::tags$div
+  )
+}
+```
+
+Once everything is up to date, we rebuild the JS, reload/document the package and run the app demo:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  argon_action_button("plop", "Click me!")
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+}
+
+shinyApp(ui, server)
+```
+
+We may also update the update input boilerplate since we don't change the button value:
+
+```{r, eval=FALSE}
+update_argon_action_button <- function(session, inputId, configuration = NULL) {
+  message <- list()
+  if (!is.null(configuration)) message$configuration <- configuration
+  session$sendInputMessage(inputId, message);
+}
+
+devtools::document()
+devtools::load_all()
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  fluidRow(
+    argon_action_button("plop", "Click me!"),
+    argon_action_button("update", "Update button 1")
+  )
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+  observeEvent(input$update, {
+    update_argon_action_button(
+      session, "plop", 
+      configuration = list(
+        label = "New text", 
+        status = "success"
+      )
+    )
+  }, ignoreInit = TRUE)
+}
+
+shinyApp(ui, server)
+```
 
 ### Toward custom components
 Creating custom components in Shiny is not that easy. If we assume we want to create
 a custom text container which color, size and many CSS properties can change dynamically. 
 This is a bit different from the approach shown in Chapter \@ref(beautify-with-bootstraplib) since
-the `{bslib}` gives access to Bootstrap [variables](https://rstudio.github.io/bslib/articles/bs4-variables.html) but not
-basic CSS properties like the color of a `span` element.
+the `{bslib}` gives access to Bootstrap [variables](https://rstudio.github.io/bslib/articles/bs4-variables.html) but not basic CSS properties like the color of a `span` element.
