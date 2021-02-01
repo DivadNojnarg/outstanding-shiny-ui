@@ -469,9 +469,28 @@ use Bootstrap 4 instead of Bootstrap 3, through the <code><a href="https://rstud
 <span class="op">}</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
-<p>The button is looking good, even though not doing anything special yet. The next part
-consists in making it interactive. On the JS side, we edit the code to add three input parameters to the
-ArgonButton component:</p>
+<p>The button is looking good but not really like in the Argon design system. Indeed, we forgot to import
+the argon CSS assets. Add this code to the <code>argon_action_button.jsx</code>:</p>
+<pre><code>import "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";</code></pre>
+<p>We also have to tell webpack how to load the CSS by adding a missing rule to the provided
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb704"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb704-1"><a href="going-further-reactR.html#cb704-1"></a>rules<span class="op">:</span> [</span>
+<span id="cb704-2"><a href="going-further-reactR.html#cb704-2"></a>  <span class="op">{</span></span>
+<span id="cb704-3"><a href="going-further-reactR.html#cb704-3"></a>      <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">jsx</span><span class="sc">?$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb704-4"><a href="going-further-reactR.html#cb704-4"></a>      <span class="dt">loader</span><span class="op">:</span> <span class="st">'babel-loader'</span><span class="op">,</span></span>
+<span id="cb704-5"><a href="going-further-reactR.html#cb704-5"></a>      <span class="dt">options</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb704-6"><a href="going-further-reactR.html#cb704-6"></a>          <span class="dt">presets</span><span class="op">:</span> [<span class="st">'@babel/preset-env'</span><span class="op">,</span> <span class="st">'@babel/preset-react'</span>]</span>
+<span id="cb704-7"><a href="going-further-reactR.html#cb704-7"></a>      <span class="op">}</span></span>
+<span id="cb704-8"><a href="going-further-reactR.html#cb704-8"></a>  <span class="op">},</span></span>
+<span id="cb704-9"><a href="going-further-reactR.html#cb704-9"></a>  <span class="co">// For CSS so that import "path/style.css"; works</span></span>
+<span id="cb704-10"><a href="going-further-reactR.html#cb704-10"></a>  <span class="op">{</span></span>
+<span id="cb704-11"><a href="going-further-reactR.html#cb704-11"></a>      <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb704-12"><a href="going-further-reactR.html#cb704-12"></a>      <span class="dt">use</span><span class="op">:</span> [<span class="st">'style-loader'</span><span class="op">,</span> <span class="st">'css-loader'</span>]</span>
+<span id="cb704-13"><a href="going-further-reactR.html#cb704-13"></a>  <span class="op">}</span></span>
+<span id="cb704-14"><a href="going-further-reactR.html#cb704-14"></a>]</span></code></pre></div>
+<p>Once updated, we recompile the code. The next part of this tutorial consists in making the button interactive.
+We edit the <code>argon_action_button.jsx</code> code to add three input parameters in the
+<code>ArgonButton</code> component:</p>
 <ul>
 <li>
 <strong>value</strong> is the button count. The initial value is provided by the <code>default</code> slot on the R side (see below).</li>
@@ -481,24 +500,26 @@ ArgonButton component:</p>
 <strong>setValue</strong> is a way to increment the button value. Letting <code>setValue(value + 1)</code>,
 ensures to increment the button value by 1 unit each click.</li>
 </ul>
-<div class="sourceCode" id="cb703"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb703-1"><a href="going-further-reactR.html#cb703-1"></a><span class="im">import</span> <span class="op">{</span> reactShinyInput <span class="op">}</span> <span class="im">from</span> <span class="st">'reactR'</span><span class="op">;</span></span>
-<span id="cb703-2"><a href="going-further-reactR.html#cb703-2"></a><span class="co">// reactstrap components</span></span>
-<span id="cb703-3"><a href="going-further-reactR.html#cb703-3"></a><span class="im">import</span> <span class="op">{</span> Button <span class="op">}</span> <span class="im">from</span> <span class="st">"reactstrap"</span><span class="op">;</span></span>
-<span id="cb703-4"><a href="going-further-reactR.html#cb703-4"></a></span>
-<span id="cb703-5"><a href="going-further-reactR.html#cb703-5"></a><span class="kw">function</span> <span class="at">ArgonButton</span>(<span class="op">{</span>configuration<span class="op">,</span> value<span class="op">,</span> setValue<span class="op">}</span>) <span class="op">{</span></span>
-<span id="cb703-6"><a href="going-further-reactR.html#cb703-6"></a>  <span class="cf">return</span> (</span>
-<span id="cb703-7"><a href="going-further-reactR.html#cb703-7"></a>    <span class="fu">&lt;Button</span> <span class="ot">color</span><span class="op">=</span><span class="va">{configuration</span>.<span class="at">status</span><span class="va">}</span> <span class="ot">type</span><span class="op">=</span><span class="st">"button"</span> <span class="ot">onClick</span><span class="op">=</span><span class="va">{</span>() <span class="kw">=&gt;</span> <span class="at">setValue</span>(value <span class="op">+</span> <span class="dv">1</span>)<span class="va">}</span><span class="fu">&gt;</span></span>
-<span id="cb703-8"><a href="going-further-reactR.html#cb703-8"></a>      <span class="va">{configuration</span>.<span class="at">label</span><span class="va">}</span></span>
-<span id="cb703-9"><a href="going-further-reactR.html#cb703-9"></a>    <span class="fu">&lt;/Button&gt;</span></span>
-<span id="cb703-10"><a href="going-further-reactR.html#cb703-10"></a>  )<span class="op">;</span></span>
-<span id="cb703-11"><a href="going-further-reactR.html#cb703-11"></a><span class="op">}</span></span>
-<span id="cb703-12"><a href="going-further-reactR.html#cb703-12"></a></span>
-<span id="cb703-13"><a href="going-further-reactR.html#cb703-13"></a><span class="at">reactShinyInput</span>(<span class="st">'.argon_action_button'</span><span class="op">,</span> <span class="st">'mypkg.argon_action_button'</span><span class="op">,</span> ArgonButton)<span class="op">;</span></span></code></pre></div>
-<p>On the R side, we remove the <code>default</code> parameter from the external API but keep it to
+<div class="sourceCode" id="cb705"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb705-1"><a href="going-further-reactR.html#cb705-1"></a><span class="im">import</span> <span class="op">{</span> reactShinyInput <span class="op">}</span> <span class="im">from</span> <span class="st">'reactR'</span><span class="op">;</span></span>
+<span id="cb705-2"><a href="going-further-reactR.html#cb705-2"></a><span class="co">// reactstrap components</span></span>
+<span id="cb705-3"><a href="going-further-reactR.html#cb705-3"></a><span class="im">import</span> <span class="op">{</span> Button <span class="op">}</span> <span class="im">from</span> <span class="st">"reactstrap"</span><span class="op">;</span></span>
+<span id="cb705-4"><a href="going-further-reactR.html#cb705-4"></a><span class="co">// Import argon CSS</span></span>
+<span id="cb705-5"><a href="going-further-reactR.html#cb705-5"></a><span class="im">import</span> <span class="st">"argon-design-system-react/src/assets/css/argon-design-system-react.min.css"</span><span class="op">;</span></span>
+<span id="cb705-6"><a href="going-further-reactR.html#cb705-6"></a></span>
+<span id="cb705-7"><a href="going-further-reactR.html#cb705-7"></a><span class="kw">function</span> <span class="at">ArgonButton</span>(<span class="op">{</span>configuration<span class="op">,</span> value<span class="op">,</span> setValue<span class="op">}</span>) <span class="op">{</span></span>
+<span id="cb705-8"><a href="going-further-reactR.html#cb705-8"></a>  <span class="cf">return</span> (</span>
+<span id="cb705-9"><a href="going-further-reactR.html#cb705-9"></a>    <span class="fu">&lt;Button</span> <span class="ot">color</span><span class="op">=</span><span class="va">{configuration</span>.<span class="at">status</span><span class="va">}</span> <span class="ot">type</span><span class="op">=</span><span class="st">"button"</span> <span class="ot">onClick</span><span class="op">=</span><span class="va">{</span>() <span class="kw">=&gt;</span> <span class="at">setValue</span>(value <span class="op">+</span> <span class="dv">1</span>)<span class="va">}</span><span class="fu">&gt;</span></span>
+<span id="cb705-10"><a href="going-further-reactR.html#cb705-10"></a>      <span class="va">{configuration</span>.<span class="at">label</span><span class="va">}</span></span>
+<span id="cb705-11"><a href="going-further-reactR.html#cb705-11"></a>    <span class="fu">&lt;/Button&gt;</span></span>
+<span id="cb705-12"><a href="going-further-reactR.html#cb705-12"></a>  )<span class="op">;</span></span>
+<span id="cb705-13"><a href="going-further-reactR.html#cb705-13"></a><span class="op">}</span></span>
+<span id="cb705-14"><a href="going-further-reactR.html#cb705-14"></a></span>
+<span id="cb705-15"><a href="going-further-reactR.html#cb705-15"></a><span class="at">reactShinyInput</span>(<span class="st">'.argon_action_button'</span><span class="op">,</span> <span class="st">'mypkg.argon_action_button'</span><span class="op">,</span> ArgonButton)<span class="op">;</span></span></code></pre></div>
+<p>On the R side, we remove the <code>default</code> parameter from the external API but keep it internally to
 set the initial value to 0, like for <code><a href="https://rdrr.io/pkg/shiny/man/actionButton.html">shiny::actionButton</a></code>. Status and label are stored
 in the configuration name list. Be careful! names matter since they are recovered on the JS side
 with <code>configuration.prop_name</code>:</p>
-<div class="sourceCode" id="cb704"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb706"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">argon_action_button</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">label</span>, <span class="va">status</span> <span class="op">=</span> <span class="st">"primary"</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu">reactR</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/reactR/man/createReactShinyInput.html">createReactShinyInput</a></span><span class="op">(</span>
     <span class="va">inputId</span>,
@@ -519,7 +540,7 @@ with <code>configuration.prop_name</code>:</p>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Once everything is up to date, we rebuild the JS, reload/document the package and run the app demo:</p>
-<div class="sourceCode" id="cb705"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb707"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   theme <span class="op">=</span> <span class="fu">bslib</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_theme.html">bs_theme</a></span><span class="op">(</span>version <span class="op">=</span> <span class="st">"4"</span><span class="op">)</span>,
   <span class="fu">argon_action_button</span><span class="op">(</span><span class="st">"plop"</span>, <span class="st">"Click me!"</span><span class="op">)</span>
@@ -531,7 +552,7 @@ with <code>configuration.prop_name</code>:</p>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p>We may also modify the update input boilerplate since we don’t change the button value:</p>
-<div class="sourceCode" id="cb706"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb708"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">update_argon_action_button</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">session</span>, <span class="va">inputId</span>, <span class="va">configuration</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span>
   <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">configuration</span><span class="op">)</span><span class="op">)</span> <span class="va">message</span><span class="op">$</span><span class="va">configuration</span> <span class="op">&lt;-</span> <span class="va">configuration</span>
@@ -572,43 +593,81 @@ with <code>configuration.prop_name</code>:</p>
 Hint: the <code>icon</code> parameter is the trickiest one. You might find helpful to capture its HTML dependency with <code><a href="https://rdrr.io/pkg/htmltools/man/htmlDependencies.html">htmltools::htmlDependencies(iconTag)</a></code> so as to properly render it. In HTML <code><a href="https://rdrr.io/pkg/shiny/man/icon.html">icon("bicycle")</a></code> produces <code>&lt;i class="fa fa-bicycle" role="presentation" aria-label="bicycle icon"&gt;&lt;/i&gt;</code>. However, in React we want <code>&lt;i className="fa fa-bicycle /&gt;</code>. Therefore, you will have to extract the icon class and send it to JS in the configuration list.</li>
 <li>Implement the logic on the JS side. Hint: you may use the below code:</li>
 </ol>
-<div class="sourceCode" id="cb707"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb707-1"><a href="going-further-reactR.html#cb707-1"></a><span class="im">import</span> <span class="op">{</span> reactShinyInput <span class="op">}</span> <span class="im">from</span> <span class="st">'reactR'</span><span class="op">;</span></span>
-<span id="cb707-2"><a href="going-further-reactR.html#cb707-2"></a><span class="co">// reactstrap components</span></span>
-<span id="cb707-3"><a href="going-further-reactR.html#cb707-3"></a><span class="im">import</span> <span class="op">{</span> Button <span class="op">}</span> <span class="im">from</span> <span class="st">"reactstrap"</span><span class="op">;</span></span>
-<span id="cb707-4"><a href="going-further-reactR.html#cb707-4"></a></span>
-<span id="cb707-5"><a href="going-further-reactR.html#cb707-5"></a><span class="kw">function</span> <span class="at">ArgonButton</span>(<span class="op">{</span>configuration<span class="op">,</span> value<span class="op">,</span> setValue<span class="op">}</span>) <span class="op">{</span></span>
-<span id="cb707-6"><a href="going-further-reactR.html#cb707-6"></a>  <span class="kw">let</span> iconTag<span class="op">,</span> btnCl<span class="op">,</span> innerTag<span class="op">;</span></span>
-<span id="cb707-7"><a href="going-further-reactR.html#cb707-7"></a>  <span class="cf">if</span> (...) <span class="op">{</span></span>
-<span id="cb707-8"><a href="going-further-reactR.html#cb707-8"></a>    btnCl <span class="op">=</span> <span class="st">"btn-icon"</span><span class="op">;</span></span>
-<span id="cb707-9"><a href="going-further-reactR.html#cb707-9"></a>    innerTag <span class="op">= </span><span class="kw">&lt;&gt;</span></span>
-<span id="cb707-10"><a href="going-further-reactR.html#cb707-10"></a>      <span class="kw">&lt;span</span> <span class="ot">className</span><span class="op">=</span><span class="st">"btn-inner--icon"</span><span class="kw">&gt;</span></span>
-<span id="cb707-11"><a href="going-further-reactR.html#cb707-11"></a>        <span class="kw">&lt;i</span> <span class="ot">className</span><span class="op">=</span><span class="er">...</span> <span class="kw">/&gt;</span></span>
-<span id="cb707-12"><a href="going-further-reactR.html#cb707-12"></a>      <span class="kw">&lt;/span&gt;</span></span>
-<span id="cb707-13"><a href="going-further-reactR.html#cb707-13"></a>      <span class="kw">&lt;span</span> <span class="ot">className</span><span class="op">=</span><span class="st">"btn-inner--text"</span><span class="kw">&gt;</span>...<span class="kw">&lt;/span&gt;</span></span>
-<span id="cb707-14"><a href="going-further-reactR.html#cb707-14"></a>    <span class="kw">&lt;/&gt;</span><span class="op">;</span></span>
-<span id="cb707-15"><a href="going-further-reactR.html#cb707-15"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb707-16"><a href="going-further-reactR.html#cb707-16"></a>    innerTag <span class="op">=</span> <span class="va">configuration</span>.<span class="at">label</span><span class="op">;</span></span>
-<span id="cb707-17"><a href="going-further-reactR.html#cb707-17"></a>  <span class="op">}</span></span>
-<span id="cb707-18"><a href="going-further-reactR.html#cb707-18"></a></span>
-<span id="cb707-19"><a href="going-further-reactR.html#cb707-19"></a>  <span class="kw">let</span> outlined<span class="op">;</span></span>
-<span id="cb707-20"><a href="going-further-reactR.html#cb707-20"></a>  <span class="cf">if</span> (...) <span class="op">{</span></span>
-<span id="cb707-21"><a href="going-further-reactR.html#cb707-21"></a>    outlined <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
-<span id="cb707-22"><a href="going-further-reactR.html#cb707-22"></a>  <span class="op">}</span></span>
-<span id="cb707-23"><a href="going-further-reactR.html#cb707-23"></a></span>
-<span id="cb707-24"><a href="going-further-reactR.html#cb707-24"></a>  <span class="cf">return</span> (</span>
-<span id="cb707-25"><a href="going-further-reactR.html#cb707-25"></a>    <span class="fu">&lt;Button</span></span>
-<span id="cb707-26"><a href="going-further-reactR.html#cb707-26"></a>      <span class="ot">color</span><span class="op">=</span><span class="va">{configuration</span>.<span class="at">status</span><span class="va">}</span></span>
-<span id="cb707-27"><a href="going-further-reactR.html#cb707-27"></a>      <span class="ot">type</span><span class="op">=</span><span class="st">"button"</span></span>
-<span id="cb707-28"><a href="going-further-reactR.html#cb707-28"></a>      <span class="ot">className</span><span class="op">=</span><span class="er">...</span></span>
-<span id="cb707-29"><a href="going-further-reactR.html#cb707-29"></a>      <span class="er">outline=...</span></span>
-<span id="cb707-30"><a href="going-further-reactR.html#cb707-30"></a>      <span class="er">size=...</span></span>
-<span id="cb707-31"><a href="going-further-reactR.html#cb707-31"></a>      <span class="er">onClick=</span><span class="va">{</span>() <span class="kw">=&gt;</span> <span class="at">setValue</span>(value <span class="op">+</span> <span class="dv">1</span>)<span class="va">}</span><span class="fu">&gt;</span></span>
-<span id="cb707-32"><a href="going-further-reactR.html#cb707-32"></a>      <span class="va">{</span>innerTag<span class="va">}</span></span>
-<span id="cb707-33"><a href="going-further-reactR.html#cb707-33"></a>    <span class="fu">&lt;/Button&gt;</span></span>
-<span id="cb707-34"><a href="going-further-reactR.html#cb707-34"></a>  )<span class="op">;</span></span>
-<span id="cb707-35"><a href="going-further-reactR.html#cb707-35"></a><span class="op">}</span></span>
-<span id="cb707-36"><a href="going-further-reactR.html#cb707-36"></a></span>
-<span id="cb707-37"><a href="going-further-reactR.html#cb707-37"></a><span class="at">reactShinyInput</span>(<span class="st">'.argon_action_button'</span><span class="op">,</span> <span class="st">'mypkg.argon_action_button'</span><span class="op">,</span> ArgonButton)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb709"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb709-1"><a href="going-further-reactR.html#cb709-1"></a><span class="im">import</span> <span class="op">{</span> reactShinyInput <span class="op">}</span> <span class="im">from</span> <span class="st">'reactR'</span><span class="op">;</span></span>
+<span id="cb709-2"><a href="going-further-reactR.html#cb709-2"></a><span class="co">// reactstrap components</span></span>
+<span id="cb709-3"><a href="going-further-reactR.html#cb709-3"></a><span class="im">import</span> <span class="op">{</span> Button <span class="op">}</span> <span class="im">from</span> <span class="st">"reactstrap"</span><span class="op">;</span></span>
+<span id="cb709-4"><a href="going-further-reactR.html#cb709-4"></a><span class="co">// import argon CSS</span></span>
+<span id="cb709-5"><a href="going-further-reactR.html#cb709-5"></a><span class="im">import</span> <span class="st">"argon-design-system-react/src/assets/css/argon-design-system-react.min.css"</span><span class="op">;</span></span>
+<span id="cb709-6"><a href="going-further-reactR.html#cb709-6"></a></span>
+<span id="cb709-7"><a href="going-further-reactR.html#cb709-7"></a><span class="kw">function</span> <span class="at">ArgonButton</span>(<span class="op">{</span>configuration<span class="op">,</span> value<span class="op">,</span> setValue<span class="op">}</span>) <span class="op">{</span></span>
+<span id="cb709-8"><a href="going-further-reactR.html#cb709-8"></a>  <span class="kw">let</span> iconTag<span class="op">,</span> btnCl<span class="op">,</span> innerTag<span class="op">;</span></span>
+<span id="cb709-9"><a href="going-further-reactR.html#cb709-9"></a>  <span class="cf">if</span> (...) <span class="op">{</span></span>
+<span id="cb709-10"><a href="going-further-reactR.html#cb709-10"></a>    btnCl <span class="op">=</span> <span class="st">"btn-icon"</span><span class="op">;</span></span>
+<span id="cb709-11"><a href="going-further-reactR.html#cb709-11"></a>    innerTag <span class="op">= </span><span class="kw">&lt;&gt;</span></span>
+<span id="cb709-12"><a href="going-further-reactR.html#cb709-12"></a>      <span class="kw">&lt;span</span> <span class="ot">className</span><span class="op">=</span><span class="st">"btn-inner--icon"</span><span class="kw">&gt;</span></span>
+<span id="cb709-13"><a href="going-further-reactR.html#cb709-13"></a>        <span class="kw">&lt;i</span> <span class="ot">className</span><span class="op">=</span><span class="er">...</span> <span class="kw">/&gt;</span></span>
+<span id="cb709-14"><a href="going-further-reactR.html#cb709-14"></a>      <span class="kw">&lt;/span&gt;</span></span>
+<span id="cb709-15"><a href="going-further-reactR.html#cb709-15"></a>      <span class="kw">&lt;span</span> <span class="ot">className</span><span class="op">=</span><span class="st">"btn-inner--text"</span><span class="kw">&gt;</span>...<span class="kw">&lt;/span&gt;</span></span>
+<span id="cb709-16"><a href="going-further-reactR.html#cb709-16"></a>    <span class="kw">&lt;/&gt;</span><span class="op">;</span></span>
+<span id="cb709-17"><a href="going-further-reactR.html#cb709-17"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb709-18"><a href="going-further-reactR.html#cb709-18"></a>    innerTag <span class="op">=</span> <span class="va">configuration</span>.<span class="at">label</span><span class="op">;</span></span>
+<span id="cb709-19"><a href="going-further-reactR.html#cb709-19"></a>  <span class="op">}</span></span>
+<span id="cb709-20"><a href="going-further-reactR.html#cb709-20"></a></span>
+<span id="cb709-21"><a href="going-further-reactR.html#cb709-21"></a>  <span class="kw">let</span> outlined<span class="op">;</span></span>
+<span id="cb709-22"><a href="going-further-reactR.html#cb709-22"></a>  <span class="cf">if</span> (...) <span class="op">{</span></span>
+<span id="cb709-23"><a href="going-further-reactR.html#cb709-23"></a>    outlined <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb709-24"><a href="going-further-reactR.html#cb709-24"></a>  <span class="op">}</span></span>
+<span id="cb709-25"><a href="going-further-reactR.html#cb709-25"></a></span>
+<span id="cb709-26"><a href="going-further-reactR.html#cb709-26"></a>  <span class="cf">return</span> (</span>
+<span id="cb709-27"><a href="going-further-reactR.html#cb709-27"></a>    <span class="fu">&lt;Button</span></span>
+<span id="cb709-28"><a href="going-further-reactR.html#cb709-28"></a>      <span class="ot">color</span><span class="op">=</span><span class="va">{configuration</span>.<span class="at">status</span><span class="va">}</span></span>
+<span id="cb709-29"><a href="going-further-reactR.html#cb709-29"></a>      <span class="ot">type</span><span class="op">=</span><span class="st">"button"</span></span>
+<span id="cb709-30"><a href="going-further-reactR.html#cb709-30"></a>      <span class="ot">className</span><span class="op">=</span><span class="er">...</span></span>
+<span id="cb709-31"><a href="going-further-reactR.html#cb709-31"></a>      <span class="er">outline=...</span></span>
+<span id="cb709-32"><a href="going-further-reactR.html#cb709-32"></a>      <span class="er">size=...</span></span>
+<span id="cb709-33"><a href="going-further-reactR.html#cb709-33"></a>      <span class="er">onClick=</span><span class="va">{</span>() <span class="kw">=&gt;</span> <span class="at">setValue</span>(value <span class="op">+</span> <span class="dv">1</span>)<span class="va">}</span><span class="fu">&gt;</span></span>
+<span id="cb709-34"><a href="going-further-reactR.html#cb709-34"></a>      <span class="va">{</span>innerTag<span class="va">}</span></span>
+<span id="cb709-35"><a href="going-further-reactR.html#cb709-35"></a>    <span class="fu">&lt;/Button&gt;</span></span>
+<span id="cb709-36"><a href="going-further-reactR.html#cb709-36"></a>  )<span class="op">;</span></span>
+<span id="cb709-37"><a href="going-further-reactR.html#cb709-37"></a><span class="op">}</span></span>
+<span id="cb709-38"><a href="going-further-reactR.html#cb709-38"></a></span>
+<span id="cb709-39"><a href="going-further-reactR.html#cb709-39"></a><span class="at">reactShinyInput</span>(<span class="st">'.argon_action_button'</span><span class="op">,</span> <span class="st">'mypkg.argon_action_button'</span><span class="op">,</span> ArgonButton)<span class="op">;</span></span></code></pre></div>
+<ol start="3" style="list-style-type: decimal">
+<li>Try your code with:</li>
+</ol>
+<div class="sourceCode" id="cb710"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.rstudio.com/">shiny</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">mypkg</span><span class="op">)</span>
+
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  theme <span class="op">=</span> <span class="fu">bslib</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/bslib//reference/bs_theme.html">bs_theme</a></span><span class="op">(</span>version <span class="op">=</span> <span class="st">"4"</span><span class="op">)</span>,
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidRow</a></span><span class="op">(</span>
+    <span class="fu">argon_action_button</span><span class="op">(</span><span class="st">"plop"</span>, <span class="st">"Click me!"</span>, size <span class="op">=</span> <span class="st">"lg"</span>, outline <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,
+    <span class="fu">argon_action_button</span><span class="op">(</span><span class="st">"update"</span>, <span class="st">"Update button 1"</span>, icon <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/icon.html">icon</a></span><span class="op">(</span><span class="st">"bicycle"</span><span class="op">)</span><span class="op">)</span>
+  <span class="op">)</span>
+<span class="op">)</span>
+
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observe.html">observe</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">plop</span><span class="op">)</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">update</span>, <span class="op">{</span>
+    <span class="fu">update_argon_action_button</span><span class="op">(</span>
+      <span class="va">session</span>, <span class="st">"plop"</span>, 
+      configuration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+        label <span class="op">=</span> <span class="st">"New text"</span>, 
+        status <span class="op">=</span> <span class="st">"success"</span>
+      <span class="op">)</span>
+    <span class="op">)</span>
+  <span class="op">}</span>, ignoreInit <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+<span class="op">}</span>
+
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p>You should get the result shown Figure <a href="going-further-reactR.html#fig:react-action-button">28.4</a>.</p>
+<div class="figure">
+<span id="fig:react-action-button"></span>
+<img src="images/going-further/react-action-button.png" alt="Argon Action button with React" width="100%"><p class="caption">
+FIGURE 28.4: Argon Action button with React
+</p>
+</div>
 </div>
 </div>
 <div id="toward-custom-components" class="section level3">

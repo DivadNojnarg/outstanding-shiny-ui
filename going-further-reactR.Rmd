@@ -461,9 +461,36 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-The button is looking good, even though not doing anything special yet. The next part
-consists in making it interactive. On the JS side, we edit the code to add three input parameters to the
-ArgonButton component:
+The button is looking good but not really like in the Argon design system. Indeed, we forgot to import
+the argon CSS assets. Add this code to the `argon_action_button.jsx`:
+
+```
+import "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";
+```
+
+We also have to tell webpack how to load the CSS by adding a missing rule to the provided
+`webpack.config.js`:
+
+```js
+rules: [
+  {
+      test: /\.jsx?$/,
+      loader: 'babel-loader',
+      options: {
+          presets: ['@babel/preset-env', '@babel/preset-react']
+      }
+  },
+  // For CSS so that import "path/style.css"; works
+  {
+      test: /\.css$/,
+      use: ['style-loader', 'css-loader']
+  }
+]
+```
+
+Once updated, we recompile the code. The next part of this tutorial consists in making the button interactive. 
+We edit the `argon_action_button.jsx` code to add three input parameters in the
+`ArgonButton` component:
 
   - __value__ is the button count. The initial value is provided by the `default` slot on the R side (see below). 
   - __configuration__ contains various user provided properties like the color status, outline style, ...
@@ -474,6 +501,8 @@ ArgonButton component:
 import { reactShinyInput } from 'reactR';
 // reactstrap components
 import { Button } from "reactstrap";
+// Import argon CSS
+import "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";
 
 function ArgonButton({configuration, value, setValue}) {
   return (
@@ -487,7 +516,7 @@ reactShinyInput('.argon_action_button', 'mypkg.argon_action_button', ArgonButton
 ```
 
 
-On the R side, we remove the `default` parameter from the external API but keep it to
+On the R side, we remove the `default` parameter from the external API but keep it internally to
 set the initial value to 0, like for `shiny::actionButton`. Status and label are stored
 in the configuration name list. Be careful! names matter since they are recovered on the JS side
 with `configuration.prop_name`:
@@ -574,6 +603,8 @@ Hint: the `icon` parameter is the trickiest one. You might find helpful to captu
 import { reactShinyInput } from 'reactR';
 // reactstrap components
 import { Button } from "reactstrap";
+// import argon CSS
+import "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";
 
 function ArgonButton({configuration, value, setValue}) {
   let iconTag, btnCl, innerTag;
@@ -609,7 +640,41 @@ function ArgonButton({configuration, value, setValue}) {
 
 reactShinyInput('.argon_action_button', 'mypkg.argon_action_button', ArgonButton);
 ```
+3. Try your code with:
 
+```{r, eval=FALSE}
+library(shiny)
+library(mypkg)
+
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  fluidRow(
+    argon_action_button("plop", "Click me!", size = "lg", outline = TRUE),
+    argon_action_button("update", "Update button 1", icon = icon("bicycle"))
+  )
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+  observeEvent(input$update, {
+    update_argon_action_button(
+      session, "plop", 
+      configuration = list(
+        label = "New text", 
+        status = "success"
+      )
+    )
+  }, ignoreInit = TRUE)
+}
+
+shinyApp(ui, server)
+```
+
+You should get the result shown Figure \@ref(fig:react-action-button).
+
+```{r react-action-button, echo=FALSE, fig.cap='Argon Action button with React', out.width='100%'}
+knitr::include_graphics("images/going-further/react-action-button.png")
+```
 
 
 ### Toward custom components
