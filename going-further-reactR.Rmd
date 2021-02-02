@@ -487,6 +487,15 @@ rules: [
 ]
 ```
 
+It is possible that you don't have the corresponding node modules. In that case,
+you can install them with:
+
+```
+npm install style-loader css-loader --save-dev
+```
+
+which will also update the `package.json` file. 
+
 Once updated, we recompile the code. The next part of this tutorial consists in making the button interactive. 
 We edit the `argon_action_button.jsx` code to add three input parameters in the
 `ArgonButton` component:
@@ -674,6 +683,236 @@ You should get the result shown Figure \@ref(fig:react-action-button).
 knitr::include_graphics("images/going-further/react-action-button.png")
 ```
 
+
+#### Example 2: a slider input
+Below we propose a preliminary implementation of the Argon slider input. The [documentation](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/documentation/forms) provides a JSX skeleton:
+
+```jsx
+{/* Simple slider */}
+<div className="input-slider-container">
+  <div className="slider" ref="slider1" />
+  <Row className="mt-3 d-none">
+    <Col xs="6">
+      <span className="range-slider-value">
+        {this.state.simpleValue}
+      </span>
+    </Col>
+  </Row>
+</div>
+```
+
+The slider JS API is actually taken from the well known [noUiSlider](https://refreshless.com/nouislider/) library and is already available in the package node modules. Still in the same package as the action button input, we can call:
+
+```{r, eval=FALSE}
+reactR::scaffoldReactShinyInput("argon_slider", edit = FALSE)
+```
+
+It creates a new `srcjs/argon_slider.jsx` script. As Argon uses the pure JS API for noUIslider, 
+this would be too much work for us mainly because the provided `reactShinyInput` JS helper does not have a proper initialization method to create the slider instance. We would have to change it as per below:
+
+```js
+initialize(el) {
+  // Unchanged compared to reactR
+  $(el).data('value', JSON.parse($(el).next().text()));
+  $(el).data('configuration', JSON.parse($(el).next().next().text()));
+  
+  // Create the slider instance 
+  self = this;
+  Slider.create($(el).attr(id), {
+    start: self.getInputValue(el),
+    connect: [true, false],
+    step: self.getInputConfiguration(el).step,
+    range: { 
+      min: self.getInputConfiguration(el).min, 
+      max: self.getInputConfiguration(el).max 
+    }
+  });
+}
+```
+
+as well as updating methods like `setInputValue`, `setInputConfiguration`. Fortunately, 
+there is already a [nouislider-react](https://mmarkelov.github.io/react-nouislider/) API, which will
+makes our job much easier than shown above. To add the new dependency we run:
+
+```
+yarn add nouislider-react
+```
+
+and replace the import statement inside our JSX file to rely on `nouislider-react`. 
+The `Nouislider` component markup is fairly intuitive. We set the min and max as well as the current value:
+
+```jsx
+import { reactShinyInput } from 'reactR';
+import Nouislider from "nouislider-react";
+
+function ArgonSlider({configuration, value, setValue}) {
+  const rangeOpts = {
+    min: configuration.min,
+    max: configuration.max
+  };
+  return(
+    <Nouislider
+      range={rangeOpts}
+      start={value}
+    />
+  );
+}
+
+reactShinyInput('.argon_slider', 'mypkg.argon_slider', ArgonSlider);
+```
+
+At that stage, we modified the `webpack.config.js` file so that there are multiple entry 
+points (to compile the action button and the slider) and combined the output in a more generic name:
+
+```js
+entry: [
+  path.join(__dirname, 'srcjs', 'argon_action_button.jsx'),
+  path.join(__dirname, 'srcjs', 'argon_slider.jsx')
+],
+output: {
+  path: path.join(__dirname, 'inst/www/mypkg/argon'),
+  filename: 'argon.js'
+}
+```
+
+This means we have to update the HTML dependency on the R side, for instance for 
+the `argon_slider_input.R`:
+
+```{r, eval=FALSE}
+argon_slider_input <- function(inputId, value, default = value, min, max) {
+  reactR::createReactShinyInput(
+    inputId,
+    "argon_slider",
+    htmltools::htmlDependency(
+      name = "argon",
+      version = "1.0.0",
+      src = "www/mypkg/argon",
+      package = "mypkg",
+      script = "argon.js"
+    ),
+    default,
+    list(
+      min = min,
+      max = max
+    ),
+    htmltools::tags$div
+  )
+}
+```
+
+We can run the app below:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  argon_slider_input("plop", 10, min = 0, max = 100)
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+}
+
+shinyApp(ui, server)
+```
+
+As shown on Figure \@ref(fig:react-argon-slider), the slider is properly displayed and the value
+is recovered from the server. However, nothing happens when the range is dragged. 
+The reason is quite simple: we did not set the `setValue` inside our JSX code yet.
+
+```{r react-argon-slider, echo=FALSE, fig.cap='Slider input with Argon React', out.width='100%'}
+knitr::include_graphics("images/going-further/react-argon-slider.png")
+```
+
+Let's add the `onSet` prop to the `ArgonSlider` component, that is basically fired once
+the range is released:
+
+```jsx
+function ArgonSlider({configuration, value, setValue, el}) {
+  const rangeOpts = {
+    min: configuration.min,
+    max: configuration.max
+  };
+
+  return(
+    <Nouislider
+      range={rangeOpts}
+      start={[value]}
+      onSet={() => setValue()}
+    />
+  );
+}
+```
+
+What value should we pass to `setValue`? There is no easy way to recover the slider value
+directly within the React component. However, this is something quite easy to do inside the
+input binding. We have to modify the `setValue` method, which does not recover the slider instance. To change the binding method, we wait for shiny to be connected, we unbind all inputs and search inside the `Shiny.inputBindings` registry (See \@ref(edit-input-binding)) providing the binding name,that is `mypkg.argon_slider`. The new value is obtained following the nouiSlider API:
+
+```js
+let sliderInstance = document
+  .getElementById(el.id)
+  .firstElementChild
+  .noUiSlider;
+let newValue = parseInt(sliderInstance.get());
+```
+
+We inject this value inside the existing `this.setInputValue(el, newValue)` method. The `parseInt` 
+function ensures to get a number instead of a string. Once done, we rebind all inputs. The code below has to be added to the `argon_slider.jsx` code. 
+
+```js
+$(document).on('shiny:connected', function(event) {
+  Shiny.unbindAll();
+  $.extend(Shiny
+    .inputBindings
+    .bindingNames['mypkg.argon_slider']
+    .binding, {
+      setValue: function(el, value, rateLimited = false) {
+        if ($(el).data('callback') !== undefined) {
+          let sliderInstance = document
+            .getElementById(el.id)
+            .firstElementChild
+            .noUiSlider;
+          let newValue = parseInt(sliderInstance.get());
+          this.setInputValue(el, newValue);
+          this.getCallback(el)(rateLimited);
+          this.render(el);
+        }
+      }
+    });
+  Shiny.bindAll();
+});
+```
+
+Right now, the slider cannot be moved with the keyboard. Adding the `accessibility` prop
+make it possible. This may correspond to a parameter provided in the `argon_slider_input` configuration: 
+
+```jsx
+function ArgonSlider({configuration, value, setValue, el}) {
+  const rangeOpts = {
+    min: configuration.min,
+    max: configuration.max
+  };
+
+  let keyboard;
+  if (config.keyboard) {
+    keyboard = true;
+  }
+  return(
+    <Nouislider
+      accessibility={keyboard}
+      range={rangeOpts}
+      start={[value]}
+      onSet={() => setValue()}
+    />
+  );
+}
+```
+
+There are many more parameters that can be added to the following API. We leave it as an
+exercise for the reader.
+
+#### Exercise 2: a range slider
+Based on the above example, improve the previous slider widget to handle
+the range slider case, that is enable the user to pass a vector of initial values.
 
 ### Toward custom components
 Creating custom components in Shiny is not that easy. If we assume we want to create
