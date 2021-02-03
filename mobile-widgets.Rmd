@@ -5,13 +5,13 @@ messages, notifications, toasts, ...
 Looking at the [documentation](https://v5.framework7.io/docs/), the API is most of the time
 always the same that is, we create the widget:
 
-```javascript
+```js
 app.widget.create(parameters);
 ```
 
 and we update, open or close it later:
 
-```javascript
+```js
 app.widget.update(newParameters);
 app.widget.open();
 app.widget.close();
@@ -101,7 +101,7 @@ create_js("widgets")
 We set an array containing all compatible widget names in two categories and concatenate
 in a `widgets` element:
 
-```javascript
+```js
 const uiWidgets = ["gauge", "swiper", "searchbar"];
 const serverWidgets = ["toast", "photoBrowser", "notification"];
 const widgets = uiWidgets.concat(serverWidgets);
@@ -110,7 +110,7 @@ const widgets = uiWidgets.concat(serverWidgets);
 We then define the `activateWidget` function, only considering UI widgets. 
 Since we have two widgets categories, this function first checks whether the widget is part of the `uiWidgets` array:
 
-```javascript
+```js
 if (uiWidgets.indexOf(widget) > -1) {
   // Do things
 }
@@ -121,7 +121,7 @@ possible elements. This is where the class is important and must match the widge
 For instance, the gauge has the `gauge` class and the methods are always `app.gauge.`.
 How do we loop through multiple widgets? We use the jQuery `each` method:
 
-```javascript
+```js
 if (uiWidgets.indexOf(widget) > -1) {
   $("." + widget).each(function() {
     // Do things
@@ -138,7 +138,7 @@ to convert it to an object. Note that most of the time, Framework7 expects to ha
 attributes which simply contains the CSS selector of the current element, 
 in other words its unique id `'#' + $el.attr("id")`:
 
-```javascript
+```js
 if (uiWidgets.indexOf(widget) > -1) {
   $("." + widget).each(function() {
     var $el = $(this);
@@ -155,7 +155,7 @@ if (uiWidgets.indexOf(widget) > -1) {
 The final step is to initialize the widget, which is quite straightforward if we notice that
 `app.gauge` is the same as `app["gauge"]`. We obtain the general code:
 
-```javascript
+```js
 app[widget].create(config);
 ```
 
@@ -164,7 +164,7 @@ initialize it. The only possible source of problem is the custom message `type` 
 as the one specified in the R function with `session$sendCustomMessage("type", message)`. We create
 an `else` statement following the `if` condition and put that code inside:
 
-```javascript
+```js
 Shiny.addCustomMessageHandler(widget, function(message) {
   if (message.id !== undefined) {
     message.on = {
@@ -193,7 +193,7 @@ This obviously requires the widget to pass an optional `id` attribute to ensure 
 
 The full JavaScript code may be found below.
 
-```javascript
+```js
 // Instantiate a widget
 activateWidget = function(widget) {
   // Handle ui side widgets
@@ -234,7 +234,7 @@ activateWidget = function(widget) {
 
 The final step is to activate all widgets. We proceed with a loop:
 
-```javascript
+```js
 // Loop over all widgets to activate them
 widgets.forEach(function(w) {
   activateWidget(w);
@@ -280,7 +280,7 @@ Instead of having `update_f7_gauge`, `update_f7_swiper`, ... we want an `update_
 We leverage the `app.data` element that stores all instances by widget type. In the previous part,
 we already created a cache for tooltips, so let's do it for gauges:
 
-```javascript
+```js
 config.data = function() {
   return {
     // any other widget type to cache ...
@@ -296,7 +296,7 @@ as it would lead to errors later.
 Once the cache is available, we have to modify the JavaScript that creates the widget instance,
 to store the new instance in the cache. We add the following code, where w refers to the widget instance:
 
-```javascript
+```js
 // ui widgets
 app.data[widget][$el.attr("id")] = w;
 ```
@@ -305,7 +305,7 @@ This manipulation does not make sense for server widgets!
 
 The `activateWidget` function should be:
 
-```javascript
+```js
 // Instantiate a widget
 activateWidget = function(widget) {
   // Handle ui side widgets
@@ -408,7 +408,7 @@ update_f7_instance <- function(id, options, session = shiny::getDefaultReactiveD
 
 On the JS side, we receive the message (still in the `widget.js` script):
 
-```javascript
+```js
 Shiny.addCustomMessageHandler('update-instance', function(message) {
   // Treat message ...
 });
@@ -421,7 +421,7 @@ nested for loop. The outer loop scans all app.data properties (ie widget categor
 scans all existing instances for each category. Whenever, the `message.id` matches the instance
 name, we store the corresponding widget category in a variable:
 
-```javascript
+```js
 var instanceFamily;
 for (const property in app.data) {
   for (const e in app.data[property]) {
@@ -440,7 +440,7 @@ We capture its parameters located in `oldInstance.params`. From there, multiple 
   
 Below, we decided to merge the old and new configurations using `app.utils.extend`:
 
-```javascript
+```js
 var oldInstance = app.data[instanceFamily][message.id];
 var oldConfig = oldInstance.params;
 var newConfig = app.utils.extend(oldConfig,  message.options);
@@ -449,7 +449,7 @@ var newConfig = app.utils.extend(oldConfig,  message.options);
 The next step is to destroy the old instance, initialize the new instance and refresh 
 the `app.data` cache:
 
-```javascript
+```js
 // Destroy old instance
 oldInstance.destroy();
 // Create new config
@@ -460,7 +460,7 @@ app.data[instanceFamily][message.id] = newInstance;
 
 The whole code is located below:
 
-```javascript
+```js
 Shiny.addCustomMessageHandler('update-instance', function(message) {
   // Recover in which array is stored the given instance.
   // Uniqueness is ensured since HTML id are supposed to be unique.
