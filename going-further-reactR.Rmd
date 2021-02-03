@@ -754,12 +754,15 @@ function ArgonSlider({configuration, value, setValue}) {
     <Nouislider
       range={rangeOpts}
       start={value}
+      connect={[true, false]}
     />
   );
 }
 
 reactShinyInput('.argon_slider', 'mypkg.argon_slider', ArgonSlider);
 ```
+
+The `connect` property makes the slider bar background filled with the theme color. Figure \@ref(fig:react-argon-slider) shows what happens when this parameter is disabled.
 
 At that stage, we modified the `webpack.config.js` file so that there are multiple entry 
 points (to compile the action button and the slider) and combined the output in a more generic name:
@@ -823,8 +826,13 @@ The reason is quite simple: we did not set the `setValue` inside our JSX code ye
 knitr::include_graphics("images/going-further/react-argon-slider.png")
 ```
 
-Let's add the `onSet` prop to the `ArgonSlider` component, that is basically fired once
-the range is released:
+The slider API provides many [events](https://refreshless.com/nouislider/events-callbacks/) but not all
+are suitable for us. Ideally, we would like an update:
+
+  - Each time the range is released after dragging.
+  - Each time the range is moved by arrow key (keyboard).
+  
+This seems like a perfect shot for the `onChange` prop. Let's add it to the `ArgonSlider` component:
 
 ```jsx
 function ArgonSlider({configuration, value, setValue, el}) {
@@ -837,53 +845,39 @@ function ArgonSlider({configuration, value, setValue, el}) {
     <Nouislider
       range={rangeOpts}
       start={[value]}
-      onSet={() => setValue()}
+      connect={[true, false]}
+      onChange={() => setValue()}
     />
   );
 }
 ```
 
-What value should we pass to `setValue`? There is no easy way to recover the slider value
-directly within the React component. However, this is something quite easy to do inside the
-input binding. We have to modify the `setValue` method, which does not recover the slider instance. To change the binding method, we wait for shiny to be connected, we unbind all inputs and search inside the `Shiny.inputBindings` registry (See \@ref(edit-input-binding)) providing the binding name,that is `mypkg.argon_slider`. The new value is obtained following the nouiSlider API:
+What value should we pass to `setValue`? This is quite easy to recover the slider value
+directly within the React component. We pass a parameter to the function, which will recover the
+latest value:
 
-```js
-let sliderInstance = document
-  .getElementById(el.id)
-  .firstElementChild
-  .noUiSlider;
-let newValue = parseInt(sliderInstance.get());
+```jsx
+value => setValue(parseFloat(value))
 ```
 
-We inject this value inside the existing `this.setInputValue(el, newValue)` method. The `parseInt` 
-function ensures to get a number instead of a string. Once done, we rebind all inputs. The code below has to be added to the `argon_slider.jsx` code. 
+The trick is to convert the value to a number since we recover a string by default. You may 
+use `parseInt` or `parseFloat`, depending whether you want a integer or the exact value.
+Right now, the slider cannot be moved with the keyboard. Adding the `keyboardSupport` prop
+make it possible. This may correspond to a parameter provided in the `argon_slider_input` configuration. 
+The `tooltips` parameter enhances the user experience by showing the current value, on top of the slider, while
+`pips` add a simple grid. Not mentioned in the documentation, we add some CSS properties (top and bottom margins) to improve the display. Importantly, as the update slider function passes a named list to JS, any
+missing property is dropped, which can lead to undefined values on the JS side and unexpected behavior.
+Therefore, it is good to put default values whenever necessary to avoid this kind of issue. For instance,
+assume you passed `orientation = "horizontal"` upon slider creation and forgot to 
+put that parameter in the update list, you can do the following in the JSX code:
 
-```js
-$(document).on('shiny:connected', function(event) {
-  Shiny.unbindAll();
-  $.extend(Shiny
-    .inputBindings
-    .bindingNames['mypkg.argon_slider']
-    .binding, {
-      setValue: function(el, value, rateLimited = false) {
-        if ($(el).data('callback') !== undefined) {
-          let sliderInstance = document
-            .getElementById(el.id)
-            .firstElementChild
-            .noUiSlider;
-          let newValue = parseInt(sliderInstance.get());
-          this.setInputValue(el, newValue);
-          this.getCallback(el)(rateLimited);
-          this.render(el);
-        }
-      }
-    });
-  Shiny.bindAll();
-});
+```jsx
+if (configuration.orientation === undefined) {
+  configuration.orientation = "horizontal";
+}
 ```
 
-Right now, the slider cannot be moved with the keyboard. Adding the `accessibility` prop
-make it possible. This may correspond to a parameter provided in the `argon_slider_input` configuration: 
+The whole component code may be found below:
 
 ```jsx
 function ArgonSlider({configuration, value, setValue, el}) {
@@ -891,24 +885,140 @@ function ArgonSlider({configuration, value, setValue, el}) {
     min: configuration.min,
     max: configuration.max
   };
+  
+  // Better margins
+  const sliderStyle = {marginTop: "50px", marginBottom: "50px"};
+  
+  // Grid
+  const pipOpts = {
+    mode: 'range',
+    density: 3
+  };
+  
+  return(
+    <Nouislider
+      style={sliderStyle}
+      range={rangeOpts}
+      start={[value]}
+      connect={[true, false]}
+      onChange={value => setValue(parseFloat(value))}
+      keyboardSupport={configuration.keyboard}
+      tooltips={configuration.tooltips}
+      pips={pipOpts}
+    />
+  );
+}
+```
 
-  let keyboard;
-  if (config.keyboard) {
-    keyboard = true;
+The `argon_slider_input` is given by:
+
+```{r, eval=FALSE}
+argon_slider_input <- function(inputId, value, default = value, min, max, keyboard = TRUE,
+                               tooltips = TRUE) {
+  reactR::createReactShinyInput(
+    inputId,
+    "argon_slider",
+    htmltools::htmlDependency(
+      name = "argon",
+      version = "1.0.0",
+      src = "www/mypkg/argon",
+      package = "mypkg",
+      script = "argon.js"
+    ),
+    default,
+    list(
+      min = min,
+      max = max,
+      keyboardSupport = keyboard,
+      tooltips = tooltips
+    ),
+    htmltools::tags$div
+  )
+}
+```
+
+There are many more parameters that can be added to the following [API](https://refreshless.com/nouislider/slider-options/). We leave it as an
+exercise for the reader. 
+
+Finally, let's see how `update_argon_slider_input` works:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  argon_slider_input("plop", 10, min = 0, max = 100),
+  br(),
+  argon_action_button("update", "Update button 1")
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+  observeEvent(input$update, {
+    update_argon_slider_input(
+      session, "plop",
+      value = 100,
+      configuration = list(
+        min = 0,
+        max = 200,
+        tooltips = FALSE,
+        keyboardSupport = FALSE
+      )
+    )
+  }, ignoreInit = TRUE)
+}
+
+shinyApp(ui, server)
+```
+
+The `keyboardSupport` option does not seem changed, neither is the `tooltips` option. Actually, 
+only that [list](https://refreshless.com/nouislider/more/#section-update) may be modified. Let's address this below.
+The `nouiSlider` React API provides internal access to the slider instance from within the
+[component](https://github.com/mmarkelov/react-nouislider#using-with-ref). To make it work, we have to leverage the React Hook feature:
+
+  - Create a Hook hosting the component reference and a method to update it with `React.useState`.
+  - Update the instance option each time the component is re-rendered by Shiny.
+  
+```jsx
+const [ref, setRef] = React.useState(null);
+
+const setConfiguration = () => {
+  if (ref && ref.noUiSlider) {
+    ref.noUiSlider.updateOptions(configuration);
   }
-  return(
-    <Nouislider
-      accessibility={keyboard}
-      range={rangeOpts}
-      start={[value]}
-      onSet={() => setValue()}
-    />
-  );
-}
+};
+
+setConfiguration();
 ```
 
-There are many more parameters that can be added to the following API. We leave it as an
-exercise for the reader.
+We must specify the `instanceRef` property which will capture the slider reference when available and update
+the local ref:
+
+```jsx
+<Nouislider
+  style={sliderStyle}
+  keyboardSupport={configuration.keyboard}
+  connect={[true, false]}
+  range={rangeOpts}
+  start={[value]}
+  onChange={value => setValue(parseFloat(value))}
+  tooltips={configuration.tooltips}
+  pips={pipOpts}
+  instanceRef={
+    instance => {
+      if (instance && !ref) {
+        setRef(instance);
+      }
+    }
+  }
+/>
+```
+
+We recompile the code and run the previous example. While the tooltips is gone, 
+the keyboard interaction is still there. This is not surprising as `updateOptions` does
+not handle all settings. The final result is displayed Figure \@ref(fig:react-argon-slider-final).
+
+```{r react-argon-slider-final, echo=FALSE, fig.cap='Slider input with Argon React: more options', out.width='100%'}
+knitr::include_graphics("images/going-further/react-argon-slider-final.png")
+```
 
 #### Exercise 2: a range slider
 Based on the above example, improve the previous slider widget to handle
