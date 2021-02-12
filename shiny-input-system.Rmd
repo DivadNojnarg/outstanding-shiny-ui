@@ -76,7 +76,7 @@ Let's describe each method chronologically. For better convenience, the book sid
 #### Find the input
 The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the `actionButton`. On the JS side, we need a method that will identify this receptor. Moreover, two different types of inputs (for instance `radioButton` and `selectInput`) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the `find` method of the `InputBinding` class. This method must be applied on a scope, that is the `document`.  `find` accepts any valid jQuery selector. Note the `console.log` only here for debugging purpose.
 
-```javascript
+```js
 find: function(scope) {
   console.log($(scope).find('.input-text'));
   return $(scope).find('.input-text');
@@ -161,7 +161,7 @@ knitr::include_graphics("images/survival-kit/shiny-find-inputs-result.png")
 #### Initialize inputs
 Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their `initialize` method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. The initialize method is not always defined but some elements require to be explicitly initialized or activated. For instance the  [Framework7](https://framework7.io) API, on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to instantiate all elements. Below is an example for the [toggle](https://framework7.io/docs/toggle.html) input:
 
-```javascript
+```js
 // what is expected
 let toggle = app.toggle.create({
   el: '.toggle',
@@ -175,7 +175,7 @@ let toggle = app.toggle.create({
 
 `el: '.toggle'` means that we are looking at the element(s) having the `toggle` class. `app.toggle.create` is internal to the Framework7 API. The corresponding shinyMobile input binding starts as follows. 
 
-```javascript
+```js
 var f7ToggleBinding = new Shiny.InputBinding();
   $.extend(f7ToggleBinding, {
     initialize: function(el) {
@@ -194,7 +194,7 @@ Once initialized, we may use all specific methods provided by the API. [Framewor
 knitr::include_graphics("images/survival-kit/shiny-el.png")
 ```
 
-```javascript
+```js
 getValue: function(el) {
   console.log($(el));
   return $(el).val();
@@ -212,7 +212,7 @@ This time, the input value is returned. Notice that when you try to change the t
 #### Set and update 
 `setValue(el, value)` is used to set the value of the current input. This method is necessary so that the input value may be updated. It has to be used in combination with `receiveMessage(el, data)`, which is the JavaScript part of all the R `updateInput` functions. We usually call the `setValue` method inside.
 
-```javascript
+```js
 setValue: function(el, value) {
   $(el).val(value);
 }
@@ -259,7 +259,7 @@ updateCustomTextInput <- function(inputId, value = NULL, placeholder = NULL, ses
 
 `dropNulls` is an internal function ensuring that the list does not contain NULL elements. We send a list from R, which is then serialized to a JSON object. In the `receiveMessage` method, properties like `value` may be accessed using the . notation:
 
-```javascript
+```js
 receiveMessage: function(el, data) {
   console.log(data);
   if (data.hasOwnProperty('value')) {
@@ -280,7 +280,7 @@ Going back to our custom text input, what event would make it change?
 
 We may add those [events](https://javascript.info/events-change-input) to our binding using an event listener seen at the end of Chapter \@ref(survival-kit-javascript).
 
-```javascript
+```js
 $(el).on('keyup.customTextBinding input.customTextBinding', function(event) {
   callback(true);
 });
@@ -295,7 +295,7 @@ updateCustomTextInputExample(4)
 
 Hooray! The output result is successfully changed when the input value is manually updated. However, nothing happens when we click on the update button. What did we miss? Looking back at the `receiveMessage` method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a `console.log(event);` in the `subscribe` method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the `subscribe` method. We may choose the `change` event, that triggers when an element is updated.
 
-```javascript
+```js
 $(el).on('change.customTextBinding', function(event) {
   callback(false);
 });
@@ -324,7 +324,7 @@ You may adjust the delay according to your needs, but we caution to not set the 
 #### Register an input binding
 At the end of the input binding definition, we register it for Shiny.
 
-```javascript
+```js
 let myBinding = new Shiny.inputBinding();
   $.extend(myBinding, {
   // methods go here
@@ -335,7 +335,7 @@ Shiny.inputBindings.register(myBinding, 'reference');
 
 Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, this case almost never happens.
 
-### Edit an input binding
+### Edit an input binding {#edit-input-binding}
 In some cases, we would like to access the input binding and change it's default behavior, even though not always recommended, since it will affect **all** related inputs. As bindings are contained in a registry, namely `Shiny.inputBindings`, one may seamlessly access and modify them. This is a 5 steps process:
 
 1. Wait for the `shiny:connected` [event](https://shiny.rstudio.com/articles/js-events.html)
@@ -515,7 +515,7 @@ When collapsed, a box gets the `collapsed-box` class. Note: this will be useful 
   
 Unfortunately, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. To toggle the box, we use the `toggleBox` method. 
 
-```javascript
+```js
 let boxBinding = new Shiny.InputBinding();
 $.extend(boxBinding, {
   find: function(scope) {
@@ -848,7 +848,7 @@ Be careful with `this`. Indeed, called in an event listener, `this` refers to th
 ### Introduction
 If you ever wondered where the `Shiny.onInputChange` or `Shiny.setInputValue` comes from (see  [article](https://shiny.rstudio.com/articles/communicating-with-js.html)), it is actually defined in the `initShiny` function. 
 
-```javascript
+```js
 exports.setInputValue = exports.onInputChange = function(name, value, opts) {
   opts = addDefaultInputOpts(opts);
   inputs.setInput(name, value, opts);
@@ -862,7 +862,7 @@ Briefly, this function avoids creating an input binding. It is faster to code bu
 we use in the [shinyMobile](https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html) package to store the current device information in a shiny input.
 Briefly, Framework7 (on top of which is built shinyMobile) has a method `Framework7.device`, which gives many [details](https://framework7.io/docs/device.html) related to the user device.
 
-```javascript
+```js
 $(document).on('shiny:connected', function(event) {
   Shiny.setInputValue('deviceInfo', Framework7.device);
 });

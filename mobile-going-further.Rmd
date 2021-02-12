@@ -1,0 +1,129 @@
+# Going further {#mobile-going-further}
+
+## Improved disconnect screen
+As depicted on Figure \@ref(fig:mobile-disconnect), having the classic Shiny disconnect
+screen in a mobile device is not that beautiful, especially knowing about all the Framework7
+capabilities.
+
+```{r mobile-disconnect, echo=FALSE, fig.cap='Vanilla Shiny disconnect screen.', out.width='50%', fig.align = 'center'}
+knitr::include_graphics("images/mobile/mobile-disconnect.png")
+```
+
+Let's do better. Upon disconnection, we want to display a toast with 2 buttons:
+  - A reload button that reloads the window and re-initialize the app. This button
+  calls `location.reload()` upon click.
+  - A reconnect button, that tries to reconnect with the server websocket, so that
+  we don't lose any input, output elements. This button calls `Shiny.shinyapp.reconnect()` upon click.
+  
+First thing first, how do we know when shiny is disconnected? As described in Chapter \@ref(shiny-intro),
+whenever the client socket connection is closed, for any reason, the `shiny:disconnected` [event](https://shiny.rstudio.com/articles/js-events.html) is triggered:
+
+```js
+socket.onclose = function() {
+  // These things are needed only if we've successfully opened the
+  // websocket.
+  if (hasOpened) {
+    $(document).trigger({
+      type: 'shiny:disconnected',
+      socket: socket
+    });
+
+    self.$notifyDisconnected();
+  }
+
+  self.onDisconnected(); // Must be run before self.$removeSocket()
+  self.$removeSocket();
+}
+```
+
+This allows us to listen to that event on the JS side:
+
+```js
+$(document).on("shiny:disconnected", function(event) {
+  // Do things
+});
+```
+
+The next step is to remove the default shiny reconnect elements. They are added by the
+`onDisconnected` method, that adds a disconnect overlay (gray-out screen) and optionally a
+reconnect notification:
+
+```js
+this.onDisconnected = function() {
+  // Add gray-out overlay, if not already present
+  var $overlay = $('#shiny-disconnected-overlay');
+  if ($overlay.length === 0) {
+    $(document.body).append('<div id="shiny-disconnected-overlay"></div>');
+  }
+
+  // To try a reconnect, both the app (this.$allowReconnect) and the
+  // server (this.$socket.allowReconnect) must allow reconnections, or
+  // session$allowReconnect("force") was called. The "force" option should
+  // only be used for testing.
+  if ((this.$allowReconnect === true && this.$socket.allowReconnect === true) ||
+      this.$allowReconnect === "force")
+  {
+    var delay = reconnectDelay.next();
+    exports.showReconnectDialog(delay);
+    this.$scheduleReconnect(delay);
+  }
+}
+```
+
+To remove them, there are multiple alternatives. The easiest way is to wait
+for the client to be connected, that is listening to `shiny:connected`, and set the `Shiny.shinyapp.onDisconnected` method
+to only add the gray overlay. 
+
+__Note__: before modifying any vanilla shiny elements, make sure to check all the possible
+side effects!
+
+```js
+// remove shiny reconnect stuff;
+$(document).on("shiny:connected", function(event) {
+  Shiny.shinyapp.onDisconnected = function() {
+    // Add gray-out overlay, if not already present
+    var $overlay = $('#shiny-disconnected-overlay');
+    if ($overlay.length === 0) {
+      $(document.body).append('<div id="shiny-disconnected-overlay"></div>');
+    }
+  };
+});
+```
+
+We edit the previous disconnected event listener to add a custom Framework7 toast, which closes
+upon click:
+
+```js
+$(document).on("shiny:disconnected", function(event) {    
+  var reconnectToast = app.toast
+    .create({
+      icon: '<i class="icon f7-icons">bolt_fill</i>',
+      position: "center",
+      text:
+        'Oups... disconnected </br> </br> <div class="row"><button onclick="Shiny.shinyapp.reconnect();" class="toast-button button color-green col">Reconnect</button><button onclick="location.reload();" class="toast-button button color-red col">Reload</button></div>'
+    })
+    .open();
+
+    // close toast whenever a choice is made ...
+    $(".toast-button").on("click", function() {
+      reconnectToast.close();
+    });
+});
+```
+
+Result is shown Figure \@ref(fig:mobile-disconnect-custom).
+
+```{r mobile-disconnect-custom, echo=FALSE, fig.cap='Vanilla Shiny disconnect screen.', out.width='50%', fig.align = 'center'}
+knitr::include_graphics("images/mobile/mobile-disconnect-custom.png")
+```
+
+The above JS code ignores the user reconnect [setup](https://shiny.rstudio.com/articles/reconnecting.html) and proposes
+to reconnect regardless of the `session$allowReconnect` configuration. If you want to keep the
+original behavior, you may add the following condition before showing the toast:
+
+```js
+if ((Shiny.shinyapp.$allowReconnect === true && Shiny.shinyapp.$socket.allowReconnect === true) ||
+      Shiny.shinyapp.$allowReconnect === "force") {
+  // Toast logic
+}
+```
