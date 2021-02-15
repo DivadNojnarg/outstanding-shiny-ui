@@ -186,17 +186,17 @@ find: function(scope) {
 ```
 
 If you repeat the above debugging steps, `$(scope).find('.input-text')` only targets the 
-first text input, meaning that the second input will not be found and bound. 
+first text input, meaning that the second input will not be found and bound, as demonstrated in Figure \@ref(fig:binding-find-by-id).
 
 ```{r binding-find-by-id, echo=FALSE, fig.cap='Find by id is a rather bad idea', out.width='100%'}
 knitr::include_graphics("images/survival-kit/binding-find-by-id.png")
 ```
 
-As a side note, you'll also get an error in the binding `Uncaught Not implemented`, indicating that the `getValue` method is not implemented yet. Fear not! We are going to 
+As a side note, you'll also get an error in the binding (`Uncaught Not implemented`), indicating that the `getValue` method is not implemented yet. Fear not! We are going to 
 add it very soon. 
 
 #### Initialize inputs
-Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their `initialize` method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. The initialize method is not always defined but some elements require to be explicitly initialized or activated. For instance the  [Framework7](https://framework7.io) API, on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to instantiate all elements. Below is an example for the [toggle](https://framework7.io/docs/toggle.html) input:
+Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their `initialize` method before binding all inputs. Note that once an input has been initialized, it has a `_shiny_initialized` tag to avoid initializing it twice. The initialize method is not always defined but some elements require to be explicitly initialized or activated. For instance the  [Framework7](https://framework7.io) API, on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to instantiate all elements. Below is an example for the [toggle](https://framework7.io/docs/toggle.html) input:
 
 ```js
 // what is expected
@@ -210,7 +210,7 @@ let toggle = app.toggle.create({
 });
 ```
 
-`el: '.toggle'` means that we are looking at the element(s) having the `toggle` class. `app.toggle.create` is internal to the Framework7 API. The corresponding shinyMobile input binding starts as follows. 
+`el: '.toggle'` means that we are looking at the element(s) having the `toggle` class. `app.toggle.create` is internal to the Framework7 API. The corresponding shinyMobile input binding starts as follows: 
 
 ```js
 var f7ToggleBinding = new Shiny.InputBinding();
@@ -222,7 +222,7 @@ var f7ToggleBinding = new Shiny.InputBinding();
 });
 ```
 
-Once initialized, we may use all specific methods provided by the API. [Framework7](https://framework7.io) is clearly a gold mine, as its API provides many possible options for many inputs / widgets. 
+Once initialized, we may use all specific methods provided by the API. [Framework7](https://framework7.io) is clearly a gold mine, as its API provides many possible options for many inputs / widgets. We provide more examples in Chapters \@ref(mobile-shinyMobile) and \@ref(mobile-widgets).
 
 #### Get the value
 `getValue(el)` returns the input value. The way to obtain the value is different for almost all inputs. For instance, the `textInput` is pretty simple since the value is located in the `value` attribute. `el` refers to the element holding the id attribute and recognized by the `find` method. Figure \@ref(fig:shiny-el) shows the result of a `console.log($(el));`.
@@ -249,11 +249,11 @@ This time, the input value is returned. Notice that when you try to change the t
 Similarly as in the find section, we run `customTextInputExample(2)` and open the developer tools to inspect the `customTextInputBinding.js` script. We put a breakpoints in the `getValue` method and reload the page. Upon reload, the JavaScript debugger opens starts in `find`. You may click on the next blue arrow to jump to the next breakpoints that is `getValue`, as shown Figure \@ref(fig:binding-getValue). Typing `$(el).val()` in the console shows the current 
 text value.
 
-```{r binding-getValue, echo=FALSE, fig.cap='getValue', out.width='100%'}
+```{r binding-getValue, echo=FALSE, fig.cap='getValue returns the current input value', out.width='100%'}
 knitr::include_graphics("images/survival-kit/binding-getValue.png")
 ```
 
-Clicking on next again exists the debugger. Interestingly, you'll notice that a text appears a the bottom of our input, meaning that the `input$caption` element exists and 
+Clicking on next again exit the debugger. Interestingly, you'll notice that a text appears below the input, meaning that the `input$caption` element exists and 
 is internally tracked by shiny. 
 
 #### Set and update 
@@ -362,7 +362,7 @@ knitr::include_graphics("images/survival-kit/binding-subscribe-1.png")
 We click on next and notice that we go back in the `getValue` method to get the new value.
 You may check typing `$(el).val()` in the debugger console, like on Figure \@ref(fig:binding-subscribe-2). Clicking next again shows the updated output value.
 
-```{r binding-subscribe-2, echo=FALSE, fig.cap='Subsribe is followed by a new getValue', out.width='100%'}
+```{r binding-subscribe-2, echo=FALSE, fig.cap='Subscribe is followed by a new getValue', out.width='100%'}
 knitr::include_graphics("images/survival-kit/binding-subscribe-2.png")
 ```
 
@@ -393,8 +393,21 @@ updateCustomTextInputExample(5)
 
 We put a new break point in the second event listener, that is the one for the change event. Clicking on the button only triggers the change event, as shown Figure \@ref(fig:binding-subscribe-3).
 
-```{r binding-subscribe-3, echo=FALSE, fig.cap='Subsribe is followed by a new getValue', out.width='100%'}
+```{r binding-subscribe-3, echo=FALSE, fig.cap='We may add multiple event listeners inside the subscribe method', out.width='100%'}
 knitr::include_graphics("images/survival-kit/binding-subscribe-3.png")
+```
+
+__Note__: in some situations, we have to be careful with the `this` element. Indeed, called in an event listener, `this` refers to the element that triggered the event and not to the input binding object. For instance below is an example where we need to trigger the `getValue` method inside an event listener located in the `subscribe` method. If you call `this.getValue(el)`, you'll get an error. The trick consists in creating a variable namely `self` that take `this` as value, outside the event listener. In that case `self` refers to the binding itself and it make sens to call `self.getValue(el)`:
+
+```js
+subscribe: function(el, callback) {
+  self = this;
+  $(el).on('click.button', function(e) {
+    var currentVal = self.getValue(el);
+    $(el).val(currentVal + 1);
+    callback();
+  });
+}
 ```
 
 Perfect? Not exactly. 
@@ -435,7 +448,7 @@ There are a couple of methods not described above that are contained in the `Inp
   - `getType` required to handle custom data format. It is called after `getId`. See section \@ref(custom-data-format).
   - `getState` ?
   
-```{r binding-getId, echo=FALSE, fig.cap='Binding getid method', out.width='100%'}
+```{r binding-getId, echo=FALSE, fig.cap='The binding getId method', out.width='100%'}
 knitr::include_graphics("images/survival-kit/binding-getId.png")
 ```
 
@@ -475,7 +488,7 @@ only increases by 1. How do we proceed?
 2. We target the second button and get the input binding with `$obj.data('shiny-input-binding')`
 3. We recover the current value 
 4. We call the `setValue` method of the input binding adding 10 to the current value
-5. Importantly, to let Shiny update the value on the R side, we must trigger an event that will be detected in the `subscribe` method of the action button input binding. The action button only has 1 event listener but other may be added. Don't forget that triggering a `click` event would also increment the button value by 1! In the following we have to customize the `subscribe` method to work around
+5. Importantly, to let Shiny update the value on the R side, we must trigger an event that will be detected in the `subscribe` method of the action button input binding. The action button only has 1 event listener but other may be added. Don't forget that triggering a `click` event would also increment the button value by 1! In the following we have to customize the `subscribe` method to work around:
 
 ```js
 $(function() {
@@ -514,91 +527,70 @@ $.extend(Shiny.inputBindings.bindingNames['shiny.actionButtonInput'].binding, {
 });
 ```
 
-Below is the working app.
+The whole JS code is found below:
+
+```js
+$(function() {
+  $(document).on('shiny:connected', function(event) {
+    Shiny.unbindAll();
+    $.extend(Shiny
+      .inputBindings
+      .bindingNames['shiny.actionButtonInput']
+      .binding, {
+        reset: function(el) {
+         $(el).data('val', 0);
+        },
+        subscribe: function(el, callback) {
+          $(el).on('click.actionButtonInputBinding', function(e) {
+            var $el = $(this);
+            var val = $el.data('val') || 0;
+            $el.data('val', val + 1);
+
+            callback();
+          });
+                
+          $(el).on('change.actionButtonInputBinding', function(e) {
+            debugger;
+            callback();
+          });
+              
+        }
+      });
+    Shiny.bindAll();
+  });
+      
+  $('#button1').on('click', function() {
+    var $obj = $('#button2');
+    var inputBinding = $obj.data('shiny-input-binding');
+    var val = $obj.data('val') || 0;
+    inputBinding.setValue($obj, val + 10);
+    $obj.trigger('change'); 
+  });
+  
+  $('#reset').on('click', function() {
+    var $obj = $('#button2');
+    var inputBinding = $obj.data('shiny-input-binding');
+    inputBinding.reset($obj);
+    $obj.trigger('change');
+  });
+});
+```
+
+Below is the working app:
 
 ```{r access-binding-outside, eval=FALSE}
-ui <- fluidPage(
-  tags$head(
-    tags$script(
-      "$(function() {
-        $(document).on('shiny:connected', function(event) {
-          Shiny.unbindAll();
-          $.extend(Shiny
-            .inputBindings
-            .bindingNames['shiny.actionButtonInput']
-            .binding, {
-              reset: function(el) {
-               $(el).data('val', 0);
-              },
-              subscribe: function(el, callback) {
-                $(el).on('click.actionButtonInputBinding', function(e) {
-                  var $el = $(this);
-                  var val = $el.data('val') || 0;
-                  $el.data('val', val + 1);
+editBindingExample()
+```
 
-                  callback();
-                });
-                
-                $(el).on('change.actionButtonInputBinding', function(e) {
-                  debugger;
-                  callback();
-                });
-              
-              }
-            });
-          Shiny.bindAll();
-        });
-      
-        $('#button1').on('click', function() {
-          var $obj = $('#button2');
-          var inputBinding = $obj.data('shiny-input-binding');
-          var val = $obj.data('val') || 0;
-          inputBinding.setValue($obj, val + 10);
-          $obj.trigger('change'); 
-        });
-        $('#reset').on('click', function() {
-          var $obj = $('#button2');
-          var inputBinding = $obj.data('shiny-input-binding');
-          inputBinding.reset($obj);
-          $obj.trigger('change');
-        });
-      });
-      "
-    )
-  ),
-  actionButton("button1", icon("plus")),
-  actionButton("button2", uiOutput("val")),
-  actionButton("reset", icon("undo")),
-  plotOutput("plot")
-)
-
-server <- function(input, output) {
-  output$val <- renderUI({
-    paste("Value: ", input$button2)
-  })
-  
-  output$plot <- renderPlot({
-    validate(need(input$button2 >= 10, message = "Only visible after 10 clicks on the second button"))
-    hist(rnorm(100))
-  })
-  
-  observeEvent(input$button2, {
-    if (input$button2 == 0) {
-      showNotification(
-        "Button successfuly reset",
-        type = "warning"
-      )
-    }
-  })
-}
-
-shinyApp(ui, server)
+whose output is shown Figure \@ref(fig:edit-binding-demo).
+```{r edit-binding-demo, echo=FALSE, fig.cap='Edit and trigger an input binding from the client', out.width='100%'}
+knitr::include_graphics("images/survival-kit/edit-binding-demo.png")
 ```
 
 This trick has been extensively used in the [virtual physiology simulator](https://community.rstudio.com/t/shiny-contest-submission-a-virtual-lab-for-teaching-physiology/25348) to trigger [animations](https://dgranjon.shinyapps.io/entry_level/).
 
 ## Secondary inputs {#secondary-inputs}
-The Shiny input binding system is too convenient to be only used for primary input elements like `textInput`, `numericInput`. It is a super powerful tool to unleash your apps's interactivity. 
+The Shiny input binding system is too convenient to be only used for primary input elements like `textInput`, `numericInput`. It is a super powerful tool to unleash apps's interactivity. 
 In the following, we show how to add an input to an element that was not primarily designed to be a user input. 
 
 ### {shinydashboard} boxes on steroids
@@ -612,12 +604,12 @@ updateBox2 <- function(inputId, session = getDefaultReactiveDomain()) {
 }
 ```
 
-When collapsed, a box gets the `collapsed-box` class. Note: this will be useful for the input binding. As mentioned above, it is also necessary to know when to tell Shiny to update the value with the `subscribe` method. Most of the time, the change event might be sufficient, but as shinydashboard is built on top of [AdminLTE2](https://adminlte.io/docs/2.4/js-box-widget), it has an API to control the box behavior. We identify 2 events corresponding to the collapsible action: 
+When collapsed, a box gets the `collapsed-box` class, which is useful to keep in mind for the input binding design. As mentioned above, it is also necessary to know when to tell Shiny to update the value with the `subscribe` method. Most of the time, the change event might be sufficient, but as `{shinydashboard}` is built on top of [AdminLTE2](https://adminlte.io/docs/2.4/js-box-widget), it has an API to control the box behavior. We identify 2 events corresponding to the collapsible action: 
   
   - expanded.boxwidget (Triggered after the box is expanded)
   - collapsed.boxwidget (Triggered after the box is collapsed)
   
-Unfortunately, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. To toggle the box, we use the `toggleBox` method. 
+Unfortunately, after further investigations, those events are not possible to use since the AdminLTE library does not trigger them in the main JS [code](https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js) (see the collapse method line 577-612). There are other solutions, as shown below with the `click` event. To toggle the box, we use the `toggleBox` method. 
 
 ```js
 let boxBinding = new Shiny.InputBinding();
@@ -662,10 +654,14 @@ Some comments about the binding:
   - `getValue` returns an object which will give a list in R. This is in case we add other elements like the remove action available in AdminLTE
   - `setValue` calls the plug and play `toggleBox` method
   - `receiveMessage` must trigger a change event so that Shiny knows when the value needs to be updated
-  - `subscribe` listens to the `click` event on the `[data-widget="collapse"]` element and delays the `callback` call by a value which is slightly higher than the default AdminLTE2 animation to collapse the box (500mx). If you omit this part, the input will not have time to properly update!!!
+  - `subscribe` listens to the `click` event on the `[data-widget="collapse"]` element and delays the `callback` call by a value which is slightly higher than the default AdminLTE2 animation to collapse the box (500ms). If you omit this part, the input will not have time to properly update!
   - We don't need an extra listener for the `updateBox2` function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener
 
-Let's try our new toy in a simple dashboard:
+Let's try our new toy in a simple app. The output is depicted on Figure \@ref(fig:toggle-shinydashboard-box).
+
+```{r toggle-shinydashboard-box, echo=FALSE, fig.cap='{shinydashboard} box with custom input binding listening to the box collapse state', out.width='100%'}
+knitr::include_graphics("images/survival-kit/toggle-shinydashboard-box.png")
+```
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -763,7 +759,7 @@ library(shinydashboardPlus)
 ```
 
 ### Going further
-We may imagine leveraging the input binding system to update any box property and get rid of the classic `renderUI` approach. Indeed, until now, there would be only one way to update a box from the server:
+We may imagine leveraging the input binding system to update any box property and get rid of the classic `renderUI` approach. Indeed, until now, there would be only one way to update a box from the server (Figure \@ref(fig:update-shinydashboard-box-1)):
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -790,9 +786,14 @@ ui <- fluidPage(
  shinyApp(ui, server)
 ```
 
+
+```{r update-shinydashboard-box-1, echo=FALSE, fig.cap='{shinydashboard} box updated with shiny::renderUI', out.width='100%'}
+knitr::include_graphics("images/survival-kit/update-shinydashboard-box-1.png")
+```
+
 The whole piece of UI is re-rendered each time, while only the box class should be modified. This does not have much impact here but for a very complex app festooned with inputs/outputs, the overall user experience may be altered.
 
-To do so, we proceed in 2 steps. The first part consists in customizing the `box` function to gather as many parameter as possible in an option list. For instance, we choose to extract background, width and title. width and background are expected to be numeric and character, respectively, while title might be any HTML tag, justifying the use of `as.character`.
+Let's provide some optimization and get rid of the `renderUI`. We proceed in 2 steps. The first part consists in customizing the `box` function to gather as many parameter as possible in an option list. For instance, we choose to extract background, width and title. width and background are expected to be numeric and character, respectively, while title might be any HTML tag, justifying the use of `as.character`.
 
 ```{r, eval=FALSE}
 box2 <- function(..., id = NULL, title = NULL, footer = NULL,
@@ -862,7 +863,7 @@ updateBox2 <- function(id, action = c("toggle", "update"), options = NULL,
                       session = getDefaultReactiveDomain()) {
   # for update, we take a list of options
   if (action == "update") {
-    # handle case whare options are shiny tag or a list of tags ...
+    # handle case where options are shiny tag or a list of tags ...
     options <- lapply(options, function(o) {
       if (inherits(o, "shiny.tag") || inherits(o, "shiny.tag.list")) {
         o <- as.character(o)
@@ -943,9 +944,11 @@ $(el)
   );
 ```
 
-If it represents a significant amount of work, it is also the guarantee to lower the load on the server side.
+If it represents a significant amount of work, it is also the guarantee to lower the load on the server side, thereby offering a faster end user experience. A working prototype has been implemented in `{shinydashboardPlus}` and `{bs4Dash}`:
 
-Be careful with `this`. Indeed, called in an event listener, `this` refers to the element that triggered the event and not to the input binding object!
+```{r, eval=FALSE}
+shinyAppDir(system.file("vignettes-demos/box-api", package = "shinydashboardPlus"))
+```
 
 ## Utilities to quickly define new inputs
 
