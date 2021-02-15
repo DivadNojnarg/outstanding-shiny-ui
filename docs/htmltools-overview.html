@@ -424,16 +424,134 @@ objects, this is a good idea to use <code>%&gt;%</code> from <a href="https://ma
 <span class="fu">map</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">span</a></span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 </div>
 </div>
+<div id="practical-examples" class="section level2">
+<h2>
+<span class="header-section-number">3.6</span> Practical examples<a class="anchor" aria-label="anchor" href="#practical-examples"><i class="fas fa-link"></i></a>
+</h2>
+<p>Below we give concrete example on how to customize tags in the real life. There exists a
+nice RPG HTML template, that is <a href="http://ronenness.github.io/RPGUI/">rpgui</a>. It provides
+the necessary elements to get started developing nice RPG looking user interfaces, as depicted by Figure <a href="htmltools-overview.html#fig:rpgui-select">3.2</a>.</p>
+<div class="figure">
+<span id="fig:rpgui-select"></span>
+<img src="images/htmltools/rpgui-select.png" alt="rpgui select input" width="100%"><p class="caption">
+FIGURE 3.2: rpgui select input
+</p>
+</div>
+<p>In the following, we consider the select input, which does not have exactly the same
+structure as the original shiny tag. However, it is convenient to reuse the shiny function
+to limit our amount of work. We therefore start to write our custom input:</p>
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">rpgSelect</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">label</span>, <span class="va">choices</span>, <span class="va">selected</span> <span class="op">=</span> <span class="cn">NULL</span>,
+                      <span class="va">multiple</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">size</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/selectInput.html">selectInput</a></span><span class="op">(</span>
+    <span class="va">inputId</span>,
+    <span class="va">label</span>,
+    <span class="va">choices</span>,
+    <span class="va">selected</span>,
+    <span class="va">multiple</span>,
+    selectize <span class="op">=</span> <span class="cn">FALSE</span>,
+    width <span class="op">=</span> <span class="cn">NULL</span>,
+    <span class="va">size</span>
+  <span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>According to the rpgui documentation, a select tag is composed of the following HTML elements:</p>
+<div class="sourceCode" id="cb48"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb48-1"><a href="htmltools-overview.html#cb48-1"></a><span class="kw">&lt;select</span><span class="ot"> class=</span><span class="st">"rpgui-dropdown"</span><span class="kw">&gt;</span></span>
+<span id="cb48-2"><a href="htmltools-overview.html#cb48-2"></a>    <span class="kw">&lt;option</span><span class="ot"> value=</span><span class="st">"option1"</span><span class="kw">&gt;</span>option1<span class="kw">&lt;/option&gt;</span></span>
+<span id="cb48-3"><a href="htmltools-overview.html#cb48-3"></a>    <span class="kw">&lt;option</span><span class="ot"> value=</span><span class="st">"option2"</span><span class="kw">&gt;</span>option2<span class="kw">&lt;/option&gt;</span></span>
+<span id="cb48-4"><a href="htmltools-overview.html#cb48-4"></a>    ...</span>
+<span id="cb48-5"><a href="htmltools-overview.html#cb48-5"></a><span class="kw">&lt;/select&gt;</span></span></code></pre></div>
+<p>Adding a label tag on top of the slider, this is what we would like to get:</p>
+<div class="sourceCode" id="cb49"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb49-1"><a href="htmltools-overview.html#cb49-1"></a><span class="kw">&lt;div&gt;</span></span>
+<span id="cb49-2"><a href="htmltools-overview.html#cb49-2"></a>  <span class="kw">&lt;label</span><span class="ot"> id=</span><span class="st">"variable-label"</span><span class="ot"> for=</span><span class="st">"variable"</span><span class="kw">&gt;</span>Variable:<span class="kw">&lt;/label&gt;</span></span>
+<span id="cb49-3"><a href="htmltools-overview.html#cb49-3"></a>  <span class="kw">&lt;select</span><span class="ot"> id=</span><span class="st">"variable"</span><span class="ot"> class=</span><span class="st">"rpgui-dropdown"</span><span class="kw">&gt;&lt;option</span><span class="ot"> value=</span><span class="st">"cyl"</span><span class="ot"> selected</span><span class="kw">&gt;</span>Cylinders<span class="kw">&lt;/option&gt;</span></span>
+<span id="cb49-4"><a href="htmltools-overview.html#cb49-4"></a>    <span class="kw">&lt;option</span><span class="ot"> value=</span><span class="st">"am"</span><span class="kw">&gt;</span>Transmission<span class="kw">&lt;/option&gt;</span></span>
+<span id="cb49-5"><a href="htmltools-overview.html#cb49-5"></a>    <span class="kw">&lt;option</span><span class="ot"> value=</span><span class="st">"gear"</span><span class="kw">&gt;</span>Gears<span class="kw">&lt;/option&gt;</span></span>
+<span id="cb49-6"><a href="htmltools-overview.html#cb49-6"></a>  <span class="kw">&lt;/select&gt;</span></span>
+<span id="cb49-7"><a href="htmltools-overview.html#cb49-7"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
+<p>We compare with our own <code>rpgSelect</code> function:</p>
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">rpgSelect</span><span class="op">(</span>
+  <span class="st">"variable"</span>, 
+  <span class="st">"Variable:"</span>,
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Cylinders"</span> <span class="op">=</span> <span class="st">"cyl"</span>,
+    <span class="st">"Transmission"</span> <span class="op">=</span> <span class="st">"am"</span>,
+    <span class="st">"Gears"</span> <span class="op">=</span> <span class="st">"gear"</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<pre><code>## [1] "&lt;div class=\"form-group shiny-input-container\"&gt;\n  &lt;label class=\"control-label\" id=\"variable-label\" for=\"variable\"&gt;Variable:&lt;/label&gt;\n  &lt;div&gt;\n    &lt;select id=\"variable\" class=\"form-control\"&gt;&lt;option value=\"cyl\" selected&gt;Cylinders&lt;/option&gt;\n&lt;option value=\"am\"&gt;Transmission&lt;/option&gt;\n&lt;option value=\"gear\"&gt;Gears&lt;/option&gt;&lt;/select&gt;\n  &lt;/div&gt;\n&lt;/div&gt;"</code></pre>
+<p>As shown in the above output, this is not exactly matching:</p>
+<ul>
+<li>The outer div should not have any class.</li>
+<li>The label should not have any class.</li>
+<li>The input tag is wrapped inside a div container. It should not.</li>
+<li>The input tag should have the <code>rpgui-dropdown</code> or <code>rpgui-list</code> class,
+depending on the size value.</li>
+</ul>
+<p>To fix the first problem we target the outer tag (<code>selectTag</code>), that is the tag returned by our <code>rpgSelect</code> function. The second row cleans the label class. The third row removes the extra outer div and only keeps its children, corresponding to the input tag. The last instruction ensure to set the appropriate class, depending on the size value:</p>
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Modify tag</span>
+<span class="va">selectTag</span><span class="op">$</span><span class="va">attribs</span><span class="op">$</span><span class="va">class</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>
+<span class="co"># Clean extra label class</span>
+<span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">attribs</span><span class="op">$</span><span class="va">class</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>
+<span class="co"># Remove extra outer div</span>
+<span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>
+
+<span class="co"># Add good class for rppgui binding</span>
+<span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">attribs</span><span class="op">$</span><span class="va">class</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">size</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="st">"rpgui-dropdown"</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="st">"rpgui-list"</span>
+<span class="op">}</span></code></pre></div>
+<p>The final version is shown below:</p>
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">rpgSelect</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">label</span>, <span class="va">choices</span>, <span class="va">selected</span> <span class="op">=</span> <span class="cn">NULL</span>,
+                      <span class="va">multiple</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">size</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">selectTag</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/selectInput.html">selectInput</a></span><span class="op">(</span>
+    <span class="va">inputId</span>,
+    <span class="va">label</span>,
+    <span class="va">choices</span>,
+    <span class="va">selected</span>,
+    <span class="va">multiple</span>,
+    selectize <span class="op">=</span> <span class="cn">FALSE</span>,
+    width <span class="op">=</span> <span class="cn">NULL</span>,
+    <span class="va">size</span>
+  <span class="op">)</span>
+
+  <span class="co"># Modify tag</span>
+  <span class="va">selectTag</span><span class="op">$</span><span class="va">attribs</span><span class="op">$</span><span class="va">class</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>
+  <span class="co"># Clean extra label class</span>
+  <span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">attribs</span><span class="op">$</span><span class="va">class</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>
+  <span class="co"># Remove extra outer div</span>
+  <span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>
+
+  <span class="co"># Add good class for rppgui binding</span>
+  <span class="va">selectTag</span><span class="op">$</span><span class="va">children</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">attribs</span><span class="op">$</span><span class="va">class</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">size</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+    <span class="st">"rpgui-dropdown"</span>
+  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+    <span class="st">"rpgui-list"</span>
+  <span class="op">}</span>
+
+  <span class="va">selectTag</span>
+<span class="op">}</span>
+
+<span class="fu">rpgSelect</span><span class="op">(</span>
+  <span class="st">"variable"</span>, 
+  <span class="st">"Variable:"</span>,
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Cylinders"</span> <span class="op">=</span> <span class="st">"cyl"</span>,
+    <span class="st">"Transmission"</span> <span class="op">=</span> <span class="st">"am"</span>,
+    <span class="st">"Gears"</span> <span class="op">=</span> <span class="st">"gear"</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<pre><code>## [1] "&lt;div&gt;\n  &lt;label id=\"variable-label\" for=\"variable\"&gt;Variable:&lt;/label&gt;\n  &lt;select id=\"variable\" class=\"rpgui-dropdown\"&gt;&lt;option value=\"cyl\" selected&gt;Cylinders&lt;/option&gt;\n&lt;option value=\"am\"&gt;Transmission&lt;/option&gt;\n&lt;option value=\"gear\"&gt;Gears&lt;/option&gt;&lt;/select&gt;\n&lt;/div&gt;"</code></pre>
+</div>
 <div id="exercises" class="section level2">
 <h2>
-<span class="header-section-number">3.6</span> Exercises<a class="anchor" aria-label="anchor" href="#exercises"><i class="fas fa-link"></i></a>
+<span class="header-section-number">3.7</span> Exercises<a class="anchor" aria-label="anchor" href="#exercises"><i class="fas fa-link"></i></a>
 </h2>
 <div id="exercise-1-tags-structure-5-minutes" class="section level3">
 <h3>
-<span class="header-section-number">3.6.1</span> Exercise 1: tags structure (5 minutes)<a class="anchor" aria-label="anchor" href="#exercise-1-tags-structure-5-minutes"><i class="fas fa-link"></i></a>
+<span class="header-section-number">3.7.1</span> Exercise 1: tags structure (5 minutes)<a class="anchor" aria-label="anchor" href="#exercise-1-tags-structure-5-minutes"><i class="fas fa-link"></i></a>
 </h3>
 <p>Consider the following shiny tag:</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">myTag</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">a</a></span><span class="op">(</span>
   class <span class="op">=</span> <span class="st">"btn btn-large"</span>,
   type <span class="op">=</span> <span class="st">"button"</span>,
@@ -450,10 +568,10 @@ objects, this is a good idea to use <code>%&gt;%</code> from <a href="https://ma
 </div>
 <div id="exercise-2-modifiying-tags-5-minutes" class="section level3">
 <h3>
-<span class="header-section-number">3.6.2</span> Exercise 2: modifiying tags (5 minutes)<a class="anchor" aria-label="anchor" href="#exercise-2-modifiying-tags-5-minutes"><i class="fas fa-link"></i></a>
+<span class="header-section-number">3.7.2</span> Exercise 2: modifiying tags (5 minutes)<a class="anchor" aria-label="anchor" href="#exercise-2-modifiying-tags-5-minutes"><i class="fas fa-link"></i></a>
 </h3>
 <p>Let us consider the following tag:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">temp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span><span class="st">"Hello World"</span><span class="op">)</span></code></pre></div>
 <p>(You may chain functions with <code>%&gt;%</code>)</p>
 <ol style="list-style-type: decimal">
@@ -484,10 +602,11 @@ objects, this is a good idea to use <code>%&gt;%</code> from <a href="https://ma
 <li><a class="nav-link" href="#programmatically-create-children-elements"><span class="header-section-number">3.5.6</span> Programmatically create children elements</a></li>
 </ul>
 </li>
+<li><a class="nav-link" href="#practical-examples"><span class="header-section-number">3.6</span> Practical examples</a></li>
 <li>
-<a class="nav-link" href="#exercises"><span class="header-section-number">3.6</span> Exercises</a><ul class="nav navbar-nav">
-<li><a class="nav-link" href="#exercise-1-tags-structure-5-minutes"><span class="header-section-number">3.6.1</span> Exercise 1: tags structure (5 minutes)</a></li>
-<li><a class="nav-link" href="#exercise-2-modifiying-tags-5-minutes"><span class="header-section-number">3.6.2</span> Exercise 2: modifiying tags (5 minutes)</a></li>
+<a class="nav-link" href="#exercises"><span class="header-section-number">3.7</span> Exercises</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#exercise-1-tags-structure-5-minutes"><span class="header-section-number">3.7.1</span> Exercise 1: tags structure (5 minutes)</a></li>
+<li><a class="nav-link" href="#exercise-2-modifiying-tags-5-minutes"><span class="header-section-number">3.7.2</span> Exercise 2: modifiying tags (5 minutes)</a></li>
 </ul>
 </li>
 </ul>

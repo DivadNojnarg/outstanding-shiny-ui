@@ -330,6 +330,137 @@ div(lapply(1:5, function(i) span(i)))
 map(1:5, function(i) span(i)) %>% div()
 ```
 
+## Practical examples
+Below we give concrete example on how to customize tags in the real life. There exists a 
+nice RPG HTML template, that is [rpgui](http://ronenness.github.io/RPGUI/). It provides
+the necessary elements to get started developing nice RPG looking user interfaces, as depicted by Figure \@ref(fig:rpgui-select).
+
+```{r rpgui-select, echo=FALSE, fig.cap='rpgui select input', out.width='100%'}
+knitr::include_graphics("images/htmltools/rpgui-select.png")
+```
+
+In the following, we consider the select input, which does not have exactly the same 
+structure as the original shiny tag. However, it is convenient to reuse the shiny function
+to limit our amount of work. We therefore start to write our custom input:
+
+```{r}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+}
+```
+
+According to the rpgui documentation, a select tag is composed of the following HTML elements:
+
+```html
+<select class="rpgui-dropdown">
+	<option value="option1">option1</option>
+	<option value="option2">option2</option>
+	...
+</select>
+```
+
+Adding a label tag on top of the slider, this is what we would like to get:
+
+```html
+<div>
+  <label id="variable-label" for="variable">Variable:</label>
+  <select id="variable" class="rpgui-dropdown"><option value="cyl" selected>Cylinders</option>
+    <option value="am">Transmission</option>
+    <option value="gear">Gears</option>
+  </select>
+</div>
+```
+
+We compare with our own `rpgSelect` function:
+
+```{r}
+rpgSelect(
+  "variable", 
+  "Variable:",
+  c("Cylinders" = "cyl",
+    "Transmission" = "am",
+    "Gears" = "gear")
+) %>% as.character()
+```
+
+As shown in the above output, this is not exactly matching:
+
+  - The outer div should not have any class.
+  - The label should not have any class.
+  - The input tag is wrapped inside a div container. It should not.
+  - The input tag should have the `rpgui-dropdown` or `rpgui-list` class,
+  depending on the size value. 
+  
+To fix the first problem we target the outer tag (`selectTag`), that is the tag returned by our `rpgSelect` function. The second row cleans the label class. The third row removes the extra outer div and only keeps its children, corresponding to the input tag. The last instruction ensure to set the appropriate class, depending on the size value:
+
+```{r, eval=FALSE}
+# Modify tag
+selectTag$attribs$class <- NULL
+# Clean extra label class
+selectTag$children[[1]]$attribs$class <- NULL
+# Remove extra outer div
+selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
+
+# Add good class for rppgui binding
+selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
+  "rpgui-dropdown"
+} else {
+  "rpgui-list"
+}
+```
+
+The final version is shown below:
+
+```{r}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  selectTag <- shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+
+  # Modify tag
+  selectTag$attribs$class <- NULL
+  # Clean extra label class
+  selectTag$children[[1]]$attribs$class <- NULL
+  # Remove extra outer div
+  selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
+
+  # Add good class for rppgui binding
+  selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
+    "rpgui-dropdown"
+  } else {
+    "rpgui-list"
+  }
+
+  selectTag
+}
+
+rpgSelect(
+  "variable", 
+  "Variable:",
+  c("Cylinders" = "cyl",
+    "Transmission" = "am",
+    "Gears" = "gear")
+) %>% as.character()
+```
+
 ## Exercises
 
 ### Exercise 1: tags structure (5 minutes)
