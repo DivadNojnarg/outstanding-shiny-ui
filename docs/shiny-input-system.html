@@ -472,7 +472,7 @@ FIGURE 11.13: Subsribe is followed by a new getValue
 <li>
 <code>getId</code> returns the object id (Figure <a href="shiny-input-system.html#fig:binding-getId">11.14</a>). If you don’t provide your own method, the binding falls back to the default one provided in the <code>InputBinding</code> class. This method is called after <code>find</code>. The next Chapter <a href="shiny-input-lifecycle.html#shiny-input-lifecycle">12</a> provides more details.</li>
 <li>
-<code>getType</code> required to handle custom data format. It is called after <code>getId</code>.</li>
+<code>getType</code> required to handle custom data format. It is called after <code>getId</code>. See section <a href="shiny-input-system.html#custom-data-format">11.4</a>.</li>
 <li>
 <code>getState</code> ?</li>
 </ul>
@@ -987,20 +987,24 @@ In the example below, the card will not show on mobile devices.</p>
   <span class="op">}</span>
 <span class="op">)</span></code></pre></div>
 </div>
-<div id="custom-data-format" class="section level3">
+</div>
+<div id="custom-data-format" class="section level2">
+<h2>
+<span class="header-section-number">11.4</span> Custom data format<a class="anchor" aria-label="anchor" href="#custom-data-format"><i class="fas fa-link"></i></a>
+</h2>
+<p>In some cases, the automatic Shiny R to JS data management may not meet our needs.</p>
+<div id="the-dirty-way" class="section level3">
 <h3>
-<span class="header-section-number">11.3.3</span> Custom data format<a class="anchor" aria-label="anchor" href="#custom-data-format"><i class="fas fa-link"></i></a>
+<span class="header-section-number">11.4.1</span> The dirty way<a class="anchor" aria-label="anchor" href="#the-dirty-way"><i class="fas fa-link"></i></a>
 </h3>
-<p>In some cases, the automatic Shiny R to JS data management may not meet our needs. For instance, assume we create a date in JS with <code>new Date()</code> and store it in a shiny input with <code>Shiny.setInputValue</code>. On the R side, we will not obtain a date but a character, which is not convenient. This is where input handlers are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with <code><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">shiny::registerInputHandler</a></code> that takes 2 parameters:</p>
+<p>For instance, assume we create a date in JS with <code>new Date()</code> and store it in a shiny input with <code>Shiny.setInputValue</code>. On the R side, we will not obtain a date but a character, which is not convenient. This is where input handlers are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with <code><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">shiny::registerInputHandler</a></code> that takes 2 parameters:</p>
 <ul>
-<li>type allows to connect the handler to <code>Shiny.setInputValue</code>. Note that the id is followed by the handler type, for instance <code>Shiny.setInputValue('test:handler', ...)</code> is connected to <code><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">shiny::registerInputHandler('handler', ...)</a></code>
-</li>
+<li>type allows to connect the handler to <code>Shiny.setInputValue</code>. Note that the id is followed by the handler type, for instance <code>Shiny.setInputValue('test:handler', ...)</code> is connected to <code><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">shiny::registerInputHandler('handler', ...)</a></code>. As recommended by the Shiny documentation, if the input handler is part of a package, it is best practice to name it like <code>packageName.widgetName</code>.</li>
 <li>a function to transform data, having data as main parameter</li>
 </ul>
-<p>Below I exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.</p>
+<p>Below we exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.</p>
 <div class="sourceCode" id="cb303"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># You must click on the window to create inputs!!</span>
-<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">registerInputHandler</a></span><span class="op">(</span><span class="st">"textDate"</span>, <span class="kw">function</span><span class="op">(</span><span class="va">data</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">registerInputHandler</a></span><span class="op">(</span><span class="st">"OSUICode.textDate"</span>, <span class="kw">function</span><span class="op">(</span><span class="va">data</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span>
   <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
     <span class="cn">NULL</span>
   <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
@@ -1018,10 +1022,10 @@ In the example below, the card will not show on mobile devices.</p>
 <span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
     <span class="st">"$(function(){
-      $(window).on('click', function() {
+      $(document).on('shiny:connected', function() {
         var currentTime = new Date();
         Shiny.setInputValue('time1', currentTime);
-        Shiny.setInputValue('time2:textDate', currentTime);
+        Shiny.setInputValue('time2:OSUICode.textDate', currentTime);
       });
     });
     "</span>
@@ -1036,6 +1040,129 @@ In the example below, the card will not show on mobile devices.</p>
 <span class="op">}</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="the-clean-way-leverage-gettype" class="section level3">
+<h3>
+<span class="header-section-number">11.4.2</span> The clean way: leverage <code>getType</code><a class="anchor" aria-label="anchor" href="#the-clean-way-leverage-gettype"><i class="fas fa-link"></i></a>
+</h3>
+<p>The cleanest way is to leverage the <code>getType</code> method from the <code>InputBinding</code> class.
+Let’s take our text input so that it handles dates. On the R side, in the <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInput.html">customTextInput()</a></code> function, we check the current value’s type:</p>
+<div class="sourceCode" id="cb304"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">type</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">value</span>, <span class="st">"Date"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="st">"date"</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="cn">NULL</span>
+<span class="op">}</span></code></pre></div>
+<p>We add a custom data attribute to the input tag, which won’t be displayed if the value is not a date:</p>
+<div class="sourceCode" id="cb305"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">tags</span><span class="op">$</span><span class="fu">input</span><span class="op">(</span>
+  id <span class="op">=</span> <span class="va">inputId</span>,
+  type <span class="op">=</span> <span class="st">"text"</span>,
+  class <span class="op">=</span> <span class="st">"form-control input-text"</span>,
+  value <span class="op">=</span> <span class="va">value</span>,
+  placeholder <span class="op">=</span> <span class="va">placeholder</span>,
+  `data-data-type` <span class="op">=</span> <span class="va">type</span>
+<span class="op">)</span></code></pre></div>
+<p>We then define our custom handler. This code is run when the package is loaded and usually located in a <code>zzz.R</code> script:</p>
+<div class="sourceCode" id="cb306"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">.onLoad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">registerInputHandler</a></span><span class="op">(</span><span class="st">"OSUICode.textDate"</span>, <span class="kw">function</span><span class="op">(</span><span class="va">data</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span>
+    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+      <span class="cn">NULL</span>
+    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+      <span class="va">res</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/try.html">try</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.Date.html">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span><span class="op">)</span>, silent <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="st">"try-error"</span> <span class="op">%in%</span> <span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+        <span class="kw"><a href="https://rdrr.io/r/base/warning.html">warning</a></span><span class="op">(</span><span class="st">"Failed to parse dates!"</span><span class="op">)</span>
+        <span class="co"># as.Date(NA)</span>
+        <span class="va">data</span>
+      <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+        <span class="va">res</span>
+      <span class="op">}</span>
+    <span class="op">}</span>
+  <span class="op">}</span>, force <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p><strong>Note</strong>: shiny already handles dates and we could use the built-in input handler. The current handler was only designed for teaching purposes.</p>
+<p>On the JavaScript side, we refer to the <code>OSUICode.textDate</code> defined input handler. We recover the <code>data-type</code> value passed from R and call the handler if the type is a date. We return <code>false</code> otherwise, which is the default behavior:</p>
+<div class="sourceCode" id="cb307"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb307-1"><a href="shiny-input-system.html#cb307-1"></a>getType<span class="op">:</span> <span class="kw">function</span> <span class="at">getType</span>(el) <span class="op">{</span></span>
+<span id="cb307-2"><a href="shiny-input-system.html#cb307-2"></a>  <span class="kw">var</span> dataType <span class="op">=</span> <span class="at">$</span>(el).<span class="at">data</span>(<span class="st">"data-type"</span>)<span class="op">;</span></span>
+<span id="cb307-3"><a href="shiny-input-system.html#cb307-3"></a>  <span class="cf">if</span> (dataType <span class="op">===</span> <span class="st">"date"</span>) <span class="cf">return</span> <span class="st">"OSUICode.textDate"</span><span class="op">;</span></span>
+<span id="cb307-4"><a href="shiny-input-system.html#cb307-4"></a>  <span class="co">// if (dataType === "date") return "shiny.date"</span></span>
+<span id="cb307-5"><a href="shiny-input-system.html#cb307-5"></a>  <span class="cf">else</span> <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb307-6"><a href="shiny-input-system.html#cb307-6"></a><span class="op">}</span></span></code></pre></div>
+<p>To use the shiny built-in handler we could return <code>"shiny.date"</code> instead. We then run:</p>
+<div class="sourceCode" id="cb308"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">customTextInputHandlerExample</span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></code></pre></div>
+<p>which sets the value as text by default. After opening the HTML inspector and setting a break point in the <code>getType</code> method (Figure <a href="shiny-input-system.html#fig:binding-getType-1">11.15</a>), we check that the data type is not defined. Therefore the input handler will not apply.</p>
+<div class="figure">
+<span id="fig:binding-getType-1"></span>
+<img src="images/survival-kit/binding-getType-1.png" alt="Example where getType does not call the input handler" width="100%"><p class="caption">
+FIGURE 11.15: Example where getType does not call the input handler
+</p>
+</div>
+<p>For the second example, we give a date value to the function:</p>
+<div class="sourceCode" id="cb309"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">customTextInputHandlerExample</span><span class="op">(</span><span class="fl">7</span>, <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<p>As illustrated Figure <a href="shiny-input-system.html#fig:binding-getType-2">11.16</a>, the date is properly processed. Moreover, if you type any other valid date in the text field like <code>2020-11-12</code>, it will be recognized as a date, while entering a text will return a character element. This is a way to obtain a slightly more clever text input widget.</p>
+<div class="figure">
+<span id="fig:binding-getType-2"></span>
+<img src="images/survival-kit/binding-getType-2.png" alt="Passing a date to a text input correctly processes it" width="100%"><p class="caption">
+FIGURE 11.16: Passing a date to a text input correctly processes it
+</p>
+</div>
+<p>Importantly, since the <code>data-type</code> is set at app startup by checking the class of the value, it will never change later. For instance, if you start the app with the text input value to be a simple text, setting it to a date through the app does not convert it into a date since <code>$(el).data("data-type")</code> always return <code>undefined</code>! Therefore, if you want to be able to use both text and dates, be sure to wisely set the initial value.</p>
+<p>To finish, we could seamlessly make out text input even more clever, by handling numbers. Even though shiny has a <code>shiny.number</code> input <a href="https://github.com/rstudio/shiny/blob/master/R/server-input-handlers.R#L144">handler</a>, it simply makes sure that whenever the input is missing a value, NA is returned instead of "".
+(Figure <a href="shiny-input-system.html#fig:shiny-getType-number">11.17</a>).</p>
+<div class="figure">
+<span id="fig:shiny-getType-number"></span>
+<img src="images/survival-kit/shiny-getType-number.png" alt='shiny.number input handler ensures that an empty numericInput returns NA instead of ""' width="100%"><p class="caption">
+FIGURE 11.17: shiny.number input handler ensures that an empty numericInput returns NA instead of ""
+</p>
+</div>
+<p>What we want is an handler that recognizes the string <code>"1"</code> and convert it to a number. In R, converting a string to a number gives <code>NA</code>:</p>
+<div class="sourceCode" id="cb310"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="st">"test"</span><span class="op">)</span></code></pre></div>
+<pre><code>## Warning: NAs introduced by coercion</code></pre>
+<pre><code>## [1] NA</code></pre>
+<p>Therefore, if we obtain NA, we return original data so that the input returns the correct type. Right after our previous handler, we can write:</p>
+<div class="sourceCode" id="cb313"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">registerInputHandler</a></span><span class="op">(</span><span class="st">"OSUICode.textNumber"</span>, <span class="kw">function</span><span class="op">(</span><span class="va">data</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span>
+    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+      <span class="cn">NULL</span>
+    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+      <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span><span class="op">)</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+        <span class="va">data</span>
+      <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+        <span class="va">res</span>
+      <span class="op">}</span>
+    <span class="op">}</span>
+  <span class="op">}</span>, force <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+<p>We also update the JavaScript <code>getType</code> method as follows:</p>
+<div class="sourceCode" id="cb314"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb314-1"><a href="shiny-input-system.html#cb314-1"></a>getType<span class="op">:</span> <span class="kw">function</span> <span class="at">getType</span>(el) <span class="op">{</span></span>
+<span id="cb314-2"><a href="shiny-input-system.html#cb314-2"></a>  <span class="kw">var</span> dataType <span class="op">=</span> <span class="at">$</span>(el).<span class="at">data</span>(<span class="st">"data-type"</span>)<span class="op">;</span></span>
+<span id="cb314-3"><a href="shiny-input-system.html#cb314-3"></a>  <span class="cf">if</span> (dataType <span class="op">===</span> <span class="st">"date"</span>) <span class="cf">return</span> <span class="st">"OSUICode.textDate"</span><span class="op">;</span></span>
+<span id="cb314-4"><a href="shiny-input-system.html#cb314-4"></a>  <span class="cf">else</span> <span class="cf">if</span> (dataType <span class="op">===</span> <span class="st">"number"</span>) <span class="cf">return</span> <span class="st">"OSUICode.textNumber"</span><span class="op">;</span></span>
+<span id="cb314-5"><a href="shiny-input-system.html#cb314-5"></a>  <span class="cf">else</span> <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb314-6"><a href="shiny-input-system.html#cb314-6"></a><span class="op">}</span></span></code></pre></div>
+<p>On the R side, don’t forget to add an extra <code>else if</code> statement to the <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInput.html">customTextInput()</a></code> function:</p>
+<div class="sourceCode" id="cb315"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">type</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">value</span>, <span class="st">"Date"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="st">"date"</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">value</span>, <span class="st">"numeric"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="st">"number"</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="cn">NULL</span>
+<span class="op">}</span></code></pre></div>
+<p>If we run:</p>
+<div class="sourceCode" id="cb316"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">customTextInputHandlerExample</span><span class="op">(</span><span class="fl">7</span>, <span class="fl">1</span><span class="op">)</span></code></pre></div>
+<p>we obtain the desired behavior shown Figure <a href="shiny-input-system.html#fig:binding-getType-3">11.18</a>.</p>
+<div class="figure">
+<span id="fig:binding-getType-3"></span>
+<img src="images/survival-kit/binding-getType-3.png" alt="Passing a number to a text input correctly processes it" width="100%"><p class="caption">
+FIGURE 11.18: Passing a number to a text input correctly processes it
+</p>
+</div>
 
 </div>
 </div>
@@ -1065,7 +1192,12 @@ In the example below, the card will not show on mobile devices.</p>
 <a class="nav-link" href="#utilities-to-quickly-define-new-inputs"><span class="header-section-number">11.3</span> Utilities to quickly define new inputs</a><ul class="nav navbar-nav">
 <li><a class="nav-link" href="#introduction-2"><span class="header-section-number">11.3.1</span> Introduction</a></li>
 <li><a class="nav-link" href="#examples-1"><span class="header-section-number">11.3.2</span> Examples</a></li>
-<li><a class="nav-link" href="#custom-data-format"><span class="header-section-number">11.3.3</span> Custom data format</a></li>
+</ul>
+</li>
+<li>
+<a class="nav-link" href="#custom-data-format"><span class="header-section-number">11.4</span> Custom data format</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#the-dirty-way"><span class="header-section-number">11.4.1</span> The dirty way</a></li>
+<li><a class="nav-link" href="#the-clean-way-leverage-gettype"><span class="header-section-number">11.4.2</span> The clean way: leverage getType</a></li>
 </ul>
 </li>
 </ul>

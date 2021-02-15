@@ -1,9 +1,7 @@
 # Shiny's input system {#shiny-input-system}
 Shiny inputs are key elements of Shiny apps since they are a way for the end-user to interact with the app. You may know `sliderInput`, `numericInput`, `checkboxInput` but sometimes you may need fancier elements like `knobInput` from [shinyWidgets](https://github.com/dreamRs/shinyWidgets/blob/master/R/input-knob.R), as depicted on Figure \@ref(fig:fancy-inputs) or even more sophisticated inputs like the `smartSelect` of [shinyMobile](https://github.com/RinteRface/shinyMobile/blob/master/R/f7-inputs.R) (Figure \@ref(fig:fancy-inputs), right panel). Have you ever wondered what are the mechanisms behind inputs? Have you ever dreamt to develop your own?
 
-The goal of this section is to understand how Shiny inputs work and how to create new ones. 
-
-.
+The goal of this section is to understand how Shiny inputs work and how to create new ones.
 
 ```{r fancy-inputs, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap='Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile'}
 knitr::include_graphics("images/survival-kit/jquery-knobs.png")
@@ -434,7 +432,7 @@ Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-i
 There are a couple of methods not described above that are contained in the `InputBinding` class prototype. They were not described before since most of the time, we don't need to change them and can rely on the defaults:
 
   - `getId` returns the object id (Figure \@ref(fig:binding-getId)). If you don't provide your own method, the binding falls back to the default one provided in the `InputBinding` class. This method is called after `find`. The next Chapter \@ref(shiny-input-lifecycle) provides more details. 
-  - `getType` required to handle custom data format. It is called after `getId`. 
+  - `getType` required to handle custom data format. It is called after `getId`. See section \@ref(custom-data-format).
   - `getState` ?
   
 ```{r binding-getId, echo=FALSE, fig.cap='Binding getid method', out.width='100%'}
@@ -1017,17 +1015,19 @@ shinyApp(
 )
 ```
 
-### Custom data format
-In some cases, the automatic Shiny R to JS data management may not meet our needs. For instance, assume we create a date in JS with `new Date()` and store it in a shiny input with `Shiny.setInputValue`. On the R side, we will not obtain a date but a character, which is not convenient. This is where input handlers are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with `shiny::registerInputHandler` that takes 2 parameters:
+## Custom data format {#custom-data-format}
+In some cases, the automatic Shiny R to JS data management may not meet our needs. 
 
-  - type allows to connect the handler to `Shiny.setInputValue`. Note that the id is followed by the handler type, for instance `Shiny.setInputValue('test:handler', ...)` is connected to `shiny::registerInputHandler('handler', ...)`
+### The dirty way
+For instance, assume we create a date in JS with `new Date()` and store it in a shiny input with `Shiny.setInputValue`. On the R side, we will not obtain a date but a character, which is not convenient. This is where input handlers are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with `shiny::registerInputHandler` that takes 2 parameters:
+
+  - type allows to connect the handler to `Shiny.setInputValue`. Note that the id is followed by the handler type, for instance `Shiny.setInputValue('test:handler', ...)` is connected to `shiny::registerInputHandler('handler', ...)`. As recommended by the Shiny documentation, if the input handler is part of a package, it is best practice to name it like `packageName.widgetName`.
   - a function to transform data, having data as main parameter
   
-Below I exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.
+Below we exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.
 
 ```{r, eval=FALSE}
-# You must click on the window to create inputs!!
-registerInputHandler("textDate", function(data, ...) {
+registerInputHandler("OSUICode.textDate", function(data, ...) {
   if (is.null(data)) {
     NULL
   } else {
@@ -1045,10 +1045,10 @@ registerInputHandler("textDate", function(data, ...) {
 ui <- fluidPage(
   tags$script(
     "$(function(){
-      $(window).on('click', function() {
+      $(document).on('shiny:connected', function() {
         var currentTime = new Date();
         Shiny.setInputValue('time1', currentTime);
-        Shiny.setInputValue('time2:textDate', currentTime);
+        Shiny.setInputValue('time2:OSUICode.textDate', currentTime);
       });
     });
     "
@@ -1063,4 +1063,155 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+```
+
+### The clean way: leverage `getType`
+The cleanest way is to leverage the `getType` method from the `InputBinding` class. 
+Let's take our text input so that it handles dates. On the R side, in the `customTextInput()` function, we check the current value's type:
+
+```{r, eval=FALSE}
+type <- if (inherits(value, "Date")) {
+  "date"
+} else {
+  NULL
+}
+```
+
+We add a custom data attribute to the input tag, which won't be displayed if the value is not a date:
+
+```{r, eval=FALSE}
+tags$input(
+  id = inputId,
+  type = "text",
+  class = "form-control input-text",
+  value = value,
+  placeholder = placeholder,
+  `data-data-type` = type
+)
+```
+
+We then define our custom handler. This code is run when the package is loaded and usually located in a `zzz.R` script:
+
+```{r, eval=FALSE}
+.onLoad <- function(...) {
+  registerInputHandler("OSUICode.textDate", function(data, ...) {
+    if (is.null(data)) {
+      NULL
+    } else {
+      res <- try(as.Date(unlist(data)), silent = TRUE)
+      if ("try-error" %in% class(res)) {
+        warning("Failed to parse dates!")
+        # as.Date(NA)
+        data
+      } else {
+        res
+      }
+    }
+  }, force = TRUE)
+}
+```
+
+__Note__: shiny already handles dates and we could use the built-in input handler. The current handler was only designed for teaching purposes. 
+
+On the JavaScript side, we refer to the `OSUICode.textDate` defined input handler. We recover the `data-type` value passed from R and call the handler if the type is a date. We return `false` otherwise, which is the default behavior:
+
+```js
+getType: function getType(el) {
+  var dataType = $(el).data("data-type");
+  if (dataType === "date") return "OSUICode.textDate";
+  // if (dataType === "date") return "shiny.date"
+  else return false;
+}
+```
+
+To use the shiny built-in handler we could return `"shiny.date"` instead. We then run:
+
+```{r, eval=FALSE}
+customTextInputHandlerExample(7)
+```
+
+which sets the value as text by default. After opening the HTML inspector and setting a break point in the `getType` method (Figure \@ref(fig:binding-getType-1)), we check that the data type is not defined. Therefore the input handler will not apply. 
+
+```{r binding-getType-1, echo=FALSE, fig.cap='Example where getType does not call the input handler', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-getType-1.png")
+```
+
+For the second example, we give a date value to the function:
+
+```{r, eval=FALSE}
+customTextInputHandlerExample(7, Sys.Date())
+```
+
+As illustrated Figure \@ref(fig:binding-getType-2), the date is properly processed. Moreover, if you type any other valid date in the text field like `2020-11-12`, it will be recognized as a date, while entering a text will return a character element. This is a way to obtain a slightly more clever text input widget.
+
+```{r binding-getType-2, echo=FALSE, fig.cap='Passing a date to a text input correctly processes it', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-getType-2.png")
+```
+
+Importantly, since the `data-type` is set at app startup by checking the class of the value, it will never change later. For instance, if you start the app with the text input value to be a simple text, setting it to a date through the app does not convert it into a date since `$(el).data("data-type")` always return `undefined`! Therefore, if you want to be able to use both text and dates, be sure to wisely set the initial value. 
+
+To finish, we could seamlessly make out text input even more clever, by handling numbers. Even though shiny has a `shiny.number` input [handler](https://github.com/rstudio/shiny/blob/master/R/server-input-handlers.R#L144), it simply makes sure that whenever the input is missing a value, NA is returned instead of "".
+(Figure \@ref(fig:shiny-getType-number)).
+
+```{r shiny-getType-number, echo=FALSE, fig.cap='shiny.number input handler ensures that an empty numericInput returns NA instead of ""', out.width='100%'}
+knitr::include_graphics("images/survival-kit/shiny-getType-number.png")
+```
+
+What we want is an handler that recognizes the string `"1"` and convert it to a number. In R, converting a string to a number gives `NA`:
+
+```{r}
+as.numeric("test")
+```
+
+Therefore, if we obtain NA, we return original data so that the input returns the correct type. Right after our previous handler, we can write:
+
+```{r, eval=FALSE}
+registerInputHandler("OSUICode.textNumber", function(data, ...) {
+    if (is.null(data)) {
+      NULL
+    } else {
+      res <- as.numeric(unlist(data))
+      if (is.na(res)) {
+        data
+      } else {
+        res
+      }
+    }
+  }, force = TRUE)
+```
+
+
+We also update the JavaScript `getType` method as follows:
+
+```js
+getType: function getType(el) {
+  var dataType = $(el).data("data-type");
+  if (dataType === "date") return "OSUICode.textDate";
+  else if (dataType === "number") return "OSUICode.textNumber";
+  else return false;
+}
+```
+
+On the R side, don't forget to add an extra `else if` statement to the `customTextInput()` function:
+
+```{r, eval=FALSE}
+type <- if (inherits(value, "Date")) {
+  "date"
+} else if (inherits(value, "numeric")) {
+  "number"
+} else {
+  NULL
+}
+```
+
+If we run:
+
+```{r, eval=FALSE}
+customTextInputHandlerExample(7, 1)
+```
+
+we obtain the desired behavior shown Figure \@ref(fig:binding-getType-3).
+
+```{r binding-getType-3, echo=FALSE, fig.cap='Passing a number to a text input correctly processes it', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-getType-3.png")
 ```
