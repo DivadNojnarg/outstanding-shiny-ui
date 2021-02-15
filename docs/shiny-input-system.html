@@ -139,10 +139,17 @@ FIGURE 11.1: Custom shiny inputs. left: knobInput from shinyWidgets; right: smar
 <p>An input element is given by the <code>&lt;input&gt;</code> tag as well as several attributes.</p>
 <div class="sourceCode" id="cb263"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb263-1"><a href="shiny-input-system.html#cb263-1"></a><span class="kw">&lt;input</span><span class="ot"> id</span> <span class="ot">=</span> <span class="st">inputId</span><span class="ot"> type</span> <span class="ot">=</span> <span class="st">"text"</span><span class="ot"> class</span> <span class="ot">=</span> <span class="st">"input-text"</span><span class="ot"> value</span> <span class="ot">=</span> <span class="st">value</span><span class="kw">&gt;</span></span></code></pre></div>
 <ul>
-<li>id guarantees the input uniqueness. We will see very soon that all instances of the same input share a unique input binding, therefore id is mandatory.</li>
-<li><a href="https://www.w3schools.com/tags/att_input_type.asp">type</a></li>
-<li>class is targeted by CSS and JavaScript</li>
-<li>value holds the input value</li>
+<li>
+<strong>id</strong> guarantees the input uniqueness and a way for shiny to recover it in the <code>input$&lt;id&gt;</code> element.</li>
+<li>
+<a href="https://www.w3schools.com/tags/att_input_type.asp">type</a> like <code>checkbox</code>, <code>button</code>,
+<code>text</code> …<strong>type</strong> may also be a good target for the input binding find method, as explained below.</li>
+<li>
+<strong>class</strong> may be required to find the element in the DOM. It is more convenient for
+an input binding to target a class (and all associated elements) rather than an id which corresponds to one element by definition.
+It is also used by CSS to apply styles.</li>
+<li>
+<strong>value</strong> holds the input value.</li>
 </ul>
 </div>
 <div id="binding-shiny-inputs" class="section level3">
@@ -155,7 +162,7 @@ FIGURE 11.1: Custom shiny inputs. left: knobInput from shinyWidgets; right: smar
 <h4>
 <span class="header-section-number">11.1.2.1</span> Find the input<a class="anchor" aria-label="anchor" href="#find-the-input"><i class="fas fa-link"></i></a>
 </h4>
-<p>The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the <code>actionButton</code>. On the JS side, we need a method that will identify this receptor. Moreover, two different types of inputs (for instance <code>radioButton</code> and <code>selectInput</code>) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the <code>find</code> method of the <code>InputBinding</code> class. This method must be applied on a scope, that is the <code>document</code>. <code>find</code> accepts any valid jQuery selector. Note the <code>console.log</code> only here for debugging purpose.</p>
+<p>The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the <code>actionButton</code>. On the JS side, we need a method that will identify this receptor. Moreover, two different types of inputs (for instance <code>radioButton</code> and <code>selectInput</code>) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can. If your app contains 10 sliders, they all share the same input binding, and this is where the thing is powerful since they are all bound in one step. The receptor identifier is provided by the <code>find</code> method of the <code>InputBinding</code> class. This method must be applied on a scope, that is the <code>document</code>. <code>find</code> accepts any valid jQuery selector. Note the <code>console.log</code> only here for debugging purpose.</p>
 <div class="sourceCode" id="cb264"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb264-1"><a href="shiny-input-system.html#cb264-1"></a>find<span class="op">:</span> <span class="kw">function</span>(scope) <span class="op">{</span></span>
 <span id="cb264-2"><a href="shiny-input-system.html#cb264-2"></a>  <span class="va">console</span>.<span class="at">log</span>(<span class="at">$</span>(scope).<span class="at">find</span>(<span class="st">'.input-text'</span>))<span class="op">;</span></span>
 <span id="cb264-3"><a href="shiny-input-system.html#cb264-3"></a>  <span class="cf">return</span> <span class="at">$</span>(scope).<span class="at">find</span>(<span class="st">'.input-text'</span>)<span class="op">;</span></span>
@@ -217,91 +224,131 @@ Considering multiple inputs, we will add more script to the dependency by passin
 FIGURE 11.3: Shiny’s textInput elements
 </p>
 </div>
-<p>We invite the reader to run the first example below and open the HTML inspector and look at the <code>console.log</code> result.</p>
+<p>We invite the reader to run the full working demonstration with <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExample.html">customTextInputExample(1)</a></code>.
+In short this example consists in a simple text input and an output showing the current text input value:</p>
 <div class="sourceCode" id="cb267"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExample.html">customTextInputExample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></code></pre></div>
-<p>Results are shown on Figure <a href="shiny-input-system.html#fig:shiny-find-inputs-result">11.4</a>. If the corresponding input is found, you should see the corresponding tag element in the HTML inspector console.</p>
+<code class="sourceCode R"><span class="va">customTextInputExample</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">binding_step</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+    <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInput.html">customTextInput</a></span><span class="op">(</span>
+      inputId <span class="op">=</span> <span class="st">"caption"</span>,
+      label <span class="op">=</span> <span class="st">"Caption"</span>,
+      value <span class="op">=</span> <span class="st">"Data Summary"</span>,
+      binding_step <span class="op">=</span> <span class="va">binding_step</span>
+    <span class="op">)</span>,
+    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html">textOutput</a></span><span class="op">(</span><span class="st">"custom_text"</span><span class="op">)</span>
+  <span class="op">)</span>
+  <span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span><span class="op">)</span> <span class="op">{</span>
+    <span class="va">output</span><span class="op">$</span><span class="va">custom_text</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html">renderText</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">caption</span><span class="op">)</span>
+  <span class="op">}</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>We open the developer tools to inspect the <code>customTextInputBinding.js</code> script, put a breakpoints in the <code>find</code> method and reload the page. Upon reload, the JavaScript debugger opens, as shown Figure <a href="shiny-input-system.html#fig:binding-find">11.4</a>. Type <code>$(scope).find('.input-text')</code> in the console and see what is displayed. This is the DOM element which you may highlight when you hover over the JavaScript output.</p>
+<p>Building input bindings like this significantly ease the debugging process and you’ll get more chances to be successful!</p>
 <div class="figure">
-<span id="fig:shiny-find-inputs-result"></span>
-<img src="images/survival-kit/shiny-find-inputs-result.png" alt="find method output" width="100%"><p class="caption">
-FIGURE 11.4: find method output
+<span id="fig:binding-find"></span>
+<img src="images/survival-kit/binding-find.png" alt="Find is the first method triggered" width="100%"><p class="caption">
+FIGURE 11.4: Find is the first method triggered
 </p>
 </div>
+<p>Now, let’s see why it is better to target elements by type or class. We run the <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExampleBis.html">customTextInputExampleBis()</a></code> example. This is a demonstration app containing two text inputs. Moreover, the binding has been modified so that it looks for element having a specific id:</p>
+<div class="sourceCode" id="cb268"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb268-1"><a href="shiny-input-system.html#cb268-1"></a>find<span class="op">:</span> <span class="kw">function</span>(scope) <span class="op">{</span></span>
+<span id="cb268-2"><a href="shiny-input-system.html#cb268-2"></a>  <span class="cf">return</span> <span class="at">$</span>(scope).<span class="at">find</span>(<span class="st">'#mytextInput'</span>)<span class="op">;</span></span>
+<span id="cb268-3"><a href="shiny-input-system.html#cb268-3"></a><span class="op">}</span></span></code></pre></div>
+<p>If you repeat the above debugging steps, <code>$(scope).find('.input-text')</code> only targets the
+first text input, meaning that the second input will not be found and bound.</p>
+<div class="figure">
+<span id="fig:binding-find-by-id"></span>
+<img src="images/survival-kit/binding-find-by-id.png" alt="Find by id is a rather bad idea" width="100%"><p class="caption">
+FIGURE 11.5: Find by id is a rather bad idea
+</p>
+</div>
+<p>As a side note, you’ll also get an error in the binding <code>Uncaught Not implemented</code>, indicating that the <code>getValue</code> method is not implemented yet. Fear not! We are going to
+add it very soon.</p>
 </div>
 <div id="initialize-inputs" class="section level4">
 <h4>
 <span class="header-section-number">11.1.2.2</span> Initialize inputs<a class="anchor" aria-label="anchor" href="#initialize-inputs"><i class="fas fa-link"></i></a>
 </h4>
 <p>Upon initialization, Shiny calls the <code>initializeInputs</code> function that takes all input bindings and call their <code>initialize</code> method before binding all inputs. Note that once an input has been initialized it has a <code>_shiny_initialized</code> tag to avoid initializing it twice. The initialize method is not always defined but some elements require to be explicitly initialized or activated. For instance the <a href="https://framework7.io">Framework7</a> API, on top of which <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> is built, require to instantiate all elements. Below is an example for the <a href="https://framework7.io/docs/toggle.html">toggle</a> input:</p>
-<div class="sourceCode" id="cb268"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb268-1"><a href="shiny-input-system.html#cb268-1"></a><span class="co">// what is expected</span></span>
-<span id="cb268-2"><a href="shiny-input-system.html#cb268-2"></a><span class="kw">let</span> toggle <span class="op">=</span> <span class="va">app</span>.<span class="va">toggle</span>.<span class="at">create</span>(<span class="op">{</span></span>
-<span id="cb268-3"><a href="shiny-input-system.html#cb268-3"></a>  <span class="dt">el</span><span class="op">:</span> <span class="st">'.toggle'</span><span class="op">,</span></span>
-<span id="cb268-4"><a href="shiny-input-system.html#cb268-4"></a>  <span class="dt">on</span><span class="op">:</span> <span class="op">{</span></span>
-<span id="cb268-5"><a href="shiny-input-system.html#cb268-5"></a>    <span class="dt">change</span><span class="op">:</span> <span class="kw">function</span> () <span class="op">{</span></span>
-<span id="cb268-6"><a href="shiny-input-system.html#cb268-6"></a>      <span class="va">console</span>.<span class="at">log</span>(<span class="st">'Toggle changed'</span>)</span>
-<span id="cb268-7"><a href="shiny-input-system.html#cb268-7"></a>    <span class="op">}</span></span>
-<span id="cb268-8"><a href="shiny-input-system.html#cb268-8"></a>  <span class="op">}</span></span>
-<span id="cb268-9"><a href="shiny-input-system.html#cb268-9"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb269"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb269-1"><a href="shiny-input-system.html#cb269-1"></a><span class="co">// what is expected</span></span>
+<span id="cb269-2"><a href="shiny-input-system.html#cb269-2"></a><span class="kw">let</span> toggle <span class="op">=</span> <span class="va">app</span>.<span class="va">toggle</span>.<span class="at">create</span>(<span class="op">{</span></span>
+<span id="cb269-3"><a href="shiny-input-system.html#cb269-3"></a>  <span class="dt">el</span><span class="op">:</span> <span class="st">'.toggle'</span><span class="op">,</span></span>
+<span id="cb269-4"><a href="shiny-input-system.html#cb269-4"></a>  <span class="dt">on</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb269-5"><a href="shiny-input-system.html#cb269-5"></a>    <span class="dt">change</span><span class="op">:</span> <span class="kw">function</span> () <span class="op">{</span></span>
+<span id="cb269-6"><a href="shiny-input-system.html#cb269-6"></a>      <span class="va">console</span>.<span class="at">log</span>(<span class="st">'Toggle changed'</span>)</span>
+<span id="cb269-7"><a href="shiny-input-system.html#cb269-7"></a>    <span class="op">}</span></span>
+<span id="cb269-8"><a href="shiny-input-system.html#cb269-8"></a>  <span class="op">}</span></span>
+<span id="cb269-9"><a href="shiny-input-system.html#cb269-9"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p><code>el: '.toggle'</code> means that we are looking at the element(s) having the <code>toggle</code> class. <code>app.toggle.create</code> is internal to the Framework7 API. The corresponding shinyMobile input binding starts as follows.</p>
-<div class="sourceCode" id="cb269"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb269-1"><a href="shiny-input-system.html#cb269-1"></a><span class="kw">var</span> f7ToggleBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">InputBinding</span>()<span class="op">;</span></span>
-<span id="cb269-2"><a href="shiny-input-system.html#cb269-2"></a>  <span class="va">$</span>.<span class="at">extend</span>(f7ToggleBinding<span class="op">,</span> <span class="op">{</span></span>
-<span id="cb269-3"><a href="shiny-input-system.html#cb269-3"></a>    <span class="dt">initialize</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
-<span id="cb269-4"><a href="shiny-input-system.html#cb269-4"></a>      <span class="va">app</span>.<span class="va">toggle</span>.<span class="at">create</span>(<span class="op">{</span><span class="dt">el</span><span class="op">:</span> el<span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb269-5"><a href="shiny-input-system.html#cb269-5"></a>    <span class="op">},</span></span>
-<span id="cb269-6"><a href="shiny-input-system.html#cb269-6"></a>    <span class="co">// other methods</span></span>
-<span id="cb269-7"><a href="shiny-input-system.html#cb269-7"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb270"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb270-1"><a href="shiny-input-system.html#cb270-1"></a><span class="kw">var</span> f7ToggleBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">InputBinding</span>()<span class="op">;</span></span>
+<span id="cb270-2"><a href="shiny-input-system.html#cb270-2"></a>  <span class="va">$</span>.<span class="at">extend</span>(f7ToggleBinding<span class="op">,</span> <span class="op">{</span></span>
+<span id="cb270-3"><a href="shiny-input-system.html#cb270-3"></a>    <span class="dt">initialize</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
+<span id="cb270-4"><a href="shiny-input-system.html#cb270-4"></a>      <span class="va">app</span>.<span class="va">toggle</span>.<span class="at">create</span>(<span class="op">{</span><span class="dt">el</span><span class="op">:</span> el<span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb270-5"><a href="shiny-input-system.html#cb270-5"></a>    <span class="op">},</span></span>
+<span id="cb270-6"><a href="shiny-input-system.html#cb270-6"></a>    <span class="co">// other methods</span></span>
+<span id="cb270-7"><a href="shiny-input-system.html#cb270-7"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>Once initialized, we may use all specific methods provided by the API. <a href="https://framework7.io">Framework7</a> is clearly a gold mine, as its API provides many possible options for many inputs / widgets.</p>
 </div>
 <div id="get-the-value" class="section level4">
 <h4>
 <span class="header-section-number">11.1.2.3</span> Get the value<a class="anchor" aria-label="anchor" href="#get-the-value"><i class="fas fa-link"></i></a>
 </h4>
-<p><code>getValue(el)</code> returns the input value. The way to obtain the value is different for almost all inputs. For instance, the <code>textInput</code> is pretty simple since the value is located in the <code>value</code> attribute. <code>el</code> refers to the element holding the id attribute and recognized by the <code>find</code> method. Figure <a href="shiny-input-system.html#fig:shiny-el">11.5</a> shows the result of a <code>console.log($(el));</code>.</p>
+<p><code>getValue(el)</code> returns the input value. The way to obtain the value is different for almost all inputs. For instance, the <code>textInput</code> is pretty simple since the value is located in the <code>value</code> attribute. <code>el</code> refers to the element holding the id attribute and recognized by the <code>find</code> method. Figure <a href="shiny-input-system.html#fig:shiny-el">11.6</a> shows the result of a <code>console.log($(el));</code>.</p>
 <div class="figure">
 <span id="fig:shiny-el"></span>
 <img src="images/survival-kit/shiny-el.png" alt="About el" width="100%"><p class="caption">
-FIGURE 11.5: About el
+FIGURE 11.6: About el
 </p>
 </div>
-<div class="sourceCode" id="cb270"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb270-1"><a href="shiny-input-system.html#cb270-1"></a>getValue<span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
-<span id="cb270-2"><a href="shiny-input-system.html#cb270-2"></a>  <span class="va">console</span>.<span class="at">log</span>(<span class="at">$</span>(el))<span class="op">;</span></span>
-<span id="cb270-3"><a href="shiny-input-system.html#cb270-3"></a>  <span class="cf">return</span> <span class="at">$</span>(el).<span class="at">val</span>()<span class="op">;</span></span>
-<span id="cb270-4"><a href="shiny-input-system.html#cb270-4"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb271"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb271-1"><a href="shiny-input-system.html#cb271-1"></a>getValue<span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
+<span id="cb271-2"><a href="shiny-input-system.html#cb271-2"></a>  <span class="va">console</span>.<span class="at">log</span>(<span class="at">$</span>(el))<span class="op">;</span></span>
+<span id="cb271-3"><a href="shiny-input-system.html#cb271-3"></a>  <span class="cf">return</span> <span class="at">$</span>(el).<span class="at">val</span>()<span class="op">;</span></span>
+<span id="cb271-4"><a href="shiny-input-system.html#cb271-4"></a><span class="op">}</span></span></code></pre></div>
 <p>To get the value, we apply the jQuery method <code>val</code> on the <code>$(el)</code> element and return the result.</p>
-<div class="sourceCode" id="cb271"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb272"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExample.html">customTextInputExample</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></code></pre></div>
 <p>This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working. We will introduce them in the following sections!</p>
+<p>Similarly as in the find section, we run <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExample.html">customTextInputExample(2)</a></code> and open the developer tools to inspect the <code>customTextInputBinding.js</code> script. We put a breakpoints in the <code>getValue</code> method and reload the page. Upon reload, the JavaScript debugger opens starts in <code>find</code>. You may click on the next blue arrow to jump to the next breakpoints that is <code>getValue</code>, as shown Figure <a href="shiny-input-system.html#fig:binding-getValue">11.7</a>. Typing <code>$(el).val()</code> in the console shows the current
+text value.</p>
+<div class="figure">
+<span id="fig:binding-getValue"></span>
+<img src="images/survival-kit/binding-getValue.png" alt="getValue" width="100%"><p class="caption">
+FIGURE 11.7: getValue
+</p>
+</div>
+<p>Clicking on next again exists the debugger. Interestingly, you’ll notice that a text appears a the bottom of our input, meaning that the <code>input$caption</code> element exists and
+is internally tracked by shiny.</p>
 </div>
 <div id="set-and-update" class="section level4">
 <h4>
 <span class="header-section-number">11.1.2.4</span> Set and update<a class="anchor" aria-label="anchor" href="#set-and-update"><i class="fas fa-link"></i></a>
 </h4>
 <p><code>setValue(el, value)</code> is used to set the value of the current input. This method is necessary so that the input value may be updated. It has to be used in combination with <code>receiveMessage(el, data)</code>, which is the JavaScript part of all the R <code>updateInput</code> functions. We usually call the <code>setValue</code> method inside.</p>
-<div class="sourceCode" id="cb272"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb272-1"><a href="shiny-input-system.html#cb272-1"></a>setValue<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> value) <span class="op">{</span></span>
-<span id="cb272-2"><a href="shiny-input-system.html#cb272-2"></a>  <span class="at">$</span>(el).<span class="at">val</span>(value)<span class="op">;</span></span>
-<span id="cb272-3"><a href="shiny-input-system.html#cb272-3"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb273"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb273-1"><a href="shiny-input-system.html#cb273-1"></a>setValue<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> value) <span class="op">{</span></span>
+<span id="cb273-2"><a href="shiny-input-system.html#cb273-2"></a>  <span class="at">$</span>(el).<span class="at">val</span>(value)<span class="op">;</span></span>
+<span id="cb273-3"><a href="shiny-input-system.html#cb273-3"></a><span class="op">}</span></span></code></pre></div>
 <p>Let’s create a function to update our custom text input. Call it <code>updateCustomTextInput</code>. It requires at least 3 parameters:</p>
 <ul>
 <li>inputId tells which input to update.</li>
 <li>value is the new value. This will be taken by the <code>setValue</code> JS method in the input binding</li>
 <li>session is the Shiny session object mentioned earlier. We will use the <code>sendInputMessage</code> to send values from R to JavaScript. The <code>receiveMessage</code> method will apply <code>setValue</code> with the data received from R.</li>
 </ul>
-<div class="sourceCode" id="cb273"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb274"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateCustomTextInput</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">value</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">inputId</span>, message <span class="op">=</span> <span class="va">value</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>We add <code>setValue</code> and <code>receiveMessage</code> to custom input binding.</p>
-<div class="sourceCode" id="cb274"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb275"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></code></pre></div>
-<p>Figure <a href="shiny-input-system.html#fig:shiny-update-inputs">11.6</a> illustrates the main mechanisms.</p>
+<p>Figure <a href="shiny-input-system.html#fig:shiny-update-inputs">11.8</a> illustrates the main mechanisms.</p>
 <div class="figure">
 <span id="fig:shiny-update-inputs"></span>
 <img src="images/survival-kit/shiny-update-inputs.png" alt="Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket." width="100%"><p class="caption">
-FIGURE 11.6: Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket.
+FIGURE 11.8: Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket.
 </p>
 </div>
 <p>If we have to pass multiple elements to update, we would have to change the <code>updateCustomTextInput</code> function such as:</p>
-<div class="sourceCode" id="cb275"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb276"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateCustomTextInput</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">value</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">placeholder</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu">dropNulls</span><span class="op">(</span>
     <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
@@ -312,14 +359,28 @@ FIGURE 11.6: Events following a click on the update button. This figure demonstr
   <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">message</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p><code>dropNulls</code> is an internal function ensuring that the list does not contain NULL elements. We send a list from R, which is then serialized to a JSON object. In the <code>receiveMessage</code> method, properties like <code>value</code> may be accessed using the . notation:</p>
-<div class="sourceCode" id="cb276"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb276-1"><a href="shiny-input-system.html#cb276-1"></a>receiveMessage<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> data) <span class="op">{</span></span>
-<span id="cb276-2"><a href="shiny-input-system.html#cb276-2"></a>  <span class="va">console</span>.<span class="at">log</span>(data)<span class="op">;</span></span>
-<span id="cb276-3"><a href="shiny-input-system.html#cb276-3"></a>  <span class="cf">if</span> (<span class="va">data</span>.<span class="at">hasOwnProperty</span>(<span class="st">'value'</span>)) <span class="op">{</span></span>
-<span id="cb276-4"><a href="shiny-input-system.html#cb276-4"></a>    <span class="kw">this</span>.<span class="at">setValue</span>(el<span class="op">,</span> <span class="va">data</span>.<span class="at">value</span>)<span class="op">;</span></span>
-<span id="cb276-5"><a href="shiny-input-system.html#cb276-5"></a>  <span class="op">}</span></span>
-<span id="cb276-6"><a href="shiny-input-system.html#cb276-6"></a>  <span class="co">// other parameters to update...</span></span>
-<span id="cb276-7"><a href="shiny-input-system.html#cb276-7"></a><span class="op">}</span></span></code></pre></div>
-<p>So far so good! We managed to update the text input value. Yet, after clicking the button, the output value does not change. We are going to fix this missing step in the next section.</p>
+<div class="sourceCode" id="cb277"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb277-1"><a href="shiny-input-system.html#cb277-1"></a>receiveMessage<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> data) <span class="op">{</span></span>
+<span id="cb277-2"><a href="shiny-input-system.html#cb277-2"></a>  <span class="va">console</span>.<span class="at">log</span>(data)<span class="op">;</span></span>
+<span id="cb277-3"><a href="shiny-input-system.html#cb277-3"></a>  <span class="cf">if</span> (<span class="va">data</span>.<span class="at">hasOwnProperty</span>(<span class="st">'value'</span>)) <span class="op">{</span></span>
+<span id="cb277-4"><a href="shiny-input-system.html#cb277-4"></a>    <span class="kw">this</span>.<span class="at">setValue</span>(el<span class="op">,</span> <span class="va">data</span>.<span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb277-5"><a href="shiny-input-system.html#cb277-5"></a>  <span class="op">}</span></span>
+<span id="cb277-6"><a href="shiny-input-system.html#cb277-6"></a>  <span class="co">// other parameters to update...</span></span>
+<span id="cb277-7"><a href="shiny-input-system.html#cb277-7"></a><span class="op">}</span></span></code></pre></div>
+<p>Similarly as in the previous sections, we run <code><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample(3)</a></code> and open the developer tools to inspect the <code>customTextInputBinding.js</code> script. We put a breakpoints in the <code>receiveMessage</code> and <code>setValue</code> methods and reload the page. Upon reload, the JavaScript debugger opens starts in <code>find</code>. You may click on the next blue arrow until you reach <code>receiveMessage</code>, as shown Figure <a href="#fig:binding-update"><strong>??</strong></a>. Inspecting the <code>data</code> object, it contains only one property namely the value. In practice, there may be more complex structure. As an exercise, you may change the <code>data.value</code> to whatever value you want.</p>
+<div class="figure">
+<span id="fig:binding-receive"></span>
+<img src="images/survival-kit/binding-receive.png" alt="Receive a message from R" width="100%"><p class="caption">
+FIGURE 11.9: Receive a message from R
+</p>
+</div>
+<p>Click on the next arrow makes us jump in the next call that is <code>setValue</code>, where we can print the value to check whether it is correct. Running <code>$(el).val(value);</code> in the debugger console instantaneously update the DOM element with the new text, as shown on Figure <a href="shiny-input-system.html#fig:binding-setValue">11.10</a>.</p>
+<div class="figure">
+<span id="fig:binding-setValue"></span>
+<img src="images/survival-kit/binding-setValue.png" alt="Set the new value" width="100%"><p class="caption">
+FIGURE 11.10: Set the new value
+</p>
+</div>
+<p>So far so good! We managed to update the text input value on the client. Yet, after clicking the button, the output value does not change. We are going to fix this missing step in the next section.</p>
 </div>
 <div id="subscribe" class="section level4">
 <h4>
@@ -333,19 +394,49 @@ Going back to our custom text input, what event would make it change?</p>
 <li>After copying and pasting any text in the input field or dictating text. The <code>input</code> event may be helpful</li>
 </ul>
 <p>We may add those <a href="https://javascript.info/events-change-input">events</a> to our binding using an event listener seen at the end of Chapter <a href="survival-kit-javascript.html#survival-kit-javascript">9</a>.</p>
-<div class="sourceCode" id="cb277"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb277-1"><a href="shiny-input-system.html#cb277-1"></a><span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'keyup.customTextBinding input.customTextBinding'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb277-2"><a href="shiny-input-system.html#cb277-2"></a>  <span class="at">callback</span>(<span class="kw">true</span>)<span class="op">;</span></span>
-<span id="cb277-3"><a href="shiny-input-system.html#cb277-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
-<p><code>callback</code> ensures that the new value is captured by Shiny. We will come back later on the callback parameter.</p>
-<div class="sourceCode" id="cb278"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb278"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb278-1"><a href="shiny-input-system.html#cb278-1"></a><span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'keyup.customTextBinding input.customTextBinding'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb278-2"><a href="shiny-input-system.html#cb278-2"></a>  <span class="at">callback</span>(<span class="kw">true</span>)<span class="op">;</span></span>
+<span id="cb278-3"><a href="shiny-input-system.html#cb278-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p><code>callback</code> ensures that the new value is captured by Shiny. We will come back later on the callback parameter, which is rather complex.</p>
+<div class="sourceCode" id="cb279"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span></code></pre></div>
-<p>Hooray! The output result is successfully changed when the input value is manually updated. However, nothing happens when we click on the update button. What did we miss? Looking back at the <code>receiveMessage</code> method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a <code>console.log(event);</code> in the <code>subscribe</code> method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the <code>subscribe</code> method. We may choose the <code>change</code> event, that triggers when an element is updated.</p>
-<div class="sourceCode" id="cb279"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb279-1"><a href="shiny-input-system.html#cb279-1"></a><span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'change.customTextBinding'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb279-2"><a href="shiny-input-system.html#cb279-2"></a>  <span class="at">callback</span>(<span class="kw">false</span>)<span class="op">;</span></span>
-<span id="cb279-3"><a href="shiny-input-system.html#cb279-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>We run the above example, open the HTML inspector, select the <code>customTextInputBinding_4.js</code> script and put a break point in the <code>getValue</code> as well as <code>subscribe</code> method. We enter a new text inside the input field, which triggers the debugger inside the <code>subscribe</code> call.
+Inspecting the event object, the type indicate the action, which is an input action and the target is the text input element itself, depicted on Figure <a href="shiny-input-system.html#fig:binding-subscribe-1">11.11</a>.</p>
+<div class="figure">
+<span id="fig:binding-subscribe-1"></span>
+<img src="images/survival-kit/binding-subscribe-1.png" alt="Subscribe method after a manual update of the text input" width="100%"><p class="caption">
+FIGURE 11.11: Subscribe method after a manual update of the text input
+</p>
+</div>
+<p>We click on next and notice that we go back in the <code>getValue</code> method to get the new value.
+You may check typing <code>$(el).val()</code> in the debugger console, like on Figure <a href="shiny-input-system.html#fig:binding-subscribe-2">11.12</a>. Clicking next again shows the updated output value.</p>
+<div class="figure">
+<span id="fig:binding-subscribe-2"></span>
+<img src="images/survival-kit/binding-subscribe-2.png" alt="Subsribe is followed by a new getValue" width="100%"><p class="caption">
+FIGURE 11.12: Subsribe is followed by a new getValue
+</p>
+</div>
+<p>Hooray! The output result is successfully changed when the input value is manually updated. However, it is not modified when we click on the update button. What did we miss? Looking back at the <code>receiveMessage</code> method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a <code>console.log(event);</code> in the <code>subscribe</code> method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the <code>subscribe</code> method. We may choose the <code>change</code> event, that triggers when an element is updated. Notice the parameter passed to callback. We discuss it in the next part!</p>
+<div class="sourceCode" id="cb280"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb280-1"><a href="shiny-input-system.html#cb280-1"></a><span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'change.customTextBinding'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb280-2"><a href="shiny-input-system.html#cb280-2"></a>  <span class="at">callback</span>(<span class="kw">false</span>)<span class="op">;</span></span>
+<span id="cb280-3"><a href="shiny-input-system.html#cb280-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>Besides, in the <code>receiveMessage</code> we must trigger a <code>change</code> event to trigger the subscribe method:</p>
+<div class="sourceCode" id="cb281"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb281-1"><a href="shiny-input-system.html#cb281-1"></a>receiveMessage<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> data) <span class="op">{</span></span>
+<span id="cb281-2"><a href="shiny-input-system.html#cb281-2"></a>  <span class="cf">if</span> (<span class="va">data</span>.<span class="at">hasOwnProperty</span>(<span class="st">'value'</span>)) <span class="op">{</span></span>
+<span id="cb281-3"><a href="shiny-input-system.html#cb281-3"></a>    <span class="kw">this</span>.<span class="at">setValue</span>(el<span class="op">,</span> <span class="va">data</span>.<span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb281-4"><a href="shiny-input-system.html#cb281-4"></a>    <span class="at">$</span>(el).<span class="at">trigger</span>(<span class="st">'change'</span>)<span class="op">;</span></span>
+<span id="cb281-5"><a href="shiny-input-system.html#cb281-5"></a>  <span class="op">}</span></span>
+<span id="cb281-6"><a href="shiny-input-system.html#cb281-6"></a><span class="op">}</span></span></code></pre></div>
 <p>Let’s try again.</p>
-<div class="sourceCode" id="cb280"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb282"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span></code></pre></div>
+<p>We put a new break point in the second event listener, that is the one for the change event. Clicking on the button only triggers the change event, as shown Figure <a href="shiny-input-system.html#fig:binding-subscribe-3">11.13</a>.</p>
+<div class="figure">
+<span id="fig:binding-subscribe-3"></span>
+<img src="images/survival-kit/binding-subscribe-3.png" alt="Subsribe is followed by a new getValue" width="100%"><p class="caption">
+FIGURE 11.13: Subsribe is followed by a new getValue
+</p>
+</div>
 <p>Perfect? Not exactly.</p>
 </div>
 <div id="setting-rate-policies" class="section level4">
@@ -354,22 +445,43 @@ Going back to our custom text input, what event would make it change?</p>
 </h4>
 <p>It would be better to only change the input value once the keyboard is completely released for some time (and not each time a key is released). This is what we call debouncing, which allows a delay before telling Shiny to read the new value, and is achieved using the <code>getRatePolicy</code> method. Additionally, we must also pass <code>true</code> to the <code>callback</code> in the subscribe method, in order to apply our specific rate policy (<a href="https://davidwalsh.name/javascript-debounce-function">debounce</a>, throttle). This is useful for instance when we don’t want to flood the server with useless update requests. For example when using a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined <a href="https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js">here</a>.</p>
 <p>Run the app below and try to manually change the text input value by adding a couple of letters as fast as you can. What do you notice? We see the output value only updates when we release the keyboard.</p>
-<div class="sourceCode" id="cb281"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb283"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExample.html">customTextInputExample</a></span><span class="op">(</span><span class="fl">6</span><span class="op">)</span></code></pre></div>
 <p>You may adjust the delay according to your needs, but we caution to not set the delay too long as this becomes problematic too.</p>
+<p>If you want to get an overview of all binding steps, you may try the following <a href="https://rinterface.com/shiny/talks/RPharma2020/?panelset1=r-code2#45">slide</a> from the 2020 R in Pharma workshop.</p>
 </div>
 <div id="register-an-input-binding" class="section level4">
 <h4>
 <span class="header-section-number">11.1.2.7</span> Register an input binding<a class="anchor" aria-label="anchor" href="#register-an-input-binding"><i class="fas fa-link"></i></a>
 </h4>
 <p>At the end of the input binding definition, we register it for Shiny.</p>
-<div class="sourceCode" id="cb282"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb282-1"><a href="shiny-input-system.html#cb282-1"></a><span class="kw">let</span> myBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">inputBinding</span>()<span class="op">;</span></span>
-<span id="cb282-2"><a href="shiny-input-system.html#cb282-2"></a>  <span class="va">$</span>.<span class="at">extend</span>(myBinding<span class="op">,</span> <span class="op">{</span></span>
-<span id="cb282-3"><a href="shiny-input-system.html#cb282-3"></a>  <span class="co">// methods go here</span></span>
-<span id="cb282-4"><a href="shiny-input-system.html#cb282-4"></a><span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb282-5"><a href="shiny-input-system.html#cb282-5"></a></span>
-<span id="cb282-6"><a href="shiny-input-system.html#cb282-6"></a><span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">register</span>(myBinding<span class="op">,</span> <span class="st">'reference'</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb284"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb284-1"><a href="shiny-input-system.html#cb284-1"></a><span class="kw">let</span> myBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">inputBinding</span>()<span class="op">;</span></span>
+<span id="cb284-2"><a href="shiny-input-system.html#cb284-2"></a>  <span class="va">$</span>.<span class="at">extend</span>(myBinding<span class="op">,</span> <span class="op">{</span></span>
+<span id="cb284-3"><a href="shiny-input-system.html#cb284-3"></a>  <span class="co">// methods go here</span></span>
+<span id="cb284-4"><a href="shiny-input-system.html#cb284-4"></a><span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb284-5"><a href="shiny-input-system.html#cb284-5"></a></span>
+<span id="cb284-6"><a href="shiny-input-system.html#cb284-6"></a><span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">register</span>(myBinding<span class="op">,</span> <span class="st">'reference'</span>)<span class="op">;</span></span></code></pre></div>
 <p>Although the Shiny <a href="https://shiny.rstudio.com/articles/building-inputs.html">documentation</a> mentions a <code>Shiny.inputBindings.setPriority</code> method to handle conflicting bindings, this case almost never happens.</p>
+</div>
+<div id="other-binding-methods" class="section level4">
+<h4>
+<span class="header-section-number">11.1.2.8</span> Other binding methods<a class="anchor" aria-label="anchor" href="#other-binding-methods"><i class="fas fa-link"></i></a>
+</h4>
+<p>There are a couple of methods not described above that are contained in the <code>InputBinding</code> class prototype. They were not described before since most of the time, we don’t need to change them and can rely on the defaults:</p>
+<ul>
+<li>
+<code>getId</code> returns the object id (Figure <a href="shiny-input-system.html#fig:binding-getId">11.14</a>). If you don’t provide your own method, the binding falls back to the default one provided in the <code>InputBinding</code> class. This method is called after <code>find</code>. The next Chapter <a href="shiny-input-lifecycle.html#shiny-input-lifecycle">12</a> provides more details.</li>
+<li>
+<code>getType</code> required to handle custom data format. It is called after <code>getId</code>.</li>
+<li>
+<code>getState</code> ?</li>
+</ul>
+<div class="figure">
+<span id="fig:binding-getId"></span>
+<img src="images/survival-kit/binding-getId.png" alt="Binding getid method" width="100%"><p class="caption">
+FIGURE 11.14: Binding getid method
+</p>
+</div>
 </div>
 </div>
 <div id="edit-input-binding" class="section level3">
@@ -389,18 +501,18 @@ Going back to our custom text input, what event would make it change?</p>
 <li>Apply the new changes with <code>Shiny.bindAll()</code>
 </li>
 </ol>
-<div class="sourceCode" id="cb283"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb283-1"><a href="shiny-input-system.html#cb283-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb283-2"><a href="shiny-input-system.html#cb283-2"></a>  <span class="at">$</span>(document).<span class="at">on</span>(<span class="st">'shiny:connected'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb283-3"><a href="shiny-input-system.html#cb283-3"></a>    <span class="va">Shiny</span>.<span class="at">unbindAll</span>()<span class="op">;</span></span>
-<span id="cb283-4"><a href="shiny-input-system.html#cb283-4"></a>    <span class="va">$</span>.<span class="at">extend</span>(Shiny</span>
-<span id="cb283-5"><a href="shiny-input-system.html#cb283-5"></a>      .<span class="at">inputBindings</span></span>
-<span id="cb283-6"><a href="shiny-input-system.html#cb283-6"></a>      .<span class="at">bindingNames</span>[<span class="st">'shiny.actionButtonInput'</span>]</span>
-<span id="cb283-7"><a href="shiny-input-system.html#cb283-7"></a>      .<span class="at">binding</span><span class="op">,</span> <span class="op">{</span></span>
-<span id="cb283-8"><a href="shiny-input-system.html#cb283-8"></a>        <span class="co">// do whathever you want to edit existing methods</span></span>
-<span id="cb283-9"><a href="shiny-input-system.html#cb283-9"></a>      <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb283-10"><a href="shiny-input-system.html#cb283-10"></a>    <span class="va">Shiny</span>.<span class="at">bindAll</span>()<span class="op">;</span></span>
-<span id="cb283-11"><a href="shiny-input-system.html#cb283-11"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb283-12"><a href="shiny-input-system.html#cb283-12"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb285"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb285-1"><a href="shiny-input-system.html#cb285-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb285-2"><a href="shiny-input-system.html#cb285-2"></a>  <span class="at">$</span>(document).<span class="at">on</span>(<span class="st">'shiny:connected'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb285-3"><a href="shiny-input-system.html#cb285-3"></a>    <span class="va">Shiny</span>.<span class="at">unbindAll</span>()<span class="op">;</span></span>
+<span id="cb285-4"><a href="shiny-input-system.html#cb285-4"></a>    <span class="va">$</span>.<span class="at">extend</span>(Shiny</span>
+<span id="cb285-5"><a href="shiny-input-system.html#cb285-5"></a>      .<span class="at">inputBindings</span></span>
+<span id="cb285-6"><a href="shiny-input-system.html#cb285-6"></a>      .<span class="at">bindingNames</span>[<span class="st">'shiny.actionButtonInput'</span>]</span>
+<span id="cb285-7"><a href="shiny-input-system.html#cb285-7"></a>      .<span class="at">binding</span><span class="op">,</span> <span class="op">{</span></span>
+<span id="cb285-8"><a href="shiny-input-system.html#cb285-8"></a>        <span class="co">// do whathever you want to edit existing methods</span></span>
+<span id="cb285-9"><a href="shiny-input-system.html#cb285-9"></a>      <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb285-10"><a href="shiny-input-system.html#cb285-10"></a>    <span class="va">Shiny</span>.<span class="at">bindAll</span>()<span class="op">;</span></span>
+<span id="cb285-11"><a href="shiny-input-system.html#cb285-11"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb285-12"><a href="shiny-input-system.html#cb285-12"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 </div>
 <div id="update-a-binding-from-the-client" class="section level3">
 <h3>
@@ -420,38 +532,38 @@ only increases by 1. How do we proceed?</p>
 <li>We call the <code>setValue</code> method of the input binding adding 10 to the current value</li>
 <li>Importantly, to let Shiny update the value on the R side, we must trigger an event that will be detected in the <code>subscribe</code> method of the action button input binding. The action button only has 1 event listener but other may be added. Don’t forget that triggering a <code>click</code> event would also increment the button value by 1! In the following we have to customize the <code>subscribe</code> method to work around</li>
 </ol>
-<div class="sourceCode" id="cb284"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb284-1"><a href="shiny-input-system.html#cb284-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb284-2"><a href="shiny-input-system.html#cb284-2"></a>  <span class="co">// each time we click on #test (a button)</span></span>
-<span id="cb284-3"><a href="shiny-input-system.html#cb284-3"></a>  <span class="at">$</span>(<span class="st">'#button1'</span>).<span class="at">on</span>(<span class="st">'click'</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb284-4"><a href="shiny-input-system.html#cb284-4"></a>    <span class="kw">var</span> $obj <span class="op">=</span> <span class="at">$</span>(<span class="st">'#button2'</span>)<span class="op">;</span></span>
-<span id="cb284-5"><a href="shiny-input-system.html#cb284-5"></a>    <span class="kw">var</span> inputBinding <span class="op">=</span> <span class="va">$obj</span>.<span class="at">data</span>(<span class="st">'shiny-input-binding'</span>)<span class="op">;</span></span>
-<span id="cb284-6"><a href="shiny-input-system.html#cb284-6"></a>    <span class="kw">var</span> val <span class="op">=</span> <span class="va">$obj</span>.<span class="at">data</span>(<span class="st">'val'</span>) <span class="op">||</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb284-7"><a href="shiny-input-system.html#cb284-7"></a>    <span class="va">inputBinding</span>.<span class="at">setValue</span>($obj<span class="op">,</span> val <span class="op">+</span> <span class="dv">10</span>)<span class="op">;</span></span>
-<span id="cb284-8"><a href="shiny-input-system.html#cb284-8"></a>    <span class="va">$obj</span>.<span class="at">trigger</span>(<span class="st">'event'</span>)<span class="op">;</span></span>
-<span id="cb284-9"><a href="shiny-input-system.html#cb284-9"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb284-10"><a href="shiny-input-system.html#cb284-10"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb286"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb286-1"><a href="shiny-input-system.html#cb286-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb286-2"><a href="shiny-input-system.html#cb286-2"></a>  <span class="co">// each time we click on #test (a button)</span></span>
+<span id="cb286-3"><a href="shiny-input-system.html#cb286-3"></a>  <span class="at">$</span>(<span class="st">'#button1'</span>).<span class="at">on</span>(<span class="st">'click'</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb286-4"><a href="shiny-input-system.html#cb286-4"></a>    <span class="kw">var</span> $obj <span class="op">=</span> <span class="at">$</span>(<span class="st">'#button2'</span>)<span class="op">;</span></span>
+<span id="cb286-5"><a href="shiny-input-system.html#cb286-5"></a>    <span class="kw">var</span> inputBinding <span class="op">=</span> <span class="va">$obj</span>.<span class="at">data</span>(<span class="st">'shiny-input-binding'</span>)<span class="op">;</span></span>
+<span id="cb286-6"><a href="shiny-input-system.html#cb286-6"></a>    <span class="kw">var</span> val <span class="op">=</span> <span class="va">$obj</span>.<span class="at">data</span>(<span class="st">'val'</span>) <span class="op">||</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb286-7"><a href="shiny-input-system.html#cb286-7"></a>    <span class="va">inputBinding</span>.<span class="at">setValue</span>($obj<span class="op">,</span> val <span class="op">+</span> <span class="dv">10</span>)<span class="op">;</span></span>
+<span id="cb286-8"><a href="shiny-input-system.html#cb286-8"></a>    <span class="va">$obj</span>.<span class="at">trigger</span>(<span class="st">'event'</span>)<span class="op">;</span></span>
+<span id="cb286-9"><a href="shiny-input-system.html#cb286-9"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb286-10"><a href="shiny-input-system.html#cb286-10"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>If you click on the second button, the value increments only by 1 and the plot will be only visible after 10 clicks, while only 1 click is necessary on the first button. The reset button resets the second action button value to 0. It implements the feature discussed in the previous part, where we extend the button binding to add a <code>reset</code> method and edit the <code>subscribe</code> method to add a <code>change</code> event listener, simply telling shiny to get the new value. Contrary to <code>click</code>, <code>change</code> does not increment the button value.</p>
-<div class="sourceCode" id="cb285"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb285-1"><a href="shiny-input-system.html#cb285-1"></a><span class="va">$</span>.<span class="at">extend</span>(<span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">bindingNames</span>[<span class="st">'shiny.actionButtonInput'</span>].<span class="at">binding</span><span class="op">,</span> <span class="op">{</span></span>
-<span id="cb285-2"><a href="shiny-input-system.html#cb285-2"></a>  <span class="dt">reset</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
-<span id="cb285-3"><a href="shiny-input-system.html#cb285-3"></a>   <span class="at">$</span>(el).<span class="at">data</span>(<span class="st">'val'</span><span class="op">,</span> <span class="dv">0</span>)<span class="op">;</span></span>
-<span id="cb285-4"><a href="shiny-input-system.html#cb285-4"></a>  <span class="op">},</span></span>
-<span id="cb285-5"><a href="shiny-input-system.html#cb285-5"></a>  <span class="dt">subscribe</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> callback) <span class="op">{</span></span>
-<span id="cb285-6"><a href="shiny-input-system.html#cb285-6"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'click.actionButtonInputBinding'</span><span class="op">,</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
-<span id="cb285-7"><a href="shiny-input-system.html#cb285-7"></a>      <span class="kw">var</span> $el <span class="op">=</span> <span class="at">$</span>(<span class="kw">this</span>)<span class="op">;</span></span>
-<span id="cb285-8"><a href="shiny-input-system.html#cb285-8"></a>      <span class="kw">var</span> val <span class="op">=</span> <span class="va">$el</span>.<span class="at">data</span>(<span class="st">'val'</span>) <span class="op">||</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb285-9"><a href="shiny-input-system.html#cb285-9"></a>      <span class="va">$el</span>.<span class="at">data</span>(<span class="st">'val'</span><span class="op">,</span> val <span class="op">+</span> <span class="dv">1</span>)<span class="op">;</span></span>
-<span id="cb285-10"><a href="shiny-input-system.html#cb285-10"></a></span>
-<span id="cb285-11"><a href="shiny-input-system.html#cb285-11"></a>      <span class="at">callback</span>()<span class="op">;</span></span>
-<span id="cb285-12"><a href="shiny-input-system.html#cb285-12"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb285-13"><a href="shiny-input-system.html#cb285-13"></a>            </span>
-<span id="cb285-14"><a href="shiny-input-system.html#cb285-14"></a>    <span class="co">// this does not trigger any click and won't change the button value            </span></span>
-<span id="cb285-15"><a href="shiny-input-system.html#cb285-15"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'change.actionButtonInputBinding'</span><span class="op">,</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
-<span id="cb285-16"><a href="shiny-input-system.html#cb285-16"></a>      <span class="at">callback</span>()<span class="op">;</span></span>
-<span id="cb285-17"><a href="shiny-input-system.html#cb285-17"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb285-18"><a href="shiny-input-system.html#cb285-18"></a>  <span class="op">}</span></span>
-<span id="cb285-19"><a href="shiny-input-system.html#cb285-19"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb287"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb287-1"><a href="shiny-input-system.html#cb287-1"></a><span class="va">$</span>.<span class="at">extend</span>(<span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">bindingNames</span>[<span class="st">'shiny.actionButtonInput'</span>].<span class="at">binding</span><span class="op">,</span> <span class="op">{</span></span>
+<span id="cb287-2"><a href="shiny-input-system.html#cb287-2"></a>  <span class="dt">reset</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
+<span id="cb287-3"><a href="shiny-input-system.html#cb287-3"></a>   <span class="at">$</span>(el).<span class="at">data</span>(<span class="st">'val'</span><span class="op">,</span> <span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb287-4"><a href="shiny-input-system.html#cb287-4"></a>  <span class="op">},</span></span>
+<span id="cb287-5"><a href="shiny-input-system.html#cb287-5"></a>  <span class="dt">subscribe</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> callback) <span class="op">{</span></span>
+<span id="cb287-6"><a href="shiny-input-system.html#cb287-6"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'click.actionButtonInputBinding'</span><span class="op">,</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
+<span id="cb287-7"><a href="shiny-input-system.html#cb287-7"></a>      <span class="kw">var</span> $el <span class="op">=</span> <span class="at">$</span>(<span class="kw">this</span>)<span class="op">;</span></span>
+<span id="cb287-8"><a href="shiny-input-system.html#cb287-8"></a>      <span class="kw">var</span> val <span class="op">=</span> <span class="va">$el</span>.<span class="at">data</span>(<span class="st">'val'</span>) <span class="op">||</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb287-9"><a href="shiny-input-system.html#cb287-9"></a>      <span class="va">$el</span>.<span class="at">data</span>(<span class="st">'val'</span><span class="op">,</span> val <span class="op">+</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb287-10"><a href="shiny-input-system.html#cb287-10"></a></span>
+<span id="cb287-11"><a href="shiny-input-system.html#cb287-11"></a>      <span class="at">callback</span>()<span class="op">;</span></span>
+<span id="cb287-12"><a href="shiny-input-system.html#cb287-12"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb287-13"><a href="shiny-input-system.html#cb287-13"></a>            </span>
+<span id="cb287-14"><a href="shiny-input-system.html#cb287-14"></a>    <span class="co">// this does not trigger any click and won't change the button value            </span></span>
+<span id="cb287-15"><a href="shiny-input-system.html#cb287-15"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'change.actionButtonInputBinding'</span><span class="op">,</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
+<span id="cb287-16"><a href="shiny-input-system.html#cb287-16"></a>      <span class="at">callback</span>()<span class="op">;</span></span>
+<span id="cb287-17"><a href="shiny-input-system.html#cb287-17"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb287-18"><a href="shiny-input-system.html#cb287-18"></a>  <span class="op">}</span></span>
+<span id="cb287-19"><a href="shiny-input-system.html#cb287-19"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>Below is the working app.</p>
-<div class="sourceCode" id="cb286"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb288"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="va">tags</span><span class="op">$</span><span class="fu">head</span><span class="op">(</span>
     <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
@@ -500,7 +612,7 @@ In the following, we show how to add an input to an element that was not primari
 </h3>
 <p>In {shinydashboard}, you may know the <code>box</code> function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an <code>inputId</code> parameter to the box function. You may inspect the code <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/box2.R">here</a>.</p>
 <p>Since we may collapse and uncollapse the box, we create the <code>updateBox2</code> function, which will toggle it:</p>
-<div class="sourceCode" id="cb287"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb289"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateBox2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">inputId</span>, message <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
@@ -510,41 +622,41 @@ In the following, we show how to add an input to an element that was not primari
 <li>collapsed.boxwidget (Triggered after the box is collapsed)</li>
 </ul>
 <p>Unfortunately, after further investigations, those events are not possible to use since the AdminLTE code does not trigger them in the main JS <a href="https://github.com/rstudio/shinydashboard/blob/master/srcjs/AdminLTE/app.js">code</a> (see the collapse method line 577-612). There are other solutions, as shown below with the <code>click</code> event. To toggle the box, we use the <code>toggleBox</code> method.</p>
-<div class="sourceCode" id="cb288"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb288-1"><a href="shiny-input-system.html#cb288-1"></a><span class="kw">let</span> boxBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">InputBinding</span>()<span class="op">;</span></span>
-<span id="cb288-2"><a href="shiny-input-system.html#cb288-2"></a><span class="va">$</span>.<span class="at">extend</span>(boxBinding<span class="op">,</span> <span class="op">{</span></span>
-<span id="cb288-3"><a href="shiny-input-system.html#cb288-3"></a>  <span class="dt">find</span><span class="op">:</span> <span class="kw">function</span>(scope) <span class="op">{</span></span>
-<span id="cb288-4"><a href="shiny-input-system.html#cb288-4"></a>    <span class="cf">return</span> <span class="at">$</span>(scope).<span class="at">find</span>(<span class="st">'.box'</span>)<span class="op">;</span></span>
-<span id="cb288-5"><a href="shiny-input-system.html#cb288-5"></a>  <span class="op">},</span></span>
-<span id="cb288-6"><a href="shiny-input-system.html#cb288-6"></a>  <span class="dt">getValue</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
-<span id="cb288-7"><a href="shiny-input-system.html#cb288-7"></a>    <span class="kw">let</span> isCollapsed <span class="op">=</span> <span class="at">$</span>(el).<span class="at">hasClass</span>(<span class="st">'collapsed-box'</span>)</span>
-<span id="cb288-8"><a href="shiny-input-system.html#cb288-8"></a>    <span class="cf">return</span> <span class="op">{</span><span class="dt">collapsed</span><span class="op">:</span> isCollapsed<span class="op">};</span> <span class="co">// this will be a list in R</span></span>
-<span id="cb288-9"><a href="shiny-input-system.html#cb288-9"></a>  <span class="op">},</span></span>
-<span id="cb288-10"><a href="shiny-input-system.html#cb288-10"></a>  <span class="dt">setValue</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> value) <span class="op">{</span></span>
-<span id="cb288-11"><a href="shiny-input-system.html#cb288-11"></a>    <span class="at">$</span>(el).<span class="at">toggleBox</span>()<span class="op">;</span></span>
-<span id="cb288-12"><a href="shiny-input-system.html#cb288-12"></a>  <span class="op">},</span> </span>
-<span id="cb288-13"><a href="shiny-input-system.html#cb288-13"></a>  <span class="dt">receiveMessage</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> data) <span class="op">{</span></span>
-<span id="cb288-14"><a href="shiny-input-system.html#cb288-14"></a>    <span class="kw">this</span>.<span class="at">setValue</span>(el<span class="op">,</span> data)<span class="op">;</span></span>
-<span id="cb288-15"><a href="shiny-input-system.html#cb288-15"></a>    <span class="at">$</span>(el).<span class="at">trigger</span>(<span class="st">'change'</span>)<span class="op">;</span></span>
-<span id="cb288-16"><a href="shiny-input-system.html#cb288-16"></a>  <span class="op">},</span></span>
-<span id="cb288-17"><a href="shiny-input-system.html#cb288-17"></a>  <span class="dt">subscribe</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> callback) <span class="op">{</span></span>
-<span id="cb288-18"><a href="shiny-input-system.html#cb288-18"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'click'</span><span class="op">,</span> <span class="st">'[data-widget="collapse"]'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb288-19"><a href="shiny-input-system.html#cb288-19"></a>      <span class="at">setTimeout</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb288-20"><a href="shiny-input-system.html#cb288-20"></a>        <span class="at">callback</span>()<span class="op">;</span></span>
-<span id="cb288-21"><a href="shiny-input-system.html#cb288-21"></a>      <span class="op">},</span> <span class="dv">550</span>)<span class="op">;</span></span>
-<span id="cb288-22"><a href="shiny-input-system.html#cb288-22"></a>    <span class="op">}</span>)<span class="op">;</span> </span>
-<span id="cb288-23"><a href="shiny-input-system.html#cb288-23"></a>    </span>
-<span id="cb288-24"><a href="shiny-input-system.html#cb288-24"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'change'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb288-25"><a href="shiny-input-system.html#cb288-25"></a>      <span class="at">setTimeout</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb288-26"><a href="shiny-input-system.html#cb288-26"></a>        <span class="at">callback</span>()<span class="op">;</span></span>
-<span id="cb288-27"><a href="shiny-input-system.html#cb288-27"></a>      <span class="op">},</span> <span class="dv">550</span>)<span class="op">;</span></span>
-<span id="cb288-28"><a href="shiny-input-system.html#cb288-28"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb288-29"><a href="shiny-input-system.html#cb288-29"></a>  <span class="op">},</span></span>
-<span id="cb288-30"><a href="shiny-input-system.html#cb288-30"></a>  <span class="dt">unsubscribe</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
-<span id="cb288-31"><a href="shiny-input-system.html#cb288-31"></a>    <span class="at">$</span>(el).<span class="at">off</span>(<span class="st">'.boxBinding'</span>)<span class="op">;</span></span>
-<span id="cb288-32"><a href="shiny-input-system.html#cb288-32"></a>  <span class="op">}</span></span>
-<span id="cb288-33"><a href="shiny-input-system.html#cb288-33"></a><span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb288-34"><a href="shiny-input-system.html#cb288-34"></a></span>
-<span id="cb288-35"><a href="shiny-input-system.html#cb288-35"></a><span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">register</span>(boxBinding<span class="op">,</span> <span class="st">'box-input'</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb290"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb290-1"><a href="shiny-input-system.html#cb290-1"></a><span class="kw">let</span> boxBinding <span class="op">=</span> <span class="kw">new</span> <span class="va">Shiny</span>.<span class="at">InputBinding</span>()<span class="op">;</span></span>
+<span id="cb290-2"><a href="shiny-input-system.html#cb290-2"></a><span class="va">$</span>.<span class="at">extend</span>(boxBinding<span class="op">,</span> <span class="op">{</span></span>
+<span id="cb290-3"><a href="shiny-input-system.html#cb290-3"></a>  <span class="dt">find</span><span class="op">:</span> <span class="kw">function</span>(scope) <span class="op">{</span></span>
+<span id="cb290-4"><a href="shiny-input-system.html#cb290-4"></a>    <span class="cf">return</span> <span class="at">$</span>(scope).<span class="at">find</span>(<span class="st">'.box'</span>)<span class="op">;</span></span>
+<span id="cb290-5"><a href="shiny-input-system.html#cb290-5"></a>  <span class="op">},</span></span>
+<span id="cb290-6"><a href="shiny-input-system.html#cb290-6"></a>  <span class="dt">getValue</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
+<span id="cb290-7"><a href="shiny-input-system.html#cb290-7"></a>    <span class="kw">let</span> isCollapsed <span class="op">=</span> <span class="at">$</span>(el).<span class="at">hasClass</span>(<span class="st">'collapsed-box'</span>)</span>
+<span id="cb290-8"><a href="shiny-input-system.html#cb290-8"></a>    <span class="cf">return</span> <span class="op">{</span><span class="dt">collapsed</span><span class="op">:</span> isCollapsed<span class="op">};</span> <span class="co">// this will be a list in R</span></span>
+<span id="cb290-9"><a href="shiny-input-system.html#cb290-9"></a>  <span class="op">},</span></span>
+<span id="cb290-10"><a href="shiny-input-system.html#cb290-10"></a>  <span class="dt">setValue</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> value) <span class="op">{</span></span>
+<span id="cb290-11"><a href="shiny-input-system.html#cb290-11"></a>    <span class="at">$</span>(el).<span class="at">toggleBox</span>()<span class="op">;</span></span>
+<span id="cb290-12"><a href="shiny-input-system.html#cb290-12"></a>  <span class="op">},</span> </span>
+<span id="cb290-13"><a href="shiny-input-system.html#cb290-13"></a>  <span class="dt">receiveMessage</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> data) <span class="op">{</span></span>
+<span id="cb290-14"><a href="shiny-input-system.html#cb290-14"></a>    <span class="kw">this</span>.<span class="at">setValue</span>(el<span class="op">,</span> data)<span class="op">;</span></span>
+<span id="cb290-15"><a href="shiny-input-system.html#cb290-15"></a>    <span class="at">$</span>(el).<span class="at">trigger</span>(<span class="st">'change'</span>)<span class="op">;</span></span>
+<span id="cb290-16"><a href="shiny-input-system.html#cb290-16"></a>  <span class="op">},</span></span>
+<span id="cb290-17"><a href="shiny-input-system.html#cb290-17"></a>  <span class="dt">subscribe</span><span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> callback) <span class="op">{</span></span>
+<span id="cb290-18"><a href="shiny-input-system.html#cb290-18"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'click'</span><span class="op">,</span> <span class="st">'[data-widget="collapse"]'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb290-19"><a href="shiny-input-system.html#cb290-19"></a>      <span class="at">setTimeout</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb290-20"><a href="shiny-input-system.html#cb290-20"></a>        <span class="at">callback</span>()<span class="op">;</span></span>
+<span id="cb290-21"><a href="shiny-input-system.html#cb290-21"></a>      <span class="op">},</span> <span class="dv">550</span>)<span class="op">;</span></span>
+<span id="cb290-22"><a href="shiny-input-system.html#cb290-22"></a>    <span class="op">}</span>)<span class="op">;</span> </span>
+<span id="cb290-23"><a href="shiny-input-system.html#cb290-23"></a>    </span>
+<span id="cb290-24"><a href="shiny-input-system.html#cb290-24"></a>    <span class="at">$</span>(el).<span class="at">on</span>(<span class="st">'change'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb290-25"><a href="shiny-input-system.html#cb290-25"></a>      <span class="at">setTimeout</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb290-26"><a href="shiny-input-system.html#cb290-26"></a>        <span class="at">callback</span>()<span class="op">;</span></span>
+<span id="cb290-27"><a href="shiny-input-system.html#cb290-27"></a>      <span class="op">},</span> <span class="dv">550</span>)<span class="op">;</span></span>
+<span id="cb290-28"><a href="shiny-input-system.html#cb290-28"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb290-29"><a href="shiny-input-system.html#cb290-29"></a>  <span class="op">},</span></span>
+<span id="cb290-30"><a href="shiny-input-system.html#cb290-30"></a>  <span class="dt">unsubscribe</span><span class="op">:</span> <span class="kw">function</span>(el) <span class="op">{</span></span>
+<span id="cb290-31"><a href="shiny-input-system.html#cb290-31"></a>    <span class="at">$</span>(el).<span class="at">off</span>(<span class="st">'.boxBinding'</span>)<span class="op">;</span></span>
+<span id="cb290-32"><a href="shiny-input-system.html#cb290-32"></a>  <span class="op">}</span></span>
+<span id="cb290-33"><a href="shiny-input-system.html#cb290-33"></a><span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb290-34"><a href="shiny-input-system.html#cb290-34"></a></span>
+<span id="cb290-35"><a href="shiny-input-system.html#cb290-35"></a><span class="va">Shiny</span>.<span class="va">inputBindings</span>.<span class="at">register</span>(boxBinding<span class="op">,</span> <span class="st">'box-input'</span>)<span class="op">;</span></span></code></pre></div>
 <p>Some comments about the binding:</p>
 <ul>
 <li>
@@ -558,7 +670,7 @@ In the following, we show how to add an input to an element that was not primari
 <li>We don’t need an extra listener for the <code>updateBox2</code> function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener</li>
 </ul>
 <p>Let’s try our new toy in a simple dashboard:</p>
-<div class="sourceCode" id="cb289"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb291"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="co"># import shinydashboard deps without the need of the dashboard template</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shinyWidgets/man/useShinydashboard.html">useShinydashboard</a></span><span class="op">(</span><span class="op">)</span>,
@@ -595,7 +707,7 @@ In the following, we show how to add an input to an element that was not primari
 
  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p>Even though animations are nice, it appears rather sub-optimal to wait 500 ms for a box to collapse. AdminLTE <a href="https://adminlte.io/themes/AdminLTE/documentation/index.html#adminlte-options">options</a> allow to change this through the <code>$.AdminLTE.boxWidget</code> object. We specify the <code>animationSpeed</code> property to 10 milliseconds and update the input binding script to reduce the delay in the <code>subscribe</code> method (50 ms seems reasonable). To get a comparison try to run the example below.</p>
-<div class="sourceCode" id="cb290"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb292"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># You'll need the devel version of shinydashboardPlus</span>
 <span class="co">#remotes::install_github("RinteRface/shinydashboardPlus")</span>
 
@@ -652,7 +764,7 @@ In the following, we show how to add an input to an element that was not primari
 <span class="header-section-number">11.2.2</span> Going further<a class="anchor" aria-label="anchor" href="#going-further"><i class="fas fa-link"></i></a>
 </h3>
 <p>We may imagine leveraging the input binding system to update any box property and get rid of the classic <code>renderUI</code> approach. Indeed, until now, there would be only one way to update a box from the server:</p>
-<div class="sourceCode" id="cb291"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb293"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="co"># import shinydashboard deps without the need of the dashboard template</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shinyWidgets/man/useShinydashboard.html">useShinydashboard</a></span><span class="op">(</span><span class="op">)</span>,
@@ -677,7 +789,7 @@ In the following, we show how to add an input to an element that was not primari
  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p>The whole piece of UI is re-rendered each time, while only the box class should be modified. This does not have much impact here but for a very complex app festooned with inputs/outputs, the overall user experience may be altered.</p>
 <p>To do so, we proceed in 2 steps. The first part consists in customizing the <code>box</code> function to gather as many parameter as possible in an option list. For instance, we choose to extract background, width and title. width and background are expected to be numeric and character, respectively, while title might be any HTML tag, justifying the use of <code>as.character</code>.</p>
-<div class="sourceCode" id="cb292"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb294"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">background</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">collapsible</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">collapsed</span> <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span>
@@ -694,7 +806,7 @@ In the following, we show how to add an input to an element that was not primari
 <span class="op">}</span></code></pre></div>
 <p>This properties list has to be treated on the JS side. Before, we must make it accessible within the <code>box2</code>
 HTML tag. We choose the following approach, where we convert our properties to a JSON with <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">jsonlite::toJSON</a></code> and embed them in a script tag. Note the <code>data-for</code> attribute with the unique id parameter. This will guarantee the uniqueness of our configuration script.</p>
-<div class="sourceCode" id="cb293"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb295"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">background</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">collapsible</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">collapsed</span> <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span>
@@ -734,7 +846,7 @@ HTML tag. We choose the following approach, where we convert our properties to a
 <span class="op">}</span></code></pre></div>
 <p>Then, we have to update the <code>updateBox2</code> such that it handles both toggle and update possibilities. <code>options</code> contains all updatable properties like background, title and width.
 We don’t describe the toggle case since it is quite similar to the previous implementations. When the action is <code>update</code>, we enter the if statement and options must be processed. If the option element is a shiny tag or a list of shiny tag (<code>tagList</code>), we convert it to character. The returned message is a vector containing the action as well as the option list.</p>
-<div class="sourceCode" id="cb294"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb296"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateBox2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">action</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"toggle"</span>, <span class="st">"update"</span><span class="op">)</span>, <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span>,
                       <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># for update, we take a list of options</span>
@@ -753,58 +865,58 @@ We don’t describe the toggle case since it is quite similar to the previous im
   <span class="op">}</span>
 <span class="op">}</span></code></pre></div>
 <p>On the JS side, we modify the <code>setValue</code> method to import our newly defined properties. The <code>boxTag</code> has two children, the box and the configuration script. <code>$(el)</code> refers to the box, therefore we have to look one level up to be able to use the <code>find</code> method (find always goes deeper in the DOM), namely <code>$(el).parent()</code>. From there, we only have to target the script tag <code>$(el).parent().find("script[data-for='" + el.id + "']")</code>. Once captured in a variable, we parse the corresponding element to convert it to an objects that we can manipulate: for instance <code>config.width</code> returns the initial width. <code>value.options.width</code> will contain the new width value provided in the <code>updateBox2</code> message output. Good practice is to check whether <code>value.options.width</code> exists with <code>value.options.hasOwnProperty("width")</code>. If yes we ensure whether its value and <code>config.width</code> are different. We always choose <code>===</code> which compares the type and the value (<code><a href="https://rdrr.io/r/base/Comparison.html">==</a></code> only compares the value such that <code>"1" == 1</code> is <code>true</code>). We then call the internal method <code>_updateWidth</code> which is defined in the input binding. It has 3 parameters, el, o and n (o and n being the old and new values, respectively):</p>
-<div class="sourceCode" id="cb295"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb295-1"><a href="shiny-input-system.html#cb295-1"></a>_updateWidth<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> o<span class="op">,</span> n) <span class="op">{</span></span>
-<span id="cb295-2"><a href="shiny-input-system.html#cb295-2"></a>  <span class="co">// removes old class</span></span>
-<span id="cb295-3"><a href="shiny-input-system.html#cb295-3"></a>  <span class="at">$</span>(el).<span class="at">parent</span>().<span class="at">toggleClass</span>(<span class="st">"col-sm-"</span> <span class="op">+</span> o)<span class="op">;</span></span>
-<span id="cb295-4"><a href="shiny-input-system.html#cb295-4"></a>  <span class="at">$</span>(el).<span class="at">parent</span>().<span class="at">addClass</span>(<span class="st">"col-sm-"</span> <span class="op">+</span> n)<span class="op">;</span> </span>
-<span id="cb295-5"><a href="shiny-input-system.html#cb295-5"></a>  <span class="co">// trigger resize so that output resize</span></span>
-<span id="cb295-6"><a href="shiny-input-system.html#cb295-6"></a>  <span class="at">$</span>(el).<span class="at">trigger</span>(<span class="st">'resize'</span>)<span class="op">;</span></span>
-<span id="cb295-7"><a href="shiny-input-system.html#cb295-7"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb297"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb297-1"><a href="shiny-input-system.html#cb297-1"></a>_updateWidth<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> o<span class="op">,</span> n) <span class="op">{</span></span>
+<span id="cb297-2"><a href="shiny-input-system.html#cb297-2"></a>  <span class="co">// removes old class</span></span>
+<span id="cb297-3"><a href="shiny-input-system.html#cb297-3"></a>  <span class="at">$</span>(el).<span class="at">parent</span>().<span class="at">toggleClass</span>(<span class="st">"col-sm-"</span> <span class="op">+</span> o)<span class="op">;</span></span>
+<span id="cb297-4"><a href="shiny-input-system.html#cb297-4"></a>  <span class="at">$</span>(el).<span class="at">parent</span>().<span class="at">addClass</span>(<span class="st">"col-sm-"</span> <span class="op">+</span> n)<span class="op">;</span> </span>
+<span id="cb297-5"><a href="shiny-input-system.html#cb297-5"></a>  <span class="co">// trigger resize so that output resize</span></span>
+<span id="cb297-6"><a href="shiny-input-system.html#cb297-6"></a>  <span class="at">$</span>(el).<span class="at">trigger</span>(<span class="st">'resize'</span>)<span class="op">;</span></span>
+<span id="cb297-7"><a href="shiny-input-system.html#cb297-7"></a><span class="op">}</span></span></code></pre></div>
 <p>We must trigger a <code>resize</code> event so that output correctly scale. The internal method is identified by an underscore since it is not an inherited <code>Shiny.InputBinding</code> method.</p>
 <p>We finally update the config value by the newly set value and repeat the process for any other property.</p>
-<div class="sourceCode" id="cb296"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb296-1"><a href="shiny-input-system.html#cb296-1"></a>setValue<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> value) <span class="op">{</span></span>
-<span id="cb296-2"><a href="shiny-input-system.html#cb296-2"></a>  <span class="kw">var</span> config <span class="op">=</span> <span class="at">$</span>(el).<span class="at">parent</span>().<span class="at">find</span>(<span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> <span class="st">"']"</span>)<span class="op">;</span></span>
-<span id="cb296-3"><a href="shiny-input-system.html#cb296-3"></a>  config <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">config</span>.<span class="at">html</span>())<span class="op">;</span></span>
-<span id="cb296-4"><a href="shiny-input-system.html#cb296-4"></a>  </span>
-<span id="cb296-5"><a href="shiny-input-system.html#cb296-5"></a>  <span class="co">// JS logic</span></span>
-<span id="cb296-6"><a href="shiny-input-system.html#cb296-6"></a>  <span class="cf">if</span> (<span class="va">value</span>.<span class="at">action</span> <span class="op">===</span> <span class="st">"update"</span>) <span class="op">{</span></span>
-<span id="cb296-7"><a href="shiny-input-system.html#cb296-7"></a>    <span class="cf">if</span> (<span class="va">value</span>.<span class="va">options</span>.<span class="at">hasOwnProperty</span>(<span class="st">"width"</span>)) <span class="op">{</span></span>
-<span id="cb296-8"><a href="shiny-input-system.html#cb296-8"></a>      <span class="cf">if</span> (<span class="va">value</span>.<span class="va">options</span>.<span class="at">width</span> <span class="op">!==</span> <span class="va">config</span>.<span class="at">width</span>) <span class="op">{</span></span>
-<span id="cb296-9"><a href="shiny-input-system.html#cb296-9"></a>        <span class="kw">this</span>.<span class="at">_updateWidth</span>(el<span class="op">,</span> <span class="va">config</span>.<span class="at">width</span><span class="op">,</span> <span class="va">value</span>.<span class="va">options</span>.<span class="at">width</span>)</span>
-<span id="cb296-10"><a href="shiny-input-system.html#cb296-10"></a>        <span class="va">config</span>.<span class="at">width</span> <span class="op">=</span> <span class="va">value</span>.<span class="va">options</span>.<span class="at">width</span><span class="op">;</span></span>
-<span id="cb296-11"><a href="shiny-input-system.html#cb296-11"></a>      <span class="op">}</span></span>
-<span id="cb296-12"><a href="shiny-input-system.html#cb296-12"></a>    <span class="op">}</span></span>
-<span id="cb296-13"><a href="shiny-input-system.html#cb296-13"></a>    <span class="co">// other items to update</span></span>
-<span id="cb296-14"><a href="shiny-input-system.html#cb296-14"></a>    </span>
-<span id="cb296-15"><a href="shiny-input-system.html#cb296-15"></a>    <span class="co">// replace the old JSON config by the new one to update the input value </span></span>
-<span id="cb296-16"><a href="shiny-input-system.html#cb296-16"></a>    <span class="at">$</span>(el)</span>
-<span id="cb296-17"><a href="shiny-input-system.html#cb296-17"></a>      .<span class="at">parent</span>()</span>
-<span id="cb296-18"><a href="shiny-input-system.html#cb296-18"></a>      .<span class="at">find</span>(<span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> <span class="st">"']"</span>)</span>
-<span id="cb296-19"><a href="shiny-input-system.html#cb296-19"></a>      .<span class="at">replaceWith</span>(</span>
-<span id="cb296-20"><a href="shiny-input-system.html#cb296-20"></a>        <span class="st">'&lt;script type="application/json" data-for="'</span> <span class="op">+</span> </span>
-<span id="cb296-21"><a href="shiny-input-system.html#cb296-21"></a>        <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> </span>
-<span id="cb296-22"><a href="shiny-input-system.html#cb296-22"></a>        <span class="st">'"&gt;'</span> <span class="op">+</span> </span>
-<span id="cb296-23"><a href="shiny-input-system.html#cb296-23"></a>        <span class="va">JSON</span>.<span class="at">stringify</span>(config) <span class="op">+</span> </span>
-<span id="cb296-24"><a href="shiny-input-system.html#cb296-24"></a>        <span class="st">'&lt;/script&gt;'</span></span>
-<span id="cb296-25"><a href="shiny-input-system.html#cb296-25"></a>      )<span class="op">;</span></span>
-<span id="cb296-26"><a href="shiny-input-system.html#cb296-26"></a>    </span>
-<span id="cb296-27"><a href="shiny-input-system.html#cb296-27"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb296-28"><a href="shiny-input-system.html#cb296-28"></a>    <span class="co">// other tasks</span></span>
-<span id="cb296-29"><a href="shiny-input-system.html#cb296-29"></a>  <span class="op">}</span></span>
-<span id="cb296-30"><a href="shiny-input-system.html#cb296-30"></a>  </span>
-<span id="cb296-31"><a href="shiny-input-system.html#cb296-31"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb298"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb298-1"><a href="shiny-input-system.html#cb298-1"></a>setValue<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> value) <span class="op">{</span></span>
+<span id="cb298-2"><a href="shiny-input-system.html#cb298-2"></a>  <span class="kw">var</span> config <span class="op">=</span> <span class="at">$</span>(el).<span class="at">parent</span>().<span class="at">find</span>(<span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> <span class="st">"']"</span>)<span class="op">;</span></span>
+<span id="cb298-3"><a href="shiny-input-system.html#cb298-3"></a>  config <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">config</span>.<span class="at">html</span>())<span class="op">;</span></span>
+<span id="cb298-4"><a href="shiny-input-system.html#cb298-4"></a>  </span>
+<span id="cb298-5"><a href="shiny-input-system.html#cb298-5"></a>  <span class="co">// JS logic</span></span>
+<span id="cb298-6"><a href="shiny-input-system.html#cb298-6"></a>  <span class="cf">if</span> (<span class="va">value</span>.<span class="at">action</span> <span class="op">===</span> <span class="st">"update"</span>) <span class="op">{</span></span>
+<span id="cb298-7"><a href="shiny-input-system.html#cb298-7"></a>    <span class="cf">if</span> (<span class="va">value</span>.<span class="va">options</span>.<span class="at">hasOwnProperty</span>(<span class="st">"width"</span>)) <span class="op">{</span></span>
+<span id="cb298-8"><a href="shiny-input-system.html#cb298-8"></a>      <span class="cf">if</span> (<span class="va">value</span>.<span class="va">options</span>.<span class="at">width</span> <span class="op">!==</span> <span class="va">config</span>.<span class="at">width</span>) <span class="op">{</span></span>
+<span id="cb298-9"><a href="shiny-input-system.html#cb298-9"></a>        <span class="kw">this</span>.<span class="at">_updateWidth</span>(el<span class="op">,</span> <span class="va">config</span>.<span class="at">width</span><span class="op">,</span> <span class="va">value</span>.<span class="va">options</span>.<span class="at">width</span>)</span>
+<span id="cb298-10"><a href="shiny-input-system.html#cb298-10"></a>        <span class="va">config</span>.<span class="at">width</span> <span class="op">=</span> <span class="va">value</span>.<span class="va">options</span>.<span class="at">width</span><span class="op">;</span></span>
+<span id="cb298-11"><a href="shiny-input-system.html#cb298-11"></a>      <span class="op">}</span></span>
+<span id="cb298-12"><a href="shiny-input-system.html#cb298-12"></a>    <span class="op">}</span></span>
+<span id="cb298-13"><a href="shiny-input-system.html#cb298-13"></a>    <span class="co">// other items to update</span></span>
+<span id="cb298-14"><a href="shiny-input-system.html#cb298-14"></a>    </span>
+<span id="cb298-15"><a href="shiny-input-system.html#cb298-15"></a>    <span class="co">// replace the old JSON config by the new one to update the input value </span></span>
+<span id="cb298-16"><a href="shiny-input-system.html#cb298-16"></a>    <span class="at">$</span>(el)</span>
+<span id="cb298-17"><a href="shiny-input-system.html#cb298-17"></a>      .<span class="at">parent</span>()</span>
+<span id="cb298-18"><a href="shiny-input-system.html#cb298-18"></a>      .<span class="at">find</span>(<span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> <span class="st">"']"</span>)</span>
+<span id="cb298-19"><a href="shiny-input-system.html#cb298-19"></a>      .<span class="at">replaceWith</span>(</span>
+<span id="cb298-20"><a href="shiny-input-system.html#cb298-20"></a>        <span class="st">'&lt;script type="application/json" data-for="'</span> <span class="op">+</span> </span>
+<span id="cb298-21"><a href="shiny-input-system.html#cb298-21"></a>        <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> </span>
+<span id="cb298-22"><a href="shiny-input-system.html#cb298-22"></a>        <span class="st">'"&gt;'</span> <span class="op">+</span> </span>
+<span id="cb298-23"><a href="shiny-input-system.html#cb298-23"></a>        <span class="va">JSON</span>.<span class="at">stringify</span>(config) <span class="op">+</span> </span>
+<span id="cb298-24"><a href="shiny-input-system.html#cb298-24"></a>        <span class="st">'&lt;/script&gt;'</span></span>
+<span id="cb298-25"><a href="shiny-input-system.html#cb298-25"></a>      )<span class="op">;</span></span>
+<span id="cb298-26"><a href="shiny-input-system.html#cb298-26"></a>    </span>
+<span id="cb298-27"><a href="shiny-input-system.html#cb298-27"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb298-28"><a href="shiny-input-system.html#cb298-28"></a>    <span class="co">// other tasks</span></span>
+<span id="cb298-29"><a href="shiny-input-system.html#cb298-29"></a>  <span class="op">}</span></span>
+<span id="cb298-30"><a href="shiny-input-system.html#cb298-30"></a>  </span>
+<span id="cb298-31"><a href="shiny-input-system.html#cb298-31"></a><span class="op">}</span></span></code></pre></div>
 <p>Don’t forget to update the config script attached to the card tag at the end of the update
 condition, otherwise the input value won’t be updated:</p>
-<div class="sourceCode" id="cb297"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb297-1"><a href="shiny-input-system.html#cb297-1"></a><span class="at">$</span>(el)</span>
-<span id="cb297-2"><a href="shiny-input-system.html#cb297-2"></a>  .<span class="at">parent</span>()</span>
-<span id="cb297-3"><a href="shiny-input-system.html#cb297-3"></a>  .<span class="at">find</span>(<span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> <span class="st">"']"</span>)</span>
-<span id="cb297-4"><a href="shiny-input-system.html#cb297-4"></a>  .<span class="at">replaceWith</span>(</span>
-<span id="cb297-5"><a href="shiny-input-system.html#cb297-5"></a>    <span class="st">'&lt;script type="application/json" data-for="'</span> <span class="op">+</span> </span>
-<span id="cb297-6"><a href="shiny-input-system.html#cb297-6"></a>    <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> </span>
-<span id="cb297-7"><a href="shiny-input-system.html#cb297-7"></a>    <span class="st">'"&gt;'</span> <span class="op">+</span> </span>
-<span id="cb297-8"><a href="shiny-input-system.html#cb297-8"></a>    <span class="va">JSON</span>.<span class="at">stringify</span>(config) <span class="op">+</span> </span>
-<span id="cb297-9"><a href="shiny-input-system.html#cb297-9"></a>    <span class="st">'&lt;/script&gt;'</span></span>
-<span id="cb297-10"><a href="shiny-input-system.html#cb297-10"></a>  )<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb299"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb299-1"><a href="shiny-input-system.html#cb299-1"></a><span class="at">$</span>(el)</span>
+<span id="cb299-2"><a href="shiny-input-system.html#cb299-2"></a>  .<span class="at">parent</span>()</span>
+<span id="cb299-3"><a href="shiny-input-system.html#cb299-3"></a>  .<span class="at">find</span>(<span class="st">"script[data-for='"</span> <span class="op">+</span> <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> <span class="st">"']"</span>)</span>
+<span id="cb299-4"><a href="shiny-input-system.html#cb299-4"></a>  .<span class="at">replaceWith</span>(</span>
+<span id="cb299-5"><a href="shiny-input-system.html#cb299-5"></a>    <span class="st">'&lt;script type="application/json" data-for="'</span> <span class="op">+</span> </span>
+<span id="cb299-6"><a href="shiny-input-system.html#cb299-6"></a>    <span class="va">el</span>.<span class="at">id</span> <span class="op">+</span> </span>
+<span id="cb299-7"><a href="shiny-input-system.html#cb299-7"></a>    <span class="st">'"&gt;'</span> <span class="op">+</span> </span>
+<span id="cb299-8"><a href="shiny-input-system.html#cb299-8"></a>    <span class="va">JSON</span>.<span class="at">stringify</span>(config) <span class="op">+</span> </span>
+<span id="cb299-9"><a href="shiny-input-system.html#cb299-9"></a>    <span class="st">'&lt;/script&gt;'</span></span>
+<span id="cb299-10"><a href="shiny-input-system.html#cb299-10"></a>  )<span class="op">;</span></span></code></pre></div>
 <p>If it represents a significant amount of work, it is also the guarantee to lower the load on the server side.</p>
 <p>Be careful with <code>this</code>. Indeed, called in an event listener, <code>this</code> refers to the element that triggered the event and not to the input binding object!</p>
 </div>
@@ -818,10 +930,10 @@ condition, otherwise the input value won’t be updated:</p>
 <span class="header-section-number">11.3.1</span> Introduction<a class="anchor" aria-label="anchor" href="#introduction-2"><i class="fas fa-link"></i></a>
 </h3>
 <p>If you ever wondered where the <code>Shiny.onInputChange</code> or <code>Shiny.setInputValue</code> comes from (see <a href="https://shiny.rstudio.com/articles/communicating-with-js.html">article</a>), it is actually defined in the <code>initShiny</code> function.</p>
-<div class="sourceCode" id="cb298"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb298-1"><a href="shiny-input-system.html#cb298-1"></a><span class="va">exports</span>.<span class="at">setInputValue</span> <span class="op">=</span> <span class="va">exports</span>.<span class="at">onInputChange</span> <span class="op">=</span> <span class="kw">function</span>(name<span class="op">,</span> value<span class="op">,</span> opts) <span class="op">{</span></span>
-<span id="cb298-2"><a href="shiny-input-system.html#cb298-2"></a>  opts <span class="op">=</span> <span class="at">addDefaultInputOpts</span>(opts)<span class="op">;</span></span>
-<span id="cb298-3"><a href="shiny-input-system.html#cb298-3"></a>  <span class="va">inputs</span>.<span class="at">setInput</span>(name<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></span>
-<span id="cb298-4"><a href="shiny-input-system.html#cb298-4"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb300"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb300-1"><a href="shiny-input-system.html#cb300-1"></a><span class="va">exports</span>.<span class="at">setInputValue</span> <span class="op">=</span> <span class="va">exports</span>.<span class="at">onInputChange</span> <span class="op">=</span> <span class="kw">function</span>(name<span class="op">,</span> value<span class="op">,</span> opts) <span class="op">{</span></span>
+<span id="cb300-2"><a href="shiny-input-system.html#cb300-2"></a>  opts <span class="op">=</span> <span class="at">addDefaultInputOpts</span>(opts)<span class="op">;</span></span>
+<span id="cb300-3"><a href="shiny-input-system.html#cb300-3"></a>  <span class="va">inputs</span>.<span class="at">setInput</span>(name<span class="op">,</span> value<span class="op">,</span> opts)<span class="op">;</span></span>
+<span id="cb300-4"><a href="shiny-input-system.html#cb300-4"></a><span class="op">};</span></span></code></pre></div>
 <p>Briefly, this function avoids creating an input binding. It is faster to code but there is a price to pay: losing the ability to easily update the new input. Indeed, all input functions like <code>sliderInput</code> have their own update function like <code>updateSliderInput</code>, because of the custom input binding system (We will see it very soon)!</p>
 </div>
 <div id="examples-1" class="section level3">
@@ -831,12 +943,12 @@ condition, otherwise the input value won’t be updated:</p>
 <p><code>Shiny.setInputValues</code> becomes powerful when combined to the numerous Shiny JavaScript events listed <a href="https://shiny.rstudio.com/articles/js-events.html">here</a>. This is what
 we use in the <a href="https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html">shinyMobile</a> package to store the current device information in a shiny input.
 Briefly, Framework7 (on top of which is built shinyMobile) has a method <code>Framework7.device</code>, which gives many <a href="https://framework7.io/docs/device.html">details</a> related to the user device.</p>
-<div class="sourceCode" id="cb299"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb299-1"><a href="shiny-input-system.html#cb299-1"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">'shiny:connected'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb299-2"><a href="shiny-input-system.html#cb299-2"></a>  <span class="va">Shiny</span>.<span class="at">setInputValue</span>(<span class="st">'deviceInfo'</span><span class="op">,</span> <span class="va">Framework7</span>.<span class="at">device</span>)<span class="op">;</span></span>
-<span id="cb299-3"><a href="shiny-input-system.html#cb299-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb301"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb301-1"><a href="shiny-input-system.html#cb301-1"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">'shiny:connected'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb301-2"><a href="shiny-input-system.html#cb301-2"></a>  <span class="va">Shiny</span>.<span class="at">setInputValue</span>(<span class="st">'deviceInfo'</span><span class="op">,</span> <span class="va">Framework7</span>.<span class="at">device</span>)<span class="op">;</span></span>
+<span id="cb301-3"><a href="shiny-input-system.html#cb301-3"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>This allows to conditionally display elements and deeply customize the interface.
 In the example below, the card will not show on mobile devices.</p>
-<div class="sourceCode" id="cb300"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb302"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a></span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span>
   ui <span class="op">=</span> <span class="fu"><a href="https://rinterface.github.io/shinyMobile/reference/f7Page.html">f7Page</a></span><span class="op">(</span>
@@ -886,7 +998,7 @@ In the example below, the card will not show on mobile devices.</p>
 <li>a function to transform data, having data as main parameter</li>
 </ul>
 <p>Below I exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result.</p>
-<div class="sourceCode" id="cb301"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb303"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># You must click on the window to create inputs!!</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">registerInputHandler</a></span><span class="op">(</span><span class="st">"textDate"</span>, <span class="kw">function</span><span class="op">(</span><span class="va">data</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span>
   <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>

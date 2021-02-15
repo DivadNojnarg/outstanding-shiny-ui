@@ -63,10 +63,13 @@ An input element is given by the `<input>` tag as well as several attributes.
 <input id = inputId type = "text" class = "input-text" value = value>
 ```
 
-  - id guarantees the input uniqueness. We will see very soon that all instances of the same input share a unique input binding, therefore id is mandatory.
-  - [type](https://www.w3schools.com/tags/att_input_type.asp) 
-  - class is targeted by CSS and JavaScript
-  - value holds the input value
+  - __id__ guarantees the input uniqueness and a way for shiny to recover it in the `input$<id>` element. 
+  - [type](https://www.w3schools.com/tags/att_input_type.asp) like `checkbox`, `button`,
+  `text` ...__type__ may also be a good target for the input binding find method, as explained below. 
+  - __class__ may be required to find the element in the DOM. It is more convenient for
+  an input binding to target a class (and all associated elements) rather than an id which corresponds to one element by definition. 
+  It is also used by CSS to apply styles.
+  - __value__ holds the input value.
 
 ### Binding Shiny inputs
 An input binding allows Shiny to identify each instance of a given input and what you may do with this input. For instance, a slider input must update whenever the range is dragged or when the left and right arrows of the keyboard are pressed. It relies on a class defined in the `input_binding.js` [file](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding.js). 
@@ -74,7 +77,7 @@ An input binding allows Shiny to identify each instance of a given input and wha
 Let's describe each method chronologically. For better convenience, the book side package contains step by step demonstrations which may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/inputs.R). Each example is called by the `customTextInputExample`, which takes the input binding step as only parameter. For instance `customTextInputExample(1)` will invoke the first step.
 
 #### Find the input
-The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the `actionButton`. On the JS side, we need a method that will identify this receptor. Moreover, two different types of inputs (for instance `radioButton` and `selectInput`) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can (if your app contains 10 sliders, they all share the same input binding!). The receptor identifier is provided by the `find` method of the `InputBinding` class. This method must be applied on a scope, that is the `document`.  `find` accepts any valid jQuery selector. Note the `console.log` only here for debugging purpose.
+The first step, is critical which is to locate the input in the DOM. On the R side, we define an input, with a specific attribute that will serve as a receptor for the binding. For most of inputs, this may be handled by the type attribute. In other cases, this may be the class, like for the `actionButton`. On the JS side, we need a method that will identify this receptor. Moreover, two different types of inputs (for instance `radioButton` and `selectInput`) cannot have the same receptor for conflict reasons, whereas two instances of the same input type can. If your app contains 10 sliders, they all share the same input binding, and this is where the thing is powerful since they are all bound in one step. The receptor identifier is provided by the `find` method of the `InputBinding` class. This method must be applied on a scope, that is the `document`.  `find` accepts any valid jQuery selector. Note the `console.log` only here for debugging purpose.
 
 ```js
 find: function(scope) {
@@ -145,18 +148,52 @@ Figure \@ref(fig:text-input) shows the main elements of the `textInput` widget. 
 knitr::include_graphics("images/survival-kit/text-input.png")
 ```
 
-
-We invite the reader to run the first example below and open the HTML inspector and look at the `console.log` result.
+We invite the reader to run the full working demonstration with `customTextInputExample(1)`.
+In short this example consists in a simple text input and an output showing the current text input value:
 
 ```{r, eval=FALSE}
-customTextInputExample(1)
+customTextInputExample <- function(binding_step) {
+  ui <- fluidPage(
+    customTextInput(
+      inputId = "caption",
+      label = "Caption",
+      value = "Data Summary",
+      binding_step = binding_step
+    ),
+    textOutput("custom_text")
+  )
+  server <- function(input, output) {
+    output$custom_text <- renderText(input$caption)
+  }
+  shinyApp(ui, server)
+}
 ```
 
-Results are shown on Figure \@ref(fig:shiny-find-inputs-result). If the corresponding input is found, you should see the corresponding tag element in the HTML inspector console.
+We open the developer tools to inspect the `customTextInputBinding.js` script, put a breakpoints in the `find` method and reload the page. Upon reload, the JavaScript debugger opens, as shown Figure \@ref(fig:binding-find). Type `$(scope).find('.input-text')` in the console and see what is displayed. This is the DOM element which you may highlight when you hover over the JavaScript output. 
 
-```{r shiny-find-inputs-result, echo=FALSE, fig.cap='find method output', out.width='100%'}
-knitr::include_graphics("images/survival-kit/shiny-find-inputs-result.png")
+Building input bindings like this significantly ease the debugging process and you'll get more chances to be successful!
+
+```{r binding-find, echo=FALSE, fig.cap='Find is the first method triggered', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-find.png")
 ```
+
+Now, let's see why it is better to target elements by type or class. We run the `customTextInputExampleBis()` example. This is a demonstration app containing two text inputs. Moreover, the binding has been modified so that it looks for element having a specific id:
+
+```js
+find: function(scope) {
+  return $(scope).find('#mytextInput');
+}
+```
+
+If you repeat the above debugging steps, `$(scope).find('.input-text')` only targets the 
+first text input, meaning that the second input will not be found and bound. 
+
+```{r binding-find-by-id, echo=FALSE, fig.cap='Find by id is a rather bad idea', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-find-by-id.png")
+```
+
+As a side note, you'll also get an error in the binding `Uncaught Not implemented`, indicating that the `getValue` method is not implemented yet. Fear not! We are going to 
+add it very soon. 
 
 #### Initialize inputs
 Upon initialization, Shiny calls the `initializeInputs` function that takes all input bindings and call their `initialize` method before binding all inputs. Note that once an input has been initialized it has a `_shiny_initialized` tag to avoid initializing it twice. The initialize method is not always defined but some elements require to be explicitly initialized or activated. For instance the  [Framework7](https://framework7.io) API, on top of which [shinyMobile](https://github.com/RinteRface/shinyMobile) is built, require to instantiate all elements. Below is an example for the [toggle](https://framework7.io/docs/toggle.html) input:
@@ -208,6 +245,16 @@ customTextInputExample(2)
 ```
 
 This time, the input value is returned. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually missing a couple of methods so that the binding is fully working. We will introduce them in the following sections!
+
+Similarly as in the find section, we run `customTextInputExample(2)` and open the developer tools to inspect the `customTextInputBinding.js` script. We put a breakpoints in the `getValue` method and reload the page. Upon reload, the JavaScript debugger opens starts in `find`. You may click on the next blue arrow to jump to the next breakpoints that is `getValue`, as shown Figure \@ref(fig:binding-getValue). Typing `$(el).val()` in the console shows the current 
+text value.
+
+```{r binding-getValue, echo=FALSE, fig.cap='getValue', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-getValue.png")
+```
+
+Clicking on next again exists the debugger. Interestingly, you'll notice that a text appears a the bottom of our input, meaning that the `input$caption` element exists and 
+is internally tracked by shiny. 
 
 #### Set and update 
 `setValue(el, value)` is used to set the value of the current input. This method is necessary so that the input value may be updated. It has to be used in combination with `receiveMessage(el, data)`, which is the JavaScript part of all the R `updateInput` functions. We usually call the `setValue` method inside.
@@ -269,7 +316,19 @@ receiveMessage: function(el, data) {
 }
 ```
 
-So far so good! We managed to update the text input value. Yet, after clicking the button, the output value does not change. We are going to fix this missing step in the next section.
+Similarly as in the previous sections, we run `updateCustomTextInputExample(3)` and open the developer tools to inspect the `customTextInputBinding.js` script. We put a breakpoints in the `receiveMessage` and `setValue` methods and reload the page. Upon reload, the JavaScript debugger opens starts in `find`. You may click on the next blue arrow until you reach `receiveMessage`, as shown Figure \@ref(fig:binding-update). Inspecting the `data` object, it contains only one property namely the value. In practice, there may be more complex structure. As an exercise, you may change the `data.value` to whatever value you want.
+
+```{r binding-receive, echo=FALSE, fig.cap='Receive a message from R', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-receive.png")
+```
+
+Click on the next arrow makes us jump in the next call that is `setValue`, where we can print the value to check whether it is correct. Running `$(el).val(value);` in the debugger console instantaneously update the DOM element with the new text, as shown on Figure \@ref(fig:binding-setValue).
+
+```{r binding-setValue, echo=FALSE, fig.cap='Set the new value', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-setValue.png")
+```
+
+So far so good! We managed to update the text input value on the client. Yet, after clicking the button, the output value does not change. We are going to fix this missing step in the next section.
 
 #### Subscribe
 `subscribe(el, callback)` listens to events defining Shiny to update the input value and make it available in the app. Some API like Bootstrap explicitly mention those events (like `hide.bs.tab`, `shown.bs.tab`, ...).
@@ -286,14 +345,28 @@ $(el).on('keyup.customTextBinding input.customTextBinding', function(event) {
 });
 ```
 
-`callback` ensures that the new value is captured by Shiny. We will come back later on the callback parameter.
+`callback` ensures that the new value is captured by Shiny. We will come back later on the callback parameter, which is rather complex. 
 
 
 ```{r, eval=FALSE}
 updateCustomTextInputExample(4)
 ```
 
-Hooray! The output result is successfully changed when the input value is manually updated. However, nothing happens when we click on the update button. What did we miss? Looking back at the `receiveMessage` method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a `console.log(event);` in the `subscribe` method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the `subscribe` method. We may choose the `change` event, that triggers when an element is updated.
+We run the above example, open the HTML inspector, select the `customTextInputBinding_4.js` script and put a break point in the `getValue` as well as `subscribe` method. We enter a new text inside the input field, which triggers the debugger inside the `subscribe` call.
+Inspecting the event object, the type indicate the action, which is an input action and the target is the text input element itself, depicted on Figure \@ref(fig:binding-subscribe-1).
+
+```{r binding-subscribe-1, echo=FALSE, fig.cap='Subscribe method after a manual update of the text input', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-subscribe-1.png")
+```
+
+We click on next and notice that we go back in the `getValue` method to get the new value.
+You may check typing `$(el).val()` in the debugger console, like on Figure \@ref(fig:binding-subscribe-2). Clicking next again shows the updated output value.
+
+```{r binding-subscribe-2, echo=FALSE, fig.cap='Subsribe is followed by a new getValue', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-subscribe-2.png")
+```
+
+Hooray! The output result is successfully changed when the input value is manually updated. However, it is not modified when we click on the update button. What did we miss? Looking back at the `receiveMessage` method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a `console.log(event);` in the `subscribe` method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the `subscribe` method. We may choose the `change` event, that triggers when an element is updated. Notice the parameter passed to callback. We discuss it in the next part!
 
 ```js
 $(el).on('change.customTextBinding', function(event) {
@@ -301,10 +374,27 @@ $(el).on('change.customTextBinding', function(event) {
 });
 ```
 
+Besides, in the `receiveMessage` we must trigger a `change` event to trigger the subscribe method:
+
+```js
+receiveMessage: function(el, data) {
+  if (data.hasOwnProperty('value')) {
+    this.setValue(el, data.value);
+    $(el).trigger('change');
+  }
+}
+```
+
 Let's try again.
 
 ```{r, eval=FALSE}
 updateCustomTextInputExample(5)
+```
+
+We put a new break point in the second event listener, that is the one for the change event. Clicking on the button only triggers the change event, as shown Figure \@ref(fig:binding-subscribe-3).
+
+```{r binding-subscribe-3, echo=FALSE, fig.cap='Subsribe is followed by a new getValue', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-subscribe-3.png")
 ```
 
 Perfect? Not exactly. 
@@ -319,7 +409,9 @@ Run the app below and try to manually change the text input value by adding a co
 customTextInputExample(6)
 ```
 
-You may adjust the delay according to your needs, but we caution to not set the delay too long as this becomes problematic too.
+You may adjust the delay according to your needs, but we caution to not set the delay too long as this becomes problematic too. 
+
+If you want to get an overview of all binding steps, you may try the following [slide](https://rinterface.com/shiny/talks/RPharma2020/?panelset1=r-code2#45) from the 2020 R in Pharma workshop.
 
 #### Register an input binding
 At the end of the input binding definition, we register it for Shiny.
@@ -334,6 +426,18 @@ Shiny.inputBindings.register(myBinding, 'reference');
 ```
 
 Although the Shiny [documentation](https://shiny.rstudio.com/articles/building-inputs.html) mentions a `Shiny.inputBindings.setPriority` method to handle conflicting bindings, this case almost never happens.
+
+
+#### Other binding methods
+There are a couple of methods not described above that are contained in the `InputBinding` class prototype. They were not described before since most of the time, we don't need to change them and can rely on the defaults:
+
+  - `getId` returns the object id (Figure \@ref(fig:binding-getId)). If you don't provide your own method, the binding falls back to the default one provided in the `InputBinding` class. This method is called after `find`. The next Chapter \@ref(shiny-input-lifecycle) provides more details. 
+  - `getType` required to handle custom data format. It is called after `getId`. 
+  - `getState` ?
+  
+```{r binding-getId, echo=FALSE, fig.cap='Binding getid method', out.width='100%'}
+knitr::include_graphics("images/survival-kit/binding-getId.png")
+```
 
 ### Edit an input binding {#edit-input-binding}
 In some cases, we would like to access the input binding and change it's default behavior, even though not always recommended, since it will affect **all** related inputs. As bindings are contained in a registry, namely `Shiny.inputBindings`, one may seamlessly access and modify them. This is a 5 steps process:
