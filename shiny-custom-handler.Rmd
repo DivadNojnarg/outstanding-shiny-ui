@@ -4,9 +4,8 @@ The three previous chapters are largely dedicated to Shiny input elements. Yet, 
 
 ## Introduction
 
-As shown in the Mastering Shiny [book](https://mastering-shiny.org/action-dynamic.html), there exists tools to update UI components from the server. You can use all `update<INPUT_NAME>` functions like `updateTextInput` but also what I call secondary input related function like `updateTabsetPanel`. Why secondary input? Since they are not inputs, strictly speaking. For instance when you fill an inscription form on a website, it contains a lot of inputs like select, text, numeric, date, so that your data is ultimately stored in a database for later use. A `tabsetPanel` is a simple way to spread multiple elements on different panels and usually gather them by topic. In Shiny, it is always interesting to associate an input to it, as shown in the previous chapter \@ref(secondary-inputs), so as to be able to trigger sophisticated actions on the server side, whenever necessary. In order not to confuse the reader, primary inputs like `actionButton` have an id, accessible through `inputId`, while secondary inputs simply have `id`. 
-
-Other tools to manage your UI consist in `toggle` functions like `hideTab`, `showTab`, the limit being the very few number of them, which often obliges us to use packages like `shinyjs` [@R-shinyjs] or write custom JavaScript code. `insertUI/removeUI` allows to dynamically insert or remove any element, anywhere. 
+As shown in the Mastering Shiny [book](https://mastering-shiny.org/action-dynamic.html), there exists tools to update UI components from the server. You can use all `update<INPUT_NAME>` functions like `updateTextInput` or `updateTabsetPanel`. 
+Other tools to manage your UI consist in `toggle` functions like `hideTab`, `showTab`, the limit being the very few number of them, which often obliges us to use packages like `shinyjs` [@R-shinyjs] or write custom JavaScript code. Finally, `insertUI/removeUI` allows to dynamically insert or remove any element, anywhere in the DOM, which is quite powerful. Let's start this chapter with the less optimized approach, that is `renderUI`, to highlight its caveats and introduce better tools to optimize your apps. 
 
 ## The renderUI case
 One may know the `renderUI/uiOutput` that allows to render any HTML block from the server. While the `update<INPUT_NAME>` and `toggle` tools are component specific, meaning they only target the element to modify, `renderUI/uiOutput` re-renders the whole block each time an associated reactive dependency is invalidated, even though only a little part should be re-rendered. This approach is usually to avoid since it implies poor performances. Let's see below, where I simulate a computationally intensive task for three seconds, corresponding to the time to obtain the slider value:
@@ -350,76 +349,57 @@ Combining `Shiny.setInputValue` and `Shiny.addCustomMessageHandler`, here is a f
 that sets the body background as a result of a simple button click.
 We defined 3 JS pieces:
 
-  - `getPokemon` whose script is adapted from Colin Fay et al. (see [here](https://engineering-shiny.org/optimjs.html)). This function fetch the [pokeapi](https://pokeapi.co/)
+  - `getPokemon` whose script is adapted from Colin Fay et al. (see [here](https://engineering-shiny.org/optimjs.html)). This function fetch the [pokeapi](https://pokeapi.co/).
   data and if successful set an input value, which will be available on the R side
   - An event listener is set to the only button of the page so that each time we click,
-  we call `getPokemon` to select a random background image
+  we call `getPokemon` to select a random background image.
   - `input$pokeData` is actually a quite complex list (deeply nested JSON) and some manipulation is done from R in the `observeEvent` block. Once done, we send the data
   back to JS through the websocket (the session object sends a message). 
   - On the JS side, the last block is a custom message handler that will add some inline
-  CSS properties to the body element
+  CSS properties to the body element.
 
-
-```{r, eval=FALSE}
-library(shiny)
-
-ui <- fluidPage(
-  tags$script(
-    HTML(
-      "$(function() {
-        // Taken from Colin
-        const getPokemon = () => {
-          // FETCHING THE API DATA
-          let randId = Math.floor(Math.random() * (+151 + 1 - +1)) + +1;
-          fetch('https://pokeapi.co/api/v2/pokemon/' + randId)
-          // DEFINE WHAT HAPPENS WHEN JAVASCRIPT RECEIVES THE DATA
-          .then((data) =>{
-            // TURN THE DATA TO JSON
-            data.json().then((res) => {
-              // SEND THE JSON TO R
-              Shiny.setInputValue('pokeData', res, {priority: 'event'})
-            })
-          })
-          // DEFINE WHAT HAPPENS WHEN THERE IS AN ERROR FETCHING THE API
-          .catch((error) => {
-            alert('Error catching result from API')
-          })
-        };
+```js
+$(function() {
+  // Taken from Colin
+  const getPokemon = () => {
+    // FETCHING THE API DATA
+    let randId = Math.floor(Math.random() * (+151 + 1 - +1)) + +1;
+    fetch('https://pokeapi.co/api/v2/pokemon/' + randId)
+    // DEFINE WHAT HAPPENS WHEN JAVASCRIPT RECEIVES THE DATA
+    .then((data) =>{
+      // TURN THE DATA TO JSON
+      data.json().then((res) => {
+        // SEND THE JSON TO R
+        Shiny.setInputValue('pokeData', res, {priority: 'event'})
+      })
+    })
+    // DEFINE WHAT HAPPENS WHEN THERE IS AN ERROR FETCHING THE API
+    .catch((error) => {
+      alert('Error catching result from API')
+    })
+  };
         
-        // add event listener
-        $('#button').on('click', function() {
-          getPokemon();
-        });
+  // add event listener
+  $('#button').on('click', function() {
+    getPokemon();
+  });
         
-        // update background based on R data
-        Shiny.addCustomMessageHandler('update_background', function(message) {
-          $('body').css({
-            'background-image':'url(' + message +')', 
-            'background-repeat':'no-repeat'
-          });
-        });
-        
-      });
-      "
-    )
-  ),
-  tags$button(id = "button", "Go!", class = "btn-success")
-)
-
-server <- function(input, output, session) {
-  
-  observeEvent(input$pokeData, {
-    background <- input$pokeData$sprites$other$`official-artwork`$front_default
-    message(background)
-    session$sendCustomMessage(type = "update_background", message = background)
-  })
-}
-
-shinyApp(ui, server)
+  // update background based on R data
+  Shiny.addCustomMessageHandler('update_background', function(message) {
+    $('body').css({
+      'background-image':'url(' + message +')', 
+      'background-repeat':'no-repeat'
+    });
+  });
+});
 ```
 
-A whole chapter is dedicated to custom handlers, with a practical example \@ref(custom-templates-interactivity).
+A demonstration may be run from the `{OSUICode}` side package:
 
+```{r, eval=FALSE}
+library(OSUICode)
+runPokemonExample()
+```
 
 ### Toward custom UI management functions {#custom-ui-functions}
 
@@ -978,3 +958,5 @@ shinyAppDir(system.file("vignettes-demos/userMessages", package = "shinydashboar
 Why can't we use the `renderContent` function, thereby allowing use to remove the three extra steps (unbind, initialize and bind inputs). This would lead to a timing issue. Indeed,
 let's say we first click on add message which creates one slider input and one plot output. 
 It works well the first time since those element don't exist for Shiny. If we remove the newly created message and click again on add, we obtain an error message `Uncaught Duplicate binding for ID distPlot`. The root cause is rather obvious and internal to `renderContent`. The later cannot be called before the target is in the DOM. It means that during some time, we actually added a second output (identical to the first one) without unbinding the first, thereby causing the duplication error. 
+
+Chapter \@ref(custom-templates-interactivity) provide another case study to practice custom handler design.
