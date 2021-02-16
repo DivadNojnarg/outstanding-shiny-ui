@@ -2,27 +2,34 @@
 Transforming a classic Shiny app into a PWA is a game changer for end users.
 The first step is to setup a valid web manifest with icons and favicon.
 
-## Disclaimers
+::: {.importantblock data-latex=""}
 Some of the PWA features won't work with [iOS](https://medium.com/@firt/progressive-web-apps-on-ios-are-here-d00430dee3a7), like the
 install prompt. 
+:::
+
+::: {.warningbox data-latex=""}
+As a reminder, the code examples shown throughout this chapter are gathered in a package accessible [here](https://github.com/DivadNojnarg/installable-pwa-test), specifically PWA apps are available [here](https://github.com/DivadNojnarg/installable-pwa-test/tree/main/inst/examples). 
+:::
 
 ## Introduction
 
-Below, we review one by one the steps necessary to convert a shiny app to a PWA.
-To get a goo idea of what we exactly miss, we leverage the `Application` tab of the
+Below, we review one by one the necessary steps to convert a shiny app to a PWA.
+To get a good idea of what our mission exactly is, we leverage the `Application` tab of the
 developer tools.
 
-The overall expected result is shown Figure \@ref(fig:mobile-pwa). Alternatively, one
-may use the Google Lighthouse utility to provide a general diagnosis to the app.
-There are many categories like performance, accessibility. In our case, let's just select
+The overall expected result is shown Figure \@ref(fig:mobile-pwa-1). Alternatively, one
+may use the Google Lighthouse utility to provide a general diagnosis to the app, as illustrated on Figure \@ref(fig:mobile-pwa-2). There are many categories like performance, accessibility. In our case, let's just select
 the PWA category, select the mobile device radio and click on generate a report.
 
-```{r mobile-pwa, echo=FALSE, fig.cap='Application tab of the developers tools', out.width='50%', fig.align = "default", fig.show = "hold"}
+```{r mobile-pwa-1, echo=FALSE, fig.cap='Application tab of the developers tools', out.width='100%', fig.align = "center"}
 knitr::include_graphics("images/mobile/mobile-pwa-application.png")
+```
+
+```{r mobile-pwa-2, echo=FALSE, fig.cap='Google Lightouse utility', out.width='100%', fig.align = "center"}
 knitr::include_graphics("images/mobile/mobile-pwa-lighthouse.png")
 ```
 
-According to the diagnostic result displayed on Figure \@ref(fig:mobile-pwa-lighthouse-result), we miss many elements:
+According to the diagnostic result displayed on Figure \@ref(fig:mobile-pwa-lighthouse-result), we don't meet all requirements, most importantly there is:
 
   - No manifest.
   - No service worker.
@@ -34,13 +41,10 @@ knitr::include_graphics("images/mobile/mobile-pwa-lighthouse-result.png")
 
 ## `{charpente}` and PWA tools
 
-`{charpente}` has tools to help designing a PWA. The `set_pwa` function is a wrapper
-that does all the previously mentioned step in only one line of code. There are however few
-prerequisites:
+`{charpente}` has tools to help designing a PWA, particularly the `set_pwa` function, that does all the previously mentioned step in only one line of code. There are however few prerequisites:
 
-  - The app must belong to a package.
+  - The app must __belong to a package__.
   - The function must target the app directory.
-  
   
 As a reminder, the demonstration apps are located within the `inst/examples` folder.
 We create the `pwa-app` sub-folder and the `app.R` file:
@@ -69,7 +73,7 @@ set_pwa("inst/examples/pwa-app")
 This function generates a `manifest.webmanifest` file, downloads the Google PWA compatibility
 script, adds a custom dependency pointing to the `manifest.webmanifest` file and a `144x144` icon file,
 copies a boilerplate `service-worker.js` with its `offline.html` page and optionally registers the
-service worker (code borrowed from [web.dev](https://web.dev/offline-fallback-page/#registering-the-service-worker):
+service worker (whose code is borrowed from [web.dev](https://web.dev/offline-fallback-page/#registering-the-service-worker):
 
 ```js
 window.addEventListener('load', () => {
@@ -82,7 +86,7 @@ window.addEventListener('load', () => {
 });
 ```
 
-In the `{shinyMobile}` case, as Framework7 already registers any linked service
+In the `{shinyMobile}` case, as Framework7 already registers any provided service
 worker, we don't need that initialization script. Therefore, we actually call:
 
 ```{r, eval=FALSE}
@@ -94,10 +98,10 @@ Importantly, this functions does not handle icon creation. There are tools such 
 [app-manifest](https://app-manifest.firebaseapp.com), to create 
 those custom icons and splash screens, if you need to.
 
-Below we give more detail
+In the following, we provide more detail about the mentioned steps.
 
 ### Create the manifest
-We want to create a JSON configuration file like this:
+We would like to create a JSON configuration file like this:
 
 ```js
 {
@@ -120,11 +124,10 @@ We want to create a JSON configuration file like this:
 }
 ```
 
-This file has to be accessible by the app so best practice is to put it in the `/www` folder.
-and images are hosted in a sub-directory `/www/icons`.
+This file has to be accessible by the app, hence best practice is to put it in the `/www` folder, 
+images being hosted in the `/www/icons` sub-directory.
 
-
-The `create_manifest` function is basically writing a JSON file at the provided location:
+The `create_manifest` function writes a JSON file at the provided location:
 
 ```{r}
 create_manifest <- function(path, name = "My Progressive Web App", shortName = "My App",
@@ -200,16 +203,20 @@ add_pwa_deps <- function(tag) {
 }
 ```
 
+In practice, since the package already relies on other dependencies like Framework7, we will leverage the `charpente::add_dependencies` function to add all dependencies at once. 
+
+::: {.noteblock data-latex=""}
 Importantly, all provided icons must follow the convention `icon-<size_in_px>.png` like
  `icon-144.png`, which is the default.
+:::
 
 ### Google PWA compatibility
-As we use the google PWA compatibility script, we have to include at least one icon 
+As we use the Google PWA compatibility script, we have to include at least one icon 
 like `<link rel="icon" type="image/png" href="res/icon-128.png" sizes="128x128" />`. 
 However, we found some discrepancies between the developer tools recommendations and the 
-PWA compatibility script. We recommend to follow the developer tools prescriptions, that
+PWA compatibility script. Therefore, we recommend to follow the developer tools prescriptions, that
 is to include at least one icon of size 144x144. All other elements are generated by the script itself, 
-which is extremely convenient. Indeed, having to handle all possible screen sizes and different OS is particularly
+which is convenient. Indeed, having to handle all possible screen sizes and different OS is particularly
 tricky, repetitive and not interesting.
 
 The HTML dependency is downloaded with `create_dependency("pwacompat", options = charpente_options(bundle = FALSE))`.
@@ -281,7 +288,7 @@ knitr::include_graphics("images/mobile/mobile-pwa-deps.png")
 ```
 
 Yet, according to Figure \@ref(fig:mobile-pwa-missing-sw), we still miss the service worker,
-as shown in the manifest diagnostic. This shows how powerful are the developer tools and
+as shown in the manifest diagnostic. This demonstrates how powerful are the developer tools as
 the end user is always guided step by step.
 
 ```{r mobile-pwa-missing-sw, echo=FALSE, fig.cap='Missing service worker registration.', out.width='100%'}
@@ -291,7 +298,7 @@ knitr::include_graphics("images/mobile/mobile-pwa-missing-sw.png")
 ### Service worker and offline page
 The second mandatory step to make our app installable is the service worker.
 We borrowed the code from [web.dev](https://web.dev/offline-fallback-page/). `set_pwa` copies
-this code in the `www` folder of the provided app:
+this code in the the provided app `www` folder:
 
 ```js
 /*
@@ -382,11 +389,14 @@ self.addEventListener("fetch", (event) => {
 });
 ```
 
-This service worker redirects the end user to the offline cached page whenever
-the app is offline, thereby offering a better user experience. It explicitly 
-targets an `offline.html` page. Therefore, we strongly advise to keep the same file names.
+This service worker redirects the end user to the offline cached page (`offline.html`) whenever
+the app is offline, thereby offering a better user experience. 
 
-The next step is to mention and register the service worker. Framework7 has a dedicated module in the 
+::: {.importantblock data-latex=""}
+We strongly advise to keep the same file names. 
+:::
+
+The next step involves the service worker registration. Framework7 has a dedicated module in the 
 app configuration. We modify `init.js` and run `build_js()` to update the minified file:
 
 ```js
@@ -459,12 +469,17 @@ further PWA optimization may be provided.
 knitr::include_graphics("images/mobile/mobile-pwa-audit-final.png")
 ```
 
+::: {.importantblock data-latex=""}
+A common source of error is the browser cache. It is best practice to regularly empty the cache.
+Alternatively, one may runs in incognito mode, which does not cache files. 
+:::
+
 ### Disable PWA for the end user
 With the above approach, `{shinyMobile}` will always look for a service worker to register.
-Particularly, this raises an error in case no service worker is found on the server.
-What if the user don't want to always create a PWA, let's say for less important applications? 
-We may add a parameter to the `f7Page`, for instance `allowPWA` that is either `TRUE` or `FALSE`,
-store its value in the `body` `data-pwa` attribute and recover it on the JS side in `init.js`:
+Particularly, this would raise an error in case no service worker is found on the server.
+What if the user don't want to create a PWA, let's say for less important applications? 
+We may add a parameter to the `f7Page`, for instance `allowPWA`, that is either `TRUE` or `FALSE`,
+store its value in the `body` `data-pwa` attribute and recover it on the JS side within `init.js`:
 
 ```js
 // check if the app is intended to be a PWA
@@ -479,17 +494,19 @@ if (isPWA) {
 
 ```
 
-We then __only__ create `config.serviceWorker` if the user specified `allowPWA = TRUE`.
+It __only__ creates `config.serviceWorker` if the user specified `allowPWA = TRUE`.
 
 ## Handle the installation
-It is a great opportunity to propose a [custom](https://developers.google.com/web/fundamentals/app-install-banners/native) 
-installation experience. 
+It is a great opportunity to propose a [custom](https://developers.google.com/web/fundamentals/app-install-banners/native) installation experience. 
 
-__Note__: To be able to install the app, make sure to replace `start_url` by the url
+::: {.warningbox data-latex=""}
+To be able to install the app, make sure to replace `start_url` by the url
  where the app is deployed like `https://dgranjon.shinyapps.io/installable-pwa-app/` for instance.
- Missing that step would cause an issue during the service worker registration. 
+ Missing that step would cause an issue during the service worker registration.  
+:::
+
 Once the installation criteria are met, the web browser raises the `beforeinstallprompt` event, except
-on iOS platform, that is not yet compatible. To check it, we edit the `init.js` script and add:
+on the iOS platform, that is not yet compatible. We edit the `init.js` script and write:
 
 ```js
 let deferredPrompt;
@@ -502,10 +519,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
 ```
 
 This code adds an event listener to the window, prevents it from showing at start with `e.preventDefault` and
-captures it in an external variable called `deferredPrompt`. After, we create our custom piece of UI that will
-trigger the `prompt` install. We can benefit from the rich Framework7 interface and display
-a [toast](https://framework7.io/docs/toast.html) containing an install button. The instantiation
-is fairly simple and follows the pattern `app.<COMPONENT>.create(parameters)`:
+captures it in an external variable called `deferredPrompt`. The next step comprises the design of our custom piece of UI that will trigger the `prompt` install. We can benefit from the rich Framework7 interface and display
+a [toast](https://framework7.io/docs/toast.html) containing an install button. The initialization
+is fairly simple, following the pattern `app.<COMPONENT>.create(parameters)`:
 
 ```js
 // Create custom install UI
@@ -515,7 +531,7 @@ var installToast = app.toast.create({
 });
 ```
 
-We give it an id so as to call it later. We edit the `beforeinstallprompt` event listener to show
+We give it an id so as to call it later and edit the `beforeinstallprompt` event listener to show
 the toast:
 
 ```js
@@ -530,12 +546,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 ```
 
-__Note__: with jQuery like `$(window).on('beforeinstallprompt', ...)`, 
-we would capture the event with `e.originalEvent`!
+::: {.noteblock data-latex=""}
+With jQuery like `$(window).on('beforeinstallprompt', ...)`, we would capture the event with `e.originalEvent`!
+:::
 
-Then we register a second event listener, which fires on the toast button click.
+We register a second event listener, which fires on the toast button click.
 We should wait a bit of time so that the toast exists with `app.utils.nextTick`,
-which is, as a reminder, an internal equivalent to `setTimeout`. We first close the 
+which is, as a reminder, an Framework7 internal equivalent to `setTimeout`. We first close the 
 toast, call the prompt method on the deferred event and log the result:
 
 ```js
@@ -562,7 +579,7 @@ app.utils.nextTick(function() {
 
 We run `build_js()` and deploy the app to shinyapps.io. Figure \@ref(fig:mobile-pwa-installable)
 illustrates the install prompt window that appears to install the app. Once installed, the `beforeinstallprompt`
-event does not fire anymore and the app may be launched as a standalone app, for instance on macOSX (Figure \@ref(fig:mobile-pwa-installed))
+event does not fire anymore and the app may be launched as a standalone app, for instance on macOSX (Figure \@ref(fig:mobile-pwa-installed)).
 
 ```{r mobile-pwa-installable, echo=FALSE, fig.cap='Install prompt window.', out.width='100%'}
 knitr::include_graphics("images/mobile/mobile-pwa-installable.png")
@@ -572,8 +589,7 @@ knitr::include_graphics("images/mobile/mobile-pwa-installable.png")
 knitr::include_graphics("images/mobile/mobile-pwa-installed.png")
 ```
 
-On Figure \@ref(fig:mobile-pwa-installed), the blue window color corresponds to the `tags$meta(name = "theme-color", content = "#2196f3")`,
-of the `f7_page` layout element. Whenever the connection is lost, the redirection occurs to 
+On Figure \@ref(fig:mobile-pwa-installed), the blue window color corresponds to the `tags$meta(name = "theme-color", content = "#2196f3")`, passed in the `f7_page` layout element. Whenever the connection is lost, the redirection occurs to 
 the `offline.html` page, as shown on Figure \@ref(fig:mobile-pwa-offline).
 
 ```{r mobile-pwa-offline, echo=FALSE, fig.cap='Offline HTML template.', out.width='100%'}
@@ -593,7 +609,9 @@ uses Workbox as a service worker generator by default. It does:
   - Improve offline experience.
   - ...
 
+TO FINISH (it currently does not work).
+
 ## Other resources
-The process described above works perfectly for any Shiny template. Other packages like
-[{shiny.pwa}](https://github.com/pedrocoutinhosilva/shiny.pwa) create a PWA compatible structure
-on the fly. 
+The process described above works perfectly for any Shiny template. The reader may also consider other packages like
+[{shiny.pwa}](https://github.com/pedrocoutinhosilva/shiny.pwa), that creates a PWA compatible structure
+at run time, within the app `/www` folder. 

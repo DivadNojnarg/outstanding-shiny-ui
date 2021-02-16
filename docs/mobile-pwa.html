@@ -85,31 +85,36 @@
 </h1>
 <p>Transforming a classic Shiny app into a PWA is a game changer for end users.
 The first step is to setup a valid web manifest with icons and favicon.</p>
-<div id="disclaimers" class="section level2">
-<h2>
-<span class="header-section-number">25.1</span> Disclaimers<a class="anchor" aria-label="anchor" href="#disclaimers"><i class="fas fa-link"></i></a>
-</h2>
+<div class="importantblock">
 <p>Some of the PWA features won’t work with <a href="https://medium.com/@firt/progressive-web-apps-on-ios-are-here-d00430dee3a7">iOS</a>, like the
 install prompt.</p>
 </div>
+<div class="warningbox">
+<p>As a reminder, the code examples shown throughout this chapter are gathered in a package accessible <a href="https://github.com/DivadNojnarg/installable-pwa-test">here</a>, specifically PWA apps are available <a href="https://github.com/DivadNojnarg/installable-pwa-test/tree/main/inst/examples">here</a>.</p>
+</div>
 <div id="introduction-5" class="section level2">
 <h2>
-<span class="header-section-number">25.2</span> Introduction<a class="anchor" aria-label="anchor" href="#introduction-5"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.1</span> Introduction<a class="anchor" aria-label="anchor" href="#introduction-5"><i class="fas fa-link"></i></a>
 </h2>
-<p>Below, we review one by one the steps necessary to convert a shiny app to a PWA.
-To get a goo idea of what we exactly miss, we leverage the <code>Application</code> tab of the
+<p>Below, we review one by one the necessary steps to convert a shiny app to a PWA.
+To get a good idea of what our mission exactly is, we leverage the <code>Application</code> tab of the
 developer tools.</p>
-<p>The overall expected result is shown Figure <a href="mobile-pwa.html#fig:mobile-pwa">25.1</a>. Alternatively, one
-may use the Google Lighthouse utility to provide a general diagnosis to the app.
-There are many categories like performance, accessibility. In our case, let’s just select
+<p>The overall expected result is shown Figure <a href="mobile-pwa.html#fig:mobile-pwa-1">25.1</a>. Alternatively, one
+may use the Google Lighthouse utility to provide a general diagnosis to the app, as illustrated on Figure <a href="mobile-pwa.html#fig:mobile-pwa-2">25.2</a>. There are many categories like performance, accessibility. In our case, let’s just select
 the PWA category, select the mobile device radio and click on generate a report.</p>
-<div class="figure">
-<span id="fig:mobile-pwa"></span>
-<img src="images/mobile/mobile-pwa-application.png" alt="Application tab of the developers tools" width="50%"><img src="images/mobile/mobile-pwa-lighthouse.png" alt="Application tab of the developers tools" width="50%"><p class="caption">
+<div class="figure" style="text-align: center">
+<span id="fig:mobile-pwa-1"></span>
+<img src="images/mobile/mobile-pwa-application.png" alt="Application tab of the developers tools" width="100%"><p class="caption">
 FIGURE 25.1: Application tab of the developers tools
 </p>
 </div>
-<p>According to the diagnostic result displayed on Figure <a href="mobile-pwa.html#fig:mobile-pwa-lighthouse-result">25.2</a>, we miss many elements:</p>
+<div class="figure" style="text-align: center">
+<span id="fig:mobile-pwa-2"></span>
+<img src="images/mobile/mobile-pwa-lighthouse.png" alt="Google Lightouse utility" width="100%"><p class="caption">
+FIGURE 25.2: Google Lightouse utility
+</p>
+</div>
+<p>According to the diagnostic result displayed on Figure <a href="mobile-pwa.html#fig:mobile-pwa-lighthouse-result">25.3</a>, we don’t meet all requirements, most importantly there is:</p>
 <ul>
 <li>No manifest.</li>
 <li>No service worker.</li>
@@ -118,19 +123,17 @@ FIGURE 25.1: Application tab of the developers tools
 <div class="figure">
 <span id="fig:mobile-pwa-lighthouse-result"></span>
 <img src="images/mobile/mobile-pwa-lighthouse-result.png" alt="Lighthouse audit result" width="100%"><p class="caption">
-FIGURE 25.2: Lighthouse audit result
+FIGURE 25.3: Lighthouse audit result
 </p>
 </div>
 </div>
 <div id="charpente-and-pwa-tools" class="section level2">
 <h2>
-<span class="header-section-number">25.3</span> <code>{charpente}</code> and PWA tools<a class="anchor" aria-label="anchor" href="#charpente-and-pwa-tools"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.2</span> <code>{charpente}</code> and PWA tools<a class="anchor" aria-label="anchor" href="#charpente-and-pwa-tools"><i class="fas fa-link"></i></a>
 </h2>
-<p><a href="https://github.com/RinteRface/charpente">charpente</a> has tools to help designing a PWA. The <code>set_pwa</code> function is a wrapper
-that does all the previously mentioned step in only one line of code. There are however few
-prerequisites:</p>
+<p><a href="https://github.com/RinteRface/charpente">charpente</a> has tools to help designing a PWA, particularly the <code>set_pwa</code> function, that does all the previously mentioned step in only one line of code. There are however few prerequisites:</p>
 <ul>
-<li>The app must belong to a package.</li>
+<li>The app must <strong>belong to a package</strong>.</li>
 <li>The function must target the app directory.</li>
 </ul>
 <p>As a reminder, the demonstration apps are located within the <code>inst/examples</code> folder.
@@ -154,7 +157,7 @@ We create the <code>pwa-app</code> sub-folder and the <code>app.R</code> file:</
 <p>This function generates a <code>manifest.webmanifest</code> file, downloads the Google PWA compatibility
 script, adds a custom dependency pointing to the <code>manifest.webmanifest</code> file and a <code>144x144</code> icon file,
 copies a boilerplate <code>service-worker.js</code> with its <code>offline.html</code> page and optionally registers the
-service worker (code borrowed from <a href="https://web.dev/offline-fallback-page/#registering-the-service-worker">web.dev</a>:</p>
+service worker (whose code is borrowed from <a href="https://web.dev/offline-fallback-page/#registering-the-service-worker">web.dev</a>:</p>
 <div class="sourceCode" id="cb601"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb601-1"><a href="mobile-pwa.html#cb601-1"></a><span class="va">window</span>.<span class="at">addEventListener</span>(<span class="st">'load'</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
 <span id="cb601-2"><a href="mobile-pwa.html#cb601-2"></a>  <span class="cf">if</span> (<span class="st">'serviceWorker'</span> <span class="kw">in</span> navigator) <span class="op">{</span></span>
 <span id="cb601-3"><a href="mobile-pwa.html#cb601-3"></a>    <span class="kw">var</span> pathname <span class="op">=</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">pathname</span><span class="op">;</span></span>
@@ -163,7 +166,7 @@ service worker (code borrowed from <a href="https://web.dev/offline-fallback-pag
 <span id="cb601-6"><a href="mobile-pwa.html#cb601-6"></a>      .<span class="at">then</span>(<span class="kw">function</span>() <span class="op">{</span> <span class="va">console</span>.<span class="at">log</span>(<span class="st">'Service Worker Registered'</span>)<span class="op">;</span> <span class="op">}</span>)<span class="op">;</span></span>
 <span id="cb601-7"><a href="mobile-pwa.html#cb601-7"></a>  <span class="op">};</span></span>
 <span id="cb601-8"><a href="mobile-pwa.html#cb601-8"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
-<p>In the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> case, as Framework7 already registers any linked service
+<p>In the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> case, as Framework7 already registers any provided service
 worker, we don’t need that initialization script. Therefore, we actually call:</p>
 <div class="sourceCode" id="cb602"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/set_pwa.html">set_pwa</a></span><span class="op">(</span><span class="st">"inst/examples/pwa-app"</span>, register_service_worker <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
@@ -171,12 +174,12 @@ worker, we don’t need that initialization script. Therefore, we actually call:
 <a href="https://appsco.pe/developer/splash-screens">appsco</a> and
 <a href="https://app-manifest.firebaseapp.com">app-manifest</a>, to create
 those custom icons and splash screens, if you need to.</p>
-<p>Below we give more detail</p>
+<p>In the following, we provide more detail about the mentioned steps.</p>
 <div id="create-the-manifest" class="section level3">
 <h3>
-<span class="header-section-number">25.3.1</span> Create the manifest<a class="anchor" aria-label="anchor" href="#create-the-manifest"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.2.1</span> Create the manifest<a class="anchor" aria-label="anchor" href="#create-the-manifest"><i class="fas fa-link"></i></a>
 </h3>
-<p>We want to create a JSON configuration file like this:</p>
+<p>We would like to create a JSON configuration file like this:</p>
 <div class="sourceCode" id="cb603"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb603-1"><a href="mobile-pwa.html#cb603-1"></a><span class="op">{</span></span>
 <span id="cb603-2"><a href="mobile-pwa.html#cb603-2"></a>  <span class="st">"short_name"</span><span class="op">:</span> <span class="st">"My App"</span><span class="op">,</span></span>
 <span id="cb603-3"><a href="mobile-pwa.html#cb603-3"></a>  <span class="st">"name"</span><span class="op">:</span> <span class="st">"Super amazing app"</span><span class="op">,</span></span>
@@ -195,9 +198,9 @@ those custom icons and splash screens, if you need to.</p>
 <span id="cb603-16"><a href="mobile-pwa.html#cb603-16"></a>  <span class="st">"scope"</span><span class="op">:</span> <span class="st">"/"</span><span class="op">,</span></span>
 <span id="cb603-17"><a href="mobile-pwa.html#cb603-17"></a>  <span class="st">"theme_color"</span><span class="op">:</span> <span class="st">"#3367D6"</span></span>
 <span id="cb603-18"><a href="mobile-pwa.html#cb603-18"></a><span class="op">}</span></span></code></pre></div>
-<p>This file has to be accessible by the app so best practice is to put it in the <code>/www</code> folder.
-and images are hosted in a sub-directory <code>/www/icons</code>.</p>
-<p>The <code>create_manifest</code> function is basically writing a JSON file at the provided location:</p>
+<p>This file has to be accessible by the app, hence best practice is to put it in the <code>/www</code> folder,
+images being hosted in the <code>/www/icons</code> sub-directory.</p>
+<p>The <code>create_manifest</code> function writes a JSON file at the provided location:</p>
 <div class="sourceCode" id="cb604"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">create_manifest</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">path</span>, <span class="va">name</span> <span class="op">=</span> <span class="st">"My Progressive Web App"</span>, <span class="va">shortName</span> <span class="op">=</span> <span class="st">"My App"</span>,
                             <span class="va">description</span> <span class="op">=</span> <span class="st">"What it does!"</span>, <span class="va">lang</span> <span class="op">=</span> <span class="st">"en-US"</span>,
@@ -262,19 +265,22 @@ containing all necessary resources:</p>
  <span class="op">)</span>
  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span><span class="va">tag</span>, <span class="va">pwa_deps</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p>In practice, since the package already relies on other dependencies like Framework7, we will leverage the <code>charpente::add_dependencies</code> function to add all dependencies at once.</p>
+<div class="noteblock">
 <p>Importantly, all provided icons must follow the convention <code>icon-&lt;size_in_px&gt;.png</code> like
 <code>icon-144.png</code>, which is the default.</p>
 </div>
+</div>
 <div id="google-pwa-compatibility" class="section level3">
 <h3>
-<span class="header-section-number">25.3.2</span> Google PWA compatibility<a class="anchor" aria-label="anchor" href="#google-pwa-compatibility"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.2.2</span> Google PWA compatibility<a class="anchor" aria-label="anchor" href="#google-pwa-compatibility"><i class="fas fa-link"></i></a>
 </h3>
-<p>As we use the google PWA compatibility script, we have to include at least one icon
+<p>As we use the Google PWA compatibility script, we have to include at least one icon
 like <code>&lt;link rel="icon" type="image/png" href="res/icon-128.png" sizes="128x128" /&gt;</code>.
 However, we found some discrepancies between the developer tools recommendations and the
-PWA compatibility script. We recommend to follow the developer tools prescriptions, that
+PWA compatibility script. Therefore, we recommend to follow the developer tools prescriptions, that
 is to include at least one icon of size 144x144. All other elements are generated by the script itself,
-which is extremely convenient. Indeed, having to handle all possible screen sizes and different OS is particularly
+which is convenient. Indeed, having to handle all possible screen sizes and different OS is particularly
 tricky, repetitive and not interesting.</p>
 <p>The HTML dependency is downloaded with <code><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency("pwacompat", options = charpente_options(bundle = FALSE))</a></code>.
 Don’t forget to update the <code>add_dependencies</code> list by including the two new dependencies:</p>
@@ -335,30 +341,30 @@ Don’t forget to update the <code>add_dependencies</code> list by including the
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>If you do <code><a href="https://devtools.r-lib.org//reference/load_all.html">devtools::load_all()</a></code> and run the app again, you should see the new dependencies
-in the <code>head</code> (Figure <a href="mobile-pwa.html#fig:mobile-pwa-deps">25.3</a>).</p>
+in the <code>head</code> (Figure <a href="mobile-pwa.html#fig:mobile-pwa-deps">25.4</a>).</p>
 <div class="figure">
 <span id="fig:mobile-pwa-deps"></span>
 <img src="images/mobile/mobile-pwa-deps.png" alt="New PWA dependencies in the head tag." width="100%"><p class="caption">
-FIGURE 25.3: New PWA dependencies in the head tag.
+FIGURE 25.4: New PWA dependencies in the head tag.
 </p>
 </div>
-<p>Yet, according to Figure <a href="mobile-pwa.html#fig:mobile-pwa-missing-sw">25.4</a>, we still miss the service worker,
-as shown in the manifest diagnostic. This shows how powerful are the developer tools and
+<p>Yet, according to Figure <a href="mobile-pwa.html#fig:mobile-pwa-missing-sw">25.5</a>, we still miss the service worker,
+as shown in the manifest diagnostic. This demonstrates how powerful are the developer tools as
 the end user is always guided step by step.</p>
 <div class="figure">
 <span id="fig:mobile-pwa-missing-sw"></span>
 <img src="images/mobile/mobile-pwa-missing-sw.png" alt="Missing service worker registration." width="100%"><p class="caption">
-FIGURE 25.4: Missing service worker registration.
+FIGURE 25.5: Missing service worker registration.
 </p>
 </div>
 </div>
 <div id="service-worker-and-offline-page" class="section level3">
 <h3>
-<span class="header-section-number">25.3.3</span> Service worker and offline page<a class="anchor" aria-label="anchor" href="#service-worker-and-offline-page"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.2.3</span> Service worker and offline page<a class="anchor" aria-label="anchor" href="#service-worker-and-offline-page"><i class="fas fa-link"></i></a>
 </h3>
 <p>The second mandatory step to make our app installable is the service worker.
 We borrowed the code from <a href="https://web.dev/offline-fallback-page/">web.dev</a>. <code>set_pwa</code> copies
-this code in the <code>www</code> folder of the provided app:</p>
+this code in the the provided app <code>www</code> folder:</p>
 <div class="sourceCode" id="cb608"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb608-1"><a href="mobile-pwa.html#cb608-1"></a><span class="co">/*</span></span>
 <span id="cb608-2"><a href="mobile-pwa.html#cb608-2"></a><span class="co">Copyright 2015, 2019, 2020 Google LLC. All Rights Reserved.</span></span>
 <span id="cb608-3"><a href="mobile-pwa.html#cb608-3"></a><span class="co"> Licensed under the Apache License, Version 2.0 (the "License");</span></span>
@@ -445,20 +451,22 @@ this code in the <code>www</code> folder of the provided app:</p>
 <span id="cb608-84"><a href="mobile-pwa.html#cb608-84"></a>  <span class="co">// event.respondWith(), the request will be handled by the browser as if there</span></span>
 <span id="cb608-85"><a href="mobile-pwa.html#cb608-85"></a>  <span class="co">// were no service worker involvement.</span></span>
 <span id="cb608-86"><a href="mobile-pwa.html#cb608-86"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
-<p>This service worker redirects the end user to the offline cached page whenever
-the app is offline, thereby offering a better user experience. It explicitly
-targets an <code>offline.html</code> page. Therefore, we strongly advise to keep the same file names.</p>
-<p>The next step is to mention and register the service worker. Framework7 has a dedicated module in the
+<p>This service worker redirects the end user to the offline cached page (<code>offline.html</code>) whenever
+the app is offline, thereby offering a better user experience.</p>
+<div class="importantblock">
+<p>We strongly advise to keep the same file names.</p>
+</div>
+<p>The next step involves the service worker registration. Framework7 has a dedicated module in the
 app configuration. We modify <code>init.js</code> and run <code><a href="https://rdrr.io/pkg/charpente/man/build_js.html">build_js()</a></code> to update the minified file:</p>
 <div class="sourceCode" id="cb609"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb609-1"><a href="mobile-pwa.html#cb609-1"></a>serviceWorker<span class="op">:</span> <span class="op">{</span></span>
 <span id="cb609-2"><a href="mobile-pwa.html#cb609-2"></a>  <span class="dt">path</span><span class="op">:</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">pathname</span> <span class="op">+</span> <span class="st">'service-worker.js'</span><span class="op">,</span></span>
 <span id="cb609-3"><a href="mobile-pwa.html#cb609-3"></a>  <span class="dt">scope</span><span class="op">:</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">pathname</span></span>
 <span id="cb609-4"><a href="mobile-pwa.html#cb609-4"></a><span class="op">}</span></span></code></pre></div>
-<p>If the process is successful, you get the result shown in Figure <a href="mobile-pwa.html#fig:mobile-pwa-registered-sw">25.5</a>.</p>
+<p>If the process is successful, you get the result shown in Figure <a href="mobile-pwa.html#fig:mobile-pwa-registered-sw">25.6</a>.</p>
 <div class="figure">
 <span id="fig:mobile-pwa-registered-sw"></span>
 <img src="images/mobile/mobile-pwa-registered-sw.png" alt="Registered service worker." width="100%"><p class="caption">
-FIGURE 25.5: Registered service worker.
+FIGURE 25.6: Registered service worker.
 </p>
 </div>
 <p>The new standard imposes to return a valid response when the app is offline. The offline page is
@@ -512,19 +520,23 @@ further PWA optimization may be provided.</p>
 <div class="figure">
 <span id="fig:mobile-pwa-audit-final"></span>
 <img src="images/mobile/mobile-pwa-audit-final.png" alt="Installable shinyMobile app." width="100%"><p class="caption">
-FIGURE 25.6: Installable shinyMobile app.
+FIGURE 25.7: Installable shinyMobile app.
 </p>
+</div>
+<div class="importantblock">
+<p>A common source of error is the browser cache. It is best practice to regularly empty the cache.
+Alternatively, one may runs in incognito mode, which does not cache files.</p>
 </div>
 </div>
 <div id="disable-pwa-for-the-end-user" class="section level3">
 <h3>
-<span class="header-section-number">25.3.4</span> Disable PWA for the end user<a class="anchor" aria-label="anchor" href="#disable-pwa-for-the-end-user"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.2.4</span> Disable PWA for the end user<a class="anchor" aria-label="anchor" href="#disable-pwa-for-the-end-user"><i class="fas fa-link"></i></a>
 </h3>
 <p>With the above approach, <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> will always look for a service worker to register.
-Particularly, this raises an error in case no service worker is found on the server.
-What if the user don’t want to always create a PWA, let’s say for less important applications?
-We may add a parameter to the <code>f7Page</code>, for instance <code>allowPWA</code> that is either <code>TRUE</code> or <code>FALSE</code>,
-store its value in the <code>body</code> <code>data-pwa</code> attribute and recover it on the JS side in <code>init.js</code>:</p>
+Particularly, this would raise an error in case no service worker is found on the server.
+What if the user don’t want to create a PWA, let’s say for less important applications?
+We may add a parameter to the <code>f7Page</code>, for instance <code>allowPWA</code>, that is either <code>TRUE</code> or <code>FALSE</code>,
+store its value in the <code>body</code> <code>data-pwa</code> attribute and recover it on the JS side within <code>init.js</code>:</p>
 <div class="sourceCode" id="cb611"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb611-1"><a href="mobile-pwa.html#cb611-1"></a><span class="co">// check if the app is intended to be a PWA</span></span>
 <span id="cb611-2"><a href="mobile-pwa.html#cb611-2"></a><span class="kw">var</span> isPWA <span class="op">=</span> <span class="at">$</span>(<span class="st">'body'</span>).<span class="at">attr</span>(<span class="st">'data-pwa'</span>) <span class="op">===</span> <span class="st">"true"</span><span class="op">;</span></span>
 <span id="cb611-3"><a href="mobile-pwa.html#cb611-3"></a></span>
@@ -534,20 +546,21 @@ store its value in the <code>body</code> <code>data-pwa</code> attribute and rec
 <span id="cb611-7"><a href="mobile-pwa.html#cb611-7"></a>    <span class="dt">scope</span><span class="op">:</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">pathname</span></span>
 <span id="cb611-8"><a href="mobile-pwa.html#cb611-8"></a>  <span class="op">};</span></span>
 <span id="cb611-9"><a href="mobile-pwa.html#cb611-9"></a><span class="op">}</span></span></code></pre></div>
-<p>We then <strong>only</strong> create <code>config.serviceWorker</code> if the user specified <code>allowPWA = TRUE</code>.</p>
+<p>It <strong>only</strong> creates <code>config.serviceWorker</code> if the user specified <code>allowPWA = TRUE</code>.</p>
 </div>
 </div>
 <div id="handle-the-installation" class="section level2">
 <h2>
-<span class="header-section-number">25.4</span> Handle the installation<a class="anchor" aria-label="anchor" href="#handle-the-installation"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.3</span> Handle the installation<a class="anchor" aria-label="anchor" href="#handle-the-installation"><i class="fas fa-link"></i></a>
 </h2>
-<p>It is a great opportunity to propose a <a href="https://developers.google.com/web/fundamentals/app-install-banners/native">custom</a>
-installation experience.</p>
-<p><strong>Note</strong>: To be able to install the app, make sure to replace <code>start_url</code> by the url
+<p>It is a great opportunity to propose a <a href="https://developers.google.com/web/fundamentals/app-install-banners/native">custom</a> installation experience.</p>
+<div class="warningbox">
+<p>To be able to install the app, make sure to replace <code>start_url</code> by the url
 where the app is deployed like <code>https://dgranjon.shinyapps.io/installable-pwa-app/</code> for instance.
-Missing that step would cause an issue during the service worker registration.
-Once the installation criteria are met, the web browser raises the <code>beforeinstallprompt</code> event, except
-on iOS platform, that is not yet compatible. To check it, we edit the <code>init.js</code> script and add:</p>
+Missing that step would cause an issue during the service worker registration.</p>
+</div>
+<p>Once the installation criteria are met, the web browser raises the <code>beforeinstallprompt</code> event, except
+on the iOS platform, that is not yet compatible. We edit the <code>init.js</code> script and write:</p>
 <div class="sourceCode" id="cb612"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb612-1"><a href="mobile-pwa.html#cb612-1"></a><span class="kw">let</span> deferredPrompt<span class="op">;</span></span>
 <span id="cb612-2"><a href="mobile-pwa.html#cb612-2"></a><span class="va">window</span>.<span class="at">addEventListener</span>(<span class="st">'beforeinstallprompt'</span><span class="op">,</span> (e) <span class="kw">=&gt;</span> <span class="op">{</span></span>
 <span id="cb612-3"><a href="mobile-pwa.html#cb612-3"></a>  <span class="co">// Prevent the mini-infobar from appearing on mobile</span></span>
@@ -556,16 +569,15 @@ on iOS platform, that is not yet compatible. To check it, we edit the <code>init
 <span id="cb612-6"><a href="mobile-pwa.html#cb612-6"></a>  deferredPrompt <span class="op">=</span> e<span class="op">;</span></span>
 <span id="cb612-7"><a href="mobile-pwa.html#cb612-7"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>This code adds an event listener to the window, prevents it from showing at start with <code>e.preventDefault</code> and
-captures it in an external variable called <code>deferredPrompt</code>. After, we create our custom piece of UI that will
-trigger the <code>prompt</code> install. We can benefit from the rich Framework7 interface and display
-a <a href="https://framework7.io/docs/toast.html">toast</a> containing an install button. The instantiation
-is fairly simple and follows the pattern <code>app.&lt;COMPONENT&gt;.create(parameters)</code>:</p>
+captures it in an external variable called <code>deferredPrompt</code>. The next step comprises the design of our custom piece of UI that will trigger the <code>prompt</code> install. We can benefit from the rich Framework7 interface and display
+a <a href="https://framework7.io/docs/toast.html">toast</a> containing an install button. The initialization
+is fairly simple, following the pattern <code>app.&lt;COMPONENT&gt;.create(parameters)</code>:</p>
 <div class="sourceCode" id="cb613"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb613-1"><a href="mobile-pwa.html#cb613-1"></a><span class="co">// Create custom install UI</span></span>
 <span id="cb613-2"><a href="mobile-pwa.html#cb613-2"></a><span class="kw">var</span> installToast <span class="op">=</span> <span class="va">app</span>.<span class="va">toast</span>.<span class="at">create</span>(<span class="op">{</span></span>
 <span id="cb613-3"><a href="mobile-pwa.html#cb613-3"></a>  <span class="dt">position</span><span class="op">:</span> <span class="st">'center'</span><span class="op">,</span></span>
 <span id="cb613-4"><a href="mobile-pwa.html#cb613-4"></a>  <span class="dt">text</span><span class="op">:</span> <span class="st">'&lt;button id="install-button" class="toast-button button color-green"&gt;Install&lt;/button&gt;'</span><span class="op">,</span></span>
 <span id="cb613-5"><a href="mobile-pwa.html#cb613-5"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
-<p>We give it an id so as to call it later. We edit the <code>beforeinstallprompt</code> event listener to show
+<p>We give it an id so as to call it later and edit the <code>beforeinstallprompt</code> event listener to show
 the toast:</p>
 <div class="sourceCode" id="cb614"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb614-1"><a href="mobile-pwa.html#cb614-1"></a><span class="kw">let</span> deferredPrompt<span class="op">;</span></span>
 <span id="cb614-2"><a href="mobile-pwa.html#cb614-2"></a><span class="va">window</span>.<span class="at">addEventListener</span>(<span class="st">'beforeinstallprompt'</span><span class="op">,</span> (e) <span class="kw">=&gt;</span> <span class="op">{</span></span>
@@ -576,11 +588,12 @@ the toast:</p>
 <span id="cb614-7"><a href="mobile-pwa.html#cb614-7"></a>  <span class="co">// Show install trigger</span></span>
 <span id="cb614-8"><a href="mobile-pwa.html#cb614-8"></a>  <span class="va">installToast</span>.<span class="at">open</span>()<span class="op">;</span></span>
 <span id="cb614-9"><a href="mobile-pwa.html#cb614-9"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
-<p><strong>Note</strong>: with jQuery like <code>$(window).on('beforeinstallprompt', ...)</code>,
-we would capture the event with <code>e.originalEvent</code>!</p>
-<p>Then we register a second event listener, which fires on the toast button click.
+<div class="noteblock">
+<p>With jQuery like <code>$(window).on('beforeinstallprompt', ...)</code>, we would capture the event with <code>e.originalEvent</code>!</p>
+</div>
+<p>We register a second event listener, which fires on the toast button click.
 We should wait a bit of time so that the toast exists with <code>app.utils.nextTick</code>,
-which is, as a reminder, an internal equivalent to <code>setTimeout</code>. We first close the
+which is, as a reminder, an Framework7 internal equivalent to <code>setTimeout</code>. We first close the
 toast, call the prompt method on the deferred event and log the result:</p>
 <div class="sourceCode" id="cb615"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb615-1"><a href="mobile-pwa.html#cb615-1"></a><span class="va">app</span>.<span class="va">utils</span>.<span class="at">nextTick</span>(<span class="kw">function</span>() <span class="op">{</span></span>
 <span id="cb615-2"><a href="mobile-pwa.html#cb615-2"></a>  <span class="at">$</span>(<span class="st">'#install-button'</span>).<span class="at">on</span>(<span class="st">'click'</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
@@ -601,28 +614,27 @@ toast, call the prompt method on the deferred event and log the result:</p>
 <span id="cb615-17"><a href="mobile-pwa.html#cb615-17"></a>    <span class="op">}</span>)<span class="op">;</span></span>
 <span id="cb615-18"><a href="mobile-pwa.html#cb615-18"></a>  <span class="op">}</span>)<span class="op">;</span></span>
 <span id="cb615-19"><a href="mobile-pwa.html#cb615-19"></a><span class="op">},</span> <span class="dv">500</span>)<span class="op">;</span></span></code></pre></div>
-<p>We run <code><a href="https://rdrr.io/pkg/charpente/man/build_js.html">build_js()</a></code> and deploy the app to shinyapps.io. Figure <a href="mobile-pwa.html#fig:mobile-pwa-installable">25.7</a>
+<p>We run <code><a href="https://rdrr.io/pkg/charpente/man/build_js.html">build_js()</a></code> and deploy the app to shinyapps.io. Figure <a href="mobile-pwa.html#fig:mobile-pwa-installable">25.8</a>
 illustrates the install prompt window that appears to install the app. Once installed, the <code>beforeinstallprompt</code>
-event does not fire anymore and the app may be launched as a standalone app, for instance on macOSX (Figure <a href="mobile-pwa.html#fig:mobile-pwa-installed">25.8</a>)</p>
+event does not fire anymore and the app may be launched as a standalone app, for instance on macOSX (Figure <a href="mobile-pwa.html#fig:mobile-pwa-installed">25.9</a>).</p>
 <div class="figure">
 <span id="fig:mobile-pwa-installable"></span>
 <img src="images/mobile/mobile-pwa-installable.png" alt="Install prompt window." width="100%"><p class="caption">
-FIGURE 25.7: Install prompt window.
+FIGURE 25.8: Install prompt window.
 </p>
 </div>
 <div class="figure">
 <span id="fig:mobile-pwa-installed"></span>
 <img src="images/mobile/mobile-pwa-installed.png" alt="Installed PWA on macOSX." width="100%"><p class="caption">
-FIGURE 25.8: Installed PWA on macOSX.
+FIGURE 25.9: Installed PWA on macOSX.
 </p>
 </div>
-<p>On Figure <a href="mobile-pwa.html#fig:mobile-pwa-installed">25.8</a>, the blue window color corresponds to the <code>tags$meta(name = "theme-color", content = "#2196f3")</code>,
-of the <code>f7_page</code> layout element. Whenever the connection is lost, the redirection occurs to
-the <code>offline.html</code> page, as shown on Figure <a href="mobile-pwa.html#fig:mobile-pwa-offline">25.9</a>.</p>
+<p>On Figure <a href="mobile-pwa.html#fig:mobile-pwa-installed">25.9</a>, the blue window color corresponds to the <code>tags$meta(name = "theme-color", content = "#2196f3")</code>, passed in the <code>f7_page</code> layout element. Whenever the connection is lost, the redirection occurs to
+the <code>offline.html</code> page, as shown on Figure <a href="mobile-pwa.html#fig:mobile-pwa-offline">25.10</a>.</p>
 <div class="figure">
 <span id="fig:mobile-pwa-offline"></span>
 <img src="images/mobile/mobile-pwa-offline.png" alt="Offline HTML template." width="100%"><p class="caption">
-FIGURE 25.9: Offline HTML template.
+FIGURE 25.10: Offline HTML template.
 </p>
 </div>
 <p>The <code>installable-pwa-test</code> <a href="https://github.com/DivadNojnarg/installable-pwa-test">repository</a>
@@ -630,7 +642,7 @@ contains the final code to reproduce the previous steps.</p>
 </div>
 <div id="workbox" class="section level2">
 <h2>
-<span class="header-section-number">25.5</span> Workbox<a class="anchor" aria-label="anchor" href="#workbox"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.4</span> Workbox<a class="anchor" aria-label="anchor" href="#workbox"><i class="fas fa-link"></i></a>
 </h2>
 <p><a href="https://developers.google.com/web/tools/workbox">Workbox</a> is a more robust alternative
 to the approach described above. Interestingly, Framework7
@@ -641,14 +653,15 @@ to improve performances.</li>
 <li>Improve offline experience.</li>
 <li>…</li>
 </ul>
+<p>TO FINISH (it currently does not work).</p>
 </div>
 <div id="other-resources" class="section level2">
 <h2>
-<span class="header-section-number">25.6</span> Other resources<a class="anchor" aria-label="anchor" href="#other-resources"><i class="fas fa-link"></i></a>
+<span class="header-section-number">25.5</span> Other resources<a class="anchor" aria-label="anchor" href="#other-resources"><i class="fas fa-link"></i></a>
 </h2>
-<p>The process described above works perfectly for any Shiny template. Other packages like
-<a href="https://github.com/pedrocoutinhosilva/shiny.pwa">{shiny.pwa}</a> create a PWA compatible structure
-on the fly.</p>
+<p>The process described above works perfectly for any Shiny template. The reader may also consider other packages like
+<a href="https://github.com/pedrocoutinhosilva/shiny.pwa">{shiny.pwa}</a>, that creates a PWA compatible structure
+at run time, within the app <code>/www</code> folder.</p>
 
 </div>
 </div>
@@ -659,19 +672,18 @@ on the fly.</p>
     <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
       <ul class="nav navbar-nav">
 <li><a class="nav-link" href="#mobile-pwa"><span class="header-section-number">25</span> {shinyMobile} and PWA</a></li>
-<li><a class="nav-link" href="#disclaimers"><span class="header-section-number">25.1</span> Disclaimers</a></li>
-<li><a class="nav-link" href="#introduction-5"><span class="header-section-number">25.2</span> Introduction</a></li>
+<li><a class="nav-link" href="#introduction-5"><span class="header-section-number">25.1</span> Introduction</a></li>
 <li>
-<a class="nav-link" href="#charpente-and-pwa-tools"><span class="header-section-number">25.3</span> {charpente} and PWA tools</a><ul class="nav navbar-nav">
-<li><a class="nav-link" href="#create-the-manifest"><span class="header-section-number">25.3.1</span> Create the manifest</a></li>
-<li><a class="nav-link" href="#google-pwa-compatibility"><span class="header-section-number">25.3.2</span> Google PWA compatibility</a></li>
-<li><a class="nav-link" href="#service-worker-and-offline-page"><span class="header-section-number">25.3.3</span> Service worker and offline page</a></li>
-<li><a class="nav-link" href="#disable-pwa-for-the-end-user"><span class="header-section-number">25.3.4</span> Disable PWA for the end user</a></li>
+<a class="nav-link" href="#charpente-and-pwa-tools"><span class="header-section-number">25.2</span> {charpente} and PWA tools</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#create-the-manifest"><span class="header-section-number">25.2.1</span> Create the manifest</a></li>
+<li><a class="nav-link" href="#google-pwa-compatibility"><span class="header-section-number">25.2.2</span> Google PWA compatibility</a></li>
+<li><a class="nav-link" href="#service-worker-and-offline-page"><span class="header-section-number">25.2.3</span> Service worker and offline page</a></li>
+<li><a class="nav-link" href="#disable-pwa-for-the-end-user"><span class="header-section-number">25.2.4</span> Disable PWA for the end user</a></li>
 </ul>
 </li>
-<li><a class="nav-link" href="#handle-the-installation"><span class="header-section-number">25.4</span> Handle the installation</a></li>
-<li><a class="nav-link" href="#workbox"><span class="header-section-number">25.5</span> Workbox</a></li>
-<li><a class="nav-link" href="#other-resources"><span class="header-section-number">25.6</span> Other resources</a></li>
+<li><a class="nav-link" href="#handle-the-installation"><span class="header-section-number">25.3</span> Handle the installation</a></li>
+<li><a class="nav-link" href="#workbox"><span class="header-section-number">25.4</span> Workbox</a></li>
+<li><a class="nav-link" href="#other-resources"><span class="header-section-number">25.5</span> Other resources</a></li>
 </ul>
 
       <div class="book-extra">

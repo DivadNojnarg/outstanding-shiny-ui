@@ -1,6 +1,12 @@
 # Design widgets {#mobile-widgets}
 Framework7 brings dozen of different widgets like a photo browser, virtual lists (high performance lists),
-messages, notifications, toasts, ...
+messages, notifications, toasts. Figure \@ref(fig:mobile-widgets-examples) shows from left to right the chat widget, the floating action buttons and the gauges.
+
+```{r mobile-widgets-examples, echo=FALSE, fig.show = "hold", out.width = "33%", fig.align = "default"}
+knitr::include_graphics("images/mobile/mobile-widget-chat.png")
+knitr::include_graphics("images/mobile/mobile-widget-fab.png")
+knitr::include_graphics("images/mobile/mobile-widget-gauges.png")
+```
 
 Looking at the [documentation](https://v5.framework7.io/docs/), the API is most of the time
 always the same that is, we create the widget:
@@ -17,11 +23,14 @@ app.widget.open();
 app.widget.close();
 ```
 
-I must admit, there are few deviations like the navbar (`app.navbar.show()`) or the dialog but we have enough common points to
-design a main wrapper that creates any widget and update/open/close it.
+I must admit, there are few deviations like the navbar (`app.navbar.show()`) or the dialog but we have enough common points to design a main wrapper that creates any widget and update/open/close it.
 
-What we do below significantly simplify the R/JS API at a price to slightly reduce the
-customization. 
+What we do below significantly simplifies the R/JS API by providing a general method to 
+initialize and update some of those widgets.
+
+::: {.warningbox data-latex=""}
+The code examples shown throughout this chapter are gathered in a package accessible [here](https://github.com/DivadNojnarg/installable-pwa-test), specifically [here](https://github.com/DivadNojnarg/installable-pwa-test/blob/main/R/widgets.R) for widgets. 
+:::
 
 ## Build the UI
 We know that JavaScript must receive a configuration object to create the widget instance.
@@ -64,9 +73,9 @@ f7_gauge <- function(id, value, options = NULL) {
 
 We provide a default for the `valueText` option that should display the current
 value followed by a `%` symbol. Note that the class is crucial to target the relevant tag on the JS side. 
-All other widgets will moreless follow the same scheme. Be careful about partial matching
-with the `$` operator. This is the reason why we used `[[` instead: with `$`, `valueText` would be
-matched with `valueTextColor`, leading to misleading behavior.
+All other widgets more or less follow the same scheme. Be careful about partial matching
+with the `$` operator. This is the reason why we used `[[` instead: with `$`, `valueText` could be
+matched with `valueTextColor`, leading to unexpected behavior.
 
 
 ## Widgets without preexisting UI
@@ -86,7 +95,7 @@ f7_notif <- function(id = NULL, text, options = NULL, session = shiny::getDefaul
 }
 ```
 
-Pay attention to the `icon` element: we can't convert shiny tags to JSON, so they
+Pay attention to the `options$icon` element. As we can't convert shiny tags to JSON, it
 must be converted to character first. If multiple parameters should contain tags,
 you must treat them accordingly!
 
@@ -108,7 +117,7 @@ const widgets = uiWidgets.concat(serverWidgets);
 ```
 
 We then define the `activateWidget` function, only considering UI widgets. 
-Since we have two widgets categories, this function first checks whether the widget is part of the `uiWidgets` array:
+Since we have two widgets categories, this function first checks whether the widget is part of the `uiWidgets` array with `indexOf`:
 
 ```js
 if (uiWidgets.indexOf(widget) > -1) {
@@ -116,8 +125,8 @@ if (uiWidgets.indexOf(widget) > -1) {
 }
 ```
 
-As there may be multiple widgets of the same time to initialize, we must loop through all
-possible elements. This is where the class is important and must match the widget name.
+As there may be multiple widgets of the same type, we must loop through all
+possible elements. This is where the class is important and must match the widget generic name.
 For instance, the gauge has the `gauge` class and the methods are always `app.gauge.`.
 How do we loop through multiple widgets? We use the jQuery `each` method:
 
@@ -130,11 +139,11 @@ if (uiWidgets.indexOf(widget) > -1) {
 ```
 
 We see that `$("." + widget)` gives `$(".gauge)` when the widget is a gauge, which
-will target all gauges one by one. Then for each gauge, we extract the configuration containing
+targets all gauges one by one. Then for each gauge, we extract the configuration containing
 all options passed by the end user. Remember that each element has a unique id. 
 We extract the current element `$(this)` in the `$el` variable and search for a 
 script tag pointing to the unique tag having `$el.attr("id")` as id. The configuration is parsed
-to convert it to an object. Note that most of the time, Framework7 expects to have a `el`
+and converted to an object. Note that most of the time, Framework7 expects to have a `el`
 attributes which simply contains the CSS selector of the current element, 
 in other words its unique id `'#' + $el.attr("id")`:
 
@@ -152,7 +161,7 @@ if (uiWidgets.indexOf(widget) > -1) {
 }
 ```
 
-The final step is to initialize the widget, which is quite straightforward if we notice that
+The final step consists in initializing the widget, which is quite straightforward if we notice that
 `app.gauge` is the same as `app["gauge"]`. We obtain the general code:
 
 ```js
@@ -162,7 +171,7 @@ app[widget].create(config);
 For the server widgets, it is even simpler. We recover the message with a `Shiny.addCustomMessageHandler("type", callback)` and
 initialize it. The only possible source of problem is the custom message `type` that must be the same 
 as the one specified in the R function with `session$sendCustomMessage("type", message)`. We create
-an `else` statement following the `if` condition and put that code inside:
+an `else` statement following the `if` condition and put the below code inside:
 
 ```js
 Shiny.addCustomMessageHandler(widget, function(message) {
@@ -182,16 +191,13 @@ Shiny.addCustomMessageHandler(widget, function(message) {
 });
 ```
 
-As shown in the above code, we can also immediately open the widget by chaining methods. Moreover, it 
+As shown in the above code, we can chain methods and immediately open the widget, right after its creation. Moreover, it 
 is always good practice to let Shiny know about the widget state, that is whether it is currently
-opened. This is the reason why we added a `on` property to the message. All widgets trigger events, 
+opened. This is the reason why we added an `on` property to the message. All widgets trigger [events](https://v5.framework7.io/docs/notification.html#dom-events), 
 for instance notifications have the `notification:opened` and `notification:closed`. For each event, 
-we set an input value on the fly, with `Shiny.setInputValue`. This way, the template users are
-able to know exactly when the widget is closed or opened and trigger any subsequent action.
-This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
+we set an input value on the fly, with `Shiny.setInputValue` as explained in Chapter \ref(quick-inputs). This way, our future users are able to know exactly when the widget is closed or opened, thereby being able to trigger any subsequent action. This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
 
-
-The full JavaScript code may be found below.
+The full JavaScript code may be found here:
 
 ```js
 // Instantiate a widget
@@ -232,7 +238,7 @@ activateWidget = function(widget) {
 };
 ```
 
-The final step is to activate all widgets. We proceed with a loop:
+The final step aims at activating all widgets. We proceed with a `forEach` loop:
 
 ```js
 // Loop over all widgets to activate them
@@ -275,9 +281,9 @@ shinyApp(ui, server)
 
 ## Update widgets
 We would like to develop a similar generalized interface to update any element in the DOM.
-Instead of having `update_f7_gauge`, `update_f7_swiper`, ... we want an `update_f7_instance` function. 
+Instead of having `update_f7_gauge` or `update_f7_swiper`, we want an `update_f7_instance` function. 
 
-We leverage the `app.data` element that stores all instances by widget type. In the previous part,
+We leverage the `app.data` element that stores all instances by widget type. In Chapter \@ref(mobile-global-data),
 we already created a cache for tooltips, so let's do it for gauges:
 
 ```js
@@ -289,19 +295,21 @@ config.data = function() {
 };
 ```
 
-At that step, the array name must be the same as the app method. For instance,
+At that stage, the array name must be the same as the app method. For instance,
 we have `app.gauge`, which means that we should create `config.data.gauge` and not `config.data.gauges`,
 as it would lead to errors later.
 
 Once the cache is available, we have to modify the JavaScript that creates the widget instance,
-to store the new instance in the cache. We add the following code, where w refers to the widget instance:
+to store the new instance in the cache. We add the following code, where `w` refers to the widget instance:
 
 ```js
 // ui widgets
 app.data[widget][$el.attr("id")] = w;
 ```
 
-This manipulation does not make sense for server widgets!
+::: {.noteblock data-latex=""}
+This manipulation does not make sense for server widgets as they are already generated by the server.
+:::
 
 The `activateWidget` function should be:
 
@@ -350,18 +358,18 @@ activateWidget = function(widget) {
 Once done, this is time to design `update_f7_instance`. The R code sends a message to
 the current session containing:
 
-  - The id of the element to update.
-  - The new configuration.
+  - The __id__ of the element to update.
+  - The new __configuration__.
   
 Since we send a JSON, the hardest part is to correctly process shiny tags. How do we
-track shiny tags. As a reminder, let's run the code below:
+track shiny tags? As a reminder, let's run the code below:
 
 ```{r}
 class(shiny::div())
 class(shiny::tagList(shiny::div(), shiny::h1()))
 ```
 
-For each configuration element, we must check whether its class contains `shiny.tag` or `shiny.tag.list` and convert it to a character. Moreover, it may contain a nested list like this:
+For each configuration element, we must check whether its class contains `shiny.tag` or `shiny.tag.list` and convert it to a character. Moreover, it may contain a nested list, like this:
 
 ```{r, eval = FALSE}
 options = list(
@@ -375,8 +383,7 @@ options = list(
 )
 ```
 
-In that case, our function must be recursive and call itself whenever an item having the `list` class
-is found. If the element is simple text, numeric, we return it as is.
+In that case, our function must be recursive to handle any item having the `list` class. If the element is simple text or numeric, we return it as is.
 
 We finally get:
 
@@ -406,7 +413,7 @@ update_f7_instance <- function(id, options, session = shiny::getDefaultReactiveD
 }
 ```
 
-On the JS side, we receive the message (still in the `widget.js` script):
+On the JS side, we receive the message, still in the `widget.js` script:
 
 ```js
 Shiny.addCustomMessageHandler('update-instance', function(message) {
@@ -417,7 +424,7 @@ Shiny.addCustomMessageHandler('update-instance', function(message) {
 All widgets are stored by type in the app data, for instance, the element having for unique id
 `mygauge` is located in `app.data["gauge"]["mygauge"]`. As there is no easy way to recover the widget type
 given its id, the first step of the message handler is to find where our instance is located. We design a
-nested for loop. The outer loop scans all app.data properties (ie widget categories) and the inner loop
+nested for loop. The outer loop scans all `app.data` properties (ie widget categories), while the inner loop
 scans all existing instances for each category. Whenever, the `message.id` matches the instance
 name, we store the corresponding widget category in a variable:
 
@@ -435,10 +442,10 @@ for (const property in app.data) {
 We then access the old instance using the newly defined variable and the `message.id`.
 We capture its parameters located in `oldInstance.params`. From there, multiple options are available:
 
-  - We extend the old configuration by the new one.
+  - We extend the old configuration with the new one.
   - We entirely overwrite the existing options. 
   
-Below, we decided to merge the old and new configurations using `app.utils.extend`:
+In what follows, we decided to merge the old and new configurations using `app.utils.extend`:
 
 ```js
 var oldInstance = app.data[instanceFamily][message.id];
@@ -446,7 +453,7 @@ var oldConfig = oldInstance.params;
 var newConfig = app.utils.extend(oldConfig,  message.options);
 ```
 
-The next step is to destroy the old instance, initialize the new instance and refresh 
+The next step consists in destroying the old instance, initializing the new instance and refreshing 
 the `app.data` cache:
 
 ```js
@@ -458,7 +465,7 @@ var newInstance = app[instanceFamily].create(newConfig);
 app.data[instanceFamily][message.id] = newInstance;
 ```
 
-The whole code is located below:
+The whole code is found below:
 
 ```js
 Shiny.addCustomMessageHandler('update-instance', function(message) {
