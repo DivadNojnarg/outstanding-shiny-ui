@@ -1,7 +1,14 @@
 # Reconstruct `{shinyMobile}` {#mobile-shinyMobile}
 
-__Disclaimer__: This section has been written and tested with Framework7 `5.7.14`.
-Some feature may change in future releases.
+::: {.importantblock data-latex=""}
+This section has been written and tested with Framework7 `5.7.14`.
+Some feature may change in future releases. 
+However, fear not, the process follows the same general principles. 
+:::
+
+::: {.warningbox data-latex=""}
+As a reminder, the code examples shown throughout this chapter are gathered in a package accessible [here](https://github.com/DivadNojnarg/installable-pwa-test). 
+:::
 
 ## Introduction to Framework7
 Framework7 is the HTML/CSS/JavaScript engine that fuels `{shinyMobile}`. 
@@ -26,23 +33,21 @@ get_dependency_assets("framework7")
 
 We browse to the [package](https://framework7.io/docs/package.html) structure page,
 which provides details about necessary components. We are going to use the bundle version since
-the lite approach is missing several components. We therefore only need `framework7.bundle.min.js` and
-`framework7.bundle.min.css`, which is the default options of `create_dependency`:
+the lite approach is missing several components, particularly Framework7 widgets. We therefore only need `framework7.bundle.min.js` and `framework7.bundle.min.css`, which is the `create_dependency` default options:
 
 ```{r, eval=FALSE}
 path <- file.path(tempdir(), "shinyMobile")
 create_charpente(path, license = "mit")
 ```
 
-Once the package created and opened, we download Framework7 dependencies. We specify
-the latest stable version that is `5.7.14` and we target `bundle.min` files since minified
-files do not contain the code to make all components working:
+Once the package created and opened, we download Framework7 dependencies, specifying
+the latest stable version, that is `5.7.14`, and targeting `bundle.min` files:
 
 ```{r, eval=FALSE}
 create_dependency("framework7", tag = "5.7.14", options = charpente_options(bundle = TRUE))
 ```
 
-which generates the `framework7-dependencies.R` script:
+Besides, this generates the `framework7-dependencies.R` script:
 
 ```{r, eval=FALSE}
 add_framework7_deps <- function(tag) {
@@ -60,12 +65,11 @@ add_framework7_deps <- function(tag) {
 
 
 ## Framework7 Layouts
-Framework7 has 3 predefined layouts (Figure \@ref(fig:mobile-framework7-layouts)):
+Framework7 has three predefined layouts (Figure \@ref(fig:mobile-framework7-layouts)):
 
-  - Single page layout.
-  - Multi tabs layout.
-  - Split layout: this template is focused for tablet/desktop use. 
-  It is composed of a sidebar and a main panel.
+  - __Single page__ layout.
+  - __Multi tabs__ layout.
+  - __Split__ layout, targeting tablet/desktop. It is composed of a sidebar and a main panel.
   
 ```{r mobile-framework7-layouts, echo=FALSE, fig.cap='Framework7 layouts', out.width='33%', fig.align = "default", fig.show = "hold"}
 knitr::include_graphics("images/mobile/mobile-shinymobile-single-layout.png")
@@ -73,7 +77,7 @@ knitr::include_graphics("images/mobile/mobile-shinymobile-tabs-layout.png")
 knitr::include_graphics("images/mobile/mobile-shinymobile-split-layout.png")
 ```
 
-Let's start simple and select the single page layout, whose corresponding HTML is 
+Let's start simple and choose the single page layout, whose corresponding HTML is 
 given by:
 
 ```html
@@ -136,18 +140,17 @@ given by:
 </html>
 ```
 
-The `head` tag contains meta tags, some of them required for the PWA features. 
+The `head` tag contains meta tags, some of them required for the PWA features, discussed in the next Chapter \@ref(mobile-pwa). 
 The most important part is the dependencies that will be included there. Note that
 the order matters: Framework7 dependencies go first, other dependencies follow. 
 The `body` tag is composed of several layers. The first one is the `app` root element, which
 is crucial to the template initialization. We'll come back on that point in the next section. 
-Then we find the `view view-main` component, inside which we find the `page`. The page contains
-the `navbar`, `toolbar` (bottom bar) and the `page content`. Framework7 inserts JavaScript code
-at the end of the body. Don't worry, we can include them in the `head` as well. 
+Then we find the `view view-main` component, inside which is located the `page`, containing
+the `navbar`, `toolbar` (bottom bar) and the `page content`. Altough, Framework7 inserts JavaScript code
+at the end of the body, we can include them in the `head` as well. 
 
-Using `html_2_R` we convert the above code to R and extract the `f7_page` function. We replace
-the title content by a title parameter, we remove all CSS and JS links since we add
-them with the `add_dependencies` function applied to `body`. The page content is contained in a `...` parameter.
+Leveraging `html_2_R`, we convert the above code to R and extract the `f7_page` function. We replace
+the title content by a title parameter, paying attention to remove all CSS and JS links, as they are already included with the `add_dependencies` function applied to `body`. The page content is contained in a `...` parameter.
 We also move the navbar and toolbar content to create 2 other layout functions:
 
 ```{r}
@@ -194,7 +197,7 @@ f7_page <- function(..., navbar, toolbar, title = NULL) {
 ```
 
 Below are the `navbar` and `toolbar` components. The navbar has only a title parameter and
-the toolbar may contain items in a `...` parameter. In practice they may contain more element
+the toolbar may contain items in a `...` parameter. In practice they may contain more element,
 but this is enough for now:
 
 ```{r}
@@ -223,8 +226,10 @@ f7_toolbar <- function(...) {
 }
 ```
 
+::: {.noteblock data-latex=""}
 Don't forget to regularly insert roxygen documentation with the insert roxygen skeleton 
 RStudio feature. 
+:::
 
 At that point, we can try to run a simple shiny app. Best practice is to save the `app.R` file in
 the `inst/examples` folder:
@@ -244,7 +249,27 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
-which displays nothing, but returns no error. We are actually missing the app initialization step.
+which displays nothing, but returns no error. We actually forgot the app initialization step.
+
+## Handle multiple scripts
+In the following parts, we are going to create multiple JS files. If we define app in `init.js`, how do we retrieve it in another script? If you remember about the JavaScript module part \@ref(about-js-modules), this is a good place to exploit them. Any element may be exported and made available to other scripts with:
+
+```js
+// Export in one script like init.js
+export let myVar = 'test';
+export function myFunc() {
+  console.log('Plop');
+}
+
+// Import in another script like widgets.js
+import { myVar, myFunc } from 'path_to_init'
+```
+
+::: {.warningbox data-latex=""}
+`export` and `import` must be called at the top level of a script. For instance,
+the `export` in 'init.js' cannot be inside the `$( document ).ready(function(...)});`, as this would
+trigger an error with the terser. 
+:::
 
 ## App initialization
 This step is mandatory to activate all template components (router, panels, ...).
@@ -266,19 +291,24 @@ $( document ).ready(function() {
     // other options
   });
 });
+
+// Export app to another script: uncomment 
+// when considering multiple scripts!
+// export app;
 ```
 
-__Note__: we don't assign `app` to a variable to make it globally accessible by any script!
-It is relevant since app may be needed almost everywhere. 
+::: {.warningbox data-latex=""}
+Mostb of the code inside `init.js` is wrapped in a function that waits the document to be ready before interacting with the DOM. This is necessary since the configuration is retrieved from a `script` DOM element inserted when the application starts, thus not immediately available. If you try to remove the `$( document ).ready(function(...)});`, an error will be raised since the configuration cannot be properly retrieved (timing issue). 
+::: 
 
-This script creates the app instance so as to be able to use [methods](https://framework7.io/docs/app.html#app-methods-properties),
-get other information, interact with layout elements and listen to app events (offline, online, ...). 
+This script creates the app instance necessary to leverage Framework7 [methods](https://framework7.io/docs/app.html#app-methods-properties),
+initialize other widgets, interact with layout elements and listen to app events (offline, online, ...). 
 Since the root element is a direct child of the body, the `root` property is not
 mandatory. The full configuration list may be found [here](https://framework7.io/docs/app.html).
-The next step is to initialize the main view, we add this line right after the app creation:
+The next step consists in initializing the main view, we add this line right after the app creation:
 
 ```js
-mainView = app.views.create('.view-main');
+var mainView = app.views.create('.view-main');
 ```
 
 Once done, we compress the corresponding JS file to create the `shinyMobile.min.js` code
@@ -332,7 +362,7 @@ f7_page <- function(..., navbar, toolbar, title = NULL) {
 devtools::load_all()
 ```
 
-If you run the previous app again, it should work as shown on Figure \@ref(fig:mobile-shinyMobile-firstapp).
+The working app is shown on Figure \@ref(fig:mobile-shinyMobile-firstapp).
 The right panel displays the developer tools inside which we can seamlessly debug the JS code, by
 leveraging source maps. 
 
@@ -340,8 +370,7 @@ leveraging source maps.
 knitr::include_graphics("images/mobile/mobile-shinyMobile-firstapp.png")
 ```
 
-From now, we can add a welcome notification message leveraging the [notification](https://framework7.io/docs/notification.html) API.
-There are 2 steps:
+From now, we can add a welcome notification message with the [notification](https://framework7.io/docs/notification.html) API. There are 2 steps:
 
   - Create the notification instance with `app.notification.create(parameters)`.
   - Tell the app to open the notification at start with `app.notification.open()`.
@@ -358,14 +387,15 @@ var notification = app.notification.create({
 }).open();
 ```
 
-It will open at start up and close on swipe gesture. The Framework7 API is quite easy to
-understand and extremely powerful.
+It opens at app start up and closes on swipe gesture. The Framework7 API is quite easy to
+understand and extremely powerful. Chapter \@ref(mobile-widgets) gives a better introduction to the main 
+Framework7 widgets. 
 
 ## App configuration
 The [app](https://framework7.io/docs/app.html) object has a tremendous amount of methods and parameters.
-In this section, we briefly describe the most significant and how to set it up.
+In this section, we briefly describe the most significant and how to set them up.
 Among all parameters, there are metadata parameters like __name__ and __version__. Once the app initialized, all
-app parameters are accessible with the `.` notation. For instance, if you setup a version number it is accessible 
+app parameters are accessible with the `.` notation. For instance, if you set a version number, it is accessible later
 with `app.version`.
 
 ### Global theme
@@ -373,13 +403,12 @@ with `app.version`.
 One of the most important parameter is the __theme__ that controls the overall app design (Figure \@ref(fig:mobile-framework7-themes)):
 
   - `ios` corresponds the iOS design.
-  - `md` to material design.
-  - `aurora` to a desktop optimized design.
+  - `md` stands for material design.
+  - `aurora` is a desktop optimized design.
   
-The good new is that if this parameter is set to `auto`, Framework7 will detect the
-current device and accordingly adapt the design. Nothing prevents you from forcing the
-iOS layout on android devices, even though being irrelevant. Interestingly, one may recover the
-current device with `app.device`. There are many properties to [review](https://framework7.io/docs/device.html).
+As this parameter is set to `auto`, Framework7 detects the
+current device stored in `app.device`, and accordingly adapt the design. Nothing prevents you from forcing the
+iOS layout on android devices, even though being quite irrelevant. Here are many properties to [review](https://framework7.io/docs/device.html).
 
 
 ```{r mobile-framework7-themes, echo=FALSE, fig.cap='Framework7 skins: iOS (left), md (right).', out.width='50%', fig.align = "default", fig.show = "hold"}
@@ -404,9 +433,9 @@ app = new Framework7({
 
 ### Components configuration
 All Framework7 components are highly customizable. Yet, if you know that some 
-parameters are not going to change, it is a good idea to make them global and share
-across all instances. For instance, notifications have global options. Let's add this code
-to the `init.js` script inside the `var app = new Framework7({ ... })`:
+parameters are not going to change, it is a good idea to make them global and share them
+across all instances. For example, notifications have global options. Let's add this code
+to the `init.js` script directly inside the `var app = new Framework7({ ... })`:
 
 ```js
 notification: {
@@ -417,10 +446,7 @@ notification: {
 
 This means all notifications will close after 3 seconds and have the `My App` title.
 We add another notification to the `init.js` script with a delay of 1 second so as to
-test this global feature. Note the use of internal Framework7 [utils](https://framework7.io/docs/utils.html#nexttick) 
-`app.utils.nextTick`, 
-which is nothing more
-than a `setTimeout`. At this point it should look like this:
+test this global feature. Note the use of the internal Framework7 [utils](https://framework7.io/docs/utils.html#nexttick) `app.utils.nextTick`, which is nothing more than a `setTimeout`. At this point, `init.js` should look like this:
 
 ```js
 $( document ).ready(function() {
@@ -461,14 +487,15 @@ $( document ).ready(function() {
   }, 1000);
   
 });
-```
 
+export app;
+```
 
 
 ### Other elements
 Framework7 provides mobile specific modules like `touch`, which is a long press event (here 750 ms).
-This is something you can usually do on many apps. To activate that feature, we pass
-the following configuration to the app parameters list, that is inside `app = new Framework7({...});`:
+This is something you can usually do on many mobile apps. To activate that feature, we pass
+the following configuration to the app parameters list, namely inside `app = new Framework7({...});`:
 
 ```js
 touch: {
@@ -476,7 +503,7 @@ touch: {
 }
 ```
 
-To test that component, we create a button element and add it the `taphold` event in `init.js`:
+We create a button element and add it the `taphold` event in `init.js`:
 
 ```js
 $('#mybutton').on('taphold', function () {
@@ -512,9 +539,11 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
-Once the app is running don't forget to open the developer tools and
+::: {.warningbox data-latex=""}
+Once the app is running, don't forget to open the developer tools and
 set the device on mobile mode (iPhone or android) since `taphold` does not fire
 on desktop (Figure \@ref(fig:mobile-shinyMobile-taphold)). 
+::: 
 
 `taphold` also triggers events related to the click like text selection, which 
 one may want to disable. If so, we have to add the following code to `init.js`, making sure
@@ -536,14 +565,15 @@ if (config.hasOwnProperty("touch")) {
 }
 ```
 
-which disables classic text selection after a long press in the window. 
+It disables classic text selection after a long press in the window. 
 
 ```{r mobile-shinyMobile-taphold, echo=FALSE, fig.cap='Long press or taphold event', out.width='100%'}
 knitr::include_graphics("images/mobile/mobile-shinyMobile-taphold.png")
 ```
 
 An important remark is the click handling in Framework7. Framework7 has its own internal [router](https://framework7.io/docs/view.html) that allows to pass data between pages and perform quite
-advanced actions. While extremely convenient for classic web apps, 
+advanced actions. Do you remember the `app.views.create('.view-main');` step? This real purpose is actually to
+activate the internal router. While extremely convenient for classic web apps, 
 this feature is not completely suited for Shiny that does not natively support multi pages apps. 
 The recent [work](https://github.com/ColinFay/brochure) in the field is promising and plays well
 with `{shinyMobile}` (see [here](https://github.com/RinteRface/shinyMobile/issues/136)) but this is out of the scope of this chapter. The internal router has strong implications, for instance clicking on 
@@ -569,7 +599,8 @@ ui <- fluidPage(mylink)
 shinyApp(ui, server)
 ```
 
-To fix this issue, Framerwork7 has a `clicks` module options, that we may pass any valid CSS selector to the `externalLinks` property. Below is the default configuration:
+To fix this issue, Framework7 has a `clicks` module options, accepting any valid CSS selector. 
+Below is the default configuration:
 
 ```js
 clicks: {
@@ -577,24 +608,28 @@ clicks: {
 }
 ```
 
-__Note__: one might be tempted to target all `a` elements: this is a bad idea, 
+Consequently, in order to skip the internal router, links must have the `.external` class.
+
+::: {.importantblock data-latex=""}
+One might be tempted to target all `a` elements: this is a bad idea, 
 as it also target tabs navigation, which eventually fails! Therefore, it is best 
 practice to add the `external` class to all the necessary links like `a(href = "https://www.google.com/", "Click me", class = "external")`
+:::
 
 
 ### Allow end-user configuration
 In the above sections, we described some parameters to configure the app. Yet, 
 we did setup all values directly in JavaScript. How do we allow the end user to provide
-external values?
+his very own parameters?
 
 The idea is the following:
 
-  - We create an options parameter in the `f7_page` function which accepts a list
+  - We create an options argument in the `f7_page` function which accepts a list
   of parameters.
-  - We convert it to the JSON format and store it in a tag. Ideally next to the `body` element.
+  - We convert it to the JSON format and store it in a tag, ideally next to the `body` element.
   - We recover those data on the JS side and update the app initialization method.
   
-The `f7_page` may be adapted:
+The `f7_page` may be accordingly modified:
 
 ```{r, eval=FALSE}
 f7_page <- function(..., navbar, toolbar, title = NULL, options = NULL) {
@@ -654,9 +689,8 @@ f7_page <- function(..., navbar, toolbar, title = NULL, options = NULL) {
 }
 ```
 
-The above code deserves some explanations. We exploit a method already defined in section \@ref(secondary-inputs).
-We convert the options list to a JSON with `jsonlite::toJSON` and embed it in a script tag. 
-The `data-for` attribute with the unique id guarantees the uniqueness of our configuration script.
+The above code still deserves some explanations, even though we exploit a method already defined in section \@ref(secondary-inputs). We convert the options list to a JSON with `jsonlite::toJSON` and embed it in a script tag. 
+The `data-for` attribute with the __id__ attribute guarantees the uniqueness of our configuration script.
 
 ```{r, eval=FALSE}
 config_tag <- shiny::tags$script(
@@ -682,7 +716,7 @@ config = JSON.parse(config.html());
 We can accordingly update the app initialization:
 
 ```js
-app = new Framework7({
+var app = new Framework7({
     // App root element
     root: '#app',
     // App Name
@@ -700,6 +734,13 @@ app = new Framework7({
   });
 ```
 
+As the `config` object may be re-used in multiple scripts, it is a good idea to include it
+in the `init.js` export list:
+
+```js
+export { app, config };
+```
+
 What happens if the user forgets to supply the version number? `data.version` is undefined
 and the app still works! The biggest advantage of this approach is the fact that all `TRUE`
 and `FALSE` (R) are converted to `true` and `false` (JS), which avoids unnecessary conversion steps.
@@ -707,17 +748,17 @@ However, we are still missing many potential configuration options. For instance
 only `root`, `name`, `version`, `theme`, `notifications`, `touch` are considered. If the user
 provides any other option, it is ignored.
 
-In theory, we could do to make sure all elements are considered:
+In theory, this is what we could do to make sure that all elements are considered:
 
 ```js
-app = new Framework7(config);
+var app = new Framework7(config);
 ```
 
-It assumes that the user exactly knows what to provide in the list, especially mandatory elements. 
-Knowing the crazy number of options, it might be slightly too complex for a new user. 
+It is assumed that the user exactly knows what to provide in the list, especially mandatory elements. 
+Knowing the tremendous number of options, it might be slightly too complex for a new user. 
 What we suggest is to extract the most important components as direct `f7_page` parameters and 
 keep less important parameters in the options list. For example, 
-if you think that __theme__ is super important (and it truly is), you could do:
+if you think that __theme__ is crucial (and it truly is), you could do:
 
 ```{r, eval=FALSE}
 f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"), 
@@ -742,12 +783,7 @@ f7_page <- function(..., navbar, toolbar, theme = c("ios", "md", "aurora"),
 ```
 
 which makes the API a bit more accessible (event though more complex to maintain) 
-and you only need to add one line of documentation in the roxygen part. 
-It would be disheartening to redirect them to the Framework7 API documentation and have to 
-look for the relevant option! 
-
-Alternatively, you could also put all parameters in __options__ 
-but provide a default value for `f7Page` like:
+and you only need to add one line of documentation in the roxygen part. Alternatively, you could also put all parameters in __options__ and provide a default value for `f7Page` like:
 
 ```{r, eval=FALSE}
 \itemize{
@@ -811,18 +847,18 @@ f7Page <- function(
 
 ```
 
-and do `app = new Framework7(config);` on the JS side. 
+and write `var app = new Framework7(config);` on the JS side. 
 
 This is a good compromise since it avoids to create too many parameters, without sacrificing the
-documentation. 
-
-Don't forget that since `config` is an object, 
+documentation. Don't forget that since `config` is an object, 
 you may add any other properties, methods, on the fly with the `.` notation or `app.utils.extend`.
 
+
+::: {.noteblock data-latex=""}
 You finally may ask why we put `dark`, `color` and `filled` in the options list given they
 are not part of the app API parameters. As any unknown parameter is not considered
-by the `Framework7` class, we can safely keep them here, which is easier to treat on the JS side.
-
+by the `Framework7` class, we can definitely keep them here, which is easier to treat on the JS side.
+:::
 
 ### Modify configuration
 As previously stated, the app configuration is passed during the initialization process, through
@@ -843,56 +879,24 @@ app.utils.extend(app.params, newParams);
 
 The above example changes the default buttons text for all modal dialog. 
 
-__Note__: As far as I have tested, some options won't work like the __global theme__, which 
-would require to re-initialize the app and is obviously not possible. 
-
-
-## Handle multiple scripts
-
-### Scoping rules
-We only have only one JS file, namely `init.js`. How do we handle multiple files, especially scoping rules?
-The code inside `init.js` is wrapped in a main function that waits the document to be ready before interacting with the DOM. This is necessary since the configuration is retrieved from a `script` DOM element inserted when the application starts, thus not immediately available. If you try to remove the `$( document ).ready(function(...)});`, an error is raised since the config cannot be properly retrieved (timing issue). 
-
-As already mentioned above, if you think an object is to be reused in multiple scripts with
-different scopes, you can omit the `var` so that the element is global and accessible from anywhere.
-
-
-### Order matters {#shinyMobile-order-matters}
-Assume we want to move the `init.js` notifications to another script, say `notifications.js`.
-When we call `build_js`, the terser treats them by alphabetical order meaning notifications code appears
-after the init code in the final JS code. This is fine because `app` is created within `init.js` and called
-later in `notifications.js`. Now, we create a third script with another component, `component.js`:
-
-```js
-app.component.create(parameters);
-```
-
-`build_js` aggregates `component.js` and `init.js` in that order, which raises an error since `app` 
-is used before being defined. Remember that `build_js` has a __files__ parameter to specify a custom order and 
-we could do as below to properly concatenate files:
-
-```{r, eval=FALSE}
-js_files <- list.files("srcjs")
-init_js <- which(js_files == "init.js")
-component_js <- which(js_files == "component.js")
-js_files <- js_files[-c(init_js, component_js)]
-build_js(files = paste0("srcjs/", c("init.js", "component.js", jsFiles)))
-```
-
+::: {.warningbox data-latex=""}
+As far as we know, some options won't work like the __global theme__, which 
+would require to re-initialize the app and is obviously not possible.  
+::: 
 
 ### Global data and methods {#mobile-global-data}
-The Framework7 __data__ parameters allows to share global elements between multiple scripts. 
+The Framework7 __data__ parameters allows to store global elements, data, and use them in different scripts. 
 To illustrate this feature, we consider the `tooltip` [example](https://v5.framework7.io/docs/tooltip.html). 
 A tooltip is a help text generally displayed on hover (or click) over a specific element. 
 They are commonly used to improve user experience in all websites. 
-Framework7 provides two tooltips systems:
+Framework7 provides two tooltips APIs:
 
   - A purely UI side API where the tooltip is attached to a tag.
   - A server side API where the tooltip is dynamically injected in the page content.
   
-The first approach is obviously not interesting for us since it does not involve any
-single line of JS. The second approach heavily relies on the `app.data` object which we
-describe. On the R side, there are two functions:
+While the first approach is obviously not interesting for us since it does not involve any
+single line of JS, the second approach heavily relies on the `app.data` object. This is the one 
+we choose to explain. On the R side, we consider two functions:
 
   - `addF7Tooltip` that sends a custom message to JS called `add_tooltip`. This
   message is composed of the tooltip options (content, ...), as well as the selector
@@ -946,7 +950,7 @@ updateF7Tooltip <- function(id = NULL, selector = NULL,
    
 Framework7 does not provide any native `enable/disable` method, which means that once the
 tooltip is activated on a given element, it is visible forever, unless destroyed.
-One of the goal of `updateF7Tooltip` is to avoid this by temporarily disabling any tooltip and
+The main purpose of `updateF7Tooltip` is to avoid this, by temporarily disabling any tooltip and
 reactivating it later. 
 
 The JS part to activate the tooltip is `tooltips.js`:
@@ -957,7 +961,7 @@ Shiny.addCustomMessageHandler('add_tooltip', function(message) {
 });
 ```
 
-As mentioned early this is fine since `message` is a JSON element. We can also chain methods
+As mentioned earlier, this is fine since `message` is a JSON element. We can also chain methods
 like `app.tooltip.create(message).show();`. There is however a problem: `add_tooltip` is fired
 each time the user triggers a specific element on the R side. It means the tooltip instance is 
 created each time, which is not optimal. To fix this issue, we create a tooltips cache in the `app.data`
@@ -971,10 +975,10 @@ config.data = function() {
 };
 ```
 
-Importantly, `app.data` must be a function returning one or multiple elements. Let's first
-return an empty `tooltips` array. We update the `tooltips.js` file so that we:
+Importantly, `app.data` must be a function returning one or multiple elements. We first
+return an empty `tooltips` array and update the `tooltips.js` file so that we:
 
-  - Check if the tooltip instance is already in the `app.data` cached before creating an instance.
+  - Check if the tooltip instance is already in the cached `app.data` before creating an instance.
   If is is already there, nothing has to be done.
   - Each time we create a new instance, we save it in the `app.data` cache to retrieve it later.
   
@@ -999,8 +1003,8 @@ When multiple tooltips are created, we may search for them by target name, which
 a reasonable choice. For instance `app.data.tooltips["#mybutton"]` points to the
 tooltip associated to the element having `#mybutton` as id. So far so good!
 
-How do we enable/disable tooltip then? This is the mission of the `updateF7Tooltip`
-R function. The corresponding JS handler:
+How do we enable/disable tooltip then? This is the `updateF7Tooltip`
+R function role. The corresponding JS handler:
 
   - Checks if the specified tooltip instance exists and only update if it is the case.
   - Handles two situations: update the tooltip content or toggle the tooltip visibility (
@@ -1008,9 +1012,8 @@ R function. The corresponding JS handler:
   on hover so applying hide on a visible tooltip will only have effect until the user
   hover again over the same tooltip, which is useless).
   
-The `updateF7Tooltip` sends two elements to JS: the tooltip target element `message.targetEl`, the optional new text, that is `message.text` and the action to perform `message.action` (either update or toggle state).
+`updateF7Tooltip` sends three elements to JS: the tooltip target element `message.targetEl`, the optional new text, that is `message.text` and the action to perform `message.action` (either update or toggle state).
 Let's first update the tooltip element. In `tooltip.js`, we add:
-
 
 ```js
 Shiny.addCustomMessageHandler('update_tooltip', function(message) {
@@ -1029,7 +1032,7 @@ and stored in a local variable, `t`. We apply `setText` only if the user action 
 
 We handle the `toggle` case. The first thing to check is whether the current instance is active.
 We do it with the `app.tooltip.get` method targeted on `message.targetEl`. If the instance is
-alive, we get an object while we obtain undefined it does not exist. We then call the `app.tooltip.destroy` method
+alive, we get an object, while we obtain undefined if it does not exist. We then call the `app.tooltip.destroy` method
 on the current instance:
 
 ```js
@@ -1117,16 +1120,18 @@ Shiny.addCustomMessageHandler('update_tooltip', function(message) {
 });
 ```
 
-Similarly __methods__ hosts all global app methods. These are function you may re-use in different parts. Like for `app.data`, we access them with `app.methods`. 
+Similarly __methods__ hosts all global app methods. These are functions you may re-use in different parts. Like for `app.data`, we access them with `app.methods`. 
 
-__Important note__: `app.data` has been removed since Framework7 6.0.0!
+::: {.importantblock data-latex=""}
+`app.data` has been removed since Framework7 6.0.0!
+:::
 
 ## Theming and colors
-Framework7 has 15 color [themes](https://framework7.io/docs/color-themes.html?theme=light&bars=empty&color=%09+%23673ab7) with a dark/light global appearance. To apply them, we add `color-theme-COLOR` to the
-parent element. Best practice is to target the `body` since its the parent of all the page
-content. This ensures global consistency. The dark theme is triggered by adding the
+Framework7 offers 15 color [themes](https://framework7.io/docs/color-themes.html?theme=light&bars=empty&color=%09+%23673ab7) with a dark/light global appearance. To apply them, we add `color-theme-COLOR` to the
+parent element. Best practice is to target the `body` since it is the parent of all the page
+content, thereby ensuring global consistency. The dark theme is triggered by adding the
 `theme-dark` class to `html`. Since `body` belongs to `f7_page` but not `html` (added by
-Shiny at startup), we can apply the color in R but the dark mode has to be activated
+Shiny at startup), we can apply the color in R, while the dark mode has to be activated
 from JS:
 
 ```{r, eval=FALSE}
@@ -1246,8 +1251,8 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
-We can go further and apply the `filled` theme, which is a reverted design where all
-`navbar`, `toolbar`, ... are filled with the theme color. For this, we need to add the following CSS:
+We can go further and apply the `filled` theme, which is an alternative design where all
+`navbar`, `toolbar`, ... are filled with the theme color. In that case, we add the following CSS:
 
 ```css
 /* Invert navigation bars to fill style */
@@ -1525,6 +1530,9 @@ $( document ).ready(function() {
     app.methods.toggleDarkTheme();
   }
 });
+
+// exports to reuse app and config in multiple scripts
+export {app, config};
 ```
 
 and the dark mode app example:
@@ -1568,5 +1576,4 @@ The overall expected result is shown Figure \@ref(fig:mobile-shinyMobile-dark).
 knitr::include_graphics("images/mobile/mobile-shinymobile-dark.png")
 ```
 
-We have now set all base pieces. In the next chapter, we see how to make `{shinyMobile}` apps
-as progressive web apps.
+We have now set all base pieces. In the next chapter, we see how to convert a `{shinyMobile}` app (and any vanilla shiny app) into a progressive web app.
