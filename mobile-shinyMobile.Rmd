@@ -1544,4 +1544,72 @@ The overall expected result is shown Figure \@ref(fig:mobile-shinyMobile-dark).
 knitr::include_graphics("images/mobile/mobile-shinymobile-dark.png")
 ```
 
-We have now set all base pieces. In the next chapter, we see how to convert a `{shinyMobile}` app (and any vanilla shiny app) into a progressive web app.
+## Modularize JS code
+As shown above, the `init.js` code starts to grow and this is not a good sign. 
+In this section, we show how to utilize the `import` and `export` statements, possible
+owing to the `esbuild` JS bundler. Note that this is a more modern version of writing equivalent to the `module.exports` and `require` shown in \@ref(about-js-modules).
+
+In the R console, we run `create_js("helpers_config", reference = FALSE)`, which creates a new JS script but does not import it in the `main.js` `esbuild` entry point. Inside we extract a function containing all steps to set up the app configuration object:
+
+```js
+export const setConfig = () => {
+  // collect all data elements stored in body
+ let config = $(document).find("script[data-for='app']");
+ config = JSON.parse(config.html());
+
+ // always erase existing root value just in case the user changes the root.
+ // This may be harmful
+ config.root = "#app";
+
+  // store app methods
+  config.methods =  {
+    toggleDarkTheme: function() {
+      let self = this;
+      let $html = self.$("html");
+      $html.toggleClass("theme-dark");
+    }
+  };
+
+  // check if the app is intended to be a PWA
+  let isPWA = $('body').attr('data-pwa') === "true";
+
+  if (isPWA) {
+    config.serviceWorker = {
+      path: window.location.pathname + "service-worker.js",
+      scope: window.location.pathname
+    };
+  }
+
+  // Widgets cache
+  config.data = function() {
+    return {
+      // any other widget type to cache ...
+      gauge: []
+    };
+  };
+
+  return config;
+}
+```
+
+This function does not have any argument and must return the `config` variable that will be subsequently injected in `new Framework7(config)` to initialize the app. In the `init.js` script, we import the `setConfig()` function and call it within `$( document ).ready`:
+
+```js
+import { setConfig } from './helpers_config.js'
+
+$( document ).ready(function() {
+  let config = setConfig();
+  // create app instance
+  app = new Framework7(config);
+  // ...
+});
+```
+
+We can bundle our code with `build_js()`. We invite the reader to modularize the other features mentioned above, the final product being available [here](https://github.com/DivadNojnarg/installable-pwa-test).
+
+
+::: {.warningbox data-latex=""}
+If the function has a side effect, for instance modify a variable located in another scope, it must return the transformed variable output, so that it can be tracked at the upper level. 
+:::
+
+We have now set all foundations. In the next chapter, we see how to convert a `{shinyMobile}` app (and any vanilla shiny app) into a progressive web app.

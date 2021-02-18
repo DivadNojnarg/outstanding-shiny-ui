@@ -120,7 +120,7 @@ To get an idea of the package file structure, we run:</p>
 <pre><code>## ✓ Success!</code></pre>
 <pre><code>## ────────────────────────────────────────────────────────────────────────────────</code></pre>
 <pre><code>## $url
-## [1] "https://cdn.jsdelivr.net/npm/framework7@6.0.8/"
+## [1] "https://cdn.jsdelivr.net/npm/framework7@6.0.10/"
 ## 
 ## $files
 ##  [1] "esm"                           "core"                         
@@ -1507,7 +1507,67 @@ of the config. If the user don’t provide any value, we set <code>config.dark</
 FIGURE 24.6: Dark mode in {shinyMobile}
 </p>
 </div>
-<p>We have now set all base pieces. In the next chapter, we see how to convert a <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> app (and any vanilla shiny app) into a progressive web app.</p>
+</div>
+<div id="modularize-js-code" class="section level2">
+<h2>
+<span class="header-section-number">24.7</span> Modularize JS code<a class="anchor" aria-label="anchor" href="#modularize-js-code"><i class="fas fa-link"></i></a>
+</h2>
+<p>As shown above, the <code>init.js</code> code starts to grow and this is not a good sign.
+In this section, we show how to utilize the <code>import</code> and <code>export</code> statements, possible
+owing to the <code>esbuild</code> JS bundler. Note that this is a more modern version of writing equivalent to the <code>module.exports</code> and <code>require</code> shown in <a href="survival-kit-javascript.html#about-js-modules">9.4.6.1</a>.</p>
+<p>In the R console, we run <code><a href="https://rdrr.io/pkg/charpente/man/create_file.html">create_js("helpers_config", reference = FALSE)</a></code>, which creates a new JS script but does not import it in the <code>main.js</code> <code>esbuild</code> entry point. Inside we extract a function containing all steps to set up the app configuration object:</p>
+<div class="sourceCode" id="cb593"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb593-1"><a href="mobile-shinyMobile.html#cb593-1"></a><span class="im">export</span> <span class="kw">const</span> setConfig <span class="op">=</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb593-2"><a href="mobile-shinyMobile.html#cb593-2"></a>  <span class="co">// collect all data elements stored in body</span></span>
+<span id="cb593-3"><a href="mobile-shinyMobile.html#cb593-3"></a> <span class="kw">let</span> config <span class="op">=</span> <span class="at">$</span>(document).<span class="at">find</span>(<span class="st">"script[data-for='app']"</span>)<span class="op">;</span></span>
+<span id="cb593-4"><a href="mobile-shinyMobile.html#cb593-4"></a> config <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">config</span>.<span class="at">html</span>())<span class="op">;</span></span>
+<span id="cb593-5"><a href="mobile-shinyMobile.html#cb593-5"></a></span>
+<span id="cb593-6"><a href="mobile-shinyMobile.html#cb593-6"></a> <span class="co">// always erase existing root value just in case the user changes the root.</span></span>
+<span id="cb593-7"><a href="mobile-shinyMobile.html#cb593-7"></a> <span class="co">// This may be harmful</span></span>
+<span id="cb593-8"><a href="mobile-shinyMobile.html#cb593-8"></a> <span class="va">config</span>.<span class="at">root</span> <span class="op">=</span> <span class="st">"#app"</span><span class="op">;</span></span>
+<span id="cb593-9"><a href="mobile-shinyMobile.html#cb593-9"></a></span>
+<span id="cb593-10"><a href="mobile-shinyMobile.html#cb593-10"></a>  <span class="co">// store app methods</span></span>
+<span id="cb593-11"><a href="mobile-shinyMobile.html#cb593-11"></a>  <span class="va">config</span>.<span class="at">methods</span> <span class="op">=</span>  <span class="op">{</span></span>
+<span id="cb593-12"><a href="mobile-shinyMobile.html#cb593-12"></a>    <span class="dt">toggleDarkTheme</span><span class="op">:</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb593-13"><a href="mobile-shinyMobile.html#cb593-13"></a>      <span class="kw">let</span> self <span class="op">=</span> <span class="kw">this</span><span class="op">;</span></span>
+<span id="cb593-14"><a href="mobile-shinyMobile.html#cb593-14"></a>      <span class="kw">let</span> $html <span class="op">=</span> <span class="va">self</span>.<span class="at">$</span>(<span class="st">"html"</span>)<span class="op">;</span></span>
+<span id="cb593-15"><a href="mobile-shinyMobile.html#cb593-15"></a>      <span class="va">$html</span>.<span class="at">toggleClass</span>(<span class="st">"theme-dark"</span>)<span class="op">;</span></span>
+<span id="cb593-16"><a href="mobile-shinyMobile.html#cb593-16"></a>    <span class="op">}</span></span>
+<span id="cb593-17"><a href="mobile-shinyMobile.html#cb593-17"></a>  <span class="op">};</span></span>
+<span id="cb593-18"><a href="mobile-shinyMobile.html#cb593-18"></a></span>
+<span id="cb593-19"><a href="mobile-shinyMobile.html#cb593-19"></a>  <span class="co">// check if the app is intended to be a PWA</span></span>
+<span id="cb593-20"><a href="mobile-shinyMobile.html#cb593-20"></a>  <span class="kw">let</span> isPWA <span class="op">=</span> <span class="at">$</span>(<span class="st">'body'</span>).<span class="at">attr</span>(<span class="st">'data-pwa'</span>) <span class="op">===</span> <span class="st">"true"</span><span class="op">;</span></span>
+<span id="cb593-21"><a href="mobile-shinyMobile.html#cb593-21"></a></span>
+<span id="cb593-22"><a href="mobile-shinyMobile.html#cb593-22"></a>  <span class="cf">if</span> (isPWA) <span class="op">{</span></span>
+<span id="cb593-23"><a href="mobile-shinyMobile.html#cb593-23"></a>    <span class="va">config</span>.<span class="at">serviceWorker</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb593-24"><a href="mobile-shinyMobile.html#cb593-24"></a>      <span class="dt">path</span><span class="op">:</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">pathname</span> <span class="op">+</span> <span class="st">"service-worker.js"</span><span class="op">,</span></span>
+<span id="cb593-25"><a href="mobile-shinyMobile.html#cb593-25"></a>      <span class="dt">scope</span><span class="op">:</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">pathname</span></span>
+<span id="cb593-26"><a href="mobile-shinyMobile.html#cb593-26"></a>    <span class="op">};</span></span>
+<span id="cb593-27"><a href="mobile-shinyMobile.html#cb593-27"></a>  <span class="op">}</span></span>
+<span id="cb593-28"><a href="mobile-shinyMobile.html#cb593-28"></a></span>
+<span id="cb593-29"><a href="mobile-shinyMobile.html#cb593-29"></a>  <span class="co">// Widgets cache</span></span>
+<span id="cb593-30"><a href="mobile-shinyMobile.html#cb593-30"></a>  <span class="va">config</span>.<span class="at">data</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb593-31"><a href="mobile-shinyMobile.html#cb593-31"></a>    <span class="cf">return</span> <span class="op">{</span></span>
+<span id="cb593-32"><a href="mobile-shinyMobile.html#cb593-32"></a>      <span class="co">// any other widget type to cache ...</span></span>
+<span id="cb593-33"><a href="mobile-shinyMobile.html#cb593-33"></a>      <span class="dt">gauge</span><span class="op">:</span> []</span>
+<span id="cb593-34"><a href="mobile-shinyMobile.html#cb593-34"></a>    <span class="op">};</span></span>
+<span id="cb593-35"><a href="mobile-shinyMobile.html#cb593-35"></a>  <span class="op">};</span></span>
+<span id="cb593-36"><a href="mobile-shinyMobile.html#cb593-36"></a></span>
+<span id="cb593-37"><a href="mobile-shinyMobile.html#cb593-37"></a>  <span class="cf">return</span> config<span class="op">;</span></span>
+<span id="cb593-38"><a href="mobile-shinyMobile.html#cb593-38"></a><span class="op">}</span></span></code></pre></div>
+<p>This function does not have any argument and must return the <code>config</code> variable that will be subsequently injected in <code>new Framework7(config)</code> to initialize the app. In the <code>init.js</code> script, we import the <code>setConfig()</code> function and call it within <code>$( document ).ready</code>:</p>
+<div class="sourceCode" id="cb594"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb594-1"><a href="mobile-shinyMobile.html#cb594-1"></a><span class="im">import</span> <span class="op">{</span> setConfig <span class="op">}</span> <span class="im">from</span> <span class="st">'./helpers_config.js'</span></span>
+<span id="cb594-2"><a href="mobile-shinyMobile.html#cb594-2"></a></span>
+<span id="cb594-3"><a href="mobile-shinyMobile.html#cb594-3"></a><span class="at">$</span>( document ).<span class="at">ready</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb594-4"><a href="mobile-shinyMobile.html#cb594-4"></a>  <span class="kw">let</span> config <span class="op">=</span> <span class="at">setConfig</span>()<span class="op">;</span></span>
+<span id="cb594-5"><a href="mobile-shinyMobile.html#cb594-5"></a>  <span class="co">// create app instance</span></span>
+<span id="cb594-6"><a href="mobile-shinyMobile.html#cb594-6"></a>  app <span class="op">=</span> <span class="kw">new</span> <span class="at">Framework7</span>(config)<span class="op">;</span></span>
+<span id="cb594-7"><a href="mobile-shinyMobile.html#cb594-7"></a>  <span class="co">// ...</span></span>
+<span id="cb594-8"><a href="mobile-shinyMobile.html#cb594-8"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>We can bundle our code with <code><a href="https://rdrr.io/pkg/charpente/man/build_js.html">build_js()</a></code>. We invite the reader to modularize the other features mentioned above, the final product being available <a href="https://github.com/DivadNojnarg/installable-pwa-test">here</a>.</p>
+<div class="warningbox">
+<p>If the function has a side effect, for instance modify a variable located in another scope, it must return the transformed variable output, so that it can be tracked at the upper level.</p>
+</div>
+<p>We have now set all foundations. In the next chapter, we see how to convert a <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> app (and any vanilla shiny app) into a progressive web app.</p>
 
 </div>
 </div>
@@ -1534,6 +1594,7 @@ FIGURE 24.6: Dark mode in {shinyMobile}
 </ul>
 </li>
 <li><a class="nav-link" href="#theming-and-colors"><span class="header-section-number">24.6</span> Theming and colors</a></li>
+<li><a class="nav-link" href="#modularize-js-code"><span class="header-section-number">24.7</span> Modularize JS code</a></li>
 </ul>
 
       <div class="book-extra">
