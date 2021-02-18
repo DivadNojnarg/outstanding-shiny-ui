@@ -91,12 +91,12 @@ Imagine if we had to repeat the process for more than twenty components. The pac
 ## General idea
 [{charpente}](https://github.com/RinteRface/charpente) is a game changer for custom template creation. 
 It is not yet on CRAN but has been widely used to help developing RinteRface packages.
-`{charpente}`, it drastically:
+`{charpente}` drastically:
 
   - Eases the import of external dependencies.
   - Speeds up the HTML to R conversion, which is quite frankly a rather boring process,
-  allowing to focus on the features rather than the syntax. This feature builds on top of the
-  `{html2R}` shiny app by Alan Dipert, already mentioned in Chapter \@ref(htmltools-overview).
+  allowing to focus on the features rather than the syntax. This feature builds on top of the `{html2R}` shiny app by Alan Dipert, already mentioned in Chapter \@ref(htmltools-overview).
+  - Eases JS code management, leveraging [esbuild](https://esbuild.github.io/).
   
 Let's try below with `html_2_R`:
 
@@ -106,7 +106,7 @@ html_2_R('<div class="divclass" id = "someid"></div>')
 ```
 
 `html_2_R` has a __prefix__ parameter which adds a `tags$` prefix if TRUE. It is 
-TRUE by default which prevents errors with unexported Shiny tags like `nav`.
+TRUE by default which prevents errors with non exported Shiny tags like `nav`.
 
 
 The second main benefice of `{charpente}` is the dependency management system.
@@ -142,9 +142,11 @@ In the `./R` folder, `{charpente}` creates a `mypkg-utils.R` script containing:
   - Tools to facilitate HTML dependency management like `add_dependencies` (see corresponding section below),
   `processDeps`. 
   - Some validation functions mentioned in Chapter \@ref(custom-templates-testing).
+  
+Finally, you may see some exotic folders and files like `srcjs`, `package.json`, `package-lock.json` and `node_modules`. Fear not, we describe them later in \@ref(organize-your-js). Overall, they are here to support to JS code management.
 
 ### Build the HTML dependency
-The interested reader will have a look at the **Getting started [guide](https://bulma.io/documentation/overview/start/)**,
+The interested reader may have a look at the **Getting started [guide](https://bulma.io/documentation/overview/start/)**,
 so as to know more how to get bulma. To install bulma dependencies, there are several ways: 
 
   - The CDN method (content delivery network) which consists in getting dependencies from a dedicated server. 
@@ -507,102 +509,29 @@ $.extend(menuOutput, {
 Shiny.outputBindings.register(menuOutput, 'shiny.whatever');
 ```
 
-### Organize your JS code
+### Organize your JS code {#organize-your-js}
 This naturally leads us to this part which is about JS code organization. Shiny developers
-may have a lot of custom scripts, and it is generally a bad idea to put them all
-under `inst`. Instead, we put them in `srcjs`, concatenate and minify them to create one big
-`file.min.js` in the `inst` folder. This is better for performance since file size matter in JS.
+may have a lot of custom JS scripts, and it is generally a bad idea to put them all
+under `inst`. Instead, we store them in `srcjs`. `{charpente}` has a function providing
+a tool to bundle the JS code for production or development, that is `build_js()`: 
 
-The dreamRs team developed a tool to seamlessly format, organize, validate CSS and JS code, that is
-[{jstools}](https://github.com/dreamRs/jstools). Interestingly, it has 2 addins allowing to quickly
-format and validate a given JS file. 
-
-```{r, eval=FALSE}
-remotes::install_github("dreamRs/jstools")
-```
-
-We are going to create a second custom handler with `{charpente}` and reorganize
-the whole JS code:
-
-```{r, eval=FALSE}
-create_custom_handler("modal")
-```
-
-Now there should be two JS scripts in the `srcjs` folder. Below, we use a compressor, namely
-[terser](https://terser.org/), that optimizes and compresses our code for the web browser, at a price to be less
-human readable.  It also provides source maps that are crucial to the debugging process, 
-thereby making it possible to reconstruct the original JS code starting from a minified script:
-
-```{r, eval=FALSE}
-library(jstools)
-mypkgJS <- list.files(
-  path = "srcjs",
-  recursive = TRUE,
-  full.names = TRUE
-)
-
-# /inst is already created by create_charpente
-outputDir <- "inst/mypkg-0.0.0.9000"
-dir.create(outputDir)
-
-# Concat + Compress + source maps ----------------------------------------------------------------
-
-terser_file(
-  input = mypkgJS,
-  output = sprintf("%s/mypkg.min.js", outputDir),
-  options = terser_options(
-    sourceMap = list(
-      root = "../../mypkg-build",
-      filename = "mypkg.min.js",
-      url = "mypkg.min.js.map",
-      includeSources = TRUE
-    )
-  )
-)
-```
-
-`terser_file` takes all raw JS files as input, generate a minified/optimized script as well
-as source maps available at `mypkg.min.js.map`. The __root__ parameter indicates their location
-on the server once the shiny app running. 
-
-To highlight source maps role, let's run the below app:
-
-```{r, eval=FALSE}
-ui <- bulma_page(title = "test")
-server <- function(input, output) {}
-shinyApp(ui, server)
-```
-
-We open the developer tools and navigate to the `Sources` panel, as illustrated on 
-Figure \@ref(fig:workflow-sourcemaps-bulma). The script `mypkg.min.js` is not human readable but the generated source map
-allows to reconstruct the original code, which location is under the `mypkg-build` folder. From
-there, we can access any mapped script and start the debugging process like setting break points.
-
-```{r workflow-sourcemaps-bulma, echo=FALSE, fig.cap='Source maps ease the debugging process', fig.align = 'center', out.width='100%'}
-knitr::include_graphics("images/workflow/sourcemaps-bulma.png")
-```
-
-
-The good new is that `{charpente}` can automate this task:
-
-```{r, eval=FALSE}
-build_js()
-devtools::load_all()
-```
-
-By default `build_js` generates production ready JS files:
-
-  - Parses, compresses, mangles all JS files and concatenate them in 1 big minified file called
-  `mypkg.min.js`. 
-  - Creates associated source maps (default). If you don't want to expose the code,
-  pass `source_maps = FALSE`. 
-  - Other options are possible. One can definitely decide to not mangle the files (easier debugging),
-  in that case pass `mangle = FALSE`. The list of available options is [here](https://github.com/terser/terser).
+  - It compresses, mangles all JS files and concatenate them in one minified file called `mypkg.min.js`. If __mode__ is `dev`, the files are not minified.
+  - In production mode (__mode__ is `prod`, by default), it additionally generates source maps.
   
-If __mode__ is `dev`, the files are simply aggregated and beautified.
+::: {.noteblock data-latex=""}
+esbuild concatenates file by the order provided in the `./srcjs/main.js` entry point, automatically generated by `create_charpente()`. 
+:::
+  
+The script `mypkg.min.js` is not human readable but the generated source map
+allows to reconstruct the original code, which location is under the web browser `srcjs` folder, like all Shiny JS files. From there, we can access any mapped script and start the debugging process like setting break points.
 
-Additionally, this creates the `mypkg-dependencies.R` file containing the HTML 
-dependency pointing to the newly generated JS file:
+::: {.noteblock data-latex=""}
+In production, the variable names, functions, are mangled. For instance, a variable
+`config` could be called `t` in the minified file, which may lead to confusion. 
+:::
+
+Additionally, `build_js` creates the `mypkg-dependencies.R` file containing the HTML 
+dependency pointing to the newly generated JS file (below for production):
 
 ```{r, eval=FALSE}
 #' mypkg dependencies utils
@@ -626,18 +555,23 @@ add_mypkg_deps <- function(tag) {
 }
 ```
 
-Switching between `prod` and `dev` automatically updates the `mypkg-dependencies.R` file.
+Switching between `prod` and `dev` automatically updates the `mypkg-dependencies.R` JS files.
 
+Finally, under the hood, `create_js()`, `create_input_binding()`, `create_output_binding()`  and `create_custom_handler()` add a reference to the newly created script in the `main.js` entry point, which may look like:
 
-::: {.noteblock data-latex=""}
-The terser concatenates file by alphabetical order (default). 
-The __files__ parameters allow you to provide a customized order.
+```js
+// Gather all files to import here
+import './init.js'
+import './widgets.js'
+import './test.js'
+```
+
+::: {.warningbox data-latex=""}
+`export` and `import` must be called from the top level of a script. For instance,
+an `export` statement cannot be inside the `$( document ).ready(function(...)});`, as this would trigger a build error. 
 :::
 
-At this point, `{charpente}` does not provide similar process for CSS, as this is still work in progress. 
-
-Other tools exist like [`{packer}`](https://github.com/JohnCoene/packer) by John Coene, 
-which leverages [webpack](https://webpack.js.org/) to handle JS code.
+`{charpente}` currently does not provide similar process for CSS, as this is still work in progress. Other tools exist like [`{packer}`](https://github.com/JohnCoene/packer) by [John Coene](https://john-coene.com/), which leverages [webpack](https://webpack.js.org/) to handle JS code.
 
 ### Combine multiple dependencies
 `add_dependencies` allows to select any dependency available in the `./R` folder, 

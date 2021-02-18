@@ -141,12 +141,12 @@ FIGURE 21.1: The {charpente} package
 </h2>
 <p><a href="https://github.com/RinteRface/charpente">{charpente}</a> is a game changer for custom template creation.
 It is not yet on CRAN but has been widely used to help developing RinteRface packages.
-<a href="https://github.com/RinteRface/charpente">charpente</a>, it drastically:</p>
+<a href="https://github.com/RinteRface/charpente">charpente</a> drastically:</p>
 <ul>
 <li>Eases the import of external dependencies.</li>
 <li>Speeds up the HTML to R conversion, which is quite frankly a rather boring process,
-allowing to focus on the features rather than the syntax. This feature builds on top of the
-<code>{html2R}</code> shiny app by Alan Dipert, already mentioned in Chapter <a href="htmltools-overview.html#htmltools-overview">3</a>.</li>
+allowing to focus on the features rather than the syntax. This feature builds on top of the <code>{html2R}</code> shiny app by Alan Dipert, already mentioned in Chapter <a href="htmltools-overview.html#htmltools-overview">3</a>.</li>
+<li>Eases JS code management, leveraging <a href="https://esbuild.github.io/">esbuild</a>.</li>
 </ul>
 <p>Let’s try below with <code>html_2_R</code>:</p>
 <div class="sourceCode" id="cb480"><pre class="downlit sourceCode r">
@@ -163,7 +163,7 @@ allowing to focus on the features rather than the syntax. This feature builds on
 ##   id = "someid"
 ## )</code></pre>
 <p><code>html_2_R</code> has a <strong>prefix</strong> parameter which adds a <code>tags$</code> prefix if TRUE. It is
-TRUE by default which prevents errors with unexported Shiny tags like <code>nav</code>.</p>
+TRUE by default which prevents errors with non exported Shiny tags like <code>nav</code>.</p>
 <p>The second main benefice of <a href="https://github.com/RinteRface/charpente">charpente</a> is the dependency management system.</p>
 </div>
 <div id="a-case-study-shinybulma" class="section level2">
@@ -196,11 +196,12 @@ be invasive.</p>
 <code>processDeps</code>.</li>
 <li>Some validation functions mentioned in Chapter <a href="custom-templates-testing.html#custom-templates-testing">18</a>.</li>
 </ul>
+<p>Finally, you may see some exotic folders and files like <code>srcjs</code>, <code>package.json</code>, <code>package-lock.json</code> and <code>node_modules</code>. Fear not, we describe them later in <a href="workflow-charpente.html#organize-your-js">21.3.6</a>. Overall, they are here to support to JS code management.</p>
 <div id="build-the-html-dependency" class="section level3">
 <h3>
 <span class="header-section-number">21.3.1</span> Build the HTML dependency<a class="anchor" aria-label="anchor" href="#build-the-html-dependency"><i class="fas fa-link"></i></a>
 </h3>
-<p>The interested reader will have a look at the <strong>Getting started <a href="https://bulma.io/documentation/overview/start/">guide</a></strong>,
+<p>The interested reader may have a look at the <strong>Getting started <a href="https://bulma.io/documentation/overview/start/">guide</a></strong>,
 so as to know more how to get bulma. To install bulma dependencies, there are several ways:</p>
 <ul>
 <li>The CDN method (content delivery network) which consists in getting dependencies from a dedicated server.
@@ -565,88 +566,30 @@ in the <code>srcjs</code> folder (<code><a href="https://rdrr.io/pkg/charpente/m
 <span id="cb511-9"><a href="workflow-charpente.html#cb511-9"></a><span class="op">}</span>)<span class="op">;</span></span>
 <span id="cb511-10"><a href="workflow-charpente.html#cb511-10"></a><span class="va">Shiny</span>.<span class="va">outputBindings</span>.<span class="at">register</span>(menuOutput<span class="op">,</span> <span class="st">'shiny.whatever'</span>)<span class="op">;</span></span></code></pre></div>
 </div>
-<div id="organize-your-js-code" class="section level3">
+<div id="organize-your-js" class="section level3">
 <h3>
-<span class="header-section-number">21.3.6</span> Organize your JS code<a class="anchor" aria-label="anchor" href="#organize-your-js-code"><i class="fas fa-link"></i></a>
+<span class="header-section-number">21.3.6</span> Organize your JS code<a class="anchor" aria-label="anchor" href="#organize-your-js"><i class="fas fa-link"></i></a>
 </h3>
 <p>This naturally leads us to this part which is about JS code organization. Shiny developers
-may have a lot of custom scripts, and it is generally a bad idea to put them all
-under <code>inst</code>. Instead, we put them in <code>srcjs</code>, concatenate and minify them to create one big
-<code>file.min.js</code> in the <code>inst</code> folder. This is better for performance since file size matter in JS.</p>
-<p>The dreamRs team developed a tool to seamlessly format, organize, validate CSS and JS code, that is
-<a href="https://github.com/dreamRs/jstools">{jstools}</a>. Interestingly, it has 2 addins allowing to quickly
-format and validate a given JS file.</p>
-<div class="sourceCode" id="cb512"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html">install_github</a></span><span class="op">(</span><span class="st">"dreamRs/jstools"</span><span class="op">)</span></code></pre></div>
-<p>We are going to create a second custom handler with <a href="https://github.com/RinteRface/charpente">charpente</a> and reorganize
-the whole JS code:</p>
-<div class="sourceCode" id="cb513"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_file.html">create_custom_handler</a></span><span class="op">(</span><span class="st">"modal"</span><span class="op">)</span></code></pre></div>
-<p>Now there should be two JS scripts in the <code>srcjs</code> folder. Below, we use a compressor, namely
-<a href="https://terser.org/">terser</a>, that optimizes and compresses our code for the web browser, at a price to be less
-human readable. It also provides source maps that are crucial to the debugging process,
-thereby making it possible to reconstruct the original JS code starting from a minified script:</p>
-<div class="sourceCode" id="cb514"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/dreamRs/jstools">jstools</a></span><span class="op">)</span>
-<span class="va">mypkgJS</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html">list.files</a></span><span class="op">(</span>
-  path <span class="op">=</span> <span class="st">"srcjs"</span>,
-  recursive <span class="op">=</span> <span class="cn">TRUE</span>,
-  full.names <span class="op">=</span> <span class="cn">TRUE</span>
-<span class="op">)</span>
-
-<span class="co"># /inst is already created by create_charpente</span>
-<span class="va">outputDir</span> <span class="op">&lt;-</span> <span class="st">"inst/mypkg-0.0.0.9000"</span>
-<span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="va">outputDir</span><span class="op">)</span>
-
-<span class="co"># Concat + Compress + source maps ----------------------------------------------------------------</span>
-
-<span class="fu"><a href="https://rdrr.io/pkg/jstools/man/terser.html">terser_file</a></span><span class="op">(</span>
-  input <span class="op">=</span> <span class="va">mypkgJS</span>,
-  output <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"%s/mypkg.min.js"</span>, <span class="va">outputDir</span><span class="op">)</span>,
-  options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/jstools/man/terser.html">terser_options</a></span><span class="op">(</span>
-    sourceMap <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-      root <span class="op">=</span> <span class="st">"../../mypkg-build"</span>,
-      filename <span class="op">=</span> <span class="st">"mypkg.min.js"</span>,
-      url <span class="op">=</span> <span class="st">"mypkg.min.js.map"</span>,
-      includeSources <span class="op">=</span> <span class="cn">TRUE</span>
-    <span class="op">)</span>
-  <span class="op">)</span>
-<span class="op">)</span></code></pre></div>
-<p><code>terser_file</code> takes all raw JS files as input, generate a minified/optimized script as well
-as source maps available at <code>mypkg.min.js.map</code>. The <strong>root</strong> parameter indicates their location
-on the server once the shiny app running.</p>
-<p>To highlight source maps role, let’s run the below app:</p>
-<div class="sourceCode" id="cb515"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">bulma_page</span><span class="op">(</span>title <span class="op">=</span> <span class="st">"test"</span><span class="op">)</span>
-<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
-<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
-<p>We open the developer tools and navigate to the <code>Sources</code> panel, as illustrated on
-Figure <a href="workflow-charpente.html#fig:workflow-sourcemaps-bulma">21.4</a>. The script <code>mypkg.min.js</code> is not human readable but the generated source map
-allows to reconstruct the original code, which location is under the <code>mypkg-build</code> folder. From
-there, we can access any mapped script and start the debugging process like setting break points.</p>
-<div class="figure" style="text-align: center">
-<span id="fig:workflow-sourcemaps-bulma"></span>
-<img src="images/workflow/sourcemaps-bulma.png" alt="Source maps ease the debugging process" width="100%"><p class="caption">
-FIGURE 21.4: Source maps ease the debugging process
-</p>
-</div>
-<p>The good new is that <a href="https://github.com/RinteRface/charpente">charpente</a> can automate this task:</p>
-<div class="sourceCode" id="cb516"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/build_js.html">build_js</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org//reference/load_all.html">load_all</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<p>By default <code>build_js</code> generates production ready JS files:</p>
+may have a lot of custom JS scripts, and it is generally a bad idea to put them all
+under <code>inst</code>. Instead, we store them in <code>srcjs</code>. <a href="https://github.com/RinteRface/charpente">charpente</a> has a function providing
+a tool to bundle the JS code for production or development, that is <code><a href="https://rdrr.io/pkg/charpente/man/build_js.html">build_js()</a></code>:</p>
 <ul>
-<li>Parses, compresses, mangles all JS files and concatenate them in 1 big minified file called
-<code>mypkg.min.js</code>.</li>
-<li>Creates associated source maps (default). If you don’t want to expose the code,
-pass <code>source_maps = FALSE</code>.</li>
-<li>Other options are possible. One can definitely decide to not mangle the files (easier debugging),
-in that case pass <code>mangle = FALSE</code>. The list of available options is <a href="https://github.com/terser/terser">here</a>.</li>
+<li>It compresses, mangles all JS files and concatenate them in one minified file called <code>mypkg.min.js</code>. If <strong>mode</strong> is <code>dev</code>, the files are not minified.</li>
+<li>In production mode (<strong>mode</strong> is <code>prod</code>, by default), it additionally generates source maps.</li>
 </ul>
-<p>If <strong>mode</strong> is <code>dev</code>, the files are simply aggregated and beautified.</p>
-<p>Additionally, this creates the <code>mypkg-dependencies.R</code> file containing the HTML
-dependency pointing to the newly generated JS file:</p>
-<div class="sourceCode" id="cb517"><pre class="downlit sourceCode r">
+<div class="noteblock">
+<p>esbuild concatenates file by the order provided in the <code>./srcjs/main.js</code> entry point, automatically generated by <code><a href="https://rdrr.io/pkg/charpente/man/create_charpente.html">create_charpente()</a></code>.</p>
+</div>
+<p>The script <code>mypkg.min.js</code> is not human readable but the generated source map
+allows to reconstruct the original code, which location is under the web browser <code>srcjs</code> folder, like all Shiny JS files. From there, we can access any mapped script and start the debugging process like setting break points.</p>
+<div class="noteblock">
+<p>In production, the variable names, functions, are mangled. For instance, a variable
+<code>config</code> could be called <code>t</code> in the minified file, which may lead to confusion.</p>
+</div>
+<p>Additionally, <code>build_js</code> creates the <code>mypkg-dependencies.R</code> file containing the HTML
+dependency pointing to the newly generated JS file (below for production):</p>
+<div class="sourceCode" id="cb512"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">#' mypkg dependencies utils</span>
 <span class="co">#'</span>
 <span class="co">#' @description This function attaches mypkg dependencies to the given tag</span>
@@ -666,14 +609,17 @@ dependency pointing to the newly generated JS file:</p>
  <span class="op">)</span>
  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span><span class="va">tag</span>, <span class="va">mypkg_deps</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>Switching between <code>prod</code> and <code>dev</code> automatically updates the <code>mypkg-dependencies.R</code> file.</p>
-<div class="noteblock">
-<p>The terser concatenates file by alphabetical order (default).
-The <strong>files</strong> parameters allow you to provide a customized order.</p>
+<p>Switching between <code>prod</code> and <code>dev</code> automatically updates the <code>mypkg-dependencies.R</code> JS files.</p>
+<p>Finally, under the hood, <code><a href="https://rdrr.io/pkg/charpente/man/create_file.html">create_js()</a></code>, <code><a href="https://rdrr.io/pkg/charpente/man/create_file.html">create_input_binding()</a></code>, <code><a href="https://rdrr.io/pkg/charpente/man/create_file.html">create_output_binding()</a></code> and <code><a href="https://rdrr.io/pkg/charpente/man/create_file.html">create_custom_handler()</a></code> add a reference to the newly created script in the <code>main.js</code> entry point, which may look like:</p>
+<div class="sourceCode" id="cb513"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb513-1"><a href="workflow-charpente.html#cb513-1"></a><span class="co">// Gather all files to import here</span></span>
+<span id="cb513-2"><a href="workflow-charpente.html#cb513-2"></a><span class="im">import</span> <span class="st">'./init.js'</span></span>
+<span id="cb513-3"><a href="workflow-charpente.html#cb513-3"></a><span class="im">import</span> <span class="st">'./widgets.js'</span></span>
+<span id="cb513-4"><a href="workflow-charpente.html#cb513-4"></a><span class="im">import</span> <span class="st">'./test.js'</span></span></code></pre></div>
+<div class="warningbox">
+<p><code>export</code> and <code>import</code> must be called from the top level of a script. For instance,
+an <code>export</code> statement cannot be inside the <code>$( document ).ready(function(...)});</code>, as this would trigger a build error.</p>
 </div>
-<p>At this point, <a href="https://github.com/RinteRface/charpente">charpente</a> does not provide similar process for CSS, as this is still work in progress.</p>
-<p>Other tools exist like <a href="https://github.com/JohnCoene/packer"><code>{packer}</code></a> by John Coene,
-which leverages <a href="https://webpack.js.org/">webpack</a> to handle JS code.</p>
+<p><a href="https://github.com/RinteRface/charpente">charpente</a> currently does not provide similar process for CSS, as this is still work in progress. Other tools exist like <a href="https://github.com/JohnCoene/packer"><code>{packer}</code></a> by <a href="https://john-coene.com/">John Coene</a>, which leverages <a href="https://webpack.js.org/">webpack</a> to handle JS code.</p>
 </div>
 <div id="combine-multiple-dependencies" class="section level3">
 <h3>
@@ -682,7 +628,7 @@ which leverages <a href="https://webpack.js.org/">webpack</a> to handle JS code.
 <p><code>add_dependencies</code> allows to select any dependency available in the <code>./R</code> folder,
 provided that they follow the convention <code>&lt;depName&gt;_dependencies.R</code>
 (which is always the case if you use <a href="https://github.com/RinteRface/charpente">charpente</a>):</p>
-<div class="sourceCode" id="cb518"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb514"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">#' Attach all created dependencies in the ./R directory to the provided tag</span>
 <span class="co">#'</span>
 <span class="co">#' This function only works if there are existing dependencies. Otherwise,</span>
@@ -722,7 +668,7 @@ provided that they follow the convention <code>&lt;depName&gt;_dependencies.R</c
 <p>For instance <code><a href="https://rinterface.github.io/shinyMobile/reference/add_dependencies.html">add_dependencies(div(), deps = c("bulma", "bulmajs"))</a></code> adds bulma (first) and
 bulmajs dependencies to a <code>div</code> tag. You may change the order as you want since most
 of the time, the order matters. We update <code>bulma_page</code> to benefit from that feature:</p>
-<div class="sourceCode" id="cb519"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb515"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">bulma_page</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagList</a></span><span class="op">(</span>
     <span class="va">tags</span><span class="op">$</span><span class="fu">head</span><span class="op">(</span>
@@ -749,12 +695,12 @@ so that you don’t have to import charpente in the <code>DESCRIPTION</code> <co
 <p>Let’s finish this section by listing other useful <a href="https://github.com/RinteRface/charpente">charpente</a> tools.
 We know <code>create_dependency</code> to install an external dependency.
 As shown earlier, this code installs bulma dependencies:</p>
-<div class="sourceCode" id="cb520"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb516"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/create_dependency.html">create_dependency</a></span><span class="op">(</span><span class="st">"bulma"</span><span class="op">)</span></code></pre></div>
 <p>However, we don’t necessarily know all package versions and may need
 <code>bulma 0.9.1</code> or <code>bulma 0.7.0</code>. <code>get_dependency_versions</code> allows to look for
 all existing versions:</p>
-<div class="sourceCode" id="cb521"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb517"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/get_dependency_versions.html">get_dependency_versions</a></span><span class="op">(</span><span class="st">"bulma"</span><span class="op">)</span></code></pre></div>
 <pre><code>## ℹ Trying with https://data.jsdelivr.com/v1/package/npm/bulma</code></pre>
 <pre><code>## ✓ Success!</code></pre>
@@ -767,7 +713,7 @@ all existing versions:</p>
 ## [41] "0.0.21" "0.0.20" "0.0.19" "0.0.18" "0.0.17" "0.0.16" "0.0.15" "0.0.14"
 ## [49] "0.0.13" "0.0.12" "0.0.11" "0.0.10" "0.0.9"  "0.0.8"  "0.0.7"  "0.0.6" 
 ## [57] "0.0.5"  "0.0.4"</code></pre>
-<div class="sourceCode" id="cb526"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb522"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/get_dependency_versions.html">get_dependency_versions</a></span><span class="op">(</span><span class="st">"bulma"</span>, latest <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
 <pre><code>## ℹ Trying with https://data.jsdelivr.com/v1/package/npm/bulma</code></pre>
 <pre><code>## ✓ Success!</code></pre>
@@ -777,7 +723,7 @@ all existing versions:</p>
 (it excludes alpha/beta versions).</p>
 <p>You may explore also the dependency files with <code>get_dependency_assets</code>, even for
 a specific version with <strong>tag</strong>:</p>
-<div class="sourceCode" id="cb531"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb527"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/charpente/man/get_dependency_assets.html">get_dependency_assets</a></span><span class="op">(</span><span class="st">"bulma"</span><span class="op">)</span></code></pre></div>
 <pre><code>## ℹ Trying with https://data.jsdelivr.com/v1/package/npm/bulma</code></pre>
 <pre><code>## ✓ Success!</code></pre>
@@ -844,9 +790,9 @@ latest version: 0.9.1
 <span class="header-section-number">21.4.1</span> Validate JavaScript<a class="anchor" aria-label="anchor" href="#validate-javascript"><i class="fas fa-link"></i></a>
 </h3>
 <p>We could not finish this chapter without mentioning tools to validate JavaScript code. <a href="https://jshint.com">JSHint</a>, which comes with <a href="https://github.com/dreamRs/jstools">{jstools}</a>. Below is an example of how to check all the <a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> JavaScript input bindings at once:</p>
-<div class="sourceCode" id="cb539"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb535"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">shinyMobileJS</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html">system.file</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"shinyMobile-%s/js/shinyMobile.js"</span>, <span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html">packageVersion</a></span><span class="op">(</span><span class="st">"shinyMobile"</span><span class="op">)</span><span class="op">)</span>, package <span class="op">=</span> <span class="st">"shinyMobile"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/pkg/jstools/man/JSHint.html">jshint_file</a></span><span class="op">(</span>input <span class="op">=</span> <span class="va">shinyMobileJS</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/jstools/man/JSHint.html">jshint_options</a></span><span class="op">(</span>jquery <span class="op">=</span> <span class="cn">TRUE</span>, globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="st">"Shiny"</span>, <span class="st">"app"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<span class="fu">jshint_file</span><span class="op">(</span>input <span class="op">=</span> <span class="va">shinyMobileJS</span>, options <span class="op">=</span> <span class="fu">jshint_options</span><span class="op">(</span>jquery <span class="op">=</span> <span class="cn">TRUE</span>, globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="st">"Shiny"</span>, <span class="st">"app"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## ── Checking shinyMobile.js ───────────────────────────────────────────────────── 
 ## 51 errors found. 
 ##  - Line 34: 'template literal syntax' is only available in ES6 (use 'esversion: 6'). 
@@ -905,18 +851,18 @@ does what it should do. It just focus on checking whether the code runs! To test
 the JavaScript behavior, please refer to Chapter <a href="custom-templates-testing.html#custom-templates-testing-js">18.2.1.2</a>.
 Be extremely careful: if we consider the example mentioned in section <a href="survival-kit-javascript.html#broken-shiny-app-debug">9.6.2</a>, the
 following code is valid JavaScript:</p>
-<div class="sourceCode" id="cb541"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb541-1"><a href="workflow-charpente.html#cb541-1"></a><span class="kw">const</span> sendNotif <span class="op">=</span> (message<span class="op">,</span> type<span class="op">,</span> duration) <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb541-2"><a href="workflow-charpente.html#cb541-2"></a>  <span class="va">Shiny</span>.<span class="va">notification</span>.<span class="at">show</span>(<span class="op">{</span></span>
-<span id="cb541-3"><a href="workflow-charpente.html#cb541-3"></a>    <span class="dt">html</span><span class="op">:</span> <span class="vs">`&lt;strong&gt;</span><span class="sc">${</span>message<span class="sc">}</span><span class="vs">&lt;/strong&gt;`</span><span class="op">,</span></span>
-<span id="cb541-4"><a href="workflow-charpente.html#cb541-4"></a>    <span class="dt">type</span><span class="op">:</span> type<span class="op">,</span></span>
-<span id="cb541-5"><a href="workflow-charpente.html#cb541-5"></a>    <span class="dt">duration</span><span class="op">:</span> duration</span>
-<span id="cb541-6"><a href="workflow-charpente.html#cb541-6"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb541-7"><a href="workflow-charpente.html#cb541-7"></a><span class="op">};</span></span>
-<span id="cb541-8"><a href="workflow-charpente.html#cb541-8"></a></span>
-<span id="cb541-9"><a href="workflow-charpente.html#cb541-9"></a><span class="at">sendNotif</span>(<span class="st">'Hello'</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb537"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb537-1"><a href="workflow-charpente.html#cb537-1"></a><span class="kw">const</span> sendNotif <span class="op">=</span> (message<span class="op">,</span> type<span class="op">,</span> duration) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb537-2"><a href="workflow-charpente.html#cb537-2"></a>  <span class="va">Shiny</span>.<span class="va">notification</span>.<span class="at">show</span>(<span class="op">{</span></span>
+<span id="cb537-3"><a href="workflow-charpente.html#cb537-3"></a>    <span class="dt">html</span><span class="op">:</span> <span class="vs">`&lt;strong&gt;</span><span class="sc">${</span>message<span class="sc">}</span><span class="vs">&lt;/strong&gt;`</span><span class="op">,</span></span>
+<span id="cb537-4"><a href="workflow-charpente.html#cb537-4"></a>    <span class="dt">type</span><span class="op">:</span> type<span class="op">,</span></span>
+<span id="cb537-5"><a href="workflow-charpente.html#cb537-5"></a>    <span class="dt">duration</span><span class="op">:</span> duration</span>
+<span id="cb537-6"><a href="workflow-charpente.html#cb537-6"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb537-7"><a href="workflow-charpente.html#cb537-7"></a><span class="op">};</span></span>
+<span id="cb537-8"><a href="workflow-charpente.html#cb537-8"></a></span>
+<span id="cb537-9"><a href="workflow-charpente.html#cb537-9"></a><span class="at">sendNotif</span>(<span class="st">'Hello'</span>)</span></code></pre></div>
 <p>and will pass the validation step without any error:</p>
-<div class="sourceCode" id="cb542"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/jstools/man/JSHint.html">jshint</a></span><span class="op">(</span>
+<div class="sourceCode" id="cb538"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">jshint</span><span class="op">(</span>
   <span class="st">"const sendNotif = (message, type, duration) =&gt; {
   Shiny.notification.show({
     html: `&lt;strong&gt;${message}&lt;/strong&gt;`,
@@ -926,7 +872,7 @@ following code is valid JavaScript:</p>
   };
   sendNotif('Hello');
   "</span>,
-  options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/jstools/man/JSHint.html">jshint_options</a></span><span class="op">(</span>
+  options <span class="op">=</span> <span class="fu">jshint_options</span><span class="op">(</span>
     esversion <span class="op">=</span> <span class="fl">6</span>,
     jquery <span class="op">=</span> <span class="cn">TRUE</span>, 
     globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="st">"Shiny"</span>, <span class="st">"app"</span><span class="op">)</span>
@@ -999,13 +945,13 @@ following code is valid JavaScript:</p>
 <span class="header-section-number">21.4.2</span> Beautify JS code<a class="anchor" aria-label="anchor" href="#beautify-js-code"><i class="fas fa-link"></i></a>
 </h3>
 <p>If you work with the RStudio IDE, your JS code maybe sometimes messy with bad indentation.
-<a href="https://github.com/dreamRs/jstools">jstools</a> also provides a function and addin to fix the problem. <code><a href="https://rdrr.io/pkg/jstools/man/prettier.html">prettier_js(code)</a></code> and
-<code><a href="https://rdrr.io/pkg/jstools/man/prettier.html">prettier_file(input = "path/to/file.js", output = "path/to/reformated.js")</a></code> does this.
-I often use the <code>Prettier</code> addin which is way faster than typing the function call (Figure <a href="workflow-charpente.html#fig:workflow-pretty-js">21.5</a>).</p>
+<a href="https://github.com/dreamRs/jstools">jstools</a> also provides a function and addin to fix the problem. <code>prettier_js(code)</code> and
+<code>prettier_file(input = "path/to/file.js", output = "path/to/reformated.js")</code> does this.
+I often use the <code>Prettier</code> addin which is way faster than typing the function call (Figure <a href="workflow-charpente.html#fig:workflow-pretty-js">21.4</a>).</p>
 <div class="figure" style="text-align: center">
 <span id="fig:workflow-pretty-js"></span>
 <img src="images/workflow/pretty-js.png" alt="Better JS formatting" width="50%"><p class="caption">
-FIGURE 21.5: Better JS formatting
+FIGURE 21.4: Better JS formatting
 </p>
 </div>
 
@@ -1028,7 +974,7 @@ FIGURE 21.5: Better JS formatting
 <li><a class="nav-link" href="#exercise-add-bulmajs"><span class="header-section-number">21.3.3</span> Exercise: add bulmaJS</a></li>
 <li><a class="nav-link" href="#add-custom-js"><span class="header-section-number">21.3.4</span> Add custom JS</a></li>
 <li><a class="nav-link" href="#add-custom-inputoutput-bindings"><span class="header-section-number">21.3.5</span> Add custom input/output bindings</a></li>
-<li><a class="nav-link" href="#organize-your-js-code"><span class="header-section-number">21.3.6</span> Organize your JS code</a></li>
+<li><a class="nav-link" href="#organize-your-js"><span class="header-section-number">21.3.6</span> Organize your JS code</a></li>
 <li><a class="nav-link" href="#combine-multiple-dependencies"><span class="header-section-number">21.3.7</span> Combine multiple dependencies</a></li>
 <li><a class="nav-link" href="#other-charpente-helpers"><span class="header-section-number">21.3.8</span> Other {charpente} helpers</a></li>
 </ul>
@@ -1056,7 +1002,7 @@ FIGURE 21.5: Better JS formatting
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-02-17.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-02-18.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">

@@ -251,29 +251,10 @@ shinyApp(ui, server)
 
 which displays nothing, but returns no error. We actually forgot the app initialization step.
 
-## Handle multiple scripts
-In the following parts, we are going to create multiple JS files. If we define app in `init.js`, how do we retrieve it in another script? If you remember about the JavaScript module part \@ref(about-js-modules), this is a good place to exploit them. Any element may be exported and made available to other scripts with:
-
-```js
-// Export in one script like init.js
-export let myVar = 'test';
-export function myFunc() {
-  console.log('Plop');
-}
-
-// Import in another script like widgets.js
-import { myVar, myFunc } from 'path_to_init'
-```
-
-::: {.warningbox data-latex=""}
-`export` and `import` must be called at the top level of a script. For instance,
-the `export` in 'init.js' cannot be inside the `$( document ).ready(function(...)});`, as this would
-trigger an error with the terser. 
-:::
 
 ## App initialization
 This step is mandatory to activate all template components (router, panels, ...).
-We create a custom script with `create_js`:
+We create a custom script with `create_js`, which automatically updates the `{charpente}` provided `main.js` entry point:
 
 ```{r, eval=FALSE}
 create_js("init")
@@ -291,14 +272,13 @@ $( document ).ready(function() {
     // other options
   });
 });
-
-// Export app to another script: uncomment 
-// when considering multiple scripts!
-// export app;
 ```
 
+Importantly, we made `app` global so as to access it in other scopes. There is currently
+no easy way to workaround this issue. 
+
 ::: {.warningbox data-latex=""}
-Mostb of the code inside `init.js` is wrapped in a function that waits the document to be ready before interacting with the DOM. This is necessary since the configuration is retrieved from a `script` DOM element inserted when the application starts, thus not immediately available. If you try to remove the `$( document ).ready(function(...)});`, an error will be raised since the configuration cannot be properly retrieved (timing issue). 
+Most of the code inside `init.js` is wrapped in a function that waits the document to be ready before interacting with the DOM. This is necessary since the configuration is retrieved from a `script` DOM element inserted when the application starts, thus not immediately available. If you try to remove the `$( document ).ready(function(...)});`, an error will be raised since the configuration cannot be properly retrieved (timing issue). 
 ::: 
 
 This script creates the app instance necessary to leverage Framework7 [methods](https://framework7.io/docs/app.html#app-methods-properties),
@@ -464,7 +444,7 @@ $( document ).ready(function() {
   });
 
   // init main view
-  mainView = app.views.create('.view-main');
+  var mainView = app.views.create('.view-main');
 
 
   var notification = app.notification.create({
@@ -487,8 +467,6 @@ $( document ).ready(function() {
   }, 1000);
   
 });
-
-export app;
 ```
 
 
@@ -716,29 +694,22 @@ config = JSON.parse(config.html());
 We can accordingly update the app initialization:
 
 ```js
-var app = new Framework7({
-    // App root element
-    root: '#app',
-    // App Name
-    name: 'My App',
-    version: config.version,
-    // other options
-    theme: config.theme,
-    notification: {
-      title: 'My App',
-      closeTimeout: 3000,
-    },
-    touch: {
-      tapHold: config.taphold,
-    },
-  });
-```
-
-As the `config` object may be re-used in multiple scripts, it is a good idea to include it
-in the `init.js` export list:
-
-```js
-export { app, config };
+app = new Framework7({
+  // App root element
+  root: '#app',
+  // App Name
+  name: 'My App',
+  version: config.version,
+  // other options
+  theme: config.theme,
+  notification: {
+    title: 'My App',
+    closeTimeout: 3000,
+  },
+  touch: {
+    tapHold: config.taphold,
+  },
+});
 ```
 
 What happens if the user forgets to supply the version number? `data.version` is undefined
@@ -751,7 +722,7 @@ provides any other option, it is ignored.
 In theory, this is what we could do to make sure that all elements are considered:
 
 ```js
-var app = new Framework7(config);
+app = new Framework7(config);
 ```
 
 It is assumed that the user exactly knows what to provide in the list, especially mandatory elements. 
@@ -1415,7 +1386,7 @@ $( document ).ready(function() {
   app = new Framework7(config);
 
   // init main view
-  mainView = app.views.create('.view-main');
+  var mainView = app.views.create('.view-main');
   
   // tapHold custom css
   if (config.hasOwnProperty("touch")) {
@@ -1530,9 +1501,6 @@ $( document ).ready(function() {
     app.methods.toggleDarkTheme();
   }
 });
-
-// exports to reuse app and config in multiple scripts
-export {app, config};
 ```
 
 and the dark mode app example:
