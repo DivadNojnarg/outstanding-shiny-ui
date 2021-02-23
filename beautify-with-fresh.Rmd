@@ -1,20 +1,136 @@
-# Beautify with fresh {#beautify-with-fresh}
-[{fresh}](https://github.com/dreamRs/fresh) is an R package developed by the dreamRs team, also authors of [shinyWidget](https://github.com/dreamRs/shinyWidgets) and [esquisse](https://github.com/dreamRs/esquisse). All dreamRs projects are clearly a great source of inspiration to design outstanding Shiny apps, I recommend the reader to explore!
+# Beautify with `{fresh}` {#beautify-with-fresh}
+[{fresh}](https://github.com/dreamRs/fresh) is an R package developed by the dreamRs team, also authors of [shinyWidget](https://github.com/dreamRs/shinyWidgets) and [esquisse](https://github.com/dreamRs/esquisse). All dreamRs projects are clearly a great source of inspiration to design outstanding Shiny apps, we highly recommend the reader to explore!
 
-## {fresh}, the big picture
-`{fresh}` is built on top of `{sass}` and what you see in Figures \@ref(fig:bs4Dash-fresh) and  \@ref(fig:shinydashboardPlus-fresh) may be done in few minutes!
+## `{fresh}`, the big picture
+`{fresh}` is built on top of `{sass}` and what you see in Figures \@ref(fig:bs4Dash-fresh) and  \@ref(fig:shinydashboardPlus-fresh) may be done in few minutes! The main function is `create_theme()`:
+
+```{r, eval=FALSE}
+create_theme(
+  ...,
+  theme = c("default", "cerulean", "cosmo", "cyborg", "darkly", "flatly", "journal",
+    "lumen", "paper", "readable", "sandstone", "simplex", "slate", "spacelab",
+    "superhero", "united", "yeti"),
+  output_file = NULL,
+  include_assets = FALSE
+)
+```
+
+__theme__ allows to import a [Bootswatch](https://bootswatch.com/) CSS theme, you may already know if you ever used `{shinythemes}`. __output_file__ controls the output. If provided, `create_theme()` creates a CSS file at the specified location. Otherwise, it returns a string value containing the compiles CSS. It is useful in a package context where you don't necessarily want to generate a new theme each time. __...__ is where we pass a list of CSS variables, through `bs4Dash_*` (specific to `{bs4Dash}`), `adminlte_*` (for `{shinydashboard}`) or `bs_vars_*` (for classic `{shiny}` apps) functions, which we describe below. 
+
+In general, you'll have to call `use_theme()` inside the app UI to load the newly generated theme. 
+
+::: {.noteblock data-latex=""}
+Note that `{bs4Dash}` and `{shinydashboardPlus}` expose a __freshTheme__ parameter, which does handle the provided theme on the fly. 
+:::
 
 ### Customize `{bs4Dash}` 
+
+In what follows, we explain how to set a blue ocean theme in only few minutes. 
+
+#### Statuses colors
+In chapter \@ref(sass-customize-bs4Dash), we showed how to change `{bs4Dash}` colors, with few lines of Sass code. Guess what: `{fresh}` makes it even easier! The `bs4dash_status()` function allows to overwrite all the default status color:
+
+```{r, eval=FALSE}
+bs4dash_status(
+  primary = NULL,
+  secondary = NULL,
+  success = NULL,
+  info = NULL,
+  warning = NULL,
+  danger = NULL,
+  light = NULL,
+  dark = NULL
+)
+```
+
+By default, `primary` is blue but could become green with just one line of code. 
+
+#### General Layout 
+`bs4Dash_layout` exposes variables to control the sidebar width when expanded or collapsed, the sidebar padding, the controlbar width, the main background color and the main content padding. For the blue ocean theme, we change the body background color, as below (Figure \@ref(fig:fresh-bs4Dash-bodybg)):
+
+```{r}
+layout_vars <- bs4dash_layout(main_bg = "#006994")
+ocean_theme <- create_theme(layout_vars)
+```
+
+```{r fresh-bs4Dash-bodybg, echo=FALSE, fig.cap='Customized body background color', out.width='100%'}
+knitr::include_graphics("images/beautify/fresh-bs4Dash-bodybg.png")
+```
+
+#### Navbar
+The `dashboardHeader()` has two color flavors, `light` and `dark`. It defaults to light, meaning that icons and text will be in dark, for contrast reasons. Conversely, if it is `dark`, the text is white, so are the icons. The `{bs4Dash}` [gallery](https://dgranjon.shinyapps.io/bs4DashDemo/) quite well illustrates this property. 
+
+Navbar variables may be found with `search_vars_bs4dash("navbar")`, for example:
+
+```{r}
+library(tibble)
+head(as_tibble(search_vars_bs4dash("navbar")))
+```
+
+We'll be using the `navbar_light_*` variables as follows:
+  - The navbar color is determined by the `navbar-light` class. We change the global `light` status value to the ocean blue with `bs4dash_status()`.
+  - `navbar_light_color` set the navbar text and icon elements to white. It is the best
+  choice given the background color we want to apply.
+
+We also modified the `primary` status to be purple:
+
+```{r}
+navbar_vars <- list(
+  bs4dash_status(light = "#005475", primary = "#00755c"), # navbar background
+  bs4dash_vars(navbar_light_color = "#FFF") # put toggler in white
+)
+ocean_theme <- create_theme(layout_vars, navbar_vars)
+```
+
+### Text color
+The card text element would not properly be styled without setting the `white` color to 
+the global ocean blue theme color (they would render dark, which is a bad contrast option).
+We change the `white` and `gray_900` colors with `bs4dash_color`. 
+
+```{r}
+inverted_colors <- bs4dash_color(gray_900 = "#FFF", white = "#005475")
+ocean_theme <- create_theme(layout_vars, navbar_vars, inverted_colors)
+```
+
+#### Sidebar 
+Like `dashboardHeader()`, `dashboardSidebar()` exposes two flavors, namely `light` and `dark`. As we set the sidebar to be `light`, we leverage the `bs4Dash_sidebar_light` helper.
+We set the main background to ocean blue and set the menu color to white, so as to have a better contrast. Additionally, we invert the `text_dark` and `text_light` colors for an even better contrast with `bs4dash_yiq()`:
+
+```{r}
+sidebar_vars <- list(
+  bs4dash_yiq(contrasted_threshold = 10, text_dark = "#FFF", text_light = "#272c30"),
+  bs4dash_sidebar_light(
+    bg = "#005475", 
+    color = "#FFF",
+    hover_color = "#FFF",
+    submenu_color = "#FFF", 
+    submenu_hover_color = "#FFF"
+  )
+)
+ocean_theme <- create_theme(layout_vars, navbar_vars, inverted_colors, sidebar_vars)
+```
+
+As the `{fresh}` theme does not apply to static plots, since they are not HTML element and not part of the DOM, we leverage the [`{thematic}`](https://rstudio.github.io/thematic/) package, that in short, provides a sort of CSS interface for base R plots, ggplot and lattice. Specifically, in the Shiny context, we choose `thematic_shiny()`. By default, it sets the appropriate background, foreground and accent colors. The final product is shown Figure \@ref(fig:fresh-bs4Dash-final) and may be run with `customize_bs4Dash()` from the book side package: 
+
+```{r, eval=FALSE}
+library(OSUICode)
+customize_bs4Dash(ocean_theme)
+```
+
+You may notice the inappropriate `sliderInput` style. This is because it is not a Bootstrap 4 element. In this case, you'll have to create custom CSS rules targeting the slider labels and scale. 
+
+```{r fresh-bs4Dash-final, echo=FALSE, fig.cap='Ocean theme for {bs4Dash}', out.width='100%'}
+knitr::include_graphics("images/beautify/fresh-bs4Dash-final.png")
+```
+
+Below is another example of a custom dark theme, whose code may be found right after Figure \@ref(fig:bs4Dash-fresh).
 
 ```{r bs4Dash-fresh, echo=FALSE, fig.cap='Few lines of code to create a bs4Dash dark theme!', out.width='100%'}
 knitr::include_graphics("images/beautify/bs4Dash-fresh.png")
 ```
 
 ```{r, eval=FALSE}
-library(bs4Dash)
-# Theme -------------------------------------------------------------------
-
-bs4DashTheme <- create_theme(
+dark_theme <- create_theme(
   bs4dash_vars(
     navbar_dark_color = "#bec5cb",
     navbar_dark_active_color = "#FFF",
@@ -30,197 +146,15 @@ bs4DashTheme <- create_theme(
   bs4dash_color(gray_900 = "#FFF", white = "#272c30")
 )
 
-
-
-# App ---------------------------------------------------------------------
-
-
-ui <- bs4DashPage(
-  title = "bs4Dash Dark Mode",
-  # sidebar_collapsed = FALSE,
-  navbar = bs4DashNavbar(skin = "dark"),
-  controlbar = bs4DashControlbar(
-    skin = "dark",
-    "This is the control bar"
-  ),
-  sidebar = bs4DashSidebar(
-    title = "bs4Dash Dark Mode",
-    skin = "dark",
-    bs4SidebarMenu(
-      bs4SidebarHeader("Menu:"),
-      bs4SidebarMenuItem(
-        tabName = "tab1",
-        text = "UI components",
-        icon = "home"
-      ),
-      bs4SidebarMenuItem(
-        tabName = "tab2",
-        text = "Tab 2"
-      ),
-      bs4SidebarMenuItem(
-        text = "Item List",
-        icon = "bars",
-        startExpanded = TRUE,
-        bs4SidebarMenuSubItem(
-          text = "Item 1",
-          tabName = "item1",
-          icon = "circle-thin"
-        ),
-        bs4SidebarMenuSubItem(
-          text = "Item 2",
-          tabName = "item2",
-          icon = "circle-thin"
-        )
-      )
-    )
-  ),
-  body = bs4DashBody(
-
-    use_theme(bs4DashTheme),
-
-    bs4TabItems(
-      bs4TabItem(
-        tabName = "tab1",
-        tags$h2("UI components"),
-        tags$h4("bs4ValueBox"),
-        fluidRow(
-          bs4ValueBox(
-            value = 150,
-            subtitle = "ValueBox with primary status",
-            status = "primary",
-            icon = "shopping-cart",
-            href = "#",
-            width = 4
-          ),
-          bs4ValueBox(
-            value = 150,
-            subtitle = "ValueBox with secondary status",
-            status = "secondary",
-            icon = "shopping-cart",
-            href = "#",
-            width = 4
-          ),
-          bs4ValueBox(
-            value = "53%",
-            subtitle = "ValueBox with danger status",
-            status = "danger",
-            icon = "cogs",
-            footer = "Hello World",
-            width = 4
-          )
-        ),
-        tags$h4("bs4InfoBox"),
-        fluidRow(
-          bs4InfoBox(
-            value = 150,
-            title = "InfoBox with primary status",
-            iconStatus = "primary",
-            icon = "shopping-cart",
-            href = "#",
-            width = 4
-          ),
-          bs4InfoBox(
-            value = 150,
-            title = "InfoBox with secondary status",
-            iconStatus = "secondary",
-            icon = "shopping-cart",
-            href = "#",
-            width = 4
-          ),
-          bs4InfoBox(
-            value = "53%",
-            title = "InfoBox with danger status",
-            iconStatus = "danger",
-            icon = "cogs",
-            footer = "Hello World",
-            width = 4
-          )
-        ),
-        tags$h4("bs4Card"),
-        fluidRow(
-          bs4Card(
-            title = "Card with primary status",
-            closable = FALSE,
-            width = 6,
-            solidHeader = TRUE,
-            status = "primary",
-            collapsible = TRUE,
-            p("Box Content")
-          ),
-          bs4Card(
-            title = "Card with secondary status",
-            closable = FALSE,
-            width = 6,
-            solidHeader = TRUE,
-            status = "secondary",
-            collapsible = TRUE,
-            p("Box Content")
-          ),
-          bs4Card(
-            title = "Card with danger status",
-            closable = FALSE,
-            width = 6,
-            solidHeader = TRUE,
-            status = "danger",
-            collapsible = TRUE,
-            p("Box Content")
-          ),
-          bs4Card(
-            title = "Card with warning status",
-            closable = FALSE,
-            width = 6,
-            solidHeader = TRUE,
-            status = "warning",
-            collapsible = TRUE,
-            p("Box Content")
-          ),
-          bs4Card(
-            title = "Card with info status",
-            closable = FALSE,
-            width = 6,
-            solidHeader = TRUE,
-            status = "info",
-            collapsible = TRUE,
-            p("Box Content")
-          ),
-          bs4Card(
-            title = "Card with success status",
-            closable = FALSE,
-            width = 6,
-            solidHeader = TRUE,
-            status = "success",
-            collapsible = TRUE,
-            p("Box Content")
-          )
-        )
-      ),
-      bs4TabItem(
-        tabName = "tab2",
-        "Nothing to see here"
-      )
-    )
-  )
-)
-
-
-server <- function(input, output) {
-
-}
-
-
-shinyApp(ui, server)
+customize_bs4Dash(dark_theme)
 ```
 
 ### Customize `{shinydashboard}` 
 
-Similarly, `{fresh}` supports `{shinydashboard}` powered apps. In few lines of code, you may definitely provide a cyberpunk look and feel to your favorite dashboard (Figure \@ref(fig:shinydashboardPlus-fresh)). `{shinydashboardPlus}` ([v2](https://rinterface.github.io/shinydashboardPlus/articles/more-skins.html#fresh)) has a plug and play support for `{fresh}` where the theme has to be passed to the `dashboardPage` _freshTheme_ parameter (it would also seamlessly work with `{shinydashboard}`). Importantly, I strongly suggest to avoid setting the default green to blue, as it might become confusing. Prefer playing with different color palettes.  
+Similarly, `{fresh}` supports `{shinydashboard}` powered apps. In few lines of code, you may definitely provide a cyberpunk look and feel to your favorite shiny dashboard (Figure \@ref(fig:shinydashboardPlus-fresh)). `{shinydashboardPlus}` ([v2](https://rinterface.github.io/shinydashboardPlus/articles/more-skins.html#fresh)) has a plug and play support for `{fresh}` where the theme has to be passed to the `dashboardPage` _freshTheme_ parameter (it would also seamlessly work with `{shinydashboard}`). We start by creating the theme with `adminlte_colors()`, `adminlte_sidebar()` and `adminlte_global()`:
 
-```{r shinydashboardPlus-fresh, echo=FALSE, fig.cap='Cyberpunk shinydashboard', out.width='100%'}
-knitr::include_graphics("images/beautify/cyberpunk_shinydashboard.png")
-```
-
-```{r, eval=FALSE}
-theme <- create_theme(
+```{r}
+cyberpunk_theme <- create_theme(
   adminlte_color(
     green = "#3fff2d",
     blue = "#2635ff",
@@ -241,63 +175,14 @@ theme <- create_theme(
     content_bg = "#aaaaaa"
   )
 )
-
-# create tribble for box global config
-box_config <- tibble::tribble(
-  ~background, ~labelStatus,
-  "red", "warning",
-  "purple", "success",
-  "green", "primary",
-  "yellow", "danger",
-  "fuchsia", "info"
-)
-
-# box factory function
-box_factory <- function(background, labelStatus) {
-  box(
-    title = "Cyberpunk Box", 
-    collapsible = TRUE, 
-    background = background,
-    height = "200px",
-    label = boxLabel(1, labelStatus)
-  )
-}
-
-# pmap magic
-boxes <- purrr::pmap(box_config, box_factory)
-
-shinyApp(
-   ui = dashboardPage(
-     freshTheme = theme,
-     skin = "blue",
-     options = list(sidebarExpandOnHover = TRUE),
-     header = dashboardHeader(
-       dropdownMenu(
-         type = "messages", 
-         badgeStatus = "success",
-         messageItem(
-           from = "Support Team",
-           message = "This is the content of a message.",
-           time = "5 mins"
-         ),
-         messageItem(
-           from = "Support Team",
-           message = "This is the content of another message.",
-           time = "2 hours"
-         )
-       )
-     ),
-     sidebar = dashboardSidebar(
-       sidebarMenu(
-         menuItem("Item 1", badgeLabel = icon("heart"), badgeColor = "light-blue"),
-         menuItem("Item 2", badgeLabel = icon("poo"), badgeColor = "maroon")
-       )
-     ),
-     body = dashboardBody(boxes),
-     controlbar = dashboardControlbar(),
-     title = "Fresh theming"
-   ),
-   server = function(input, output) { }
- )
 ```
 
+The demonstration may be run with, the result being shown on Figure \@ref(fig:shinydashboardPlus-fresh):
+```{r, eval=FALSE}
+customize_shinydashboard(cyberpunk_theme)
+```
+
+
+```{r shinydashboardPlus-fresh, echo=FALSE, fig.cap='Cyberpunk shinydashboard', out.width='100%'}
+knitr::include_graphics("images/beautify/cyberpunk_shinydashboard.png")
+```
