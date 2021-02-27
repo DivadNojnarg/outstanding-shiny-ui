@@ -1,11 +1,9 @@
 # Shiny's internal: session and websockets {#shiny-intro}
 
-In this chapter, we will answer to the following question:
-
-  - How is the R/JavaScript communication achieved?
+In this chapter, we explain how the R/JavaScript communication is achieved.
 
 ::: {.warningbox data-latex=""}
-At this point, users may find `options(shiny.minified = FALSE)` to debug the Shiny.js core.
+At this point, users may find `options(shiny.minified = FALSE)` convenient to debug the Shiny.js core.
 :::
 
 ## The Shiny JavaScript object {#shiny-js-object}
@@ -33,10 +31,10 @@ knitr::include_graphics("images/survival-kit/shiny-object.png")
 [^export-js]: Refer to Chapter \@ref(survival-kit-javascript) if you don't remember how to export an object and make it available to all JS files.
 
 ## Websocket: R/JS bidirectional communication {#shiny-websocket}
-How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature highlighted [here](https://github.com/rstudio/shiny), which leverages the [httpuv](https://github.com/rstudio/httpuv) package. 
+How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature leveraging the [httpuv](https://github.com/rstudio/httpuv) package. 
 
 ### What is a websocket?
-Before going further let's define what is a websocket. It is an advanced technology allowing bidirectional communication between a  (or multiple) client(s) and a server. For instance, a [chat](https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee) system may be built on top of a websocket [^chat-system]. The server is generally created using Node.js libraries like `ws` and the client with JavaScript. In the R context, the server is created from `{httpuv}` [@R-httpuv] and the client either with `{websocket}` [@R-websocket] (see below) or directly from JavaScript, as described later:
+Before going further let's define what is a __websocket__. It is an advanced technology allowing __bidirectional communication__ between a (or multiple) client(s) and a server. For instance, a [chat](https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee) system may be built on top of a websocket [^chat-system]. The server is generally created using Node.js libraries like `ws` and the client with JavaScript. In the R context, the server is created from `{httpuv}` [@R-httpuv] and the client either with `{websocket}` [@R-websocket] (see below) or directly from JavaScript, as described later:
 
 ```{r, eval=FALSE}
 library(httpuv)
@@ -59,15 +57,15 @@ s <- startServer("127.0.0.1", 8080,
 )
 ```
 
-[^chat-system]: Note that by default, each time a client connects to the server, a new connection is opened, thereby preventing this client from capturing others connections messages. This is also called single cast. For a chat, we use a [multi cast](https://medium.com/the-quarter-espresso/multicast-websocket-nodejs-ff1f400ba2f7) option, that is forwarding one client's message to (all) other connected clients. `{httpuv}` does not provide such a feature since this would not make sense and would be harmful in the context of shiny!
+[^chat-system]: By default, each time a client connects to the server, a new connection is opened, thereby preventing this client from capturing others connections messages, also called single cast. For a chat, we use a [multi cast](https://medium.com/the-quarter-espresso/multicast-websocket-nodejs-ff1f400ba2f7) strategy, that is forwarding one client's message to (all) other connected clients. `{httpuv}` does not provide such a feature since this would not make sense and would be harmful in the context of shiny!
 
-On the server side, `startServer` expects a host, port and an app. In the case of websockets, app is a list containing the `onWSOpen` function defining all actions to perform after the connection is established. Those actions are defined in the `{httpuv}` `WebSocket` R6 class:
+On the server side, `startServer()` expects a __host__, __port__ and an __app__. In the case of websockets, app is a list containing the `onWSOpen` function defining all actions to perform after the connection is established. Those actions are defined in the `{httpuv}` `WebSocket` R6 class:
 
-  - `onMessage` is invoked whenever a message is received on this connection.
-  - `onClose` is invoked when the connection is closed.
-  - `send` sends a message from the server (to the client).
+  - __onMessage__ is invoked whenever a message is received on this connection.
+  - __onClose__ is invoked when the connection is closed.
+  - __send__ sends a message from the server (to the client).
 
-On the client, we may use the `{websocket}` `WebSocket` class provided by the [websocket](https://github.com/rstudio/websocket) package. As soon as the new socket instance is created, the server `onWSOpen` function is called which displays the welcome message. Then a message is sent from the client, received on the server and sent back to the client.
+On the client, we may use the `{websocket}` `WebSocket` class provided by the [websocket](https://github.com/rstudio/websocket) package:
   
 ```{r, eval=FALSE}
 library(websocket)
@@ -84,7 +82,51 @@ ws$send("Hello server!")
 ws$close()
 ```
 
-However, Shiny does not use `{websocket}`! As mentioned earlier, the client is be built directly from JS as below:
+We briefly describe the above code:
+
+  - We create a new client socket instance, which triggers the server `onWSOpen` function, displaying the welcome message.
+  - We set the client `ws$onMessage` event manager that will print the message sent by the server. 
+  - Then a message is sent from the client with `ws$send`, received on the server and sent back to the client, and so on.
+  Figure \@ref(fig:websocket-basics) shows the main mechanisms.
+  - The client connection is closed, which also closes the server connection. 
+  
+```{r websocket-basics, echo=FALSE, fig.cap='Typical websocket flow between client and server.', out.width='100%'}
+knitr::include_graphics("images/survival-kit/websocket-basics.png")
+```
+  
+Interestingly, multiple clients can connect to the same server. 
+You may give it a try with the `{OSUICode}` side package:
+
+```{r, eval=FALSE}
+library(OSUICode)
+server <- websocket_server()
+client_1 <- websocket_client()
+client_2 <- websocket_client()
+client_1$send("Hello from client 1")
+client_2$send("Hello from client 2")
+client_1$close()
+client_2$send("Only client 2 is here")
+client_2$close()
+Sys.sleep(1)
+server$stop()
+```
+
+whose output is shown below.
+
+```
+Server connection opened.
+Server connection opened.
+Server received message: Hello from client 1 
+Client received message: Hello client! 
+Server received message: Hello from client 2 
+Client received message: Hello client! 
+Server connection closed.
+Server received message: Only client 2 is here 
+Client received message: Hello client! 
+Server connection closed.
+```
+
+However, Shiny does not use `{websocket}`! As mentioned earlier, the client is built directly from JS as below:
 
 ```html
 <!DOCTYPE HTML>
