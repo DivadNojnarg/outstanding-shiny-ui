@@ -1,4 +1,4 @@
-# Shiny's internal: session and websockets {#shiny-intro}
+# R and JS {#shiny-intro}
 
 In this chapter, we explain how the R/JavaScript communication is achieved.
 
@@ -6,31 +6,7 @@ In this chapter, we explain how the R/JavaScript communication is achieved.
 At this point, users may find `options(shiny.minified = FALSE)` convenient to debug the Shiny.js core.
 :::
 
-## The Shiny JavaScript object {#shiny-js-object}
-The `Shiny` object is exported at the top of the `shiny.js` file [^export-js]. In other words, this means that we may use this object and any of its properties within the HTML inspector console tab, in any JavaScript file or shiny app as below:
-
-```{r, eval=FALSE}
-ui <- fluidPage(
-  tags$script(
-    "$(function() {
-      console.log(Shiny);
-    });
-    "
-  )
-)
-server <- function(input, output, session) {}
-shinyApp(ui, server)
-```
-
-This object contains many properties and methods as shown in Figure \@ref(fig:shiny-object). Some of particular interest, such as like `Shiny.setInputValue`, `Shiny.addCustomMessageHandler`, `Shiny.shinyapps`, `Shiny.bindAll`, ... will be detailed later.
-
-```{r shiny-object, echo=FALSE, fig.cap='The Shiny JavaScript object', out.width='100%'}
-knitr::include_graphics("images/survival-kit/shiny-object.png")
-```
-
-[^export-js]: Refer to Chapter \@ref(survival-kit-javascript) if you don't remember how to export an object and make it available to all JS files.
-
-## Websocket: R/JS bidirectional communication {#shiny-websocket}
+## Introduction to websockets {#shiny-websocket}
 How does R (server) and JavaScript (client) communicate? This is a built-in Shiny feature leveraging the [httpuv](https://github.com/rstudio/httpuv) package. 
 
 ### What is a websocket?
@@ -126,45 +102,245 @@ Client received message: Hello client!
 Server connection closed.
 ```
 
-However, Shiny does not use `{websocket}`! As mentioned earlier, the client is built directly from JS as below:
+
+### Example {#from-R-to-JS}
+In practice, Shiny does not use `{websocket}`. As mentioned earlier, the client is directly built from JS. To better 
+understand the whole process, we are going to design a simple web page containing an HTML range slider, pass its value from JS to R through the websocket, so that R can do a simple histogram. Moreover, R will also send a message to JS, thereby updating a gauge meter widget located in the page. 
+
+To proceed, we need few elements:
+  - The HTML page containing the slider, gauge and the JS logic to create the client websocket connection, process
+  the slider value and update the gauge value. 
+  - An app composed of an `{httpuv}` powered HTTP server serving this HTML page as well as a websocket server to connect R and JS.
+  
+#### Create the app
+As shown above, we use the `startServer` function, giving it a default port and host such that the url is `127.0.0.1:8080`. The most important elements
+is the app that consists in an HTTP response and a server websocket. The websocket call back may be defined
+as below:
+
+```{r, eval=FALSE}
+ws_handler <- function(ws) {
+  # The ws object is a WebSocket object
+  cat("New connection opened.\n")
+  # Capture client messages
+  ws$onMessage(function(binary, message) {
+    # create plot
+    input_message <- jsonlite::fromJSON(message)
+    print(input_message)
+    cat("Number of bins:", input_message$value, "\n")
+    hist(rnorm(input_message$value))
+    
+    # update gauge widget
+    output_message <- jsonlite::toJSON(
+      list(
+        val = sample(0:100, 1),
+        message = "Thanks client! I updated the plot..."
+      ),
+      pretty = TRUE,
+      auto_unbox = TRUE
+    )
+    ws$send(output_message)
+    cat(output_message)
+  })
+  ws$onClose(function() {
+    cat("Server connection closed.\n")
+  })
+}
+```
+
+The critical part is the `onMessage` call back which has to process the client message. As we'll send a JSON (from the client), we leverage `jsonlite::fromJSON()` to properly treat the message. It is printed for debugging purposes and the value is injected inside a `hist(rnorm())` function. The second task is to send a message to JS in order to update the gauge value. See it like an `updateSlider()` function for instance. We utilize `jsonlite::toJSON()` to send a random value to JS as well as a polite message. 
+
+The HTTP response is returned by the `call` function and is typically defined as follows:
+
+```{r, eval=FALSE}
+http_response <- function(req) {
+  list(
+    status = 200L,
+    headers = list(
+      'Content-Type' = 'text/html'
+    ),
+    body = "Hello world!"
+  )
+}
+```
+
+It is a list composed of a status code , 200 being the OK HTTP [status](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status), some headers here indicating
+the content nature and the body which is what well be display when the client visits `127.0.0.1:8080`. 
+The app code is:
+
+```{r, eval=FALSE}
+startServer(
+  "127.0.0.1",
+  8080,
+  list(call = http_reponse, onWSOpen = ws_handler)
+)
+```
+
+The next step is to replace the `http_reponse$body` by a real HTML page containing the client websocket handler,
+as well as the slider and gauge widgets.
+
+#### Design the page content
+The first task is to create the websocket client connection:
+
+  - We initialize the socket connection with the `WebSocket` [API](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket). It is crucial
+  that the __host__ and __port__ match the parameters provided during the websocket server initialization.
+  - We create the event registry that is `socket.onopen`, `socket.onmessage`. Inside `socket.onmessage`, we have to process the message sent from R with `JSON.parse` that creates an object. Remember that we sent a list from R and are only interested in the `val` element. 
+  
+::: {.importantblock data-latex=""}
+Importantly, we must wait for all elements to be available in the DOM before starting any action. Therefore, we wrap the whole thing inside a `document.addEventListener("DOMContentLoaded", ...)`.
+:::
+
+
+```js
+document.addEventListener("DOMContentLoaded", function(event) {
+  // Capture gauge widget
+  var gauge = document.getElementById("mygauge");
+  // Initialize client socket connection
+  var mySocket = new WebSocket("ws://<HOST>:<PORT>");
+  mySocket.onopen = function (event) {
+    // do things
+  };
+  // Handle server message
+  mySocket.onmessage = function (event) {
+    var data = JSON.parse(event.data);
+    gauge.value = data.val;
+  };
+});
+```
+
+We eventually insert it inside the `script` tag of our basic HTML boilerplate, which also contains the gauge
+skeleton. `min`, `max` and `value` set the range, while `low`, `high` and `optimum` are responsible for the color (red, yellow and green, respectively):
 
 ```html
 <!DOCTYPE HTML>
 <html lang="en">
   <head>
     <script language="javascript">
-      // displays an alert 
-      var mySocket = new WebSocket("ws://127.0.0.1:8080");
-      mySocket.onopen = function (event) {
-        // exampleSocket.send("Client connected!"); 
-      };
-      mySocket.onmessage = function (event) {
-        console.log(event.data);
-      };
+      document.addEventListener("DOMContentLoaded", function(event) {
+        // Capture gauge widget
+        var gauge = document.getElementById("mygauge");
+        // Initialize client socket connection
+        var mySocket = new WebSocket("ws://<HOST>:<PORT>");
+        mySocket.onopen = function (event) {
+          // do things
+        };
+        // Handle server message
+        mySocket.onmessage = function (event) {
+          var data = JSON.parse(event.data);
+          gauge.value = data.val;
+        };
+      });
     </script>
     <title>Websocket Example</title>
   </head>
   <body>
-    <!-- onclick attributes applies the JavaScript function changeColor define above -->
-    <button onclick="mySocket.send('Hello server!')">Say hello to the server</button>
+    <label for="mygauge">Gauge:</label>
+    <meter id="mygauge" min="0" max="100" low="33" high="66" optimum="80" value="50"></meter>
   </body>
 </html>
 ```
 
-::: {.importantblock data-latex=""}
-`host` and `port` must be identical on both server and client side!
-:::
+Once done, we have to take care of the range slider whose code is taken from the MDN [resources](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input/range):
 
-If you open this file in a web browser, clicking on the button will send a message to the server, as shown on Figure \@ref(fig:general-websocket).
-
-```{r general-websocket, echo=FALSE, fig.cap='Server client communication', out.width='100%'}
-knitr::include_graphics("images/survival-kit/general-websocket.png")
+```html
+<div>
+  <input type="range" id="slider" name="volume" min="0" max="100">
+  <label for="slider" id ="sliderLabel">Value:</label>
+</div>
 ```
 
+It is a simple div containing an input tag as well as a label. The input tag has some attributes, notably the
+minimum and maximum value. The slider has to be inserted in the HTML boilerplate shown below:
 
+```html
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <script language="javascript">
+      document.addEventListener("DOMContentLoaded", function(event) {
+        // Capture gauge widget
+        var gauge = document.getElementById("mygauge");
+        // Initialize client socket connection
+        var mySocket = new WebSocket("ws://<HOST>:<PORT>");
+        mySocket.onopen = function (event) {
+          // do things
+        };
+        // Handle server message
+        mySocket.onmessage = function (event) {
+          var data = JSON.parse(event.data);
+          gauge.value = data.val;
+        };
+      });
+    </script>
+    <title>Websocket Example</title>
+  </head>
+  <body>
+    <div>
+      <input type="range" id="slider" name="volume" min="0" max="100">
+      <label for="slider" id ="sliderLabel"></label>
+    </div>
+    <br/>
+    <label for="mygauge">Gauge:</label>
+    <meter id="mygauge" min="0" max="100" low="33" high="66" optimum="80" value="50"></meter>
+  </body>
+</html>
+```
+
+The slider behavior is entirely controlled with JS. We recover its value with `document.getElementById` and
+add it to the label inner HTML so as to know the current value. We also add an event listener to update the slider value each time the range is updated, either by drag or by keyboard action with `oninput`. It is best practice to 
+convert the slider value to a number with `parseInt`, as the returned value defaults to a string. Finally, we send the value through the websocket, converting it to JSON so that we may process it from R with `{jsonlite}` (or any other relevant package):
+
+```js
+var sliderWidget = document.getElementById("slider");
+var label = document.getElementById("sliderLabel");
+label.innerHTML = "Value:" + slider.value; // init
+// on change
+sliderWidget.oninput = function() {
+  var val = parseInt(this.value);
+  mySocket.send(
+    JSON.stringify({
+      value: val,
+      message: "New value for you server!"
+    })
+  );
+  label.innerHTML = "Value:" + val;
+};
+```
+
+#### Test it!
+For convenience, the whole code is provided by `OSUICode::httpuv_app()`. Run that function in the R console
+and browse to `127.0.0.1:8080` with Chrome. You should see the range slider as well as its current value. We suggest
+the reader to have R and Chrome side by side, to properly see the messages send between R and JS. In Chrome,
+open the developer tools and navigate to the Network tab and select the `websocket` entry, as show Figure \@ref(fig:httpuv-websocket-demo). From now, you may change the slider value. Notice the green arrow message appearing 
+in the developer tools. This indicates a message sent by the client: here a JSON containing the slider value as well as a tiny message, to be polite with the server. In the R console, you may inspect the received message (it should be the same as the client!). R is instructed to create a new plot and, once done, sends a message back to the client (red arrow) to indicate that the plot is updated and a new value has been generated for the gauge. 
+
+```{r httpuv-websocket-demo, echo=FALSE, fig.cap='Server client communication through websocket', out.width='100%'}
+knitr::include_graphics("images/survival-kit/httpuv-websocket-demo.png")
+```
+
+### Clients concurrency 
+Not shown in the above sections, `httpuv_app()` exposes a delay parameter that simulates a computationally intense task on the server:
+
+```{r, eval=FALSE}
+ws$onMessage(function(binary, message) {
+  message <- jsonlite::fromJSON(message)
+  print(message)
+  cat("Number of bins:", message$value, "\n")
+  hist(rnorm(message$value))
+  if (!is.null(delay)) Sys.sleep(delay)
+  ws$send("Thanks client! I updated the plot.")
+})
+```
+
+This is to simulate concurrency that could occur between multiple client. To test it, you may try to call `my_app <- httpuv_app(5)`, open two browser tabs pointing to `127.0.0.1:8080`, update the slider on the first client and update it on the second client. What happens? Why? This illustrates one fundamental limitation about Shiny: as R is single threaded, clients have to queue to get an answer from the server. 
+
+::: {.importantblock data-latex=""}
+Once done, don't forget to close the server connection with `my_app$stop()`!
+:::
+
+In practice, Shiny's core is much more complex but hopefully, you should get a better understanding of the general idea! 
 The reader must understand that when Shiny inputs/outputs are modified on the client by an end user, there are a lot of exchanges between R and JS, through the websocket. In the following, we briefly describe how Shiny leverages this technology, on both server and client side.
 
-### Shiny app life-cycle
+## Shiny app life-cycle
 Let's first try to reconstruct the life cycle of a Shiny app. What really happens when one browse to a shiny app url?
 
 Shiny Apps are usually hosted on environments running different versions of shiny server:
@@ -195,7 +371,7 @@ knitr::include_graphics("images/survival-kit/shinyapp-lifecycle.png")
   
 From there, client and server are free to exchange information. In the following part, we provide details on both server and client websocket connection. 
 
-### The Shiny session object {#shiny-session}
+## The Shiny session object {#shiny-session}
 We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 
 Importantly, the session is unique to a given user. It means that 2 different clients cannot share the same session. This is important since it contains all information about input, output, client data...
 
@@ -248,8 +424,9 @@ write = function(json) {
 
 No worry if it is not clear at the moment. We will discuss those elements in the following sections. 
 
-### Shiny and websocket
-#### Server websocket 
+## Shiny and websocket
+In section \@ref(from-R-to-JS), we showed how R and JS can communicate through the websocket. Now let's see what happens in the context of Shiny. 
+### Server side 
 On the server, that is R, a websocket is initiated in the [startApp](https://github.com/rstudio/shiny/blob/master/R/server.R#L440) function, leveraging the `{httpuv}` package. Websocket handlers are [defined](https://github.com/rstudio/shiny/blob/master/R/server.R#L133) by `createAppHandlers`:
 
 ```{r, eval=FALSE}
@@ -311,14 +488,14 @@ addWSHandler = function(wsHandler, key, tail = FALSE) {
 
 Note that the R option `options(shiny.trace = TRUE)` allows the websocket messages to be displayed directly in the R console.
 
-#### Websocket client side
-On the JS side, the socket creation occurs in the `shinyapps.js` [file](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L58):
+### Client side
+On the JS side, the socket creation occurs in the `shinyapps.js` [file](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L58):
 
 ```js
 var ws = new WebSocket(protocol + '//' + window.location.host + defaultPath);
 ```
 
-through the `WebSocket` object. `protocol` is the chosen protocol (either `ws` or `wss` if using `https`). `window.location.host` contains the host name and its [port](https://developer.mozilla.org/fr/docs/Web/API/window/location).
+through the `WebSocket` object. `protocol` is the chosen protocol, either `ws` or `wss` (if using `https`). `window.location.host` contains the host name and its [port](https://developer.mozilla.org/fr/docs/Web/API/window/location).
 Once the connection is opened, events are handled with the `onopen` event registry:
 
 ```js
@@ -381,8 +558,7 @@ If the connection was opened, the `shiny:disconnected` event is triggered. Then,
 Should any error occurs in the R code, the server sends the error through the websocket, which is captured by the client and displayed.
 
 ### Example
-
-In the following, we will show how to inspect the websocket exchanges in a web browser. Let's run the following app (see  \@ref(fig:shiny-websocket), left panel):
+Let's run the following app (see  \@ref(fig:shiny-websocket), left panel):
 
 ```{r, eval=FALSE}
 library(shiny)
@@ -449,7 +625,7 @@ shinyApp(ui, server)
 ```
 
 
-### Recap
+### Summary
 Below is a summary of the server and client websocket parts. The Shiny app shown in Figure \@ref(fig:websocket-intro) consists in an `actionButton` and a `sliderInput`. Clicking on the action button triggers an `observeEvent` that fires `updateSlideInput`. Under the hood, clicking on the action button sends a message from the client to the server. This message is processed and the corresponding input value is updated on the server, thereby invalidating any observer, reactive element. `updateSlideInput` sends a message back to the client containing the id of the input to update. This message is received and processed by the `onMessage` event manager, which redirects the message to the related message handler, thereby updating the corresponding input element on the client. The underlying mechanisms are going to be detailed in the next part \@ref(shiny-input-system). You may imagine that when the slider is updated, it also sends a message to the server, triggering a cascade of reactions.
 
 It let you imagine how many messages are exchanged for more complex apps!
