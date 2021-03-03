@@ -1,239 +1,100 @@
-# Shiny's internals {#shiny-intro}
+# R and JS {#shiny-intro}
 
-This rather technical chapter aims at untangling what are the main mechanisms behind a Shiny app.  
-We particularly highlight some internal processes necessary to the R/JavaScript communication, 
-which is quite frankly mind blowing. 
+This rather technical chapter aims at untangling what are the main mechanisms behind a Shiny app, responsible for
+driving the R/JavaScript communication, which is quite frankly mind blowing. 
 
-## The client-server model
-A Shiny app is a __web application__ and like all web applications, 
-it follows the __server-client__ model which consists in:
+This is a feature leveraging the [httpuv](https://github.com/rstudio/httpuv) package. The HTTP protocol is not very convenient to chain numerous requests since the connection is closed after each request. If you already built complex apps festooned with inputs and outputs, you may imagine the amount of exchanges necessary between R and JS, thereby making HTTP definitely not suitable. What we would need instead is a permanent connection, allowing bidirectional fluxes, that is, if R wants to inform JS about something or if JS wants to send information to R. 
 
-  - A client which sends requests to the server through the network.
-  - A server composed of hardware and software elements that treats the client request.
-  - A network inside which flow requests between the server and the client. It is done
-  with the HyperText Transfer protocol (HTTP).
-  
-Each time a client sends a request, it is processed by the server, which provides an answer and closes the connection,
-before treating any other request. In practice, to get a webpage, the client emits many requests, one to get the page and then one request per JS/CSS/image assets. As an example, try to run the following in the R console and open the developer tools:
-
-```{r, eval=FALSE}
-library(shiny)
-ui <- fluidPage()
-server <- function(input, output, session) {}
-shinyApp(ui, server)
-```
-
-Under the network tab, we notice many files (if nothing is shown, reload the web browser tab), which actually correspond to all requests made by the client to the server, Figure \@ref(fig:shinyapp-requests). we also get the current answer status, 200 being the OK HTTP [status](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status), the size and the time needed to treat the request. Nowaday, there exists mechanisms like cache to speed up the request treatment. Don't believe that each time you visit a shiny app, all requests are answered by the server. Actually, most assests are recovered from the web browser cache, that takes significantly less time, although sometimes misleading. I am sure you already found this situation when, after updating your shiny app style, you still get the old design. Most of the time this is a caching issue and resetting Chrome's cache solves the problem.
-
-```{r shinyapp-requests, echo=FALSE, fig.cap='Request flow between client and server at shiny app start.', out.width='100%'}
-knitr::include_graphics("images/survival-kit/shinyapp-requests.png")
-```
-
-## About HTTP requests
-If we inspect the first request from Figure \@ref(fig:shinyapp-requests), we obtain Figure \@ref(fig:http-request-details). An HTTP request is composed of:
-
-  - A [method](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) that indicates the intentions. 
-  We mostly use `GET` to ask for something or `POST`, to submit something. 
-  - An url, corresponding to the path to the targeted element. Here, if nothing is specified in the path, the server will try to get the main HTML page, also called `index.html`. 
-
-```{r http-request-details, echo=FALSE, fig.cap='Details about an HTTP request', out.width='100%'}
-knitr::include_graphics("images/survival-kit/http-request-details.png")
-```
-
-Wait! How does a Shiny app serves files? This is what we are going to see in the next section.
-
-## Shiny app lifecycle
-Like all web apps, a shiny app must be hosted on a server to be accessible by end users, even though during development, we can run it locally. Shiny Apps are usually hosted on different environments:
-
-  - Shiny server [open source](https://rstudio.com/products/shiny/download-server/).
-  - Shiny server [pro](https://rstudio.com/products/shiny-server-pro/).
-  - [RStudio Connect](https://rstudio.com/products/connect/evaluation/).
-  - [shinyapps.io](https://www.shinyapps.io/).
-  
-Whenever a user (client) accesses a shiny app with his web browser, a series of events occurs (Figure \@ref(fig:shinyapp-lifecycle)):
-
-  1. The client sends a HTTP `CONNECT` request to the server (Shiny server) containing the path 
-  to the targeted app. 
-  2. The server starts the targeted app with `runApp()`. 
-  
-Under the hood, `runApp()`:
-
-  - Calls `shinyApp()` that returns a shiny app object composed of a server function and the UI.
-    The UI has to be formatted to be a function returning an HTTP response, as requested by `{httpuv}`. 
-  - Calls `startApp` that creates HTTP and websocket (WS) handlers. WS handlers are responsible for controlling the WS behavior when the app starts, when a message is received from a client and when the app closes. It also creates static path containing all CSS, JS files that may be accessed by the browser.
-  - Calls `startServer` from `{httpuv}`, that starts the HTTP server and opens the server websocket connection. 
-    
-    
-  3. If the R code does not contain errors, the server returns the Shiny UI HTML code to the client, which is displayed in the web browser.
-  4. The returned HTML contains all the necessary JavaScript to subsequently open the client websocket connection. 
-  5. From there, client and server are free to exchange information
-  
-```{r shinyapp-lifecycle, echo=FALSE, fig.cap='Shiny App lifecycle', out.width='100%'}
-knitr::include_graphics("images/survival-kit/shinyapp-lifecycle.png")
-```
-
-The following parts detail the most important mechanisms.
-
-### Building the UI
-What definitely makes Shiny wonderful is the ability to only write R code to produce HTML. Although convenient for R users, there is a moment where all this R code has to become HTML, since web browsers are just not able to process R files. Shiny must provide a string containing the HTML code that will be later given to the `{httpuv}` server and displayed to the end user. These steps heavily relies on `{htmltools}`, particularly the `renderDocument()` function. If it has not been documented until here, it's mainly because you don't have to do it on your own, unless you try to develop another web framework for R, built on top of `{httpuv}`, like `{ambriorix}` or `{fiery}`. Another use case is `{argonR}` which allows to design Bootstrap 4 HTML templates, on top of the [argon](https://www.creative-tim.com/product/argon-design-system) design system. 
-
-Under the hood, `shinyApp()` does many things, particularly creating a valid HTTP response template for `{httpuv}`, through the internal `shiny:::uiHttpHandler` function. The conversion from R to HTML is achieved by `shiny:::renderPage`. First, the provided UI R code is wrapped in a `tags$body()`, if not yet done. As a reminder `fluidPage` does not create a `body` tag, which is required to produce a valid HTML template. The result is given to `htmlTemplate()` to fill the following boilerplate, part of the Shiny package:
-
-```html
-<!DOCTYPE html>
-<html{{ if (isTRUE(nzchar(lang))) paste0(" lang=\"", lang, "\"") }}>
-  <head>
-  {{ headContent() }}
-  </head>
-  {{ body }}
-</html>
-```
-
-If we assume that our UI is built as follows, applying `htmlTemplate()` on it yields:
+## JSON: exhange data
+Since R and JS a very different languages, we can't just send R code to JS and conversely. We must find a __common language__ to exchange data. Guess what? We'll be using JSON! __JSON__ stands for JavaScript Object Notation. JSON has the great advantage to be suitable for many languages, particularly R. It has the same structure as a JS object but represented as a character string, for instance:
 
 ```{r}
-ui <- fluidPage(
-  textInput("caption", "Caption", "Data Summary"),
-  verbatimTextOutput("value")
-)
-
-ui <- htmlTemplate(
-  system.file("template", "default.html", package = "shiny"), 
-  lang = "en", 
-  body = tags$body(ui), 
-  document_ = TRUE
-)
-```
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <!-- HEAD_CONTENT -->
-  </head>
-  <body>
-    <div class="container-fluid">
-      <div class="form-group shiny-input-container">
-        <label class="control-label" id="caption-label" for="caption">Caption</label>
-        <input id="caption" type="text" class="form-control" value="Data Summary"/>
-      </div>
-      <pre class="shiny-text-output noplaceholder" id="value"></pre>
-    </div>
-  </body>
-</html>
-```
-
-You may wonder what `headContent()` does. It inserts the string `<!-- HEAD_CONTENT -->` inside the head so that
-shiny knows where to insert the dependencies. Then, all necessary dependencies like jQuery, Bootstrap and shiny css/javascript files (`shiny:::shinyDependencies`) are added in the UI head by `renderDocument()`. For instance:
-
-```{r}
-library(htmltools)
-html <- renderDocument(
-  ui,
-  deps = c(
-    list(htmlDependency("jquery", "3.5.1", c(href = "shared"), script = "jquery.min.js")), 
-    shiny:::shinyDependencies() # JS + CSS
-  ),
-  processDep = createWebDependency
-)
-```
-
-The final result is shown below:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <script type="application/shiny-singletons"></script>
-    <script type="application/html-dependencies">jquery[3.5.1];
-    shiny-css[1.6.0];shiny-javascript[1.6.0];bootstrap[3.4.1]</script>
-    <script src="shared/jquery.min.js"></script>
-    <link href="shared/shiny.min.css" rel="stylesheet" />
-    <script src="shared/shiny.min.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link href="shared/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="shared/bootstrap/accessibility/css/bootstrap-accessibility.min.css" rel="stylesheet" />
-    <script src="shared/bootstrap/js/bootstrap.min.js"></script>
-    <script src="shared/bootstrap/accessibility/js/bootstrap-accessibility.min.js"></script>
-  </head>
-  <body>
-    <div class="container-fluid">
-      <div class="form-group shiny-input-container">
-        <label class="control-label" id="caption-label" for="caption">Caption</label>
-        <input id="caption" type="text" class="form-control" value="Data Summary"/>
-      </div>
-      <pre class="shiny-text-output noplaceholder" id="value"></pre>
-    </div>
-  </body>
-</html>
-```
-
-The final step is to return an HTTP response containing the HTML string. As of `{shiny}` `1.6.0`, the `httpResponse` function is exported by default:
-
-```{r}
-httpResponse(
-  status = 200,
-  content = html
-)
-```
-
-
-### Serving HTML with `{httpuv}`
-Once the UI is processed, Shiny make it available to end users by leveraging `{httpuv}`, which provides tools to set up an HTTP server. The main function is `startServer` that requires a __host__, __port__ and an __app__. If you run a shiny app locally, the default host is `localhost` or `127.0.0.1` and the port is randomly chosen by `shinyApp` or `runApp`, even though you may fix it. The most important element is the app and `{httpuv}` expects a list of functions like:
-
-  - `call`, to handle the client HTTP request and return the server HTTP response. Depending on the context,
-  Shiny may return different responses like 403 (unauthorized), 404 (not found) or 200 (OK).
-  - `onHeaders` if the request contains headers. For instance, this may be required for authentication.
-  - `staticPaths` to serve assets, especially CSS or JS files. 
-  
-A valid `call` function template containing the previously processed HTML UI is defined below:
-
-```{r, eval=FALSE}
-app <- list()
-app$call <- function(req) {
-  list(
-    status = 200L,
-    headers = list(
-      'Content-Type' = 'text/html'
-    ),
-    body = html
-  )
+my_json <- '
+{
+  "name": "David",
+  "color": "purple",
+  "planet": "Mars",
+  "animals": [
+     {
+       "name": "Euclide",
+       "type": "cat",
+       "age": 7
+     },
+     {
+       "name": "Sophocle",
+       "type": "dog",
+       "age": 2
+     }
+  ]
 }
+'
 ```
 
-We then invoke `startServer`:
+Now, let's see how we may interact with JSON.
 
-```{r, eval=FALSE}
-library(httpuv)
-s <- startServer(
-  "127.0.0.1",
-  8080,
-  app
+### Process JSON from R
+There are two situations:
+
+  - __Read__ data from a JSON and convert it to the appropriate R structure, like `list()`.
+  - __Export__ data from a R structure and convert it into JSON, for later use in another language,
+  for instance JS.
+  
+The most commonly utilized R package is `{jsonlite}` [@R-jsonlite] which allows to read JSON with `fronJSON` and export to JSON with
+`toJSON`. Let's try to read the above defined JSON:
+
+```{r}
+library(jsonlite)
+res <- fromJSON(my_json)
+str(res)
+```
+
+By default, this gives us a list. Interestingly, the nested array is converted into a dataframe. If you don't like
+this behavior, you may pass the `simplifyVector = FALSE` options, giving nested lists:
+
+```{r}
+fromJSON(my_json, simplifyVector = FALSE)
+```
+
+Inversely, assume we have a R `list()` that we want to transmit to JS. We apply `toJSON`:
+
+```{r}
+my_list <- list(
+  name = "David",
+  color = "purple",
+  planet = "Mars"
 )
+
+toJSON(my_list, auto_unbox = TRUE, pretty = TRUE)
 ```
 
-Now, if we browse to `127.0.0.1:8080`, we see the text input. However, opening the HTML inspector shows many errors, most of them due to the fact that we forgot to serve static assets, all located in the `inst/www/shared` folder of the `{shiny}` package. Let's do it below by adding a `staticPaths` component to our app:
+Note the `auto_unbox` and `pretty` options that allow for a better rendering. 
 
-```{r, eval=FALSE}
-s$stop() # stop the server before running it again!
-app$staticPaths <- list(shared = system.file(package = "shiny", "www", "shared"))
-s <- startServer(
-  "127.0.0.1",
-  8080,
-  app
-)
+There are many more available options and we invit the reader to refer to the `{jsonlite}`
+documentation. 
+
+### Process JSON from JS
+Like R, JS has 2 methods to process JSON, that are provided the `JSON` class.
+We parse a JSON, that is converting it from character to JS object with:
+
+```js
+JSON.parse(my_json)
 ```
 
-Keep in mind that Shiny does many more things to setup the server and we just highlighted the most important steps.
-The above code crashes since the HTML page returned to the client tries to connect to a server websocket, that does not yet exist. 
+Conversely, we convert a JS object to JSON leveraging `JSON.stringify`:
 
-So far so good! You hopefully now better understand how shiny processes the app UI and how it is served. However, this still does not tell how the communication between R and JS is possible.
+```js
+myObject = {
+  "name": "David",
+  "color": "purple",
+  "planet": "Mars",
+}
+JSON.stringify(my_object)
+```
 
-### Handle R/JS communication
-This is a built-in Shiny feature leveraging the [httpuv](https://github.com/rstudio/httpuv) package. 
+Now that we have seen a convenient way to exchange data between two different languages, R and JS, we are going to
+explain how this communication is made possible. This involves web elements called __websockets__.
 
-#### What is a websocket?
+## What is a websocket?
 Before going further let's define what is a __websocket__. It is an advanced technology allowing __bidirectional communication__ between a (or multiple) client(s) and a server. For instance, a [chat](https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee) system may be built on top of a websocket [^chat-system]. The server is generally created using Node.js libraries like `ws` and the client with JavaScript. In the R Shiny context, the server part is created from `{httpuv}` [@R-httpuv] and the client either with `{websocket}` [@R-websocket] (see below) or directly from JavaScript, as described later:
 
 ```{r, eval=FALSE}
@@ -326,17 +187,25 @@ Client received message: Hello client!
 Server connection closed.
 ```
 
+Under the hood, whenever a client initiates a websocket connection, it actually sends an HTTP request to the server.
+This is called the __handshake__, utilizing the __CONNECT__ HTTP method to establish a bridge between the HTTP server and 
+the websocket server. If the server accepts, the returned HTTP code is 101, meaning that we switch protocole from HTTP to WS or WSS, as depicted by Figure \@ref(fig:http-upgrade-to-ws).
 
-#### Example {#from-R-to-JS}
+```{r http-upgrade-to-ws, echo=FALSE, fig.cap='HTTP upgrade to WS in a shiny app example.', out.width='100%'}
+knitr::include_graphics("images/survival-kit/http-upgrade-to-ws.png")
+```
+
+### Example {#from-R-to-JS}
 In practice, Shiny does not use `{websocket}`. As mentioned earlier, the client is directly built from JS. To better 
-understand the whole process, we are going to design a simple web page containing an HTML range slider, pass its value from JS to R through the websocket, so that R can do a simple histogram. Moreover, R will also send a message to JS, thereby updating a gauge meter widget located in the page. 
+understand the whole process, we are going to design a simple web page containing an HTML range slider, pass its value from JS to R through the websocket, so that R can do a simple histogram. Moreover, R will also send a message to JS, thereby updating a gauge meter widget located in the HTML page. 
 
 To proceed, we need few elements:
+
   - The HTML page containing the slider, gauge and the JS logic to create the client websocket connection, process
   the slider value and update the gauge value. 
   - An app composed of an `{httpuv}` powered HTTP server serving this HTML page as well as a websocket server to connect R and JS.
   
-##### Create the app
+#### Create the app
 As shown above, we use the `startServer` function, giving it a default port and host such that the url is `127.0.0.1:8080`. The most important elements
 is the app that consists in an HTTP response and a server websocket. The websocket call back may be defined
 as below:
@@ -371,7 +240,7 @@ ws_handler <- function(ws) {
 }
 ```
 
-The critical part is the `onMessage` call back which has to process the client message. As we'll send a JSON (from the client), we leverage `jsonlite::fromJSON()` to properly treat the message. It is printed for debugging purposes and the value is injected inside a `hist(rnorm())` function. The second task is to send a message to JS in order to update the gauge value. See it like an `updateSlider()` function for instance. We utilize `jsonlite::toJSON()` to send a random value to JS as well as a polite message. 
+The critical part is the `onMessage` call back which has to process the client message. As we'll send a JSON (from the client), we leverage `fromJSON()` to properly treat the message. It is printed for debugging purposes and the value is injected inside a `hist(rnorm())` function. The second task is to send a message to JS in order to update the gauge value. See it like an `updateSlider()` function for instance. We utilize `toJSON()` to send a random value to JS as well as a polite message. 
 
 The HTTP response is returned by the `call` function and is typically defined as follows:
 
@@ -402,7 +271,7 @@ startServer(
 The next step is to replace the `http_reponse$body` by a real HTML page containing the client websocket handler,
 as well as the slider and gauge widgets.
 
-##### Design the page content
+#### Design the page content
 The first task is to create the websocket client connection:
 
   - We initialize the socket connection with the `WebSocket` [API](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket). It is crucial
@@ -530,10 +399,10 @@ sliderWidget.oninput = function() {
 };
 ```
 
-#### Test it!
+### Test it!
 For convenience, the whole code is provided by `OSUICode::httpuv_app()`. Run that function in the R console
 and browse to `127.0.0.1:8080` with Chrome. You should see the range slider as well as its current value. We suggest
-the reader to have R and Chrome side by side, to properly see the messages send between R and JS. In Chrome,
+the reader to have R and Chrome side by side, to properly see all messages sent between R and JS. In Chrome,
 open the developer tools and navigate to the Network tab and select the `websocket` entry, as show Figure \@ref(fig:httpuv-websocket-demo). From now, you may change the slider value. Notice the green arrow message appearing 
 in the developer tools. This indicates a message sent by the client: here a JSON containing the slider value as well as a tiny message, to be polite with the server. In the R console, you may inspect the received message (it should be the same as the client!). R is instructed to create a new plot and, once done, sends a message back to the client (red arrow) to indicate that the plot is updated and a new value has been generated for the gauge. 
 
@@ -541,7 +410,7 @@ in the developer tools. This indicates a message sent by the client: here a JSON
 knitr::include_graphics("images/survival-kit/httpuv-websocket-demo.png")
 ```
 
-#### Clients concurrency 
+## Clients concurrency 
 Not shown in the above sections, `httpuv_app()` exposes a delay parameter that simulates a computationally intense task on the server:
 
 ```{r, eval=FALSE}
@@ -564,11 +433,11 @@ Once done, don't forget to close the server connection with `my_app$stop()`!
 In practice, Shiny's core is much more complex but hopefully, you should get a better understanding of the general idea! 
 The reader must understand that when Shiny inputs/outputs are modified on the client by an end user, there are a lot of exchanges between R and JS, through the websocket. In the following, we briefly describe how Shiny leverages this technology, on both server and client side.
 
-#### Shiny and websockets
+## Shiny and websockets
 
 In the previous section, we showed how R and JS can communicate through a `{httpuv}` powered websocket. Now let's see what happens in the context of Shiny. 
 
-##### The Shiny session object {#shiny-session}
+### The Shiny session object {#shiny-session}
 We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 
 Importantly, the session is unique to a given user. It means that 2 different clients cannot share the same session. This is important since it contains all information about input, output and client data.
 
@@ -621,8 +490,8 @@ write = function(json) {
 
 No worry if it is not clear at the moment. We will discuss `sendInputMessage` and `sendCustomMessage` in the following chapters, respectivelly \@ref(shiny-input-system) and \@ref(shiny-custom-handler).
 
-##### Server side 
-On the server, that is R, a websocket is initiated in the [startApp](https://github.com/rstudio/shiny/blob/master/R/server.R#L440) function, leveraging the `{httpuv}` package. Websocket handlers are [defined](https://github.com/rstudio/shiny/blob/master/R/server.R#L133) by `createAppHandlers`:
+### Server side 
+On the server, that is R, a websocket is initiated in the [startApp](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L534) function, leveraging the `{httpuv}` package. Websocket handlers are [defined](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L303) by `createAppHandlers`:
 
 ```{r, eval=FALSE}
 ws = function(ws) {
@@ -665,7 +534,7 @@ It applies the `messageHandler` function that, in short:
 
 Finally, when the server connection is closed, all client connections are also closed. 
 
-All those handlers are [applied](https://github.com/rstudio/shiny/blob/master/R/server.R#L367) by `handlerManager$addWSHandler(appHandlers$ws, "/", tail = TRUE)`:
+All those handlers are [applied](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L537) by `handlerManager$addWSHandler(appHandlers$ws, "/", tail = TRUE)`:
 ```{r, eval=FALSE}
 # see middleware.R
 httpuvApp <- handlerManager$createHttpuvApp()
@@ -681,7 +550,7 @@ addWSHandler = function(wsHandler, key, tail = FALSE) {
 
 Note that the R option `options(shiny.trace = TRUE)` allows the websocket messages to be displayed directly in the R console.
 
-##### Client side
+### Client side
 On the JS side, the socket creation occurs in the `shinyapps.js` [file](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L58):
 
 ```js
@@ -750,7 +619,7 @@ If the connection was opened, the `shiny:disconnected` event is triggered. Then,
 
 Should any error occurs in the R code, the server sends the error through the websocket, which is captured by the client and displayed.
 
-##### Debug websocket with Shiny
+### Debug websocket with Shiny
 Let's run the following app (see  \@ref(fig:shiny-websocket), left panel):
 
 ```{r, eval=FALSE}
@@ -818,7 +687,7 @@ shinyApp(ui, server)
 ```
 
 
-##### Summary
+### Summary
 Below is a summary of the server and client websocket parts. The Shiny app shown in Figure \@ref(fig:websocket-intro) consists in an `actionButton` and a `sliderInput`. Clicking on the action button triggers an `observeEvent` that fires `updateSlideInput`. Under the hood, clicking on the action button sends a message from the client to the server. This message is processed and the corresponding input value is updated on the server, thereby invalidating any observer, reactive element. `updateSlideInput` sends a message back to the client containing the id of the input to update. This message is received and processed by the `onMessage` event manager, which redirects the message to the related message handler, thereby updating the corresponding input element on the client. The underlying mechanisms are going to be detailed in the next part \@ref(shiny-input-system). You may imagine that when the slider is updated, it also sends a message to the server, triggering a cascade of reactions.
 
 It let you imagine how many messages are exchanged for more complex apps!

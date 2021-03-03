@@ -3,7 +3,7 @@
 ## Introduction
 If Shiny creates HTML code for us, it is not enough to design a beautiful working app with user interactions. As shown earlier, all modern web sites and apps have a lot of CSS and JavaScript under the hood. Let's explore these elements in the following exercise.
   
-The simplest Shiny layout is the `fluidPage`. The `shinyapp` predefined Rstudio snippet creates a basic app skeleton (type `shinyapp` in a new script or the console in your RStudio IDE, Figure \@ref(fig:shinyapp-snippet)). 
+The simplest Shiny layout is the `fluidPage()`. The `shinyapp` predefined Rstudio snippet creates a basic app skeleton (type `shinyapp` in a new script or the console in your RStudio IDE, Figure \@ref(fig:shinyapp-snippet)). 
 
 ```{r shinyapp-snippet, echo=FALSE, fig.cap='shinyapp code snippet', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shinyapp-snippet.png")
@@ -23,7 +23,7 @@ shinyApp(ui, server)
 
 At first glance, the page only contains text. Wait ... are you sure about this? Let's run the above example and open the HTML inspector introduced in \@ref(web-intro-html). Results are displayed on Figure \@ref(fig:shiny-deps).
 
-```{r shiny-deps, echo=FALSE, fig.cap='Shiny dependencies', out.width='100%'}
+```{r shiny-deps, echo=FALSE, fig.cap='Shiny dependencies (with {shiny} 1.6.0)', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-deps.png")
 ```
 
@@ -33,12 +33,15 @@ knitr::include_graphics("images/survival-kit/shiny-deps.png")
   4. Uncollapse it and search for the script containing   `application/html-dependencies`
   5. List all dependencies
 
-We see in the head section (delimited by `<head></head>`) that Shiny has four dependencies:
+We see in the head section (delimited by `<head></head>`) that Shiny has three dependencies:
 
-  - json2
-  - jQuery 3.4.1
+  - jQuery
   - shiny (custom JavaScript and CSS)
-  - Bootstrap 3.4.1 (JavaScript and CSS) + other files (html5shiv, respond)
+  - Bootstrap (JavaScript and CSS) + other files (html5shiv, respond)
+  
+::: {.warningbox data-latex=""}
+As of `{shiny}` 1.6.0, `json2` is not needed anymore and does not appear in the above list.
+:::
 
 ## Bootstrap
 According to the [gitstar](https://gitstar-ranking.com/) ranking, which is an unofficial Github star ranking website, [Bootstrap](https://getbootstrap.com) comes at the 7th place (144563 stars) and 22th place for repositories and organization, respectively. It has been first released in 2011 and will welcome the fifth [version](https://v5.getbootstrap.com/) in few months. It provides plug and play layout and interactive elements such as tabs, navigation bars, tooltips, popovers and many input (forms), which is rather convenient since it avoids writing a large amount of CSS/JavaScript that would bring more complexity. The first release of Shiny was shipped with [Bootstrap 2](https://github.com/rstudio/shinybootstrap2). Shiny currently relies on Bootstrap 3 since v0.11, while a lot of efforts are being made to provide a Bootstrap 4 compatibility, essentially through the [bootstraplib](https://github.com/rstudio/bootstraplib) R package. 
@@ -47,12 +50,16 @@ One of the great advantage of using Bootstrap is the responsiveness of the desig
 
 Bootstrap 3 relies on the grid layout [system](https://getbootstrap.com/docs/3.4/examples/grid/) that allows to efficiently organize the content in row and columns. For instance the `fluidRow` and `column` Shiny functions leverage the Bootstrap grid to control how elements are displayed in a page.
 
-How does Shiny attach the Bootstrap dependencies? The well know `fluidPage` layout is actually hiding a lower level function, that is `bootstrapPage`. The latter is also called in many other high level layout functions for instance `fixedPage`, `fillPage` and `navbarPage`. It simply attaches `bootstraplib` as well as any Bootstrap compatible theme css files that one can pass with the `{shinythemes}` [package](https://github.com/rstudio/shinythemes).
+How does Shiny attach the Bootstrap dependencies? The well know `fluidPage` layout is actually hiding a lower level function, that is `bootstrapPage`. The latter is also called in many other high level layout functions for instance `fixedPage`, `fillPage` and `navbarPage`. It simply attaches `bootstraplib` as well as any Bootstrap compatible theme css files that one can pass with the `{shinythemes}` [package](https://github.com/rstudio/shinythemes). 
+
+::: {.warningbox data-latex=""}
+As of `{shiny}` `1.6.0` end user should use the new theming tools, that is `{bslib}`, described in chapter \@ref(beautify-with-bootstraplib). 
+:::
 
 The interested reader will have a look at the following [script](https://github.com/rstudio/shiny/blob/master/R/bootstrap-layout.R). 
 
 ## jQuery, DOM manipulation
-[jQuery](https://jquery.com/) allows to perform DOM manipulation, that is interacting with HMTL elements, in a more user-friendly manner than with pure JavaScript. At that step, you might not be familiar with JavaScript nor jQuery. Don't worry chapter \@ref(survival-kit-javascript) will expose the basics. Below is a comparison on how you would select a button HTML element with both technologies. I am sure you'll notice how jQuery[^jQuery] is more intuitive than JavaScript.
+[jQuery](https://jquery.com/) allows to perform DOM manipulation, that is interacting with HMTL elements, in a more user-friendly manner than with pure JavaScript. At that step, you might not be familiar with JavaScript nor jQuery. Don't worry! Chapter \@ref(survival-kit-javascript) will expose the basics. Below is a comparison on how you would select a button HTML element with both technologies. I am sure you'll notice how jQuery[^jQuery] is more intuitive than JavaScript.
 
 Javascript:
 ```js
@@ -72,27 +79,19 @@ $('#mybutton').on('click', function() {
 
 [^jQuery]: The next iteration of Bootstrap, namely [Bootstrap 5](https://blog.getbootstrap.com/2020/06/16/bootstrap-5-alpha/) completely abandons jQuery for vanilla JavaScript. The main reason is to lighten the Bootstrap code. 
 
-Interestingly, the work in progress `{jquerylib}` will provide [support](https://github.com/rstudio/jquerylib) for `{shiny}` in future releases.
-
-## Data formating
-json2 is a library to handle the [JSON](https://www.json.org/json-en.html) data format (JavaScript Object Notation). We will see in section \@ref(shiny-websocket) of Chapter \@ref(shiny-intro) that the R / JS communication involves data exchange and given that data structures are not the same in R and JS, there must be a way to ensure the translation. This is done through the [jsonlite](https://cran.r-project.org/web/packages/jsonlite/index.html) package that allows to transform JSON objects in R objects with `jsonlite::fromJSON` and inversely with `jsonlite::toJSON`. Shiny automatically handles the process and it works well most of the time!
+Interestingly, the work in progress `{jquerylib}` will provide [support](https://github.com/rstudio/jquerylib) for `{shiny}` in future releases. Nowadays, many websites and frameworks (like Bootstrap 5) tend to avoid jQuery so as to gain in performance. Yet, most of Shiny's JS code still use it and won't be removed any time soon. 
 
 ## Custom dependencies
 The last dependency contains custom JS and CSS code necessary for Shiny to work, that is:
 
-  - Fine tuning the layout
-  - Registering input/output
-  - Handling every single input/output action
-  - Initializing and controlling the R/JS communication
-  - Handling alerts/modals/notifications
+  - Fine tune the layout
+  - Register input/output and handling every single input/output action. Detailed mechanisms are 
+  studied in Chapter \@ref(shiny-input-system) and \@ref(shiny-input-lifecycle). 
+  - Initialize and control the R/JS communication, as shown in Chapter \@ref(from-R-to-JS).
+  - Handle alerts/modals/notifications
   - ...
 
 Part \@ref(shiny-js-object), \@ref(shiny-input-system), \@ref(shiny-custom-handler) and \@ref(custom-templates-interactivity) showcase the most important elements of those custom files.
-
-TO DO: link to CSS part
-
-The interested reader will have a look at the following [script](https://github.com/rstudio/shiny/blob/master/R/shinyui.R). 
-  
   
 ## Exercise
 
@@ -104,8 +103,10 @@ In the following exercise, we consider a more complex app with a slider as well 
   4. Conclusions
   
   
-To sump up, all these libraries are necessary to make Shiny what it is! 
+To sump up, all these libraries are necessary to make Shiny what it is! Importantly, Shiny only preloads what is
+necessary to have. For instance, as shown above, it is only necessary to include the slider dependencies when there is at least
+one slider in the app, which improves app performances. 
   
-In Chapter \@ref(htmltools-dependencies), we explore tools to manage HTML dependencies. In Chapter \@ref(insert-tabs), we study a special case to insert dependencies during the app runtime.  
+In Chapter \@ref(htmltools-dependencies), we explore tools to manage HTML dependencies. In Chapters \@ref(insert-tabs) and \@ref(shiny-custom-handler), we study a special case to insert dependencies during the app runtime.  
 
 Let's move to the next part to discover the internal engine that creates HTML code from R!
