@@ -1,10 +1,9 @@
 # Introduction to SASS {#beautify-sass}
-One of the main problem with CSS is to handle the growing number of files and the code repetition. Nowadays, web developers mainly use CSS pre processors like [Sass](https://sass-lang.com/guide), that stands for "Syntactically Awesome Style Sheets ", providing access to variables,  mathematical operators, nesting, thereby reducing the code complexity and extending the possibilities. [Rstudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package, which makes it possible to use Sass in Shiny apps or Rmarkdown documents. 
-
+One of the main problem with CSS is to handle the growing number of files and the __code repetition__. Nowadays, web developers mainly use __CSS pre processors__ like [Sass](https://sass-lang.com/guide), that stands for "Syntactically Awesome Style Sheets ", providing access to variables, mathematical operators, functions and loops, thereby reducing the code complexity and extending the possibilities. [Rstudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package [@R-sass], which makes it possible to use __Sass__ in Shiny apps or Rmarkdown documents. 
 
 ## Getting started with Sass
-While we could use Sass from the terminal, we leverage the `{sass}` package features to stay in R.
-To install the `{sass}`, we run:
+While we could use Sass from the terminal, we leverage the `{sass}` package features to work from R.
+To install `{sass}`, we run:
 
 ```{r, eval=FALSE}
 install.packages("sass")
@@ -12,7 +11,7 @@ install.packages("sass")
 remotes::install_github("rstudio/sass")
 ```
 
-We then use the `sass()` function whose `input` parameter accepts:
+The main function is `sass()`, whose __input__ parameter accepts:
 
   - A R string like `a { color: pink}`.
   - A named `list()`.
@@ -25,7 +24,7 @@ sass(input = ".element-class { color: pink;}")
 ```
 
 ### Variables
-Let us consider the following example:
+Let us consider the following example, where two different classes have the same color:
 
 ```css
 .class-1{
@@ -42,7 +41,7 @@ What happens in case the color changes? Do we have to update all properties by h
 
 If we let the Sass variable `$my-color`:
 
-```scss
+```css
 $my-color: purple;
 .class-1{
   color: $my-color;
@@ -52,7 +51,8 @@ $my-color: purple;
 }
 ```
 
-we can quickly solve that problem. With `{sass}`, we obtain:
+we can quickly solve that problem. With `{sass}`, we define one variable holding the color as well as
+our two rules, so that we obtain:
 
 ```{r}
 var <- "$my-color: purple;"
@@ -61,13 +61,18 @@ rule2 <- ".class-2{ background-color: $my-color; }"
 sass(input = list(var, rule1, rule2))
 ```
 
-__Note__: it is good practice to add the `default!` tag after the variable definition, if you want
-to let others modify it: `"$my-color: purple !default;"`
+```{r, echo=FALSE}
+print(sass(input = list(var, rule1, rule2)))
+```
 
+::: {.noteblock data-latex=""}
+Add the __default!__ tag after the variable definition, if you want
+to let others modify it, that is `"$my-color: purple !default;"`.
+:::
 
 ### Partials and Modules
 It is best practice to save useful code snippets in one place, and reuse them 
-at anytime and anywhere. Sass allows to define partials, like `_partial.css`, with the leading
+at anytime and anywhere. Sass allows to define __partials__, like `_partial.css`, with the leading
 underscore, which avoids it to be converted into CSS. Partials are subsequently called
 with `@import <PARTIAL_NAME>` (you may also find `@use`, the latter not being handled
 by `LibSass`, which fuels`{sass}`), thereby significantly reducing code duplication.
@@ -75,7 +80,7 @@ by `LibSass`, which fuels`{sass}`), thereby significantly reducing code duplicat
 Modules are pieces of Sass files that are later converted into CSS, reducing file size to a minimum. 
 Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/bootstrap/blob/main/scss/bootstrap.scss):
 
-```scss
+```css
 /*!
  * Bootstrap v5.0.0-beta1 (https://getbootstrap.com/)
  * Copyright 2011-2021 The Bootstrap Authors
@@ -93,33 +98,7 @@ Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/boots
 // Layout & components
 @import "root";
 @import "reboot";
-@import "type";
-@import "images";
-@import "containers";
-@import "grid";
-@import "tables";
-@import "forms";
-@import "buttons";
-@import "transitions";
-@import "dropdown";
-@import "button-group";
-@import "nav";
-@import "navbar";
-@import "card";
-@import "accordion";
-@import "breadcrumb";
-@import "pagination";
-@import "badge";
-@import "alert";
-@import "progress";
-@import "list-group";
-@import "close";
-@import "toasts";
-@import "modal";
-@import "tooltip";
-@import "popover";
-@import "carousel";
-@import "spinners";
+...
 
 // Helpers
 @import "helpers";
@@ -129,9 +108,8 @@ Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/boots
 // scss-docs-end import-stack
 ```
 
-which is better to read and easier to maintain than the original `bootstrap.css` with 10717 lines of code!
-
-In practice, we will often end up with a main Sass file and compile it as follows:
+which is easier to read and maintain than the original `bootstrap.css` with 10717 lines of code!
+In practice, we often end up with a main Sass file and compile it as follows:
 
 ```{r, eval=FALSE}
 sass(sass_file("main.scss"))
@@ -139,11 +117,13 @@ sass(sass_file("main.scss"))
 
 
 ### Mixins and Functions
+Another great advantage of Sass is the ability to generate reusable units of code, also known 
+as __mixins__ or __functions__. 
 
 #### Mixins
 To make a 90 degrees rotation in CSS, we have to write:
 
-```
+```css
 .element {
   -webkit-transform: rotate(90deg);
   -ms-transform: rotate(90deg);
@@ -151,16 +131,18 @@ To make a 90 degrees rotation in CSS, we have to write:
 }
 ```
 
-which is tedious. Mixins allow to encapsulate the logic into a reusable unit:
+which is already tedious. Mixins allow to encapsulate the logic into a __reusable__ unit:
 
-```scss
+```css
 @mixin transform($property, ...) {
   -webkit-transform: $property;
   -ms-transform: $property;
   transform: $property;
 }
 
-.element1 { @include transform(rotate(90deg)); }
+.element1 { 
+  @include transform(rotate(90deg)); 
+}
 ```
 
 The mixin starts with a `@mixin` keyword followed by its name and parameters. 
@@ -178,20 +160,29 @@ rule <- ".element1 { @include transform(rotate(90deg)); }"
 sass(input = list(mixin, rule))
 ```
 
+```{r, echo=FALSE}
+res <- sass(input = list(mixin, rule))
+print(res)
+```
+
 #### Functions
 Sass offers many built-In [modules](https://sass-lang.com/documentation/modules) containing 
-ready to use functions for colors, numbers, strings, lists, maps, ...Some functions like
+ready to use functions for colors, numbers, strings, lists, maps, ... Some functions like
 `rgb` are global, so that we don't have to import the corresponding module. 
 
 ```{r}
 sass(".pouet { color: rgb(0, 255, 0); }")
 ```
 
+```{r, echo=FALSE}
+print(sass(".pouet { color: rgb(0, 255, 0); }"))
+```
+
 It is definitely possible to design custom functions with `@function`, 
 whose syntax is very close the mixins:
 
 
-```scss
+```css
 @function name($parm1, $parm2) {
   /* logic */
   @return value;
@@ -201,25 +192,50 @@ whose syntax is very close the mixins:
 While debugging functions, it might be useful to capture intermediate elements.
 `@debug` allows this:
 
-```scss
+```css
 $my-var: 1;
 @debug myvar;
 ```
 
 ```{r}
 sass("
-  $myvar: 1;
-  @debug '$myvar is #{$myvar};'
+  @function multiply($parm1, $parm2) {
+    @debug 'parm1 is #{$parm1}';
+    @debug 'parm2 is #{$parm2}';
+    
+    @return $parm1 * $parm2;
+  }
+  
+  .my-class {
+    width: multiply(2, 4) * 1px; 
+  }
 ")
 ```
 
+```{r, echo=FALSE, warning=TRUE, message=TRUE}
+print(
+  sass("
+  @function multiply($parm1, $parm2) {
+    @debug 'parm1 is #{$parm1}';
+    @debug 'parm2 is #{$parm2}';
+    
+    @return $parm1 * $parm2;
+  }
+  
+  .my-class {
+    width: multiply(2, 4) * 1px; 
+  }
+")
+)
+```
+
 ### Extend/Inheritance
-We consider 2 alerts with the color as only difference. As we can't capture multiple properties
-inside one single Sass variable, we introduce the `extend` concept, which permits to import
+We consider two alerts with the color as only difference. As we can't capture multiple properties
+inside one single Sass variable, we introduce the __extend__ concept, which permits to import
 CSS properties inside multiple rules. We first define a generic `alerts-common` rule,
 prefixed by the `%` symbol. It contains several rules and variables:
 
-```scss
+```css
 %alerts-common {
   position: relative;
   padding: $alert-padding-y $alert-padding-x;
@@ -263,20 +279,25 @@ alert_green <- ".alert-green {
 sass(input = list(y_padding, x_padding, b_margin, common, alert_red, alert_green))
 ```
 
+```{r, echo=FALSE}
+print(sass(input = list(y_padding, x_padding, b_margin, common, alert_red, alert_green)))
+```
+
 This method avoids to multiply classes on elements such as `.alert-common .alert-red ...`.
-Yet, there is still duplication as we could have programmatically generated the two alert 
-classes with a loop. 
+Yet, we could have programmatically generated the two alert 
+classes with a loop, to avoid duplication.
 
 ### Flow Controls
 These are elements aiming at fine tuning mixins and functions behavior.  
-#### If and else
+
+#### if and else
 Like in every programming language `if` and `else` control the execution of a code block, depending
 on some conditions. 
 Below, we only want to conditionally control a shadow property, depending on the alert color:
 
-```scss
+```css
 @mixin add-shadow($box-color) {
-  @if box-color == red {
+  @if $box-color == red {
     box-shadow: 
       0 4px 10px 0 rgb(255, 0, 0), 
       0 4px 20px 0 rgb(255, 0, 0);
@@ -337,12 +358,16 @@ alert_green <- ".alert-green {
 sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alert_red, alert_green))
 ```
 
+```{r, echo=FALSE}
+print(sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alert_red, alert_green)))
+```
+
 #### Loops
 ##### Each
 We would like to create the alert class with only one rule. We first define a list of colors in Sass and
 call the `@each`:
 
-```scss
+```css
 $colors: red, green;
 
 @each $color in $colors {
@@ -391,27 +416,31 @@ alerts_rule <- "$colors: red, green;
 sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alerts_rule))
 ```
 
-It becomes even more powerful while working with maps like `$font-weights: ("regular": 400, "medium": 500, "bold": 700);`, ie by key/value [pairs](https://sass-lang.com/documentation/at-rules/control/each#with-maps). 
+```{r, echo=FALSE}
+print(sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alerts_rule)))
+```
+
+It becomes even more powerful while working with __maps__ like `$font-weights: ("regular": 400, "medium": 500, "bold": 700);`, i.e by key/value [pairs](https://sass-lang.com/documentation/at-rules/control/each#with-maps). 
 `@each` is as convenient as `lapply` or `map` functions to chain repetitive rules creation.
 
 ##### For
 However, it is not straightforward to count up or down with `@each`. This is precisely where
 `@for` fills the gap. The generic scheme is: 
 
-```scss
+```css
 @for <variable> from <expression> to <expression> { ... } 
 @for <variable> from <expression> through <expression> { ... }
 ```
 
-`to` excludes the last number while `through` includes it.
+__to__ excludes the last number while __through__ includes it.
 
 
 ## `{sass}` best practices 
 As it's best practice, especially for debugging purposes, to include assets as HTML
-dependencies, it is a good idea to organize the Sass variable definition, function/mixins in layers, leveraging the `sass_layer` function:
+dependencies, it is a good idea to organize the Sass variable definition, function/mixins in __layers__, leveraging the `sass_layer()` function:
 
-```{r}
-var <- "$my-color: purple !default"
+```{r, warning=FALSE}
+var <- "$my-color: purple !default;"
 rule1 <- ".class-1{ color: $my-color; }"
 rule2 <- ".class-2{ background-color: $my-color; }"
 layer1 <- sass_layer(
@@ -420,10 +449,15 @@ layer1 <- sass_layer(
 )
 ```
 
-Besides, `sass_layer` provide options like:
+```{r, echo=FALSE}
+print(layer1)
+```
 
-  - `declarations` containing any function, mixin elements, in a `sass_file` for instance. 
-  - `html_deps` that attaches a single or a list of HTML dependencies to the provided Sass code. (See below)
+
+Besides, `sass_layer()` provide options like:
+
+  - __declarations__ containing any function, mixin elements, in a `sass_file` for instance. 
+  - __html_deps__ that attaches a single or a list of HTML dependencies to the provided Sass code, as shown below.
   
 ```{r, eval = FALSE}
 sass_layer(
@@ -437,35 +471,41 @@ sass_layer(
 )
 ```
 
-Ultimately, multiple layers may be bundled with `sass_bundle`:
+Ultimately, multiple layers may be bundled with `sass_bundle()`:
 
-```{r}
-var2 <- "$my-color: blue !default"
+```{r, warning=FALSE}
+var2 <- "$my-color: blue !default;"
 layer2 <- sass_layer(
   default = var2,
   rules = c(rule1, rule2)
 )
 
 
-my_bundle <- sass_bundle(layer1 = layer1, layer2 = layer1)
+my_bundle <- sass_bundle(layer1 = layer1, layer2 = layer2)
 my_bundle
-
-sass(my_bundle)
 ```
 
-and `sass_bundle_remove`
-removes a given layer from the bundle, provided that you passed a named list to `sass_bundle`. 
+```{r, echo=FALSE}
+print(sass(my_bundle))
+```
+
+`sass_bundle_remove()` removes a given layer from the bundle, provided that you passed a named list to `sass_bundle()`. 
 This allows other developers to reuse and modify predefined layers:
 
 
 ```{r}
 my_bundle <- sass_bundle_remove(my_bundle, "layer2")
+my_bundle
 sass(my_bundle)
 ```
 
+```{r, echo=FALSE}
+print(sass(my_bundle))
+```
+
 ## From Sass to CSS
-`sass` can generate CSS from Sass by passing an `output` parameter pointing to the path where
-to generate the CSS file. Best practice consists in enabling compression and source maps. We discuss
+`sass()` can generate CSS from Sass by passing an __output__ parameter pointing to the path where
+to generate the CSS file. Best practice consists in enabling __compression__ and __source maps__. We discuss
 this later in the book in Chapter \@ref(workflow-charpente). Overall those steps makes the code faster to load and easier to debug:
 
 ```{r}
@@ -500,13 +540,9 @@ Now let's go back to Shiny! How do we include Sass code in a Shiny app? There ar
   1. You simply want to style a shiny app. 
   2. You developed a template with custom JS and Sass/CSS to be reused by other developers.
   
-The first option is rather simple since the Sass code is compiled with `sass` before the shiny apps is launched. The resulting code may be either a string or a CSS file (within the `www` folder), to be included in the `head`. To
-make it easier to test on the reader side, we create a temporary folder where the Sass code is compiled.
-We then create a simple app file which is run with `runApp`: 
+The first option is rather simple since the Sass code is compiled with `sass()` before the shiny apps is launched. The resulting code may be either a string or a CSS file (within the `www` folder), to be included in the `head`. We assume to be located at the app folder level:
 
 ```{r, eval=FALSE}
-path <- file.path(tempdir(), "myApp")
-dir.create(sprintf("%s/www", path), recursive = TRUE)
 sass(
   list(
    c("$color: pink;", "$size: 30px;"),
@@ -519,41 +555,28 @@ sass(
       }"
     )
   ), 
-  output = sprintf("%s/www/main.min.css", path),
+  output = sprintf("www/main.min.css"),
   options = sass_options(
     output_style = "compressed",
     source_map_embed = TRUE
   )
 )
-
-file.create(sprintf("%s/app.R", path))
-
-app_code <- 'library(shiny)
-
-ui <- fluidPage(
-  tags$head(
-    tags$link(href = "main.min.css", rel = "stylesheet", type = "text/css")
-  ),
-  a("Hello Shiny!", class = "awesome-link")
-)
-
-server <- function(input, output) {}
-shinyApp(ui, server)
-'
-writeLines(app_code, sprintf("%s/app.R", path))
-
-runApp(sprintf("%s", path))
 ```
 
 Source maps allow us to see the original Sass code, as shown Figure \@ref(fig:sass-inspect). 
-`sass_options` gives the flexibility to fine tune the CSS output and source map configuration. 
+`sass_options()` gives the flexibility to fine tune the CSS output and source map configuration. 
+
+::: {.importantblock data-latex=""}
+For complex projects where the CSS compilation may take time, we strongly advise to process the CSS independently from
+the app startup.
+:::
 
 ```{r sass-inspect, echo=FALSE, fig.cap='Inspect Sass code in the web browser', out.width='100%'}
 knitr::include_graphics("images/beautify/sass-inspect.png")
 ```
 
-The second option requires to run `sass` passing an `output` file within the package. Then, the generated CSS
-is included in an HTML dependency, to be shipped with the template:
+The second option requires to run `sass()` passing an __output__ file within the package. Then, the generated CSS
+is included in an HTML dependency, ready to be shipped with the template:
 
 ```{r, eval=FALSE}
 sass(
@@ -579,9 +602,8 @@ my_css_deps <- htmltools::htmlDependency(
 
 ### Customize `{bs4Dash}` colors {#sass-customize-bs4Dash}
 `{bs4Dash}` is a Bootstrap 4 dashboard template built on top of the [AdminLTE3](https://adminlte.io/themes/v3/) HTML template. `{shinydashboard}` is powered by the previous version, that is [AdminLTE2](https://adminlte.io/themes/AdminLTE/index2.html), which make it somehow `{bs4Dash}`'s big brother!
-AdminLTE3 relies on Sass and all files are stored [here](https://github.com/ColorlibHQ/AdminLTE/tree/master/build/scss). Particularly, 
-all variables are located in the `_variables.scss` partial. Since we can decompose our
-Sass code in multiple layers thanks to `{sass}`, we can seamlessly customize the theme color
+AdminLTE3 relies on Sass and all files are stored [here](https://github.com/ColorlibHQ/AdminLTE/tree/master/build/scss). Particularly, all variables are located in the `_variables.scss` partial. Since we can decompose our
+Sass code in multiple layers, we seamlessly customize the theme color
 variables listed below:
 
 ```css
@@ -599,7 +621,7 @@ $black: #111 !default;
 $gray-x-light: #d2d6de !default;
 ```
 
-Let's provide our own default with some custom [colors](https://colorswall.com/palette/66354/):
+Let's provide our own defaults with some custom [colors](https://colorswall.com/palette/66354/):
 
 ```css
 $blue: #136377 !default;
@@ -613,7 +635,7 @@ $gray-x-light: #d1c5c0 !default;
 Now we would have to recompile the whole AdminLTE3 Sass code to account for these changes.
 It means, all scss assets must be accessible somewhere: this is what the `{fresh}` package is doing under the [hoods](https://github.com/dreamRs/fresh/blob/master/R/create_theme.R).
 No worries, we'll come back on `{fresh}` in the next Chapter. For now, we rely on the `{fresh}` Sass code stored at
-`system.file("assets/AdminLTE-3.0.4/AdminLTE.scss", package = "fresh")`:
+`system.file("assets/AdminLTE-3.1.0/AdminLTE.scss", package = "fresh")`:
 
 ```{r, eval=FALSE}
 library(bs4Dash)
@@ -670,89 +692,10 @@ server <- function(input, output) {
 shinyApp(ui, server)
 ```
 
-You probably noticed a potential issue. We indeed have to rely on a specific version, 
-namely `3.1.0`, that is not necessarily the one we want. Therefore, an alternative could 
-be to download the Sass files from the AdminLTE3, store them in a temp folder and recompile
-the code from that folder with new variables. As AdminLTE3 depends on a very specific version 
-of Bootstrap 4, `4.5.3`, we also have to recover those dependencies in a separate folder. 
-We finally edit the original `adminlte.scss` to change the Bootstrap Sass path:
-
-```css
-/*!
- *   AdminLTE v3.1.0-rc
- *   Author: Colorlib
- *   Website: AdminLTE.io <https://adminlte.io>
- *   License: Open source - MIT <https://opensource.org/licenses/MIT>
- */
-
-// Bootstrap
-// ---------------------------------------------------
-@import "../bootstrap/scss/functions";
-@import "bootstrap-variables";
-@import "../bootstrap/scss/bootstrap";
-
-// Variables and Mixins
-// ---------------------------------------------------
-@import "variables";
-@import "mixins";
-
-@import "parts/core";
-@import "parts/components";
-@import "parts/extra-components";
-@import "parts/pages";
-@import "parts/plugins";
-@import "parts/miscellaneous";
-```
-
-In the below demonstration, in addition to change the theme colors, we also modified the
-`$sidebar-dark-bg` [variable](https://github.com/ColorlibHQ/AdminLTE/blob/master/build/scss/_variables.scss#L112) to be `$lightblue` and `$sidebar-light-bg` to `$lime`:
-
-```{r, eval=FALSE}
-temp_path <- file.path(tempdir())
-dir.create(file.path(temp_path, "adminlte"))
-setwd(file.path(temp_path, "adminlte"))
-system("wget -r -np -k --cut-dirs=4 -nH https://cdn.jsdelivr.net/npm/admin-lte@3.1.0-rc/build/scss/")
-dir.create(file.path(temp_path, "bootstrap/scss"), recursive = TRUE)
-setwd(file.path(temp_path, "bootstrap/scss"))
-system("wget -r -np -k --cut-dirs=3 -nH https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/scss/")
-adminlte_scss <- sprintf("%s/adminlte/adminlte.scss", temp_path)
-
-css <- sass(
-  sass_layer(
-    default = c(
-      "$lightblue: #136377 !default;",
-      "$olive: #d8bc66 !default;",
-      "$lime: #fcec0c !default;",
-      "$orange: #978d01 !default;",
-      "$maroon: #58482c !default;",
-      "$gray-x-light: #d1c5c0 !default;",
-      "$sidebar-dark-bg: $lightblue !default;",
-      "$sidebar-light-bg: $lime !default;"
-    ),
-    rules = sass_file(input = adminlte_scss)
-  )
-)
-
-ui <- dashboardPage(
-  dashboardHeader(title = "Custom colors"),
-  dashboardSidebar(),
-  dashboardBody(
-    tags$head(tags$style(css)),
-    # Boxes need to be put in a row (or column)
-    fluidRow(
-      box(plotOutput("plot1", height = 250), status = "olive"),
-
-      box(
-        status = "lightblue",
-        title = "Controls",
-        sliderInput("slider", "Number of observations:", 1, 100, 50)
-      )
-    )
-  )
-)
-
-shinyApp(ui, server)
-```
+You probably noticed a potential issue. We indeed have to rely on a specific AdminLTE version, 
+namely `3.1.0`, that is not necessarily the one we want. Therefore, an alternative would 
+be to download the Sass files from AdminLTE3, store them in a package, ideally the `/inst` folder, and recompile
+the code from that folder with new variables. As AdminLTE3 depends on Bootstrap 4, we would have to recover those dependencies in a separate folder, making sure it is accessible to the AdminLTE Sass code.
 
 ### Customize `{shinybulma}`
 For convenience, the Sass code is already included in the book side [package](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/tree/master/inst/sass/bulma).
@@ -766,8 +709,8 @@ The goal is to change the main color palette that comprises:
   
 In total, bulma exposes 419 Sass [variables](https://bulma.io/documentation/customize/concepts/)!
 
-Among all files, we locate the main variables file and select the relevant variables you want to modify.
-Notice you can retrieve all those information: [initial variables](https://bulma.io/documentation/customize/variables/#initial-variables) and [derived variables](https://bulma.io/documentation/customize/variables/#variables).
+Among all files, we locate the main variables file and select the relevant variables we want to modify.
+Notice we can retrieve all those information: [initial variables](https://bulma.io/documentation/customize/variables/#initial-variables) and [derived variables](https://bulma.io/documentation/customize/variables/#variables).
 
 We assign them new [values](https://blog.depositphotos.com/neon-color-palettes.html): 
 
@@ -780,10 +723,10 @@ $red: #ff483e;
 $scheme-main: hsl(0, 0%, 4%);
 ```
 
-Particularly, we target the main body color hosted by `$scheme-main`. Instead of pointing
-to `$white`, we change its value to the default `$black`. We then Compile the new CSS with `sass`: 
+Particularly, we target the main body color stored in `$scheme-main`. Instead of pointing
+to `$white`, we change its value to the default `$black`. We then Compile the new CSS with `sass()`: 
 
-```{r}
+```{r, warning=FALSE}
 css <- sass(
   sass_layer(
     default = c(
