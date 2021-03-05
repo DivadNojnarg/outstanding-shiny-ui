@@ -424,7 +424,7 @@ ws$onMessage(function(binary, message) {
 })
 ```
 
-This is to simulate concurrency that could occur between multiple client. To test it, you may try to call `my_app <- httpuv_app(5)`, open two browser tabs pointing to `127.0.0.1:8080`, update the slider on the first client and update it on the second client. What happens? Why? This illustrates one fundamental limitation about Shiny: as R is single threaded, clients have to queue to get an answer from the server. 
+This is to simulate __concurrency__ that could occur between multiple client. To test it, you may try to call `my_app <- httpuv_app(5)`, open two browser tabs pointing to `127.0.0.1:8080`, update the slider on the first client and update it on the second client. What happens? Why? This highlights one fundamental limitation about Shiny: as R is single threaded, clients have to queue to get an answer from the server. 
 
 ::: {.importantblock data-latex=""}
 Once done, don't forget to close the server connection with `my_app$stop()`!
@@ -438,13 +438,13 @@ The reader must understand that when Shiny inputs/outputs are modified on the cl
 In the previous section, we showed how R and JS can communicate through a `{httpuv}` powered websocket. Now let's see what happens in the context of Shiny. 
 
 ### The Shiny session object {#shiny-session}
-We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? `session` is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) R6 class. 
-Importantly, the session is unique to a given user. It means that 2 different clients cannot share the same session. This is important since it contains all information about input, output and client data.
+We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? __session__ is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) __R6__ class. 
+Importantly, the session is unique to a given user. It means that two different clients cannot share the same session. This is important since it contains all information about input, output and client data.
 
-Upon calling `ShinySession$new()`, the initialization method takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. The session object exposes two methods to communicate with JavaScript:
+Upon calling `ShinySession$new()`, the initialization method takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. The session object exposes two methods to communicate with from R with JavaScript:
 
-  - `sendCustomMessage` sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, through the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.
-  - `sendInputMessage` is used to update inputs from the server. The message is stored in a message queue and ultimately sent through the websocket `private$websocket$send(json)`. 
+  - __sendCustomMessage__ sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, through the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.
+  - __sendInputMessage__ is used to update inputs from the server. The message is stored in a message queue and ultimately sent through the websocket `private$websocket$send(json)`. 
   
 The below code is extracted from the `shiny.R` [file](https://github.com/rstudio/shiny/blob/master/R/shiny.R).
 
@@ -488,10 +488,10 @@ write = function(json) {
 # ...
 ```
 
-No worry if it is not clear at the moment. We will discuss `sendInputMessage` and `sendCustomMessage` in the following chapters, respectivelly \@ref(shiny-input-system) and \@ref(shiny-custom-handler).
+No worry if it is not clear at the moment. We will discuss `sendInputMessage` and `sendCustomMessage` in the following chapters, respectively \@ref(shiny-input-system) and \@ref(shiny-custom-handler).
 
 ### Server side 
-On the server, that is R, a websocket is initiated in the [startApp](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L534) function, leveraging the `{httpuv}` package. Websocket handlers are [defined](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L303) by `createAppHandlers`:
+On the server, that is R, a websocket is initiated in the [startApp](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L534) function, leveraging the `{httpuv}` package. Websocket handlers are [defined](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L303) by `shiny:::createAppHandlers`:
 
 ```{r, eval=FALSE}
 ws = function(ws) {
@@ -513,7 +513,7 @@ ws = function(ws) {
 }
 ```
 
-Overall, they drive the server websocket behavior. When the Shiny session is initialized, a message is sent through the WS, providing the sessionId, workerId and user to the client (see `Shiny.shinyapp.config` and section \@ref(shiny-js-object)):
+Overall, handlers drive the server websocket behavior. When the Shiny session is initialized, a message is sent through the WS, providing the sessionId, workerId and user to the client (see `Shiny.shinyapp.config` and section \@ref(shiny-js-object)):
 
 ```{r, eval=FALSE}
 private$sendMessage(
@@ -525,14 +525,17 @@ private$sendMessage(
 )
 ```
 
+The workerId is not always used. In practice, it is relevant only in the context of solutions able to 
+load balance clients across multiple workers, that is shinyapps.io, RStudio Connect and Shiny server pro. 
+
 `ws$onMessage` describes what should happen when the server receives an message from the client.
 It applies the `messageHandler` function that, in short:
 
-  - Decodes the received message.
-  - Processes the message. At initialization, the client send a message with an `init` method tag,
+  - __Decodes__ the received message.
+  - __Processes__ the message. At initialization, the client send a message with an `init` method tag,
   which tells Shiny to manage input (`manageInputs(msg$data, now = TRUE)`) before running any observer (since input don't have value yet). After initialization, client messages have the `update` tag, meaning that we wait for observers to run before. 
 
-Finally, when the server connection is closed, all client connections are also closed. 
+Finally, when the server connection is closed, all client connections are also closed.
 
 All those handlers are [applied](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L537) by `handlerManager$addWSHandler(appHandlers$ws, "/", tail = TRUE)`:
 ```{r, eval=FALSE}
@@ -547,8 +550,6 @@ addWSHandler = function(wsHandler, key, tail = FALSE) {
   wsHandlers$add(wsHandler, key, tail)
 }
 ```
-
-Note that the R option `options(shiny.trace = TRUE)` allows the websocket messages to be displayed directly in the R console.
 
 ### Client side
 On the JS side, the socket creation occurs in the `shinyapps.js` [file](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L58):
@@ -640,7 +641,7 @@ shinyApp(
 )
 ```
 
-After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. As stated above, the first message sent contains initial input values. Then Shiny recalculates the table, notify when the recalculation is done and becomes idle. The second message received from R is after updating the select input, which triggers the same event cycle.
+After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. As stated above, the first message sent contains initial input values. Then Shiny recalculates the table, notifies when the recalculation is done and becomes idle. The second message received from R is after updating the select input, which triggers the same event cycle.
 
 Although complex, it is extremely useful to check whether the input / output communication is working properly. If not, we would see the error field identifying the issue. 
 
@@ -688,7 +689,7 @@ shinyApp(ui, server)
 
 
 ### Summary
-Below is a summary of the server and client websocket parts. The Shiny app shown in Figure \@ref(fig:websocket-intro) consists in an `actionButton` and a `sliderInput`. Clicking on the action button triggers an `observeEvent` that fires `updateSlideInput`. Under the hood, clicking on the action button sends a message from the client to the server. This message is processed and the corresponding input value is updated on the server, thereby invalidating any observer, reactive element. `updateSlideInput` sends a message back to the client containing the id of the input to update. This message is received and processed by the `onMessage` event manager, which redirects the message to the related message handler, thereby updating the corresponding input element on the client. The underlying mechanisms are going to be detailed in the next part \@ref(shiny-input-system). You may imagine that when the slider is updated, it also sends a message to the server, triggering a cascade of reactions.
+Below is a summary of the server and client websocket parts. The Shiny app shown in Figure \@ref(fig:websocket-intro) consists in an `actionButton()` and a `sliderInput`. Clicking on the action button triggers an `observeEvent()` that fires `updateSlideInput()`. Under the hood, clicking on the action button sends a message from the client to the server. This message is processed and the corresponding input value is updated on the server, thereby invalidating any observer, reactive element. `updateSlideInput()` sends a message back to the client containing the id of the input to update. This message is received and processed by the `onMessage` event manager, which redirects the message to the related message handler, thereby updating the corresponding input element on the client. The underlying mechanisms are going to be detailed in the next part \@ref(shiny-input-system). You may imagine that when the slider is updated, it also sends a message to the server, triggering a __cascade__ of reactions.
 
 It let you imagine how many messages are exchanged for more complex apps!
 
