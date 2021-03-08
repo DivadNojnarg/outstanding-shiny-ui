@@ -1,15 +1,15 @@
 # Shiny inputs lifecycles {#shiny-input-lifecycle}
-In the following, we recap everything we see from chapter \@ref(shiny-intro).
+In the following, we provide an integrated view of the shiny input system by summarizing all 
+mechanisms seen since chapter \@ref(shiny-intro).
 
 ## App initialization
-When a shiny apps starts, Shiny runs `initShiny` on the client. This [function](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js) has 3 main tasks:
+When a shiny apps starts, Shiny runs `initShiny` on the client. This [function](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js) has three main tasks:
 
-  - Bind all inputs and outputs with `_bindAll()`.
-  - Initialize all inputs (if necessary) with `initializeInputs`.
-  - Initialize the client websocket connection mentioned in the previous chapter \@ref(shiny-intro) and send initial values to the server.
+  - __Bind__ all inputs and outputs with `_bindAll()`.
+  - __Initialize__ all inputs (if necessary) with `initializeInputs`.
+  - Initialize the client __websocket__ connection mentioned in the previous chapter \@ref(shiny-intro) and send __initial values__ to the server.
 
-Most input bindings are in principle bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple shiny app. In any case, 
-they are all contained in a binding registry, namely `inputBindings` built on top the following class (the same apply for output bindings):
+Most input bindings are in principle bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple shiny app. In any case, they are all contained in a __binding registry__, namely `inputBindings` built on top the following class (the same apply for output bindings):
 
 ```js
 var BindingRegistry = function() {
@@ -18,25 +18,25 @@ var BindingRegistry = function() {
 }
 ```
 
-This class has method to `register` binding. This is the one we call when doing `Shiny.inputBindings.register(myBinding, 'reference');`, which appends the newly created binding to the bindings array. 
+This class has a method to `register` binding. This is the one we call when doing `Shiny.inputBindings.register(myBinding, 'reference');`, which appends the newly created binding to the bindings array. 
 
 When shiny starts, it has to find all defined bindings with the `getBindings` method.
 Once done, for each binding, `find` is triggered. If no corresponding element is found in the DOM, nothing is done. For each found input, the following methods are triggered:
 
-  - `getId` (no described before) returns the input id. This ensures the uniqueness and is critical!
-  - `getType` optionally handles any `registerInputHandler` defined by the user on the R side.
+  - `getId` returns the input id. This ensures the uniqueness and is critical!
+  - `getType` optionally handles any `registerInputHandler` defined by the user on the R side. A detailed example is shown in \@ref(custom-data-format).
   - `getValue` gets the initial input value.
   - `subscribe` registers event listeners driving the input behavior.
 
-The data attribute `shiny-input-binding` is then added. This allows shiny or any end-users to access the input binding methods from the client (in practice, very few end-users will do that). The `shiny-bound-input` class is added, the corresponding input is appended to the `boundInputs` object (listing all bound inputs) and `shiny:bound` triggered on the client.
+The data attribute `shiny-input-binding` is then added. This allows shiny to access the input binding methods from the client, as shown in \@ref(update-binding-client). The `shiny-bound-input` class is added, the corresponding input is appended to the `boundInputs` object (listing all bound inputs) and `shiny:bound` triggered on the client.
 
-Once done, shiny stores all initial values in a variable `initialInput`, also containing all [client data](https://shiny.rstudio.com/articles/client-data.html) and pass them to the `Shinyapp.connect` method. As shown in \@ref(shiny-intro), the latter opens the client websocket connection, raises the `shiny:connected` event and send all values to the server (R). Few time after, `shiny:sessioninitialized` is triggered.
+Once done, shiny stores all initial values in a variable `initialInput`, also containing all [client data](https://shiny.rstudio.com/articles/client-data.html) and pass them to the `Shinyapp.connect` method. As shown in \@ref(shiny-intro), the latter opens the client __websocket__ connection, raises the `shiny:connected` event and send all values to the server (R). Few time after, `shiny:sessioninitialized` is triggered.
 
 ```{r init-shiny-recap, echo=FALSE, fig.cap='What Shiny does client side on initialization', out.width='100%'}
 knitr::include_graphics("images/survival-kit/init-shiny-recap.png")
 ```
 
-In chapter \@ref(shiny-intro), we briefly described the `shiny` JavaScript object. As an exercise, let's explore what the `Shiny.shinyApp` object contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js). 
+In chapter \@ref(shiny-intro), we briefly described the `Shiny` JavaScript object. As an exercise, let's explore what the `Shiny.shinyApp` object contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js). 
 
 ```js
 var ShinyApp = function() {
@@ -66,7 +66,7 @@ var ShinyApp = function() {
 };
 ```
 
-It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization).
+It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization):
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -92,7 +92,7 @@ knitr::include_graphics("images/survival-kit/shiny-init-input.png")
 ```
 
 ## Update input {#update-input-lifecycle}
-Below we try to explain what are the mechanisms to update an input from the server on the client. As stated above, it all starts with an `update<name>Input` function call, which actually sends a message through the current `session`. This message is received by the client websocket message manager:
+Below we try to explain what are the mechanisms to update an input from the server on the client. As stated above, it all starts with an `update<name>Input` function call, which actually sends a message through the current __session__. This message is received by the client __websocket__ message manager:
 
 ```js
 socket.onmessage = function(e) {
@@ -100,7 +100,7 @@ socket.onmessage = function(e) {
 };
 ```
 
-which sends the message to the appropriate [handler](https://github.com/rstudio/shiny/blob/master/srcjs/shinyapp.js#L552), that is `inputMessages`:
+which sends the message to the appropriate [handler](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L552), that is `inputMessages`:
 
 ```js
 addMessageHandler('inputMessages', function(message) {
@@ -122,9 +122,9 @@ addMessageHandler('inputMessages', function(message) {
   }
 });
 ```
-In short, this does get the inputId and access the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and call the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. 
-The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
-The `callback` function is actually defined during the initialization [process](https://github.com/rstudio/shiny/blob/master/srcjs/init_shiny.js#L174):
+
+In short, this does get the inputId and access the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and call the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
+The `callback` function is actually defined during the initialization [process](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js#L128):
 
 ```js
 function valueChangeCallback(binding, el, allowDeferred) {
@@ -145,7 +145,33 @@ function valueChangeCallback(binding, el, allowDeferred) {
 }
 ```
 
-`valueChangeCallback` ultimately calls `inputs.setInput(id, value, opts)`. The latters involves a rather complex chain of [reactions](https://github.com/rstudio/shiny/blob/master/srcjs/input_rate.js) (which is not described here). Overall, the result is stored in a queue, namely `pendingData` and sent to the server with `shinyapp.sendInput`:
+`valueChangeCallback` ultimately calls `inputs.setInput(id, value, opts)`. The latter involves a rather complex chain of [reactions](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/input_rate.js) (which is not described here). It is important to understand that the client does not send input values one by one, but by batch:
+
+```{r, eval=FALSE}
+library(shiny)
+
+ui <- fluidPage(
+  tags$script(
+    "$(document).on('shiny:message', function(event) {
+      console.log(event.message);
+    });"
+  ), 
+  actionButton("go", "update"),
+  textInput("test", "Test1"),  
+  textInput("test2", "Test2")
+)
+
+server <- function(input, output, session) {
+  observeEvent(input$go, ignoreInit = TRUE, {
+    updateTextInput(session, "test", value = "111")
+    updateTextInput(session, "test2", value = "222")
+  })
+}
+
+shinyApp(ui, server)
+```
+
+Overall, the result is stored in a queue, namely `pendingData` and sent to the server with `shinyapp.sendInput`:
 
 ```js
 this.sendInput = function(values) {
@@ -161,7 +187,7 @@ this.sendInput = function(values) {
 }
 ```
 
-The message has an `update` tag and is sent through the client websocket, only if the connection is opened. If not, it is added to the list of pending messages. 
+The message has an `update` tag and is sent through the client __websocket__, only if the connection is opened. If not, it is added to the list of pending messages. 
 
 ```js
 this.$sendMsg = function(msg) {
@@ -175,7 +201,7 @@ this.$sendMsg = function(msg) {
 ```
 
 Finally, current `inputValues` are updated. On the server side, the new value is received
-by the server websocket message handler, that is `ws$onMessage(message)`.
+by the server __websocket__ message handler, that is `ws$onMessage(message)`.
 
 
 ```{r update-input-recap, echo=FALSE, fig.cap='What Shiny does client side on initialization', out.width='100%'}

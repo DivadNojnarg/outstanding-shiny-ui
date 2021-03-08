@@ -1,11 +1,14 @@
-# Hidden gems about inputs {#shiny-input-gems}
-We present some tools that may be useful...TO FINISH
+# Mastering Shiny's events {#shiny-input-gems}
+We've already seen a couple of Shiny JS __events__ since the beginning of this book. Advanced readers
+probably know the `shiny:connected`, meaning that the client and server are properly initialized and all
+internal methods/functions are available to the programmer. Below, we add more elements to the list, trying to
+give practical examples. 
 
 ## Get the last changed input
 
 ### Motivations
 
-We probably all had this question one day: How can I get the last changed input in Shiny? There are already some methods like this [one](https://stackoverflow.com/questions/31250587/creating-shiny-reactive-variable-that-indicates-which-widget-was-last-modified) provided by Dean Attali. 
+We probably all had this question one day: How can I get the __last changed__ input in a Shiny app? There are already some methods like this [one](https://stackoverflow.com/questions/31250587/creating-shiny-reactive-variable-that-indicates-which-widget-was-last-modified): 
 
 ```{r, eval = FALSE}
 runApp(
@@ -46,24 +49,74 @@ runApp(
 
 Shouldn't this be easier? Could we do that from the client instead, thereby reducing the server load?
 
-### JavaScript, my friend
+### Invoke JS events
+`shiny:inputchanged` is the event we are looking for. It is fired each time an input gets a new value. The related events has five properties:
 
-Here comes our friend, JavaScript. If you insert this snippet in the head of your app, you will be able to get the last changed input (name, value and type). 
+  - __name__, the event name.
+  - __value__, the new value.
+  - __inputType__, the input type.
+  - __binding__, the related input binding.
+  - __el__ the related input DOM element.
+
+You may try below:
+
+```{r, eval=FALSE}
+library(shiny)
+
+ui <- fluidPage(
+  tags$script(
+  "$(document).on('shiny:inputchanged', function(event) {
+    console.log(event);
+  });"
+  ), 
+  textInput("test", "Test")
+)
+
+server <- function(input, output) {}
+
+shinyApp(ui, server)
+```
+
+Changing the `textInput()` value fires the event. Contrary to what is mentioned in the online [documentation](https://shiny.rstudio.com/articles/js-events.html), __inputType__ does not always have a value. In this case, an alternative, is to access the related input binding and extract its name, as shown below:
 
 ```js
 $(document).on('shiny:inputchanged', function(event) {
-  Shiny.setInputValue('pleaseStayHome', {name: event.name, value: event.value, type: event.binding.name.split('.')[1]});
+  Shiny.setInputValue(
+    'pleaseStayHome', 
+    {
+      name: event.name, 
+      value: event.value, 
+      type: event.binding.name.split('.')[1]
+    }
+  );
 });
 ```
 
-If you use this code in a custom shiny template, it is possible that input bindings don't have name, which would thereby make `event.binding.name.split('.')[1]` crash because `event.binding` is undefined. If so, you may remove this part:
+If you use this code in a custom shiny template, it is possible that input bindings doesn't have name, which would thereby make `event.binding.name.split('.')[1]` crash, event.binding` being undefined.
 
-```js
-$(document).on('shiny:inputchanged', function(event) {
-  Shiny.setInputValue('pleaseStayHome', {name: event.name, value: event.value});
-});
+::: {.warningbox data-latex=""}
+For the `textInput()`, the event is also fired when moving the mouse cursor with the keyboard arrows, which is a sort of FALSE positive, since the value isn't changed. However, as `Shiny.setInputValue` only sets a new value when the input value really changed (unless the __priority__ is set to __event__), we avoids this edge case. As an exercice, you may try to add `{priority: 'event'}` to the above code. 
+:::
+
+`$(document).on('shiny:inputchanged')` is also cancellable, that is we may definitely prevent the input to change it's value, calling `event.preventDefault();`.
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  tags$script(
+  "$(document).on('shiny:inputchanged', function(event) {
+    event.preventDefault();
+  });"
+  ), 
+  textInput("test", "Test"),
+  textOutput("val")
+)
+
+server <- function(input, output) {
+  output$val <- renderText(input$test)
+}
+
+shinyApp(ui, server)
 ```
-
 
 ### Example
 
@@ -82,8 +135,8 @@ shinyApp(
       ),
       toolbar = f7Toolbar(
         position = "bottom",
-        f7Link(label = "Link 1", src = "https://www.google.com"),
-        f7Link(label = "Link 2", src = "https://www.google.com", external = TRUE)
+        f7Link(label = "Link 1", href = "https://www.google.com"),
+        f7Link(label = "Link 2", href = "https://www.google.com")
       ),
       # main content,
       f7Card(
@@ -102,8 +155,8 @@ shinyApp(
 
 This approach has the advantage not to overload the server part with complex logic.
 
-### About {shinylogs}
-The `{shinylogs}` package developed by [dreamRs](https://github.com/dreamRs/shinylogs) contains this feature with much more advanced options.
+### About `{shinylogs}`
+The `{shinylogs}` [@R-shinylogs] package developed by [dreamRs](https://github.com/dreamRs/shinylogs) provide this feature with much more advanced options.
 
 ```{r, eval = FALSE}
 library(shinylogs)
@@ -120,4 +173,75 @@ shinyApp(
     output$lastChanged <- renderPrint(input$`.shinylogs_lastInput`)
   }
 )
+```
+
+## Custom overlay screens
+If you ever designed corporate production apps, you probably faced this situation where clients wanted
+a loading screen, whenever a computation occurs or at startup. 
+To date, one of the most comprehensive alternative is the `{waiter}` [@R-waiter] package by John Coene. 
+It provide myriad of options to significantly enhance the perceived performance of your app. 
+In the following, we'll focus on the `waiter_preloader()` and `waiter_on_busy()` functions. How does this work?
+
+### Preloader
+Under the hood, this feature relies on the `shiny:idle` event. At app startup, `shiny:idle` is triggered just after `shiny:connected` and `shiny:sessioninitialized`. Then, `shiny:idle` is also called each time a computation cycle is finished. 
+
+Whenever we call `waiter_preloader()`, an HTML overlay is added in the DOM. Moreover, this extra JS code ensures to
+hide the waiter when shiny is ready:
+
+```js
+window.ran = false;
+$(document).on('shiny:idle', function(event){
+  if(!window.ran)
+    hide_waiter(id = null);
+  window.ran = true;
+});
+```
+
+As a security, `window.ran` avoids to run this code twice. As an example, consider this app with
+a slider input and a plot output. We simulated a delay of three seconds to produce the plot:
+
+```{r, eval=FALSE}
+library(shiny)
+library(waiter)
+
+ui <- fluidPage(
+  use_waiter(), # dependencies
+  waiter_preloader(spin_fading_circles()), # shows before anything else 
+  sliderInput("obs", "Number of observations:",
+    min = 0, max = 1000, value = 500
+  ),
+  plotOutput("distPlot")
+)
+
+server <- function(input, output){
+  output$distPlot <- renderPlot({
+    Sys.sleep(3)
+    hist(rnorm(input$obs))
+  })
+}
+shinyApp(ui, server)
+```
+
+Notice how the waiter correctly handles the plot processing time.
+
+### Load on busy
+Similarly, the `waiter_on_busy()` exploit the `shiny:idle` and `shiny:busy` events. We first create the loader as soon as 
+shiny is busy:
+
+```js
+$(document).on('shiny:busy', function(event) {
+  show_waiter(
+    id = null,
+    html = ..., 
+    color = ...
+  );
+});
+```
+
+and is hidden once shiny is done:
+
+```js
+$(document).on('shiny:idle', function(event) {
+  hide_waiter(null);
+});
 ```
