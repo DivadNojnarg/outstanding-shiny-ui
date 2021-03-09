@@ -730,7 +730,19 @@ We could not finish this chapter without mentioning tools to validate JavaScript
 
 ```{r}
 shinyMobileJS <- system.file(sprintf("shinyMobile-%s/js/shinyMobile.js", packageVersion("shinyMobile")), package = "shinyMobile")
-jshint_file(input = shinyMobileJS, options = jshint_options(jquery = TRUE, globals = list("Shiny", "app")))
+# jstools print messages to the console
+# We don't want to see them all in the book ...
+invisible(capture.output(
+  temp <- jshint_file(
+    input = shinyMobileJS, 
+    options = jshint_options(
+      jquery = TRUE, 
+      globals = list("Shiny", "app")
+    )
+  )
+))
+
+head(tibble::as_tibble(temp$errors[, c("line", "reason")]))
 ```
 
 You may fine tune the `jshint_file` behavior with the [`jshint_options`](https://jshint.com/docs/options/). One is often tempted to call `eval` in JS code, which will result in a JSHint error. An option called `evil` exists to disable the corresponding test. However, we recommend to play the game, accept those error and try to fix them instead of cheating with options! An important remark about validation is that it does not check whether your code
@@ -769,7 +781,7 @@ jshint(
     jquery = TRUE, 
     globals = list("Shiny", "app")
   )
-)
+)$errors
 ```
 
 Yet the code won't work since `Shiny.notification` does not exist.
