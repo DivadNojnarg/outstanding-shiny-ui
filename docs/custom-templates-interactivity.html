@@ -82,8 +82,10 @@
 <h1>
 <span class="header-section-number">20</span> Adding more interactivity<a class="anchor" aria-label="anchor" href="#custom-templates-interactivity"><i class="fas fa-link"></i></a>
 </h1>
-<p>In this part, we are going to add more life to the template element. We first see how to enhance an existing static HTML component. Then we will explore complex feedback mechanisms to provide more interactivity to your app.</p>
-<p>All the JavaScript handlers described below are gathered in an HTML dependency, as well as the custom input binding(s).</p>
+<p>In this part, we are going to bring even more life to the template element.
+We first see how to enhance an existing static HTML component, through a simple progress bar example.
+Then we explore more complex elements involving specific Shiny patterns.</p>
+<p>All the JavaScript handlers described below are gathered in an HTML dependency, as well as an input binding(s):</p>
 <div class="sourceCode" id="cb490"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># contains bindings and other JS code</span>
 <span class="va">tabler_custom_js</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
@@ -103,14 +105,14 @@
 <h2>
 <span class="header-section-number">20.1</span> Custom progress bars<a class="anchor" aria-label="anchor" href="#custom-progress-bars"><i class="fas fa-link"></i></a>
 </h2>
-<p>Progress bars are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those elements are static HTML. Hence, it would be interesting to be able to update the current value from the server side. Since it is not an proper input element, implementing an input binding is inappropriate and we decide to proceed with the <code>sendCustomMessage</code>/<code>addCustomMessageHandler</code> pair. We first create the <code>tabler_progress</code> tag which is mainly composed of:</p>
+<p><strong>Progress bars</strong> are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those elements are static HTML. Hence, it would be interesting to update the current value from the server side. Since it is not an proper input element, implementing an input binding is inappropriate and we decide to proceed with a custom handler. We first create the <code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_progress.html">tabler_progress()</a></code> tag which is mainly composed of:</p>
 <ul>
 <li>
-<code>style</code> gives the current progress value. This is the main element</li>
+<code>style</code> gives the current progress value. This is the main element.</li>
 <li>
-<code>min</code> and <code>max</code> are bounds, in general between 0 and 100</li>
+<code>min</code> and <code>max</code> are bounds, in general between 0 and 100.</li>
 <li>
-<code>id</code> ensures the progress bar uniqueness, thereby avoiding conflicts</li>
+<code>id</code> ensures the progress bar uniqueness, thereby avoiding conflicts.</li>
 </ul>
 <div class="sourceCode" id="cb491"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">tabler_progress</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">value</span><span class="op">)</span> <span class="op">{</span>
@@ -129,25 +131,35 @@
   <span class="op">)</span>
 <span class="op">}</span>
 
-<span class="va">update_tabler_progress</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">value</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+<span class="va">update_tabler_progress</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
+  <span class="va">id</span>, 
+  <span class="va">value</span>, 
+  <span class="va">session</span> <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">{</span>
   <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">session</span><span class="op">$</span><span class="fu">ns</span><span class="op">(</span><span class="va">id</span><span class="op">)</span>, value <span class="op">=</span> <span class="va">value</span><span class="op">)</span>
-  <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"update-progress"</span>, <span class="va">message</span><span class="op">)</span>
+  <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>
+    type <span class="op">=</span> <span class="st">"update-progress"</span>,
+    <span class="va">message</span>
+  <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>The next element is the <code>update_tabler_progress</code> function which sends 2 elements from R to JS:</p>
+<p>The next element is the <code><a href="https://rdrr.io/pkg/OSUICode/man/update_tabler_progress.html">update_tabler_progress()</a></code> function which sends two elements from R to JS:</p>
 <ul>
-<li>The progress <code>id</code>
-</li>
-<li>The new value</li>
+<li>The progress <strong>id</strong>.</li>
+<li>The new <strong>value</strong>.</li>
 </ul>
-<p>On the JS side, we have a basic <code>addCustomMessageHandler</code>. As mentioned in Chapter <a href="survival-kit-javascript.html#survival-kit-javascript">10</a>, <code>sendCustomMessage</code> and <code>addCustomMessageHandler</code> are connected by the <code>type</code> parameter. This is crucial! Moreover, as the sent message is a R list, it becomes an JSON, meaning that elements must be accessed with a <code>.</code> in JS:</p>
+<p>On the JS side, we leverage the well known <code>Shiny.addCustomMessageHandler</code>. As mentioned in Chapter <a href="survival-kit-javascript.html#survival-kit-javascript">10</a>, <code>sendCustomMessage</code> and <code>addCustomMessageHandler</code> are connected by the <strong>type</strong> parameter. This is crucial! Moreover, as the sent message is a R list, it becomes an JSON, meaning that elements must be accessed with a <code>.</code> in JS:</p>
 <div class="sourceCode" id="cb492"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb492-1"><a href="custom-templates-interactivity.html#cb492-1"></a><span class="at">$</span>(<span class="kw">function</span> () <span class="op">{</span></span>
-<span id="cb492-2"><a href="custom-templates-interactivity.html#cb492-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">'update-progress'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb492-3"><a href="custom-templates-interactivity.html#cb492-3"></a>    <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">id</span>).<span class="at">css</span>(<span class="st">'width'</span><span class="op">,</span> <span class="va">message</span>.<span class="at">value</span> <span class="op">+</span><span class="st">'%'</span>)<span class="op">;</span></span>
-<span id="cb492-4"><a href="custom-templates-interactivity.html#cb492-4"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb492-5"><a href="custom-templates-interactivity.html#cb492-5"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<span id="cb492-2"><a href="custom-templates-interactivity.html#cb492-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb492-3"><a href="custom-templates-interactivity.html#cb492-3"></a>    <span class="st">'update-progress'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb492-4"><a href="custom-templates-interactivity.html#cb492-4"></a>    <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">id</span>).<span class="at">css</span>(<span class="st">'width'</span><span class="op">,</span> <span class="va">message</span>.<span class="at">value</span> <span class="op">+</span><span class="st">'%'</span>)<span class="op">;</span></span>
+<span id="cb492-5"><a href="custom-templates-interactivity.html#cb492-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb492-6"><a href="custom-templates-interactivity.html#cb492-6"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>We finally test these components in a simple app, whom output is depicted in Figure <a href="custom-templates-interactivity.html#fig:tabler-progress">20.1</a>:</p>
 <div class="sourceCode" id="cb493"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_page.html">tabler_page</a></span><span class="op">(</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.rstudio.com/">shiny</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/dreamRs/shinyWidgets">shinyWidgets</a></span><span class="op">)</span>
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_page.html">tabler_page</a></span><span class="op">(</span>
   <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_body.html">tabler_body</a></span><span class="op">(</span>
     <span class="fu"><a href="https://rdrr.io/pkg/shinyWidgets/man/noUiSliderInput.html">noUiSliderInput</a></span><span class="op">(</span>
       inputId <span class="op">=</span> <span class="st">"progress_value"</span>,
@@ -175,40 +187,36 @@
 FIGURE 20.1: Progress bar component updated by a slider
 </p>
 </div>
-<br><div class="callout callout-info">
-<p>NOTE: How to handle custom messages in shiny modules? Well, it is pretty straightforward: we wrap any id with the module namespace given by <code>session$ns()</code> before sending it to JS. You may even do it by default (without modules) like in the previous example since <code>session$ns()</code> will be <code>""</code>.</p>
+<div class="noteblock">
+<p>How to handle custom messages in shiny modules? Well, it is pretty straightforward: we wrap any id with the module <strong>namespace</strong> given by <strong>session<span class="math inline">\(ns()__ before sending it to JS. You may even do it by default (without modules) like in the previous example since __session\)</span>ns()</strong> will be <code>""</code>.</p>
 </div>
-<p><br></p>
 <p>Is there a way to directly update the progress from the client which would avoid to exchange data between R and JS, thereby saving some time?</p>
-<p>The idea is to get rid of the classic <code>session$sendCustomMessage</code> and <code>Shiny.addCustomMessageHandler</code> method. We could directly create a function that
-insert a script in the UI taking a trigger and target as main parameters. This function would have to be inserted multiple times if multiple triggers had to update the same target. The JS logic is slightly different:</p>
+<p>The idea is to get rid of the classic <code>session$sendCustomMessage</code> and <code>Shiny.addCustomMessageHandler</code> method. We could directly create a function that inserts a script in the UI taking a <strong>trigger</strong> and <strong>target</strong> as main parameters. This function would have to be inserted multiple times if multiple triggers had to update the same target. The JS logic is slightly different:</p>
 <ul>
-<li>We have to wait for shiny to be connected so that all inputs/bindings are ready</li>
-<li>We recover the trigger element with any JS/jQuery method</li>
-<li>We leverage the noUiSlider <a href="https://refreshless.com/nouislider/">API</a> to listen to any update in the range. It’s fine because the slider instance has already been initialized/defined in the shinyWidget <a href="https://github.com/dreamRs/shinyWidgets/blob/master/inst/assets/nouislider/nouislider-bindings.js#L100">input binding</a>. This would not work if we were not waiting for shiny to be connected (you may try)! Notice the use of <code>this.get()</code> in the event listener, which avoids to repeat <code>slider.noUiSlider</code>
+<li>We have to wait for shiny to be connected so that the JS <code>Shiny</code> object is ready.</li>
+<li>We recover the trigger element with any JS/jQuery method.</li>
+<li>We leverage the noUiSlider <a href="https://refreshless.com/nouislider/">API</a> to listen to any update in the range. It’s fine because the slider instance has already been initialized in the shinyWidget <a href="https://github.com/dreamRs/shinyWidgets/blob/master/inst/assets/nouislider/nouislider-bindings.js#L100">input binding</a>. This would not work if we were not waiting for shiny to be connected (you may try)! Notice the use of <code>this.get()</code> in the event listener, which avoids to repeat <code>slider.noUiSlider</code>
 </li>
-<li>We modify the <code>width</code> CSS property of the target like in the previous example</li>
+<li>We modify the <code>width</code> CSS property of the target like in the previous example.</li>
 </ul>
 <div class="sourceCode" id="cb494"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb494-1"><a href="custom-templates-interactivity.html#cb494-1"></a><span class="at">$</span>(document).<span class="at">on</span>(<span class="st">'shiny:connected'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb494-2"><a href="custom-templates-interactivity.html#cb494-2"></a>  <span class="kw">var</span> slider <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">'triggerId'</span>)<span class="op">;</span></span>
+<span id="cb494-2"><a href="custom-templates-interactivity.html#cb494-2"></a>  <span class="kw">let</span> slider <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">'triggerId'</span>)<span class="op">;</span></span>
 <span id="cb494-3"><a href="custom-templates-interactivity.html#cb494-3"></a>  <span class="va">slider</span>.<span class="va">noUiSlider</span>.<span class="at">on</span>(<span class="st">'update'</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
 <span id="cb494-4"><a href="custom-templates-interactivity.html#cb494-4"></a>    <span class="at">$</span>(<span class="st">'#targetId'</span>).<span class="at">css</span>(<span class="st">'width'</span><span class="op">,</span> <span class="kw">this</span>.<span class="at">get</span>() <span class="op">+</span> <span class="st">'%'</span>)<span class="op">;</span></span>
 <span id="cb494-5"><a href="custom-templates-interactivity.html#cb494-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
 <span id="cb494-6"><a href="custom-templates-interactivity.html#cb494-6"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <div class="sourceCode" id="cb495"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">update_tabler_progress2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">trigger</span>, <span class="va">target</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">tags</span><span class="op">$</span><span class="fu">head</span><span class="op">(</span>
-    <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
-      <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span>
-        <span class="st">"$(document).on('shiny:connected', function(event) {
-            var slider = document.getElementById('"</span>, <span class="va">trigger</span>, <span class="st">"');
-            slider.noUiSlider.on('update', function(event) {
-              $('#"</span>, <span class="va">target</span>, <span class="st">"').css('width', this.get() + '%');
-            });
-          });
-        "</span>
+  <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>
+    <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span>
+      <span class="st">"$(document).on('shiny:connected', function(event) {
+        let slider = document.getElementById('"</span>, <span class="va">trigger</span>, <span class="st">"');
+        slider.noUiSlider.on('update', function(event) {
+          $('#"</span>, <span class="va">target</span>, <span class="st">"').css('width', this.get() + '%');
+        });
+      });
+      "</span>
       <span class="op">)</span>
-    <span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span>
 
@@ -242,52 +250,59 @@ insert a script in the UI taking a trigger and target as main parameters. This f
 <span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p>Question: Run the above example in an external web browser, then stop the app from RStudio. Try to move both sliders. What happens for the progress bars? Compare with a classic <code>update</code> function. How could you explain this?</p>
-<p>Overall this way is a bit more complex since you sometimes need to know the API of the trigger to listen to the correct events. Yet, assuming a very complex app with data manipulation, tons of inputs and visualizations, everything that can be done from the client (web browser) is less work for the R server part and a better end-user experience! Building outstanding shiny apps is not only designing amazing user interfaces, it’s also about optimization and speed as mentioned by Colin Fay et al. in their <a href="https://engineering-shiny.org/optimjs.html">book</a>.</p>
+<p>Overall this way is a bit more complex. Yet, assuming a very complex app with data manipulation, tons of inputs and visualizations, everything that can be done from the client (web browser) is less work for the R server part and a better end-user experience! Building outstanding shiny apps is not only designing amazing user interfaces, it’s also about <strong>optimization</strong> and speed as mentioned by Colin Fay et al. in their <a href="https://engineering-shiny.org/optimjs.html">book</a> <span class="citation">(Fay, Rochette, et al. <a href="references.html#ref-thinkrShiny" role="doc-biblioref">2020</a>)</span>.</p>
 </div>
 <div id="user-feedback-toasts" class="section level2">
 <h2>
 <span class="header-section-number">20.2</span> User feedback: toasts<a class="anchor" aria-label="anchor" href="#user-feedback-toasts"><i class="fas fa-link"></i></a>
 </h2>
-<p>Toasts are components to send discrete user feedback, contrary to modals which open in the middle of the page. Toasts may open on all sides of the window and are similar to the Shiny notifications (see <a href="https://shiny.rstudio.com/reference/shiny/0.14/showNotification.html">here</a>). The tabler toast component is built on top of <a href="https://getbootstrap.com/docs/4.3/components/toasts/">Bootstrap 4</a>. Therefore, we will rely on this documentation.</p>
+<p><strong>Toasts</strong> are components to send discrete user feedback, contrary to modals which open in the middle of the page. Toasts may open on all sides of the window and are similar to the Shiny <strong>notifications</strong> (see <a href="https://shiny.rstudio.com/reference/shiny/0.14/showNotification.html">here</a>). The Tabler toast component is built on top of <a href="https://getbootstrap.com/docs/4.3/components/toasts/">Bootstrap 4</a>. Therefore, we rely on this documentation.</p>
 <div id="toast-skeleton" class="section level3">
 <h3>
 <span class="header-section-number">20.2.1</span> Toast skeleton<a class="anchor" aria-label="anchor" href="#toast-skeleton"><i class="fas fa-link"></i></a>
 </h3>
 <p>The skeleton is the HTML structure of the toast:</p>
-<div class="sourceCode" id="cb496"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb496-1"><a href="custom-templates-interactivity.html#cb496-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"toast show"</span><span class="ot"> role=</span><span class="st">"alert"</span><span class="ot"> aria-live=</span><span class="st">"assertive"</span><span class="ot"> aria-atomic=</span><span class="st">"true"</span><span class="ot"> data-autohide=</span><span class="st">"false"</span><span class="ot"> data-toggle=</span><span class="st">"toast"</span><span class="kw">&gt;</span></span>
-<span id="cb496-2"><a href="custom-templates-interactivity.html#cb496-2"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"toast-header"</span><span class="kw">&gt;</span></span>
-<span id="cb496-3"><a href="custom-templates-interactivity.html#cb496-3"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"avatar mr-2"</span><span class="ot"> style=</span><span class="st">"background-image: url(...)"</span><span class="kw">&gt;&lt;/span&gt;</span></span>
-<span id="cb496-4"><a href="custom-templates-interactivity.html#cb496-4"></a>    <span class="kw">&lt;strong</span><span class="ot"> class=</span><span class="st">"mr-auto"</span><span class="kw">&gt;</span>Mallory Hulme<span class="kw">&lt;/strong&gt;</span></span>
-<span id="cb496-5"><a href="custom-templates-interactivity.html#cb496-5"></a>    <span class="kw">&lt;small&gt;</span>11 mins ago<span class="kw">&lt;/small&gt;</span></span>
-<span id="cb496-6"><a href="custom-templates-interactivity.html#cb496-6"></a>    <span class="kw">&lt;button</span><span class="ot"> type=</span><span class="st">"button"</span><span class="ot"> class=</span><span class="st">"ml-2 close"</span><span class="ot"> data-dismiss=</span><span class="st">"toast"</span><span class="ot"> aria-label=</span><span class="st">"Close"</span><span class="kw">&gt;</span></span>
-<span id="cb496-7"><a href="custom-templates-interactivity.html#cb496-7"></a>      <span class="kw">&lt;span</span><span class="ot"> aria-hidden=</span><span class="st">"true"</span><span class="kw">&gt;</span><span class="dv">&amp;times;</span><span class="kw">&lt;/span&gt;</span></span>
-<span id="cb496-8"><a href="custom-templates-interactivity.html#cb496-8"></a>    <span class="kw">&lt;/button&gt;</span></span>
-<span id="cb496-9"><a href="custom-templates-interactivity.html#cb496-9"></a>  <span class="kw">&lt;/div&gt;</span></span>
-<span id="cb496-10"><a href="custom-templates-interactivity.html#cb496-10"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"toast-body"</span><span class="kw">&gt;</span></span>
-<span id="cb496-11"><a href="custom-templates-interactivity.html#cb496-11"></a>    Hello, world! This is a toast message.</span>
+<div class="sourceCode" id="cb496"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb496-1"><a href="custom-templates-interactivity.html#cb496-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"toast show"</span><span class="ot"> role=</span><span class="st">"alert"</span><span class="ot"> aria-live=</span><span class="st">"assertive"</span> </span>
+<span id="cb496-2"><a href="custom-templates-interactivity.html#cb496-2"></a><span class="ot">aria-atomic=</span><span class="st">"true"</span><span class="ot"> data-autohide=</span><span class="st">"false"</span><span class="ot"> data-toggle=</span><span class="st">"toast"</span><span class="kw">&gt;</span></span>
+<span id="cb496-3"><a href="custom-templates-interactivity.html#cb496-3"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"toast-header"</span><span class="kw">&gt;</span></span>
+<span id="cb496-4"><a href="custom-templates-interactivity.html#cb496-4"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"avatar mr-2"</span> </span>
+<span id="cb496-5"><a href="custom-templates-interactivity.html#cb496-5"></a><span class="ot">    style=</span><span class="st">"background-image: url(...)"</span><span class="kw">&gt;&lt;/span&gt;</span></span>
+<span id="cb496-6"><a href="custom-templates-interactivity.html#cb496-6"></a>    <span class="kw">&lt;strong</span><span class="ot"> class=</span><span class="st">"mr-auto"</span><span class="kw">&gt;</span>Mallory Hulme<span class="kw">&lt;/strong&gt;</span></span>
+<span id="cb496-7"><a href="custom-templates-interactivity.html#cb496-7"></a>    <span class="kw">&lt;small&gt;</span>11 mins ago<span class="kw">&lt;/small&gt;</span></span>
+<span id="cb496-8"><a href="custom-templates-interactivity.html#cb496-8"></a>    <span class="kw">&lt;button</span><span class="ot"> type=</span><span class="st">"button"</span><span class="ot"> class=</span><span class="st">"ml-2 close"</span> </span>
+<span id="cb496-9"><a href="custom-templates-interactivity.html#cb496-9"></a><span class="ot">    data-dismiss=</span><span class="st">"toast"</span><span class="ot"> aria-label=</span><span class="st">"Close"</span><span class="kw">&gt;</span></span>
+<span id="cb496-10"><a href="custom-templates-interactivity.html#cb496-10"></a>      <span class="kw">&lt;span</span><span class="ot"> aria-hidden=</span><span class="st">"true"</span><span class="kw">&gt;</span><span class="dv">&amp;times;</span><span class="kw">&lt;/span&gt;</span></span>
+<span id="cb496-11"><a href="custom-templates-interactivity.html#cb496-11"></a>    <span class="kw">&lt;/button&gt;</span></span>
 <span id="cb496-12"><a href="custom-templates-interactivity.html#cb496-12"></a>  <span class="kw">&lt;/div&gt;</span></span>
-<span id="cb496-13"><a href="custom-templates-interactivity.html#cb496-13"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
-<p>Toasts are mainly composed of a header and a body. There might be a close button in case the toast does not hide itself. If multiple toasts appear one after each others, they are stacked, the latest being at the bottom of the stack. The position is controled with the style attribute like <code>style="position: absolute; top: 0; right: 0;"</code> for a top-right placement. Accessibility parameters like <code>aria-live</code> are detailed <a href="https://getbootstrap.com/docs/4.3/components/toasts/#accessibility">here</a>.</p>
+<span id="cb496-13"><a href="custom-templates-interactivity.html#cb496-13"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"toast-body"</span><span class="kw">&gt;</span></span>
+<span id="cb496-14"><a href="custom-templates-interactivity.html#cb496-14"></a>    Hello, world! This is a toast message.</span>
+<span id="cb496-15"><a href="custom-templates-interactivity.html#cb496-15"></a>  <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb496-16"><a href="custom-templates-interactivity.html#cb496-16"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
+<p>Toasts are mainly composed of a header and a body. There might be a close button in case the toast does not hide itself. If multiple toasts appear one after each others, they are stacked, the latest being at the bottom of the stack. The position is controlled with the style attribute like <code>style="position: absolute; top: 0; right: 0;"</code> for a top-right placement. Accessibility parameters like <code>aria-live</code> are detailed <a href="https://getbootstrap.com/docs/4.3/components/toasts/#accessibility">here</a>.</p>
 </div>
 <div id="the-toast-api" class="section level3">
 <h3>
 <span class="header-section-number">20.2.2</span> The toast API<a class="anchor" aria-label="anchor" href="#the-toast-api"><i class="fas fa-link"></i></a>
 </h3>
-<p>Toasts have a JS API to control their behaviour, for instance <code>$('&lt;toast_selector&gt;').toast(option)</code>, where option is a JSON with the following fields:</p>
+<p>Toasts have a JS API to control their behavior, for instance <code>$('&lt;toast_selector&gt;').toast(option)</code>, where option is a <strong>JSON</strong> with the following fields:</p>
 <ul>
-<li>animation applies a CSS fade transition to the toast and is TRUE by default</li>
-<li>autohide automatically hides the toast (TRUE by default)</li>
-<li>delay is the delay to hide the toast (500 ms)</li>
+<li>
+<strong>animation</strong> applies a CSS fade transition to the toast and is TRUE by default.</li>
+<li>
+<strong>autohide</strong> automatically hides the toast (TRUE by default).</li>
+<li>
+<strong>delay</strong> is the delay to hide the toast (500 ms).</li>
 </ul>
-<p>There are 3 methods: hide, show and dispose (dispose ensures the toast does not appear anymore). Finally, we may fine tune the toast behavior with 4 events: show.bs.toast, shown.bs.toast, hide.bs.toast, hide.bs.toast, hidden.bs.toast (like for tabs).</p>
+<p>There are three methods: <strong>hide</strong>, <strong>show</strong> and <strong>dispose</strong> (dispose ensures the toast does not appear anymore). Finally, we may fine tune the toast behavior with four events: <code>show.bs.toast</code>, <code>shown.bs.toast</code>, <code>hide.bs.toast</code>, <code>hidden.bs.toast</code> (like for tabs).</p>
 </div>
 <div id="r-implementation" class="section level3">
 <h3>
 <span class="header-section-number">20.2.3</span> R implementation<a class="anchor" aria-label="anchor" href="#r-implementation"><i class="fas fa-link"></i></a>
 </h3>
-<p>We first create the toast skeleton. We assume our toast will hide automatically, so that we may remove the delete button as well as the <code>data-autohide="false</code> attribute. All parameters are optional except the toast id, which is required to toggle the toast:</p>
+<p>We first create the toast skeleton. We assume our toast hides automatically, so that we may remove the delete button as well as the <code>data-autohide="false</code> attribute. All parameters are optional except the toast id, which is required to toggle the toast:</p>
 <div class="sourceCode" id="cb497"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">tabler_toast</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">subtitle</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span>, <span class="va">img</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">tabler_toast</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">subtitle</span> <span class="op">=</span> <span class="cn">NULL</span>, 
+                         <span class="va">...</span>, <span class="va">img</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   
   <span class="va">toast_header</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span>
     class <span class="op">=</span> <span class="st">"toast-header"</span>,
@@ -313,11 +328,16 @@ insert a script in the UI taking a trigger and target as main parameters. This f
     `data-toggle` <span class="op">=</span> <span class="st">"toast"</span>
   <span class="op">)</span>
   
-  <span class="va">toast_wrapper</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagAppendChildren</a></span><span class="op">(</span><span class="va">toast_header</span>, <span class="va">toast_body</span><span class="op">)</span>
+  <span class="va">toast_wrapper</span> <span class="op">%&gt;%</span> 
+    <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tag.html">tagAppendChildren</a></span><span class="op">(</span><span class="va">toast_header</span>, <span class="va">toast_body</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>We create the <code>show_tabler_toast</code> function. Since the toast automatically hides, it does not make sense to create the hide function, as well as the dispose.</p>
+<p>We create the <code><a href="https://rdrr.io/pkg/OSUICode/man/show_tabler_toast.html">show_tabler_toast()</a></code> function. Since the toast automatically hides, it does not make sense to create the hide function, as well as the dispose:</p>
 <div class="sourceCode" id="cb498"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">show_tabler_toast</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">show_tabler_toast</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
+  <span class="va">id</span>, 
+  <span class="va">options</span> <span class="op">=</span> <span class="cn">NULL</span>, 
+  <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">{</span>
   <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu">dropNulls</span><span class="op">(</span>
     <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
       id <span class="op">=</span> <span class="va">id</span>,
@@ -328,18 +348,23 @@ insert a script in the UI taking a trigger and target as main parameters. This f
 <span class="op">}</span></code></pre></div>
 <p>The corresponding JS handler is given by:</p>
 <div class="sourceCode" id="cb499"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb499-1"><a href="custom-templates-interactivity.html#cb499-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb499-2"><a href="custom-templates-interactivity.html#cb499-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">'tabler-toast'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb499-3"><a href="custom-templates-interactivity.html#cb499-3"></a>    <span class="at">$</span>(<span class="vs">`#</span><span class="sc">${</span><span class="va">message</span>.<span class="at">id</span><span class="sc">}</span><span class="vs">`</span>)</span>
-<span id="cb499-4"><a href="custom-templates-interactivity.html#cb499-4"></a>      .<span class="at">toast</span>(<span class="va">message</span>.<span class="at">options</span>)</span>
-<span id="cb499-5"><a href="custom-templates-interactivity.html#cb499-5"></a>      .<span class="at">toast</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
-<span id="cb499-6"><a href="custom-templates-interactivity.html#cb499-6"></a></span>
-<span id="cb499-7"><a href="custom-templates-interactivity.html#cb499-7"></a>    <span class="co">// add custom Shiny input to listen to the toast state</span></span>
-<span id="cb499-8"><a href="custom-templates-interactivity.html#cb499-8"></a>    <span class="at">$</span>(<span class="vs">`#</span><span class="sc">${</span><span class="va">message</span>.<span class="at">id</span><span class="sc">}</span><span class="vs">`</span>).<span class="at">on</span>(<span class="st">'hidden.bs.toast'</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb499-9"><a href="custom-templates-interactivity.html#cb499-9"></a>      <span class="va">Shiny</span>.<span class="at">setInputValue</span>(<span class="va">message</span>.<span class="at">id</span><span class="op">,</span> <span class="kw">true</span><span class="op">,</span> <span class="op">{</span><span class="dt">priority</span><span class="op">:</span> <span class="st">'event'</span><span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb499-10"><a href="custom-templates-interactivity.html#cb499-10"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb499-11"><a href="custom-templates-interactivity.html#cb499-11"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb499-12"><a href="custom-templates-interactivity.html#cb499-12"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
-<p>We first configure the toast and show it. Notice how we chained jQuery methods (see Chapter <a href="survival-kit-javascript.html#survival-kit-javascript">10</a>)! We optionally add an event listener to capture the <code>hidden.bs.toast</code> event, so that we may trigger an action when the toast is closed. The <code>input$id</code> will be used for that purpose in combination with the <code>Shiny.setInputValue</code>. Notice the extra parameter <code>{priority: 'event'}</code>: basically, once the toast is closed, <code>input$id</code> will always be TRUE, thereby breaking the reactivity. Adding this extra parameter forces the evaluation of the input, although constant over time.</p>
+<span id="cb499-2"><a href="custom-templates-interactivity.html#cb499-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb499-3"><a href="custom-templates-interactivity.html#cb499-3"></a>    <span class="st">'tabler-toast'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb499-4"><a href="custom-templates-interactivity.html#cb499-4"></a>      <span class="at">$</span>(<span class="vs">`#</span><span class="sc">${</span><span class="va">message</span>.<span class="at">id</span><span class="sc">}</span><span class="vs">`</span>)</span>
+<span id="cb499-5"><a href="custom-templates-interactivity.html#cb499-5"></a>        .<span class="at">toast</span>(<span class="va">message</span>.<span class="at">options</span>)</span>
+<span id="cb499-6"><a href="custom-templates-interactivity.html#cb499-6"></a>        .<span class="at">toast</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
+<span id="cb499-7"><a href="custom-templates-interactivity.html#cb499-7"></a></span>
+<span id="cb499-8"><a href="custom-templates-interactivity.html#cb499-8"></a>      <span class="co">// add custom Shiny input to listen to the toast state</span></span>
+<span id="cb499-9"><a href="custom-templates-interactivity.html#cb499-9"></a>      <span class="at">$</span>(<span class="vs">`#</span><span class="sc">${</span><span class="va">message</span>.<span class="at">id</span><span class="sc">}</span><span class="vs">`</span>).<span class="at">on</span>(<span class="st">'hidden.bs.toast'</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb499-10"><a href="custom-templates-interactivity.html#cb499-10"></a>        <span class="va">Shiny</span>.<span class="at">setInputValue</span>(</span>
+<span id="cb499-11"><a href="custom-templates-interactivity.html#cb499-11"></a>          <span class="va">message</span>.<span class="at">id</span><span class="op">,</span> </span>
+<span id="cb499-12"><a href="custom-templates-interactivity.html#cb499-12"></a>          <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb499-13"><a href="custom-templates-interactivity.html#cb499-13"></a>          <span class="op">{</span><span class="dt">priority</span><span class="op">:</span> <span class="st">'event'</span><span class="op">}</span></span>
+<span id="cb499-14"><a href="custom-templates-interactivity.html#cb499-14"></a>        )<span class="op">;</span></span>
+<span id="cb499-15"><a href="custom-templates-interactivity.html#cb499-15"></a>      <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb499-16"><a href="custom-templates-interactivity.html#cb499-16"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb499-17"><a href="custom-templates-interactivity.html#cb499-17"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>We first configure the toast and show it. Notice how we chained jQuery methods (see Chapter <a href="survival-kit-javascript.html#survival-kit-javascript">10</a>)! We optionally add an <strong>event listener</strong> to capture the <code>hidden.bs.toast</code> event, so that we may trigger an action when the toast is closed. The <strong>input<span class="math inline">\(id__ is used for that purpose in combination with the `Shiny.setInputValue`. Notice the extra parameter `{priority: 'event'}`: basically, once the toast is closed, __input\)</span>id</strong> is always be TRUE, thereby breaking the <strong>reactivity</strong>. Adding this extra parameter <strong>forces</strong> the evaluation of the input, although constant over time.</p>
 </div>
 <div id="wrap-up" class="section level3">
 <h3>
@@ -396,14 +421,20 @@ FIGURE 20.2: Tabler toast element
 </h2>
 <p>As seen in Chapter <a href="custom-templates-inputs.html#custom-templates-inputs">19</a>, any <code>&lt;button&gt;</code>, <code>&lt;a&gt;</code> element holding the <code>action-button</code> class may eventually become an action button. The Tabler template has dropdown menus in the navbar and we would like to transform those dropdown items in action buttons. The <code>tabler_dropdown</code> functions takes the following parameters:</p>
 <ul>
-<li>id is required by the <code>show_tabler_dropdown</code> (see below) function which opens the menu</li>
-<li>title is the dropdown menu name</li>
-<li>subtitle is optional text</li>
-<li>img is an optional image</li>
-<li>… hosts the <code>tabler_dropdown_item</code> (see below)</li>
+<li>
+<strong>id</strong> is required by the <code>show_tabler_dropdown</code> (see below) function which opens the menu.</li>
+<li>
+<strong>title</strong> is the dropdown menu name.</li>
+<li>
+<strong>subtitle</strong> is optional text.</li>
+<li>
+<strong>img</strong> is an optional image.</li>
+<li>
+<strong>…</strong> hosts the <code>tabler_dropdown_item</code> (see below).</li>
 </ul>
 <div class="sourceCode" id="cb501"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">tabler_dropdown</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span>, <span class="va">subtitle</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">img</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">tabler_dropdown</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span>, 
+                            <span class="va">subtitle</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">img</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   
   <span class="va">img_tag</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">img</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
     <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">span</a></span><span class="op">(</span>
@@ -443,19 +474,31 @@ FIGURE 20.2: Tabler toast element
 <p>To convert a dropdown item in an action button , we add the <code>action-button</code> class as well as the <code>id</code> parameter to recover the corresponding input id.</p>
 <div class="sourceCode" id="cb502"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">tabler_dropdown_item</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">a</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">id</span>, class <span class="op">=</span> <span class="st">"dropdown-item action-button"</span>, href <span class="op">=</span> <span class="st">"#"</span>, <span class="va">...</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">a</a></span><span class="op">(</span>
+    id <span class="op">=</span> <span class="va">id</span>, 
+    class <span class="op">=</span> <span class="st">"dropdown-item action-button"</span>, 
+    href <span class="op">=</span> <span class="st">"#"</span>, 
+    <span class="va">...</span>
+  <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>We finally create the <code>show_tabler_dropdown</code> as well as the corresponding Shiny message handler.</p>
+<p>We finally create the <code><a href="https://rdrr.io/pkg/OSUICode/man/show_tabler_dropdown.html">show_tabler_dropdown()</a></code> as well as the corresponding Shiny message handler.</p>
 <div class="sourceCode" id="cb503"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">show_tabler_dropdown</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"show-dropdown"</span>, message <span class="op">=</span> <span class="va">id</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">show_tabler_dropdown</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
+  <span class="va">id</span>, 
+  <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">{</span>
+  <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>
+    type <span class="op">=</span> <span class="st">"show-dropdown"</span>, 
+    message <span class="op">=</span> <span class="va">id</span>
+  <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>To show the dropdown, we use the <code>dropdown</code> method which is linked to the <code>data-toggle="dropdown"</code> of <code>tabler_dropdown</code>.</p>
+<p>To show the dropdown, we use the <strong>dropdown</strong> method which is linked to the <code>data-toggle="dropdown"</code> of <code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_dropdown.html">tabler_dropdown()</a></code>.</p>
 <div class="sourceCode" id="cb504"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb504-1"><a href="custom-templates-interactivity.html#cb504-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb504-2"><a href="custom-templates-interactivity.html#cb504-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">'show-dropdown'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb504-3"><a href="custom-templates-interactivity.html#cb504-3"></a>    <span class="at">$</span>(<span class="vs">`#</span><span class="sc">${</span>message<span class="sc">}</span><span class="vs">`</span>).<span class="at">dropdown</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
-<span id="cb504-4"><a href="custom-templates-interactivity.html#cb504-4"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb504-5"><a href="custom-templates-interactivity.html#cb504-5"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<span id="cb504-2"><a href="custom-templates-interactivity.html#cb504-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb504-3"><a href="custom-templates-interactivity.html#cb504-3"></a>   <span class="st">'show-dropdown'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb504-4"><a href="custom-templates-interactivity.html#cb504-4"></a>      <span class="at">$</span>(<span class="vs">`#</span><span class="sc">${</span>message<span class="sc">}</span><span class="vs">`</span>).<span class="at">dropdown</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
+<span id="cb504-5"><a href="custom-templates-interactivity.html#cb504-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb504-6"><a href="custom-templates-interactivity.html#cb504-6"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>Let’s play with it! (See Figure <a href="custom-templates-interactivity.html#fig:tabler-dropdown">20.3</a>)</p>
 <div class="sourceCode" id="cb505"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_page.html">tabler_page</a></span><span class="op">(</span>
@@ -511,18 +554,18 @@ FIGURE 20.3: Tabler dropdown element
 <h2>
 <span class="header-section-number">20.4</span> Tab events<a class="anchor" aria-label="anchor" href="#tab-events"><i class="fas fa-link"></i></a>
 </h2>
-<p>Do you remember about the navbar element and the tabsetpanel system of Chapter <a href="custom-templates-skeleton.html#custom-templates-skeleton">18</a>? Navs allow to organize any app into several tabs, acting like pages. This is a powerful tool for Shiny since it is currently not straightforward to create <a href="https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698">multi-pages</a> Shiny apps like anyone would do with a website. Navs relie on the Bootstrap4 API but we only used few JS functions.</p>
+<p>Do you remember about the navbar element and the <strong>tabsetpanel</strong> system of Chapter <a href="custom-templates-skeleton.html#custom-templates-skeleton">18</a>? <strong>Navs</strong> allow to organize any app into several tabs, acting like a multi pages application. This is a powerful tool for Shiny since it is currently not straightforward to create <a href="https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698">multi-pages</a> Shiny apps like anyone would do with a website. Navs relie on the Bootstrap4 API but we only used few JS functions.</p>
 <div id="insert-tabs" class="section level3">
 <h3>
 <span class="header-section-number">20.4.1</span> Insert/Remove tabs in tabsetpanel<a class="anchor" aria-label="anchor" href="#insert-tabs"><i class="fas fa-link"></i></a>
 </h3>
-<p>How about dynamically inserting/removing tabs from a <code>tabler_navbar</code>? I chose this example since it involves extra technical details about Shiny.</p>
-<p>How do we proceed? if you remember about the <code>tabler_navbar_menu_item</code> and <code>tabler_tab_item</code> coupling, inserting a tab implies to insert the trigger in the navigation menu as well as the content in the dashboard body. Therefore, we need to know the structure of what we insert. Below is a reminder:</p>
+<p>How about dynamically inserting/removing tabs from a <code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_navbar.html">tabler_navbar()</a></code>? We chose this example since it involves extra technical details about Shiny.</p>
+<p>How do we proceed? If you recall about the <code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_navbar_menu_item.html">tabler_navbar_menu_item()</a></code> and <code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_tab_item.html">tabler_tab_item()</a></code> coupling, inserting a tab implies to insert the trigger in the navigation menu as well as the content in the dashboard body. Therefore, we need to know the structure of what we insert. Below is a reminder:</p>
 <ul>
 <li>
-<code>tabler_navbar_menu_item</code> are <code>&lt;li&gt;</code> elements</li>
+<code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_navbar_menu_item.html">tabler_navbar_menu_item()</a></code> are <code>&lt;li&gt;</code> elements.</li>
 <li>
-<code>tabler_navbar_menu_item</code> is a <code>&lt;div&gt;</code> element with specific classes</li>
+<code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_navbar_menu_item.html">tabler_navbar_menu_item()</a></code> is a <code>&lt;div&gt;</code> element with specific classes.</li>
 </ul>
 <div class="sourceCode" id="cb506"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb506-1"><a href="custom-templates-interactivity.html#cb506-1"></a><span class="kw">&lt;li</span><span class="ot"> class=</span><span class="st">"nav-item"</span><span class="kw">&gt;</span></span>
 <span id="cb506-2"><a href="custom-templates-interactivity.html#cb506-2"></a>  <span class="kw">&lt;a</span><span class="ot"> class=</span><span class="st">"nav-link"</span><span class="ot"> href=</span><span class="st">"#ww"</span><span class="ot"> data-toggle=</span><span class="st">"pill"</span><span class="ot"> data-value=</span><span class="st">"ww"</span><span class="ot"> role=</span><span class="st">"tab"</span><span class="kw">&gt;</span></span>
@@ -532,11 +575,17 @@ FIGURE 20.3: Tabler dropdown element
 <span id="cb506-6"><a href="custom-templates-interactivity.html#cb506-6"></a><span class="kw">&lt;/li&gt;</span></span>
 <span id="cb506-7"><a href="custom-templates-interactivity.html#cb506-7"></a></span>
 <span id="cb506-8"><a href="custom-templates-interactivity.html#cb506-8"></a><span class="kw">&lt;div</span><span class="ot"> role=</span><span class="st">"tabpanel"</span><span class="ot"> class=</span><span class="st">"tab-pane fade container-fluid"</span><span class="ot"> id=</span><span class="st">"ww"</span><span class="kw">&gt;&lt;/div&gt;</span></span></code></pre></div>
-<p>We design the <code>insert_tabler_tab</code> function similar to the Shiny <code>insertTab</code>.
-To handle shiny modules, we wrap the inputId in the session namespace <code>session$ns</code>. We create the menu item element based on the provided new tab.</p>
+<p>We design the <code><a href="https://rdrr.io/pkg/OSUICode/man/insert_tabler_tab.html">insert_tabler_tab()</a></code> function similar to the Shiny <code><a href="https://rdrr.io/pkg/shiny/man/insertTab.html">insertTab()</a></code>.
+To handle shiny modules, we wrap the <strong>inputId</strong> in the session namespace <strong>session$ns</strong>. We create the menu item element based on the provided new tab:</p>
 <div class="sourceCode" id="cb507"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">insert_tabler_tab</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">tab</span>, <span class="va">target</span>, <span class="va">position</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"before"</span>, <span class="st">"after"</span><span class="op">)</span>,
-                              <span class="va">select</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">insert_tabler_tab</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
+  <span class="va">inputId</span>, 
+  <span class="va">tab</span>, 
+  <span class="va">target</span>, 
+  <span class="va">position</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"before"</span>, <span class="st">"after"</span><span class="op">)</span>,
+  <span class="va">select</span> <span class="op">=</span> <span class="cn">FALSE</span>, 
+  <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">{</span>
   
   <span class="va">inputId</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">ns</span><span class="op">(</span><span class="va">inputId</span><span class="op">)</span>
   <span class="va">position</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/match.arg.html">match.arg</a></span><span class="op">(</span><span class="va">position</span><span class="op">)</span>
@@ -571,33 +620,42 @@ To handle shiny modules, we wrap the inputId in the session namespace <code>sess
 <p>On the JS side, we capture the R message (list) in two elements:</p>
 <ul>
 <li>
-<code>$divTag</code> contains the tab content</li>
+<code>$divTag</code> contains the tab <strong>content</strong>.</li>
 <li>
-<code>$liTag</code> contains the tab link, ie the navigation part</li>
+<code>$liTag</code> contains the tab link, ie the <strong>navigation</strong> part.</li>
 </ul>
-<p>Depending on the position parameter, we use the <code>insertAfter</code> and <code>insertBefore</code> jQuery methods. Finally, if the newly inserted tab has to be
-selected, we activate the corresponding tab element with <code>$(tablink).tab('show')</code>.</p>
+<p>Depending on the position parameter, we use the <code>insertAfter()</code> and <code>insertBefore()</code> jQuery methods. Finally, if the newly inserted tab has to be selected, we activate the corresponding tab element with <code>$(tablink).tab('show')</code>.</p>
 <div class="sourceCode" id="cb508"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb508-1"><a href="custom-templates-interactivity.html#cb508-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb508-2"><a href="custom-templates-interactivity.html#cb508-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">'insert-tab'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb508-3"><a href="custom-templates-interactivity.html#cb508-3"></a>    <span class="co">// define div and li targets</span></span>
-<span id="cb508-4"><a href="custom-templates-interactivity.html#cb508-4"></a>    <span class="kw">let</span> $divTag <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="at">content</span>)<span class="op">;</span></span>
-<span id="cb508-5"><a href="custom-templates-interactivity.html#cb508-5"></a>    <span class="kw">let</span> $liTag <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="at">link</span>)<span class="op">;</span></span>
-<span id="cb508-6"><a href="custom-templates-interactivity.html#cb508-6"></a>    </span>
-<span id="cb508-7"><a href="custom-templates-interactivity.html#cb508-7"></a>    <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'after'</span>) <span class="op">{</span></span>
-<span id="cb508-8"><a href="custom-templates-interactivity.html#cb508-8"></a>      <span class="va">$divTag</span>.<span class="at">insertAfter</span>(<span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span>))<span class="op">;</span></span>
-<span id="cb508-9"><a href="custom-templates-interactivity.html#cb508-9"></a>      <span class="va">$liTag</span>.<span class="at">insertAfter</span>(<span class="at">$</span>(<span class="st">'[data-target="#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span> <span class="op">+</span> <span class="st">'"]'</span>).<span class="at">parent</span>())<span class="op">;</span></span>
-<span id="cb508-10"><a href="custom-templates-interactivity.html#cb508-10"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'before'</span>) <span class="op">{</span></span>
-<span id="cb508-11"><a href="custom-templates-interactivity.html#cb508-11"></a>      <span class="va">$divTag</span>.<span class="at">insertBefore</span>(<span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span>))<span class="op">;</span></span>
-<span id="cb508-12"><a href="custom-templates-interactivity.html#cb508-12"></a>      <span class="va">$liTag</span>.<span class="at">insertBefore</span>(<span class="at">$</span>(<span class="st">'[data-target="#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span> <span class="op">+</span> <span class="st">'"]'</span>).<span class="at">parent</span>())<span class="op">;</span></span>
-<span id="cb508-13"><a href="custom-templates-interactivity.html#cb508-13"></a>    <span class="op">}</span></span>
-<span id="cb508-14"><a href="custom-templates-interactivity.html#cb508-14"></a>    </span>
-<span id="cb508-15"><a href="custom-templates-interactivity.html#cb508-15"></a>    <span class="cf">if</span> (<span class="va">message</span>.<span class="at">select</span>) <span class="op">{</span></span>
-<span id="cb508-16"><a href="custom-templates-interactivity.html#cb508-16"></a>      <span class="co">// trigger a click on corresponding the new tab button. </span></span>
-<span id="cb508-17"><a href="custom-templates-interactivity.html#cb508-17"></a>      <span class="kw">let</span> newTabId <span class="op">=</span> <span class="va">$divTag</span>.<span class="at">attr</span>(<span class="st">'id'</span>)<span class="op">;</span></span>
-<span id="cb508-18"><a href="custom-templates-interactivity.html#cb508-18"></a>      <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">inputId</span> <span class="op">+</span> <span class="st">' a[data-target="#'</span> <span class="op">+</span> newTabId <span class="op">+</span><span class="st">'"]'</span>).<span class="at">tab</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
-<span id="cb508-19"><a href="custom-templates-interactivity.html#cb508-19"></a>    <span class="op">}</span></span>
-<span id="cb508-20"><a href="custom-templates-interactivity.html#cb508-20"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb508-21"><a href="custom-templates-interactivity.html#cb508-21"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<span id="cb508-2"><a href="custom-templates-interactivity.html#cb508-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb508-3"><a href="custom-templates-interactivity.html#cb508-3"></a>    <span class="st">'insert-tab'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb508-4"><a href="custom-templates-interactivity.html#cb508-4"></a>      <span class="co">// define div and li targets</span></span>
+<span id="cb508-5"><a href="custom-templates-interactivity.html#cb508-5"></a>      <span class="kw">let</span> $divTag <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="at">content</span>)<span class="op">;</span></span>
+<span id="cb508-6"><a href="custom-templates-interactivity.html#cb508-6"></a>      <span class="kw">let</span> $liTag <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="at">link</span>)<span class="op">;</span></span>
+<span id="cb508-7"><a href="custom-templates-interactivity.html#cb508-7"></a>      <span class="kw">let</span> targetId <span class="op">=</span> <span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span><span class="op">;</span></span>
+<span id="cb508-8"><a href="custom-templates-interactivity.html#cb508-8"></a>      <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'after'</span>) <span class="op">{</span></span>
+<span id="cb508-9"><a href="custom-templates-interactivity.html#cb508-9"></a>        <span class="va">$divTag</span>.<span class="at">insertAfter</span>(<span class="at">$</span>(targetId))<span class="op">;</span></span>
+<span id="cb508-10"><a href="custom-templates-interactivity.html#cb508-10"></a>        <span class="va">$liTag</span>.<span class="at">insertAfter</span>(</span>
+<span id="cb508-11"><a href="custom-templates-interactivity.html#cb508-11"></a>          <span class="at">$</span>(<span class="st">'[data-target="'</span> <span class="op">+</span> targetId <span class="op">+</span> <span class="st">'"]'</span>)</span>
+<span id="cb508-12"><a href="custom-templates-interactivity.html#cb508-12"></a>            .<span class="at">parent</span>()</span>
+<span id="cb508-13"><a href="custom-templates-interactivity.html#cb508-13"></a>        )<span class="op">;</span></span>
+<span id="cb508-14"><a href="custom-templates-interactivity.html#cb508-14"></a>      <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'before'</span>) <span class="op">{</span></span>
+<span id="cb508-15"><a href="custom-templates-interactivity.html#cb508-15"></a>        <span class="va">$divTag</span>.<span class="at">insertBefore</span>(<span class="at">$</span>(targetId))<span class="op">;</span></span>
+<span id="cb508-16"><a href="custom-templates-interactivity.html#cb508-16"></a>        <span class="va">$liTag</span>.<span class="at">insertBefore</span>(</span>
+<span id="cb508-17"><a href="custom-templates-interactivity.html#cb508-17"></a>          <span class="at">$</span>(<span class="st">'[data-target="'</span> <span class="op">+</span> targetId <span class="op">+</span> <span class="st">'"]'</span>)</span>
+<span id="cb508-18"><a href="custom-templates-interactivity.html#cb508-18"></a>            .<span class="at">parent</span>()</span>
+<span id="cb508-19"><a href="custom-templates-interactivity.html#cb508-19"></a>        )<span class="op">;</span></span>
+<span id="cb508-20"><a href="custom-templates-interactivity.html#cb508-20"></a>      <span class="op">}</span></span>
+<span id="cb508-21"><a href="custom-templates-interactivity.html#cb508-21"></a>      </span>
+<span id="cb508-22"><a href="custom-templates-interactivity.html#cb508-22"></a>      <span class="cf">if</span> (<span class="va">message</span>.<span class="at">select</span>) <span class="op">{</span></span>
+<span id="cb508-23"><a href="custom-templates-interactivity.html#cb508-23"></a>        <span class="co">// trigger a click on corresponding the new tab button. </span></span>
+<span id="cb508-24"><a href="custom-templates-interactivity.html#cb508-24"></a>        <span class="kw">let</span> newTabId <span class="op">=</span> <span class="va">$divTag</span>.<span class="at">attr</span>(<span class="st">'id'</span>)<span class="op">;</span></span>
+<span id="cb508-25"><a href="custom-templates-interactivity.html#cb508-25"></a>        <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> </span>
+<span id="cb508-26"><a href="custom-templates-interactivity.html#cb508-26"></a>          <span class="va">message</span>.<span class="at">inputId</span> <span class="op">+</span> </span>
+<span id="cb508-27"><a href="custom-templates-interactivity.html#cb508-27"></a>          <span class="st">' a[data-target="#'</span> <span class="op">+</span> </span>
+<span id="cb508-28"><a href="custom-templates-interactivity.html#cb508-28"></a>          newTabId <span class="op">+</span><span class="st">'"]'</span>).<span class="at">tab</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
+<span id="cb508-29"><a href="custom-templates-interactivity.html#cb508-29"></a>      <span class="op">}</span></span>
+<span id="cb508-30"><a href="custom-templates-interactivity.html#cb508-30"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb508-31"><a href="custom-templates-interactivity.html#cb508-31"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <div class="sourceCode" id="cb509"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/insert_tabler_tab_example.html">insert_tabler_tab_example</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></code></pre></div>
 <p>If the tab is well inserted, we notice that the slider and the plot are not properly shown, as illustrated in Figure <a href="custom-templates-interactivity.html#fig:tabler-insert-tab-fail">20.4</a>.</p>
@@ -607,14 +665,14 @@ selected, we activate the corresponding tab element with <code>$(tablink).tab('s
 FIGURE 20.4: The newly inserted tab fails to render its content!
 </p>
 </div>
-<p>How could we explain that? It is a dependency issue: the slider input relies on a specific JS <a href="http://ionden.com/a/plugins/ion.rangeSlider/">library</a>, namely ionRangesSlider, as depicted in Figure <a href="custom-templates-interactivity.html#fig:slider-deps">20.5</a>. In our previous example, if you open the HTML inspector, the dependency is not included in the page.</p>
+<p>How could we explain that? It is a <strong>dependency</strong> issue: the slider input relies on a specific JS <a href="http://ionden.com/a/plugins/ion.rangeSlider/">library</a>, namely ionRangesSlider, as depicted in Figure <a href="custom-templates-interactivity.html#fig:slider-deps">20.5</a>. In our previous example, if you open the HTML inspector, the dependency is not included in the page.</p>
 <div class="figure">
 <span id="fig:slider-deps"></span>
 <img src="images/practice/slider-deps.png" alt="Slider dependencies." width="100%"><p class="caption">
 FIGURE 20.5: Slider dependencies.
 </p>
 </div>
-<p>Even stranger, when we use <code>renderUI</code> to conditionally render the slider (note: this is a dummy example), the dependency is only included when the go button is pressed. How does Shiny includes them?</p>
+<p>Even stranger, when we use <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code> to conditionally render the slider, the dependency is only included when the go button is pressed. How does Shiny includes them?</p>
 <div class="sourceCode" id="cb510"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html">actionButton</a></span><span class="op">(</span><span class="st">"go"</span>, <span class="st">"Go!"</span>, class <span class="op">=</span> <span class="st">"btn-success"</span><span class="op">)</span>,
@@ -646,7 +704,11 @@ FIGURE 20.5: Slider dependencies.
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p>Let’s look at <code>renderUI</code>:</p>
 <div class="sourceCode" id="cb511"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">renderUI</span> <span class="op">&lt;-</span> <span class="kw">function</span> <span class="op">(</span><span class="va">expr</span>, <span class="va">env</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html">parent.frame</a></span><span class="op">(</span><span class="op">)</span>, <span class="va">quoted</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">outputArgs</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">renderUI</span> <span class="op">&lt;-</span> <span class="kw">function</span> <span class="op">(</span>
+  <span class="va">expr</span>, 
+  <span class="va">env</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sys.parent.html">parent.frame</a></span><span class="op">(</span><span class="op">)</span>, 
+  <span class="va">quoted</span> <span class="op">=</span> <span class="cn">FALSE</span>, 
+  <span class="va">outputArgs</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/installExprFunction.html">installExprFunction</a></span><span class="op">(</span><span class="va">expr</span>, <span class="st">"func"</span>, <span class="va">env</span>, <span class="va">quoted</span><span class="op">)</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/createRenderFunction.html">createRenderFunction</a></span><span class="op">(</span><span class="va">func</span>, <span class="kw">function</span><span class="op">(</span><span class="va">result</span>, <span class="va">shinysession</span>, 
                                       <span class="va">name</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span>
@@ -663,10 +725,16 @@ object containing its HTML code and dependencies, for instance:</p>
 <span id="cb512-2"><a href="custom-templates-interactivity.html#cb512-2"></a>  <span class="dt">html</span><span class="op">:</span> <span class="va">$tag</span>.<span class="at">html</span>()<span class="op">,</span></span>
 <span id="cb512-3"><a href="custom-templates-interactivity.html#cb512-3"></a>  <span class="dt">deps</span><span class="op">:</span> <span class="va">message</span>.<span class="va">tag</span>.<span class="at">deps</span></span>
 <span id="cb512-4"><a href="custom-templates-interactivity.html#cb512-4"></a><span class="op">}</span>)<span class="op">;</span> </span></code></pre></div>
-<p>In the following, we modify the <code>insert_tabler_tab</code> to include the dependencies processing step.</p>
+<p>In the following, we modify the <code><a href="https://rdrr.io/pkg/OSUICode/man/insert_tabler_tab.html">insert_tabler_tab()</a></code> to include the dependencies processing step.</p>
 <div class="sourceCode" id="cb513"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">insert_tabler_tab</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">tab</span>, <span class="va">target</span>, <span class="va">position</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"before"</span>, <span class="st">"after"</span><span class="op">)</span>,
-                              <span class="va">select</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">insert_tabler_tab</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
+  <span class="va">inputId</span>, 
+  <span class="va">tab</span>, 
+  <span class="va">target</span>, 
+  <span class="va">position</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"before"</span>, <span class="st">"after"</span><span class="op">)</span>,
+  <span class="va">select</span> <span class="op">=</span> <span class="cn">FALSE</span>, 
+  <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">{</span>
   
   <span class="va">inputId</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">ns</span><span class="op">(</span><span class="va">inputId</span><span class="op">)</span>
   <span class="va">position</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/match.arg.html">match.arg</a></span><span class="op">(</span><span class="va">position</span><span class="op">)</span>
@@ -701,28 +769,45 @@ object containing its HTML code and dependencies, for instance:</p>
 <span id="cb514-3"><a href="custom-templates-interactivity.html#cb514-3"></a>    <span class="co">// define div and li targets</span></span>
 <span id="cb514-4"><a href="custom-templates-interactivity.html#cb514-4"></a>    <span class="kw">let</span> $divTag <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="va">content</span>.<span class="at">html</span>)<span class="op">;</span></span>
 <span id="cb514-5"><a href="custom-templates-interactivity.html#cb514-5"></a>    <span class="kw">let</span> $liTag <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="va">link</span>.<span class="at">html</span>)<span class="op">;</span></span>
-<span id="cb514-6"><a href="custom-templates-interactivity.html#cb514-6"></a>    </span>
-<span id="cb514-7"><a href="custom-templates-interactivity.html#cb514-7"></a>    <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'after'</span>) <span class="op">{</span></span>
-<span id="cb514-8"><a href="custom-templates-interactivity.html#cb514-8"></a>      <span class="va">$divTag</span>.<span class="at">insertAfter</span>(<span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span>))<span class="op">;</span></span>
-<span id="cb514-9"><a href="custom-templates-interactivity.html#cb514-9"></a>      <span class="va">$liTag</span>.<span class="at">insertAfter</span>(<span class="at">$</span>(<span class="st">'[data-target="#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span> <span class="op">+</span>   <span class="st">'"]'</span>).<span class="at">parent</span>())<span class="op">;</span></span>
-<span id="cb514-10"><a href="custom-templates-interactivity.html#cb514-10"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'before'</span>) <span class="op">{</span></span>
-<span id="cb514-11"><a href="custom-templates-interactivity.html#cb514-11"></a>      <span class="va">$divTag</span>.<span class="at">insertBefore</span>(<span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span>))<span class="op">;</span></span>
-<span id="cb514-12"><a href="custom-templates-interactivity.html#cb514-12"></a>      <span class="va">$liTag</span>.<span class="at">insertBefore</span>(<span class="at">$</span>(<span class="st">'[data-target="#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span> <span class="op">+</span>   <span class="st">'"]'</span>).<span class="at">parent</span>())<span class="op">;</span></span>
-<span id="cb514-13"><a href="custom-templates-interactivity.html#cb514-13"></a>    <span class="op">}</span></span>
-<span id="cb514-14"><a href="custom-templates-interactivity.html#cb514-14"></a>    </span>
-<span id="cb514-15"><a href="custom-templates-interactivity.html#cb514-15"></a>    <span class="co">// needed to render input/output in newly added tab. It takes the possible</span></span>
-<span id="cb514-16"><a href="custom-templates-interactivity.html#cb514-16"></a>    <span class="co">// deps and add them to the tag. Indeed, if we insert a tab, its deps are not</span></span>
-<span id="cb514-17"><a href="custom-templates-interactivity.html#cb514-17"></a>    <span class="co">// included in the page so it can't render properly</span></span>
-<span id="cb514-18"><a href="custom-templates-interactivity.html#cb514-18"></a>    <span class="va">Shiny</span>.<span class="at">renderContent</span>($liTag[<span class="dv">0</span>]<span class="op">,</span> <span class="op">{</span><span class="dt">html</span><span class="op">:</span> <span class="va">$liTag</span>.<span class="at">html</span>()<span class="op">,</span> <span class="dt">deps</span><span class="op">:</span> <span class="va">message</span>.<span class="va">link</span>.<span class="at">deps</span><span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb514-19"><a href="custom-templates-interactivity.html#cb514-19"></a>    <span class="va">Shiny</span>.<span class="at">renderContent</span>($divTag[<span class="dv">0</span>]<span class="op">,</span> <span class="op">{</span><span class="dt">html</span><span class="op">:</span> <span class="va">$divTag</span>.<span class="at">html</span>()<span class="op">,</span> <span class="dt">deps</span><span class="op">:</span> <span class="va">message</span>.<span class="va">content</span>.<span class="at">deps</span><span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb514-20"><a href="custom-templates-interactivity.html#cb514-20"></a>    </span>
-<span id="cb514-21"><a href="custom-templates-interactivity.html#cb514-21"></a>    <span class="cf">if</span> (<span class="va">message</span>.<span class="at">select</span>) <span class="op">{</span></span>
-<span id="cb514-22"><a href="custom-templates-interactivity.html#cb514-22"></a>      <span class="co">// trigger a click on corresponding the new tab button. </span></span>
-<span id="cb514-23"><a href="custom-templates-interactivity.html#cb514-23"></a>      <span class="kw">let</span> newTabId <span class="op">=</span> <span class="va">$divTag</span>.<span class="at">attr</span>(<span class="st">'id'</span>)<span class="op">;</span></span>
-<span id="cb514-24"><a href="custom-templates-interactivity.html#cb514-24"></a>      <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">inputId</span> <span class="op">+</span> <span class="st">' a[data-target="#'</span> <span class="op">+</span> newTabId   <span class="op">+</span><span class="st">'"]'</span>).<span class="at">tab</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
-<span id="cb514-25"><a href="custom-templates-interactivity.html#cb514-25"></a>    <span class="op">}</span></span>
-<span id="cb514-26"><a href="custom-templates-interactivity.html#cb514-26"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb514-27"><a href="custom-templates-interactivity.html#cb514-27"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<span id="cb514-6"><a href="custom-templates-interactivity.html#cb514-6"></a>    <span class="kw">let</span> targetId <span class="op">=</span> <span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">target</span><span class="op">;</span></span>
+<span id="cb514-7"><a href="custom-templates-interactivity.html#cb514-7"></a>    </span>
+<span id="cb514-8"><a href="custom-templates-interactivity.html#cb514-8"></a>    <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'after'</span>) <span class="op">{</span></span>
+<span id="cb514-9"><a href="custom-templates-interactivity.html#cb514-9"></a>      <span class="va">$divTag</span>.<span class="at">insertAfter</span>(<span class="at">$</span>(targetId))<span class="op">;</span></span>
+<span id="cb514-10"><a href="custom-templates-interactivity.html#cb514-10"></a>      <span class="va">$liTag</span>.<span class="at">insertAfter</span>(</span>
+<span id="cb514-11"><a href="custom-templates-interactivity.html#cb514-11"></a>        <span class="at">$</span>(<span class="st">'[data-target="'</span> <span class="op">+</span> targetId <span class="op">+</span>   <span class="st">'"]'</span>)</span>
+<span id="cb514-12"><a href="custom-templates-interactivity.html#cb514-12"></a>          .<span class="at">parent</span>()</span>
+<span id="cb514-13"><a href="custom-templates-interactivity.html#cb514-13"></a>      )<span class="op">;</span></span>
+<span id="cb514-14"><a href="custom-templates-interactivity.html#cb514-14"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (<span class="va">message</span>.<span class="at">position</span> <span class="op">===</span> <span class="st">'before'</span>) <span class="op">{</span></span>
+<span id="cb514-15"><a href="custom-templates-interactivity.html#cb514-15"></a>      <span class="va">$divTag</span>.<span class="at">insertBefore</span>(<span class="at">$</span>(targetId))<span class="op">;</span></span>
+<span id="cb514-16"><a href="custom-templates-interactivity.html#cb514-16"></a>      <span class="va">$liTag</span>.<span class="at">insertBefore</span>(</span>
+<span id="cb514-17"><a href="custom-templates-interactivity.html#cb514-17"></a>        <span class="at">$</span>(<span class="st">'[data-target="'</span> <span class="op">+</span> targetId <span class="op">+</span>   <span class="st">'"]'</span>)</span>
+<span id="cb514-18"><a href="custom-templates-interactivity.html#cb514-18"></a>          .<span class="at">parent</span>()</span>
+<span id="cb514-19"><a href="custom-templates-interactivity.html#cb514-19"></a>      )<span class="op">;</span></span>
+<span id="cb514-20"><a href="custom-templates-interactivity.html#cb514-20"></a>    <span class="op">}</span></span>
+<span id="cb514-21"><a href="custom-templates-interactivity.html#cb514-21"></a>    </span>
+<span id="cb514-22"><a href="custom-templates-interactivity.html#cb514-22"></a>    <span class="co">// needed to render input/output in newly added tab. It takes the possible</span></span>
+<span id="cb514-23"><a href="custom-templates-interactivity.html#cb514-23"></a>    <span class="co">// deps and add them to the tag. Indeed, if we insert a tab, its deps are not</span></span>
+<span id="cb514-24"><a href="custom-templates-interactivity.html#cb514-24"></a>    <span class="co">// included in the page so it can't render properly</span></span>
+<span id="cb514-25"><a href="custom-templates-interactivity.html#cb514-25"></a>    <span class="va">Shiny</span>.<span class="at">renderContent</span>(</span>
+<span id="cb514-26"><a href="custom-templates-interactivity.html#cb514-26"></a>      $liTag[<span class="dv">0</span>]<span class="op">,</span> </span>
+<span id="cb514-27"><a href="custom-templates-interactivity.html#cb514-27"></a>      <span class="op">{</span><span class="dt">html</span><span class="op">:</span> <span class="va">$liTag</span>.<span class="at">html</span>()<span class="op">,</span> <span class="dt">deps</span><span class="op">:</span> <span class="va">message</span>.<span class="va">link</span>.<span class="at">deps</span><span class="op">}</span></span>
+<span id="cb514-28"><a href="custom-templates-interactivity.html#cb514-28"></a>    )<span class="op">;</span></span>
+<span id="cb514-29"><a href="custom-templates-interactivity.html#cb514-29"></a>    <span class="va">Shiny</span>.<span class="at">renderContent</span>(</span>
+<span id="cb514-30"><a href="custom-templates-interactivity.html#cb514-30"></a>      $divTag[<span class="dv">0</span>]<span class="op">,</span> </span>
+<span id="cb514-31"><a href="custom-templates-interactivity.html#cb514-31"></a>      <span class="op">{</span><span class="dt">html</span><span class="op">:</span> <span class="va">$divTag</span>.<span class="at">html</span>()<span class="op">,</span> <span class="dt">deps</span><span class="op">:</span> <span class="va">message</span>.<span class="va">content</span>.<span class="at">deps</span><span class="op">}</span></span>
+<span id="cb514-32"><a href="custom-templates-interactivity.html#cb514-32"></a>    )<span class="op">;</span></span>
+<span id="cb514-33"><a href="custom-templates-interactivity.html#cb514-33"></a>    </span>
+<span id="cb514-34"><a href="custom-templates-interactivity.html#cb514-34"></a>    <span class="cf">if</span> (<span class="va">message</span>.<span class="at">select</span>) <span class="op">{</span></span>
+<span id="cb514-35"><a href="custom-templates-interactivity.html#cb514-35"></a>      <span class="co">// trigger a click on corresponding the new tab button. </span></span>
+<span id="cb514-36"><a href="custom-templates-interactivity.html#cb514-36"></a>      <span class="kw">let</span> newTabId <span class="op">=</span> <span class="va">$divTag</span>.<span class="at">attr</span>(<span class="st">'id'</span>)<span class="op">;</span></span>
+<span id="cb514-37"><a href="custom-templates-interactivity.html#cb514-37"></a>      <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> </span>
+<span id="cb514-38"><a href="custom-templates-interactivity.html#cb514-38"></a>        <span class="va">message</span>.<span class="at">inputId</span> <span class="op">+</span> </span>
+<span id="cb514-39"><a href="custom-templates-interactivity.html#cb514-39"></a>        <span class="st">' a[data-target="#'</span> <span class="op">+</span> </span>
+<span id="cb514-40"><a href="custom-templates-interactivity.html#cb514-40"></a>        newTabId   </span>
+<span id="cb514-41"><a href="custom-templates-interactivity.html#cb514-41"></a>        <span class="op">+</span><span class="st">'"]'</span>).<span class="at">tab</span>(<span class="st">'show'</span>)<span class="op">;</span></span>
+<span id="cb514-42"><a href="custom-templates-interactivity.html#cb514-42"></a>    <span class="op">}</span></span>
+<span id="cb514-43"><a href="custom-templates-interactivity.html#cb514-43"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb514-44"><a href="custom-templates-interactivity.html#cb514-44"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>We check if our approach works as expected.</p>
 <div class="sourceCode" id="cb515"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/insert_tabler_tab_example.html">insert_tabler_tab_example</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></code></pre></div>
@@ -740,8 +825,8 @@ FIGURE 20.6: processDeps and Shiny.renderContent in action.
 <span class="header-section-number">20.5</span> Exercises<a class="anchor" aria-label="anchor" href="#exercises-4"><i class="fas fa-link"></i></a>
 </h2>
 <ol style="list-style-type: decimal">
-<li>Taking inspiration on the <code>insert_tabler_tab</code> function, write the <code>remove_tabler_tab</code> function.</li>
-<li>Based on the Tabler <a href="https://preview-dev.tabler.io/docs/tooltips.html">documentation</a>, add the <code>tabler_tooltip</code> function. Hint: you may also check the corresponding Bootstrap 4 help.</li>
+<li>Taking inspiration on the <code><a href="https://rdrr.io/pkg/OSUICode/man/insert_tabler_tab.html">insert_tabler_tab()</a></code> function, write the <code>remove_tabler_tab()</code> function.</li>
+<li>Based on the Tabler <a href="https://preview-dev.tabler.io/docs/tooltips.html">documentation</a>, add the <code>tabler_tooltip()</code> function. Hint: you may also check the corresponding Bootstrap 4 help.</li>
 </ol>
 </div>
 </div>
@@ -791,6 +876,18 @@ FIGURE 20.6: processDeps and Shiny.renderContent in action.
   </div>
 
 </div></div>
-</footer>
+</footer><!-- dynamically load mathjax for compatibility with self-contained --><script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    var src = "true";
+    if (src === "" || src === "true") src = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML";
+    if (location.protocol !== "file:")
+      if (/^https?:/.test(src))
+        src = src.replace(/^https?:/, '');
+    script.src = src;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
 </body>
 </html>
