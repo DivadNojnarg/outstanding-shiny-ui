@@ -1,6 +1,5 @@
 # Design widgets {#mobile-widgets}
-Framework7 brings dozen of different widgets like a photo browser, virtual lists (high performance lists),
-messages, notifications, toasts. Figure \@ref(fig:mobile-widgets-examples) shows from left to right the chat widget, the floating action buttons and the gauges.
+Framework7 brings dozen of different __widgets__ like a photo browser, virtual lists (high performance lists), messages, notifications, toasts. Figure \@ref(fig:mobile-widgets-examples) shows from left to right the chat widget, the floating action buttons and the gauges.
 
 ```{r mobile-widgets-examples, echo=FALSE, fig.show = "hold", out.width = "33%", fig.align = "default"}
 knitr::include_graphics("images/mobile/mobile-widget-chat.png")
@@ -23,7 +22,7 @@ app.widget.open();
 app.widget.close();
 ```
 
-I must admit, there are few deviations like the navbar (`app.navbar.show()`) or the dialog but we have enough common points to design a main wrapper that creates any widget and update/open/close it.
+I must admit, there are few deviations like the navbar (`app.navbar.show()`) or the modal [dialog](https://v5.framework7.io/docs/dialog.html#dialog-shortcuts) but we have enough common points to design a main wrapper that creates any widget and update/open/close it.
 
 What we do below significantly simplifies the R/JS API by providing a general method to 
 initialize and update some of those widgets.
@@ -34,7 +33,7 @@ As a reminder, the code examples shown throughout this chapter are gathered in t
 
 ## Build the UI
 We know that JavaScript must receive a configuration object to create the widget instance.
-As shown earlier in this book, there is a simple way to achieve this. Let's consider the [gauge](https://v5.framework7.io/docs/gauge.html) example. 
+As shown earlier in this book, there is a simple way to achieve this. Let's consider the [gauge](https://v5.framework7.io/docs/gauge.html) example: 
 
 On the UI side, we expect to have:
 
@@ -43,13 +42,15 @@ On the UI side, we expect to have:
 ```
 
 Upon instantiating, Framework7 populates this container with the relevant tags.
-The `f7_gauge` function creates a `div` tag with the `gauge` class as well as a configuration
+The `f7_gauge()` function creates a `div` tag with the `gauge` class as well as a configuration
 tag:
 
 ```{r, eval=FALSE}
 f7_gauge <- function(id, value, options = NULL) {
 
-  if (is.null(options[["valueText"]])) options[["valueText"]] <- paste(value * 100, "%")
+  if (is.null(options[["valueText"]])) {
+    options[["valueText"]] <- paste(value * 100, "%")
+  }
 
   gaugeProps <- c(list(value = value), options)
 
@@ -72,21 +73,27 @@ f7_gauge <- function(id, value, options = NULL) {
 ```
 
 We provide a default for the `valueText` option that should display the current
-value followed by a `%` symbol. Note that the class is crucial to target the relevant tag on the JS side. 
-All other widgets more or less follow the same scheme. Be careful about partial matching
+value followed by a `%` symbol. Note that the class is crucial to target the relevant tag on the JS side. All other widgets more or less follow the same scheme. Be careful about __partial matching__
 with the `$` operator. This is the reason why we used `[[` instead: with `$`, `valueText` could be
 matched with `valueTextColor`, leading to unexpected behavior.
 
 
 ## Widgets without preexisting UI
-There are few widgets like toasts, notifications that don't have any predefined UI
+There are few widgets like __toasts__, __notifications__ that don't have any predefined UI
 element when the app starts. In this case, we simply send the configuration to JS, through
-the `session`:
+the __session__:
 
 ```{r, eval=FALSE}
-f7_notif <- function(id = NULL, text, options = NULL, session = shiny::getDefaultReactiveDomain()) {
+f7_notif <- function(
+  id = NULL, 
+  text, 
+  options = NULL, 
+  session = shiny::getDefaultReactiveDomain()
+) {
 
-  if (!is.null(options$icon)) options$icon <- as.character(options$icon)
+  if (!is.null(options$icon)) {
+    options$icon <- as.character(options$icon)
+  }
 
   message <- c(dropNulls(list(id = id, text = text)), options)
   # see my-app.js function
@@ -95,12 +102,12 @@ f7_notif <- function(id = NULL, text, options = NULL, session = shiny::getDefaul
 }
 ```
 
-Pay attention to the `options$icon` element. As we can't convert shiny tags to JSON, it
+Pay attention to the `options$icon` element. As we can't convert shiny tags to __JSON__, it
 must be converted to character first. If multiple parameters should contain tags,
 you must treat them accordingly!
 
 ## Initialize the widget
-On the JS side, we create a new script, `widgets.js` 
+On the JS side, we create a new script, `widgets.js`: 
 
 ```{r, eval=FALSE}
 library(charpente)
@@ -153,8 +160,8 @@ in other words its unique id `'#' + $el.attr("id")`:
 ```js
 if (uiWidgets.indexOf(widget) > -1) {
   $("." + widget).each(function() {
-    var $el = $(this);
-    var config = $(document).find(
+    let $el = $(this);
+    let config = $(document).find(
       "script[data-for='" + $el.attr("id") + "']"
     );
     config = JSON.parse(config.html());
@@ -194,11 +201,9 @@ Shiny.addCustomMessageHandler(widget, function(message) {
 });
 ```
 
-As shown in the above code, we can chain methods and immediately open the widget, right after its creation. Moreover, it 
-is always good practice to let Shiny know about the widget state, that is whether it is currently
-opened. This is the reason why we added an `on` property to the message. All widgets trigger [events](https://v5.framework7.io/docs/notification.html#dom-events), 
+As shown in the above code, we can chain methods and immediately open the widget, right after its creation. Moreover, it is always good practice to let Shiny know about the widget state, that is whether it is currently opened. This is the reason why we added an `on` property to the message. All widgets trigger [events](https://v5.framework7.io/docs/notification.html#dom-events), 
 for instance notifications have the `notification:opened` and `notification:closed`. For each event, 
-we set an input value on the fly, with `Shiny.setInputValue` as explained in Chapter \ref(quick-inputs). This way, our future users are able to know exactly when the widget is closed or opened, thereby being able to trigger any subsequent action. This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
+we set an input value on the fly, with `Shiny.setInputValue` as explained in Chapter \ref(quick-inputs). This way, our future users can know exactly when the widget is closed or opened, thereby being able to trigger any subsequent action. This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
 
 The full JavaScript code may be found here:
 
@@ -208,8 +213,8 @@ activateWidget = function(widget) {
   // Handle ui side widgets
   if (uiWidgets.indexOf(widget) > -1) {
     $("." + widget).each(function() {
-      var $el = $(this);
-      var config = $(document).find(
+      let $el = $(this);
+      let config = $(document).find(
         "script[data-for='" + $el.attr("id") + "']"
       );
       config = JSON.parse(config.html());
@@ -271,11 +276,17 @@ ui <- f7_page(
 
 server <- function(input, output, session) {
   observe({
-    f7_notif(id = "welcome", "Helloooooo", options = list(closeTimeout = 2000))
+    f7_notif(
+      id = "welcome", 
+      "Helloooooo", 
+      options = list(closeTimeout = 2000)
+    )
   })
   
   observeEvent(input$welcome, {
-    shiny::showNotification(sprintf("Notification is %s", input$welcome))
+    shiny::showNotification(
+      sprintf("Notification is %s", input$welcome)
+    )
   })
 }
 
@@ -285,12 +296,15 @@ shinyApp(ui, server)
 Alternatively you may run in the R console:
 
 ```{r, eval=FALSE}
-shinyAppDir(system.file("shinyMobile/notification", package = "OSUICode"))
+shinyAppDir(system.file(
+  "shinyMobile/notification", 
+  package = "OSUICode"
+))
 ```
 
 ## Update widgets
 We would like to develop a similar generalized interface to update any element in the DOM.
-Instead of having `update_f7_gauge` or `update_f7_swiper`, we want an `update_f7_instance` function. 
+Instead of having `update_f7_gauge()` or `update_f7_swiper()`, we want an `update_f7_instance()` function. 
 
 We leverage the `app.data` element that stores all instances by widget type. In Chapter \@ref(mobile-global-data),
 we already created a cache for tooltips, so let's do it for gauges:
@@ -304,7 +318,7 @@ config.data = function() {
 };
 ```
 
-At that stage, the array name must be the same as the app method. For instance,
+The array name must be the same as the app method. For instance,
 we have `app.gauge`, which means that we should create `config.data.gauge` and not `config.data.gauges`,
 as it would lead to errors later.
 
@@ -317,7 +331,8 @@ app.data[widget][$el.attr("id")] = w;
 ```
 
 ::: {.noteblock data-latex=""}
-This manipulation does not make sense for server widgets as they are already generated by the server.
+This manipulation does not make sense for server widgets 
+as they are already generated by the server.
 :::
 
 The `activateWidget` function should be:
@@ -328,8 +343,8 @@ activateWidget = function(widget) {
   // Handle ui side widgets
   if (uiWidgets.indexOf(widget) > -1) {
     $("." + widget).each(function() {
-      var $el = $(this);
-      var config = $(document).find(
+      let $el = $(this);
+      let config = $(document).find(
         "script[data-for='" + $el.attr("id") + "']"
       );
       config = JSON.parse(config.html());
@@ -337,7 +352,7 @@ activateWidget = function(widget) {
       config.el = '#' + $el.attr("id");
 
       // feed the create method
-      var w = app[widget].create(config);
+      let w = app[widget].create(config);
       // Store the widget instance in the app data cache
       app.data[widget][$el.attr("id")] = w;
     });
@@ -357,20 +372,19 @@ activateWidget = function(widget) {
           }
         }; 
       }
-      var w = app[widget].create(message);
-      w.open();
+      app[widget].create(message).open();
     });
   }
 };
 ```
 
-Once done, this is time to design `update_f7_instance`. The R code sends a message to
+Once done, this is time to design `update_f7_instance()`. The R code sends a message to
 the current session containing:
 
   - The __id__ of the element to update.
   - The new __configuration__.
   
-Since we send a JSON, the hardest part is to correctly process shiny tags. How do we
+Since we send a __JSON__, the hardest part is to correctly process shiny tags. How do we
 track shiny tags? As a reminder, let's run the code below:
 
 ```{r}
@@ -392,12 +406,16 @@ options = list(
 )
 ```
 
-In that case, our function must be recursive to handle any item having the `list` class. If the element is simple text or numeric, we return it as is.
+In that case, our function must be __recursive__ to handle any item having the `list` class. If the element is simple text or numeric, we return it as is.
 
 We finally get:
 
 ```{r, eval=FALSE}
-update_f7_instance <- function(id, options, session = shiny::getDefaultReactiveDomain()) {
+update_f7_instance <- function(
+  id, 
+  options, 
+  session = shiny::getDefaultReactiveDomain()
+) {
 
   # Convert any shiny tag into character so that toJSON does not cry
   listRenderTags <- function(l) {
@@ -425,20 +443,17 @@ update_f7_instance <- function(id, options, session = shiny::getDefaultReactiveD
 On the JS side, we receive the message, still in the `widget.js` script:
 
 ```js
-Shiny.addCustomMessageHandler('update-instance', function(message) {
+Shiny.addCustomMessageHandler(
+  'update-instance', function(message) {
   // Treat message ...
 });
 ```
 
-All widgets are stored by type in the app data, for instance, the element having for unique id
-`mygauge` is located in `app.data["gauge"]["mygauge"]`. As there is no easy way to recover the widget type
-given its id, the first step of the message handler is to find where our instance is located. We design a
-nested for loop. The outer loop scans all `app.data` properties (ie widget categories), while the inner loop
-scans all existing instances for each category. Whenever, the `message.id` matches the instance
-name, we store the corresponding widget category in a variable:
+All widgets are stored by __type__ in the app data, for instance, the element having for unique id
+`mygauge` is located in `app.data["gauge"]["mygauge"]`. As there is no easy way to recover the widget type given its id, the first step of the message handler is to find where our instance is located. We design a nested __for__ loop. The outer loop scans all `app.data` __properties__ (ie widget categories), while the inner loop scans all existing instances for each category. Whenever, the `message.id` matches the instance name, we store the corresponding widget category in a variable:
 
 ```js
-var instanceFamily;
+let instanceFamily;
 for (const property in app.data) {
   for (const e in app.data[property]) {
     if (e === message.id) {
@@ -457,9 +472,9 @@ We capture its parameters located in `oldInstance.params`. From there, multiple 
 In what follows, we decided to merge the old and new configurations using `app.utils.extend`:
 
 ```js
-var oldInstance = app.data[instanceFamily][message.id];
-var oldConfig = oldInstance.params;
-var newConfig = app.utils.extend(oldConfig,  message.options);
+let oldInstance = app.data[instanceFamily][message.id];
+let oldConfig = oldInstance.params;
+let newConfig = app.utils.extend(oldConfig,  message.options);
 ```
 
 The next step consists in destroying the old instance, initializing the new instance and refreshing 
@@ -469,7 +484,7 @@ the `app.data` cache:
 // Destroy old instance
 oldInstance.destroy();
 // Create new config
-var newInstance = app[instanceFamily].create(newConfig);
+let newInstance = app[instanceFamily].create(newConfig);
 // Update app data
 app.data[instanceFamily][message.id] = newInstance;
 ```
@@ -477,10 +492,11 @@ app.data[instanceFamily][message.id] = newInstance;
 The whole code is found below:
 
 ```js
-Shiny.addCustomMessageHandler('update-instance', function(message) {
+Shiny.addCustomMessageHandler(
+  'update-instance', function(message) {
   // Recover in which array is stored the given instance.
   // Uniqueness is ensured since HTML id are supposed to be unique.
-  var instanceFamily;
+  let instanceFamily;
   for (const property in app.data) {
     for (const e in app.data[property]) {
       if (e === message.id) {
@@ -489,14 +505,14 @@ Shiny.addCustomMessageHandler('update-instance', function(message) {
     }
   }
 
-  var oldInstance = app.data[instanceFamily][message.id];
-  var oldConfig = oldInstance.params;
-  var newConfig = app.utils.extend(oldConfig,  message.options);
+  let oldInstance = app.data[instanceFamily][message.id];
+  let oldConfig = oldInstance.params;
+  let newConfig = app.utils.extend(oldConfig,  message.options);
 
   // Destroy old instance
   oldInstance.destroy();
   // Create new config
-  var newInstance = app[instanceFamily].create(newConfig);
+  let newInstance = app[instanceFamily].create(newConfig);
   // Update app data
   app.data[instanceFamily][message.id] = newInstance;
 });
