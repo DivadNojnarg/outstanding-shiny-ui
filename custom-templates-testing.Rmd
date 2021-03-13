@@ -122,7 +122,9 @@ validate_padding <- function(padding) {
 We apply all these validation to our card element.
 
 ```{r}
-tabler_card <- function(..., title = NULL, status = NULL, width = 6, stacked = FALSE, padding = NULL) {
+tabler_card <- function(..., title = NULL, status = NULL, 
+                        width = 6, stacked = FALSE, 
+                        padding = NULL) {
   
   validate_status(status)
   validate_width(width)
@@ -242,20 +244,18 @@ server <- function(input, output) {
 shinyApp(ui, server)
 ```
 
-Notice that we cannot see the second tab content. Below is a proposal for the `validate_tab()` function. We first detect any punctuation in the provided input. Although not mandatory, we extract it to send a meaningful error message.
+Notice that we cannot see the second tab content. Below is a proposal for the `validate_tab()` function. We first detect any punctuation in the provided input with `[[:punct:]]`. The trick is not to capture the `_` that is valid in jQuery. We use a negative look-ahead assertion `(?!_)`. 
 We finally raise an error if any punctuation is found:
 
 ```{r}
 validate_tabName <- function(tabName) {
-  temp <- grepl("[[:punct:]]", tabName)
-  wrong_selector <- stringr::str_extract_all(tabName, "[[:punct:]]")[[1]] %>% 
-    stringr::str_c(collapse = "")
-  if (temp) {
+  forbidden <- "(?!_)[[:punct:]]"
+  wrong_selector <- grepl(forbidden, tabName, perl = TRUE)
+  if (wrong_selector) {
     stop(
       paste(
-        "Please do not use punctuation characters like",  
-        wrong_selector, 
-        "in tabNames. This might cause JavaScript issues."
+        "Please do not use punctuation characters in tabNames.
+        This might cause JavaScript issues."
       )
     )
   }
@@ -290,7 +290,9 @@ tabler_navbar_menu <- function(...) {
       FUN.VALUE = logical(1)
     )
   )
-  if (res > 1) stop("Cannot have multiple selected items at start!")
+  if (res > 1) {
+    stop("Cannot have multiple selected items at start!")
+  }
   
   tags$ul(class = "nav nav-pills navbar-nav", ...)
 }
@@ -344,8 +346,9 @@ test_that("validate padding works", {
 So far so good. In few lines of code, we substantially increased the __robustness__ of our function without increasing its __complexity__. Now, let's try to remove the `validate_width()` step from the `tabler_card()`.
 
 ```{r, eval=FALSE}
-tabler_card <- function(..., title = NULL, status = NULL, width = 6, 
-                        stacked = FALSE, padding = NULL) {
+tabler_card <- function(..., title = NULL, status = NULL, 
+                        width = 6, stacked = FALSE, 
+                        padding = NULL) {
   
   # validation
   validate_width(width)
@@ -398,7 +401,11 @@ are! For instance, let's consider the `tabler_progress()`  that may be updated w
 Testing the R side is quite easy. Let's recall the `update_tabler_progress()` function:
 
 ```{r, eval=FALSE}
-update_tabler_progress <- function(id, value, session = shiny::getDefaultReactiveDomain()) {
+update_tabler_progress <- function(
+  id, 
+  value, 
+  session = shiny::getDefaultReactiveDomain()
+) {
   message <- list(id = session$ns(id), value = value)
   session$sendCustomMessage(type = "update-progress", message)
 }
@@ -418,7 +425,10 @@ session <- as.environment(
   list(
     ns = identity,
     sendCustomMessage = function(type, message) {
-      session$lastCustomMessage <- list(type = type, message = message)
+      session$lastCustomMessage <- list(
+        type = type, 
+        message = message
+      )
     }
   )
 )
@@ -437,7 +447,11 @@ last sent message in the `res` variable:
 
 ```{r}
 library(OSUICode)
-update_tabler_progress(id = "myprogress", value = 10, session = session)
+update_tabler_progress(
+  id = "myprogress", 
+  value = 10, 
+  session = session
+)
 res <- session$lastCustomMessage
 ```
 
@@ -457,7 +471,11 @@ and translate into `{testthat}`:
 
 ```{r, eval=FALSE}
 test_that("update progress works", {
-  update_tabler_progress(id = "myprogress", value = 10, session = session)
+  update_tabler_progress(
+    id = "myprogress", 
+    value = 10, 
+    session = session
+  )
   res <- session$lastCustomMessage
   
   expect_length(res, 2)
@@ -474,10 +492,11 @@ This test being set, it ensures to seamlessly capture any breaking change in the
 In the following, we have to test whether the corresponding JS handler works as expected:
 
 ```js
-Shiny.addCustomMessageHandler('update-progress', function(message) {
-  $('#' + message.id)
-    .css('width', message.value +'%')
-    .attr('aria-valuenow', message.value);
+Shiny.addCustomMessageHandler(
+  'update-progress', function(message) {
+    $('#' + message.id)
+      .css('width', message.value +'%')
+      .attr('aria-valuenow', message.value);
 });
 ```
 
@@ -498,7 +517,11 @@ url to the following code. We run the app in another process with `{processx}`:
 ```{r, eval=FALSE}
 p <- processx::process$new(
   "Rscript", 
-  c( "-e",  "options('shiny.port'= 3515);OSUICode::update_tabler_progress_example()" )
+  c(
+    "-e",  
+    "options('shiny.port'= 3515);
+     OSUICode::update_tabler_progress_example()"
+  )
 )
 
 Sys.sleep(2)
@@ -605,7 +628,8 @@ p <- processx::process$new(
   "Rscript", 
   c(
     "-e",  
-    "options('shiny.port'= 3515); OSUICode::update_tabler_navbar_example()" 
+    "options('shiny.port'= 3515); 
+    OSUICode::update_tabler_navbar_example()" 
   )
 )
 
@@ -629,12 +653,18 @@ have the `nav-link active` classes. We also control that only one item is select
 of the active nav link items. We extract its index with `index` which is contained in the `data-value` attribute:
 
 ```{r, eval=FALSE}
-active <- test$call_js("$('.navbar-nav').find('.nav-link.active').length")
+active <- test$call_js(
+  "$('.navbar-nav').find('.nav-link.active').length"
+)
 expect_equal(active$result$value, 1)
 
 test$wait_for_shiny_ready()
 
-res1 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+res1 <- test$call_js(
+  "$('.navbar-nav')
+    .find('.nav-link.active')
+    .attr('data-value')"
+)
 expect_equal(res1$result$value, "tab1")
 ```
 
@@ -642,7 +672,9 @@ Now let's see whether to body tab has the good index. We target the `tab-content
 for the element having `active show` classes. We recover its id which contains the tab name:
 
 ```{r, eval=FALSE}
-res2 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+res2 <- test$call_js(
+  "$('.tab-content').find('.active.show').attr('id')"
+)
 expect_equal(res1$result$value, res2$result$value)
 ```
 
@@ -654,12 +686,20 @@ everything happens well, we expect their value to be 2:
 ```{r, eval=FALSE}
 test$call_js("$('.navbar-nav .nav-link:eq(1)').click();")
 
-res3 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+res3 <- test$call_js(
+  "$('.navbar-nav')
+    .find('.nav-link.active')
+    .attr('data-value')"
+)
 expect_equal(res3$result$value, "tab2")
 
 test$wait_for_shiny_ready()
 
-res4 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+res4 <- test$call_js(
+  "$('.tab-content')
+    .find('.active.show')
+    .attr('id')"
+)
 expect_equal(res3$result$value, res4$result$value)
 ```
 
@@ -670,12 +710,20 @@ to be back on tab 1:
 ```{r, eval=FALSE}
 test$call_js("$('#update').click();")
 
-res5 <- test$call_js("$('.navbar-nav').find('.nav-link.active').attr('data-value')")
+res5 <- test$call_js(
+  "$('.navbar-nav')
+    .find('.nav-link.active')
+    .attr('data-value')"
+)
 expect_equal(res5$result$value, "tab1")
 
 test$wait_for_shiny_ready()
 
-res6 <- test$call_js("$('.tab-content').find('.active.show').attr('id')")
+res6 <- test$call_js(
+  "$('.tab-content')
+    .find('.active.show')
+    .attr('id')"
+)
 expect_equal(res5$result$value, res6$result$value)
 ```
 
@@ -685,7 +733,9 @@ All Shiny input values are stored in the `Shiny.shinyapp.$inputValues` object, a
 
 ```{r, eval=FALSE}
 test$shiny_set_input("current_tab", "tab2")
-tab_input <- test$call_js("Shiny.shinyapp.$inputValues.current_tab")
+tab_input <- test$call_js(
+  "Shiny.shinyapp.$inputValues.current_tab"
+)
 expect_equal(tab_input$result$value, "tab2")
 test$stop()
 ```

@@ -195,7 +195,9 @@ there are three possible choices, namely <code>sm</code>, <code>md</code> or <co
 <span class="op">}</span></code></pre></div>
 <p>We apply all these validation to our card element.</p>
 <div class="sourceCode" id="cb550"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">tabler_card</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">status</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">stacked</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">padding</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">tabler_card</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">status</span> <span class="op">=</span> <span class="cn">NULL</span>, 
+                        <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">stacked</span> <span class="op">=</span> <span class="cn">FALSE</span>, 
+                        <span class="va">padding</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   
   <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/validate_status.html">validate_status</a></span><span class="op">(</span><span class="va">status</span><span class="op">)</span>
   <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/validate_width.html">validate_width</a></span><span class="op">(</span><span class="va">width</span><span class="op">)</span>
@@ -318,19 +320,17 @@ there are three possible choices, namely <code>sm</code>, <code>md</code> or <co
   <span class="op">}</span><span class="op">)</span>
 <span class="op">}</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
-<p>Notice that we cannot see the second tab content. Below is a proposal for the <code>validate_tab()</code> function. We first detect any punctuation in the provided input. Although not mandatory, we extract it to send a meaningful error message.
+<p>Notice that we cannot see the second tab content. Below is a proposal for the <code>validate_tab()</code> function. We first detect any punctuation in the provided input with <code>[[:punct:]]</code>. The trick is not to capture the <code>_</code> that is valid in jQuery. We use a negative look-ahead assertion <code>(?!_)</code>.
 We finally raise an error if any punctuation is found:</p>
 <div class="sourceCode" id="cb554"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">validate_tabName</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">tabName</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">temp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="st">"[[:punct:]]"</span>, <span class="va">tabName</span><span class="op">)</span>
-  <span class="va">wrong_selector</span> <span class="op">&lt;-</span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_extract.html">str_extract_all</a></span><span class="op">(</span><span class="va">tabName</span>, <span class="st">"[[:punct:]]"</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">%&gt;%</span> 
-    <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_c.html">str_c</a></span><span class="op">(</span>collapse <span class="op">=</span> <span class="st">""</span><span class="op">)</span>
-  <span class="kw">if</span> <span class="op">(</span><span class="va">temp</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">forbidden</span> <span class="op">&lt;-</span> <span class="st">"(?!_)[[:punct:]]"</span>
+  <span class="va">wrong_selector</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="va">forbidden</span>, <span class="va">tabName</span>, perl <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+  <span class="kw">if</span> <span class="op">(</span><span class="va">wrong_selector</span><span class="op">)</span> <span class="op">{</span>
     <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span>
       <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span>
-        <span class="st">"Please do not use punctuation characters like"</span>,  
-        <span class="va">wrong_selector</span>, 
-        <span class="st">"in tabNames. This might cause JavaScript issues."</span>
+        <span class="st">"Please do not use punctuation characters in tabNames.
+        This might cause JavaScript issues."</span>
       <span class="op">)</span>
     <span class="op">)</span>
   <span class="op">}</span>
@@ -362,7 +362,9 @@ We finally raise an error if any punctuation is found:</p>
       FUN.VALUE <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/logical.html">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>
     <span class="op">)</span>
   <span class="op">)</span>
-  <span class="kw">if</span> <span class="op">(</span><span class="va">res</span> <span class="op">&gt;</span> <span class="fl">1</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span><span class="st">"Cannot have multiple selected items at start!"</span><span class="op">)</span>
+  <span class="kw">if</span> <span class="op">(</span><span class="va">res</span> <span class="op">&gt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span>
+    <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span><span class="st">"Cannot have multiple selected items at start!"</span><span class="op">)</span>
+  <span class="op">}</span>
   
   <span class="va">tags</span><span class="op">$</span><span class="fu">ul</span><span class="op">(</span>class <span class="op">=</span> <span class="st">"nav nav-pills navbar-nav"</span>, <span class="va">...</span><span class="op">)</span>
 <span class="op">}</span>
@@ -399,22 +401,23 @@ We finally raise an error if any punctuation is found:</p>
   <span class="fu"><a href="https://testthat.r-lib.org/reference/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">13</span><span class="op">)</span><span class="op">)</span>
   <span class="fu"><a href="https://testthat.r-lib.org/reference/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>width <span class="op">=</span> <span class="st">"hello world"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
-<pre><code>## Test passed 😸</code></pre>
+<pre><code>## Test passed 🎉</code></pre>
 <p>We then test <code><a href="https://rdrr.io/pkg/OSUICode/man/validate_status.html">validate_status()</a></code> and <code><a href="https://rdrr.io/pkg/OSUICode/man/validate_padding.html">validate_padding()</a></code>.</p>
 <div class="sourceCode" id="cb559"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://testthat.r-lib.org/reference/test_that.html">test_that</a></span><span class="op">(</span><span class="st">"validate status works"</span>, <span class="op">{</span>
   <span class="fu"><a href="https://testthat.r-lib.org/reference/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>status <span class="op">=</span> <span class="st">"toto"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
-<pre><code>## Test passed 😸</code></pre>
+<pre><code>## Test passed 🎉</code></pre>
 <div class="sourceCode" id="cb561"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://testthat.r-lib.org/reference/test_that.html">test_that</a></span><span class="op">(</span><span class="st">"validate padding works"</span>, <span class="op">{</span>
   <span class="fu"><a href="https://testthat.r-lib.org/reference/expect_error.html">expect_error</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card</a></span><span class="op">(</span>width <span class="op">=</span> <span class="st">"xs"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
-<pre><code>## Test passed 🥇</code></pre>
+<pre><code>## Test passed 😀</code></pre>
 <p>So far so good. In few lines of code, we substantially increased the <strong>robustness</strong> of our function without increasing its <strong>complexity</strong>. Now, let’s try to remove the <code><a href="https://rdrr.io/pkg/OSUICode/man/validate_width.html">validate_width()</a></code> step from the <code><a href="https://rdrr.io/pkg/OSUICode/man/tabler_card.html">tabler_card()</a></code>.</p>
 <div class="sourceCode" id="cb563"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">tabler_card</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">status</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, 
-                        <span class="va">stacked</span> <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">padding</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">tabler_card</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">status</span> <span class="op">=</span> <span class="cn">NULL</span>, 
+                        <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">stacked</span> <span class="op">=</span> <span class="cn">FALSE</span>, 
+                        <span class="va">padding</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   
   <span class="co"># validation</span>
   <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/validate_width.html">validate_width</a></span><span class="op">(</span><span class="va">width</span><span class="op">)</span>
@@ -467,7 +470,11 @@ are! For instance, let’s consider the <code><a href="https://rdrr.io/pkg/OSUIC
 </h4>
 <p>Testing the R side is quite easy. Let’s recall the <code><a href="https://rdrr.io/pkg/OSUICode/man/update_tabler_progress.html">update_tabler_progress()</a></code> function:</p>
 <div class="sourceCode" id="cb564"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">update_tabler_progress</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">value</span>, <span class="va">session</span> <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+<code class="sourceCode R"><span class="va">update_tabler_progress</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
+  <span class="va">id</span>, 
+  <span class="va">value</span>, 
+  <span class="va">session</span> <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
+<span class="op">)</span> <span class="op">{</span>
   <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">session</span><span class="op">$</span><span class="fu">ns</span><span class="op">(</span><span class="va">id</span><span class="op">)</span>, value <span class="op">=</span> <span class="va">value</span><span class="op">)</span>
   <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"update-progress"</span>, <span class="va">message</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
@@ -485,7 +492,10 @@ and <code>sendCustomMessage</code> to test the message handler part:</p>
   <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
     ns <span class="op">=</span> <span class="va">identity</span>,
     sendCustomMessage <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">type</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
-      <span class="va">session</span><span class="op">$</span><span class="va">lastCustomMessage</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>type <span class="op">=</span> <span class="va">type</span>, message <span class="op">=</span> <span class="va">message</span><span class="op">)</span>
+      <span class="va">session</span><span class="op">$</span><span class="va">lastCustomMessage</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+        type <span class="op">=</span> <span class="va">type</span>, 
+        message <span class="op">=</span> <span class="va">message</span>
+      <span class="op">)</span>
     <span class="op">}</span>
   <span class="op">)</span>
 <span class="op">)</span></code></pre></div>
@@ -530,7 +540,11 @@ last sent message in the <code>res</code> variable:</p>
 ## 
 ##     dropdownMenu</code></pre>
 <div class="sourceCode" id="cb576"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/update_tabler_progress.html">update_tabler_progress</a></span><span class="op">(</span>id <span class="op">=</span> <span class="st">"myprogress"</span>, value <span class="op">=</span> <span class="fl">10</span>, session <span class="op">=</span> <span class="va">session</span><span class="op">)</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/update_tabler_progress.html">update_tabler_progress</a></span><span class="op">(</span>
+  id <span class="op">=</span> <span class="st">"myprogress"</span>, 
+  value <span class="op">=</span> <span class="fl">10</span>, 
+  session <span class="op">=</span> <span class="va">session</span>
+<span class="op">)</span>
 <span class="va">res</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="va">lastCustomMessage</span></code></pre></div>
 <div class="importantblock">
 <p>Importantly, don’t forget to set the session parameter to <code>session</code>, otherwise,
@@ -547,7 +561,11 @@ it will default to <code><a href="https://rdrr.io/pkg/shiny/man/domains.html">sh
 <p>and translate into <a href="https://testthat.r-lib.org">testthat</a>:</p>
 <div class="sourceCode" id="cb577"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://testthat.r-lib.org/reference/test_that.html">test_that</a></span><span class="op">(</span><span class="st">"update progress works"</span>, <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/update_tabler_progress.html">update_tabler_progress</a></span><span class="op">(</span>id <span class="op">=</span> <span class="st">"myprogress"</span>, value <span class="op">=</span> <span class="fl">10</span>, session <span class="op">=</span> <span class="va">session</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/update_tabler_progress.html">update_tabler_progress</a></span><span class="op">(</span>
+    id <span class="op">=</span> <span class="st">"myprogress"</span>, 
+    value <span class="op">=</span> <span class="fl">10</span>, 
+    session <span class="op">=</span> <span class="va">session</span>
+  <span class="op">)</span>
   <span class="va">res</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="va">lastCustomMessage</span>
   
   <span class="fu"><a href="https://testthat.r-lib.org/reference/expect_length.html">expect_length</a></span><span class="op">(</span><span class="va">res</span>, <span class="fl">2</span><span class="op">)</span>
@@ -563,11 +581,12 @@ it will default to <code><a href="https://rdrr.io/pkg/shiny/man/domains.html">sh
 <span class="header-section-number">21.2.1.2</span> JS side<a class="anchor" aria-label="anchor" href="#custom-templates-testing-js"><i class="fas fa-link"></i></a>
 </h4>
 <p>In the following, we have to test whether the corresponding JS handler works as expected:</p>
-<div class="sourceCode" id="cb578"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb578-1"><a href="custom-templates-testing.html#cb578-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">'update-progress'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb578-2"><a href="custom-templates-testing.html#cb578-2"></a>  <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">id</span>)</span>
-<span id="cb578-3"><a href="custom-templates-testing.html#cb578-3"></a>    .<span class="at">css</span>(<span class="st">'width'</span><span class="op">,</span> <span class="va">message</span>.<span class="at">value</span> <span class="op">+</span><span class="st">'%'</span>)</span>
-<span id="cb578-4"><a href="custom-templates-testing.html#cb578-4"></a>    .<span class="at">attr</span>(<span class="st">'aria-valuenow'</span><span class="op">,</span> <span class="va">message</span>.<span class="at">value</span>)<span class="op">;</span></span>
-<span id="cb578-5"><a href="custom-templates-testing.html#cb578-5"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb578"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb578-1"><a href="custom-templates-testing.html#cb578-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb578-2"><a href="custom-templates-testing.html#cb578-2"></a>  <span class="st">'update-progress'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb578-3"><a href="custom-templates-testing.html#cb578-3"></a>    <span class="at">$</span>(<span class="st">'#'</span> <span class="op">+</span> <span class="va">message</span>.<span class="at">id</span>)</span>
+<span id="cb578-4"><a href="custom-templates-testing.html#cb578-4"></a>      .<span class="at">css</span>(<span class="st">'width'</span><span class="op">,</span> <span class="va">message</span>.<span class="at">value</span> <span class="op">+</span><span class="st">'%'</span>)</span>
+<span id="cb578-5"><a href="custom-templates-testing.html#cb578-5"></a>      .<span class="at">attr</span>(<span class="st">'aria-valuenow'</span><span class="op">,</span> <span class="va">message</span>.<span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb578-6"><a href="custom-templates-testing.html#cb578-6"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>We leverage the <a href="https://github.com/ColinFay/crrry">crrry</a> packages developed by Colin Fay from ThinkR.
 Overall, <a href="https://github.com/ColinFay/crrry">crrry</a> is an adaptation of <a href="https://rlesur.github.io/crrri/">crrri</a>, specifically optimized for <a href="https://shiny.rstudio.com/">shiny</a>, which is a native Chrome Remote Interface in R using the Chrome Debugging Protocol. In other words, it provides tools to programmatically control
 the web browser and do many things like inspecting a web page,
@@ -582,7 +601,11 @@ url to the following code. We run the app in another process with <a href="https
 <div class="sourceCode" id="cb579"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">processx</span><span class="fu">::</span><span class="va"><a href="http://processx.r-lib.org/reference/process.html">process</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>
   <span class="st">"Rscript"</span>, 
-  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span> <span class="st">"-e"</span>,  <span class="st">"options('shiny.port'= 3515);OSUICode::update_tabler_progress_example()"</span> <span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+    <span class="st">"-e"</span>,  
+    <span class="st">"options('shiny.port'= 3515);
+     OSUICode::update_tabler_progress_example()"</span>
+  <span class="op">)</span>
 <span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html">Sys.sleep</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>
@@ -673,7 +696,8 @@ for the test:</p>
   <span class="st">"Rscript"</span>, 
   <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
     <span class="st">"-e"</span>,  
-    <span class="st">"options('shiny.port'= 3515); OSUICode::update_tabler_navbar_example()"</span> 
+    <span class="st">"options('shiny.port'= 3515); 
+    OSUICode::update_tabler_navbar_example()"</span> 
   <span class="op">)</span>
 <span class="op">)</span>
 
@@ -694,17 +718,25 @@ may be targeted using the <code>navbar-nav</code> class and we use <code>find</c
 have the <code>nav-link active</code> classes. We also control that only one item is selected by inspecting the length
 of the active nav link items. We extract its index with <code>index</code> which is contained in the <code>data-value</code> attribute:</p>
 <div class="sourceCode" id="cb586"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">active</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').length"</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">active</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"$('.navbar-nav').find('.nav-link.active').length"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">active</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="fl">1</span><span class="op">)</span>
 
 <span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span>
 
-<span class="va">res1</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').attr('data-value')"</span><span class="op">)</span>
+<span class="va">res1</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"$('.navbar-nav')
+    .find('.nav-link.active')
+    .attr('data-value')"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res1</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab1"</span><span class="op">)</span></code></pre></div>
 <p>Now let’s see whether to body tab has the good index. We target the <code>tab-content</code> class and look
 for the element having <code>active show</code> classes. We recover its id which contains the tab name:</p>
 <div class="sourceCode" id="cb587"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res2</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.tab-content').find('.active.show').attr('id')"</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">res2</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"$('.tab-content').find('.active.show').attr('id')"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res1</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="va">res2</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span><span class="op">)</span></code></pre></div>
 <p>We programmatically change the active tab by clicking on the second link, with <code>click</code>. Below we use
 <code>.nav-link:eq(1)</code> to select the second link but we could use <code>.nav-link:not(.active)</code> since
@@ -713,12 +745,20 @@ everything happens well, we expect their value to be 2:</p>
 <div class="sourceCode" id="cb588"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav .nav-link:eq(1)').click();"</span><span class="op">)</span>
 
-<span class="va">res3</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').attr('data-value')"</span><span class="op">)</span>
+<span class="va">res3</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"$('.navbar-nav')
+    .find('.nav-link.active')
+    .attr('data-value')"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res3</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab2"</span><span class="op">)</span>
 
 <span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span>
 
-<span class="va">res4</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.tab-content').find('.active.show').attr('id')"</span><span class="op">)</span>
+<span class="va">res4</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"$('.tab-content')
+    .find('.active.show')
+    .attr('id')"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res3</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="va">res4</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span><span class="op">)</span></code></pre></div>
 <p>We then click on the “change tab” button, that has the <code>update</code> id. The latter,
 actually triggers <code><a href="https://rdrr.io/pkg/OSUICode/man/update_tabler_tab_item.html">update_tabler_tab_item()</a></code>. We also want to check its behavior and expect
@@ -726,19 +766,29 @@ to be back on tab 1:</p>
 <div class="sourceCode" id="cb589"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('#update').click();"</span><span class="op">)</span>
 
-<span class="va">res5</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.navbar-nav').find('.nav-link.active').attr('data-value')"</span><span class="op">)</span>
+<span class="va">res5</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"$('.navbar-nav')
+    .find('.nav-link.active')
+    .attr('data-value')"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res5</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab1"</span><span class="op">)</span>
 
 <span class="va">test</span><span class="op">$</span><span class="fu">wait_for_shiny_ready</span><span class="op">(</span><span class="op">)</span>
 
-<span class="va">res6</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"$('.tab-content').find('.active.show').attr('id')"</span><span class="op">)</span>
+<span class="va">res6</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"$('.tab-content')
+    .find('.active.show')
+    .attr('id')"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">res5</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="va">res6</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span><span class="op">)</span></code></pre></div>
 <p>If the test is successful, it means that the <code>receiveMessage</code> and <code>setValue</code> methods
 work as expected. We finally test the input value by setting its value to <code>tab2</code> with <code>shiny_set_input</code>.
 All Shiny input values are stored in the <code>Shiny.shinyapp.$inputValues</code> object, as shown in Chapter <a href="shiny-input-lifecycle.html#shiny-input-lifecycle">13</a>:</p>
 <div class="sourceCode" id="cb590"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">test</span><span class="op">$</span><span class="fu">shiny_set_input</span><span class="op">(</span><span class="st">"current_tab"</span>, <span class="st">"tab2"</span><span class="op">)</span>
-<span class="va">tab_input</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span><span class="st">"Shiny.shinyapp.$inputValues.current_tab"</span><span class="op">)</span>
+<span class="va">tab_input</span> <span class="op">&lt;-</span> <span class="va">test</span><span class="op">$</span><span class="fu">call_js</span><span class="op">(</span>
+  <span class="st">"Shiny.shinyapp.$inputValues.current_tab"</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://testthat.r-lib.org/reference/equality-expectations.html">expect_equal</a></span><span class="op">(</span><span class="va">tab_input</span><span class="op">$</span><span class="va">result</span><span class="op">$</span><span class="va">value</span>, <span class="st">"tab2"</span><span class="op">)</span>
 <span class="va">test</span><span class="op">$</span><span class="kw">stop</span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <p>This does not effect the navbar but triggers the notification.</p>
@@ -792,7 +842,7 @@ the second tab is active at start.</p>
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-03-13.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-03-14.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
