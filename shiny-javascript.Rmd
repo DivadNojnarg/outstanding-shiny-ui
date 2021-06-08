@@ -1,11 +1,11 @@
 # JavaScript for Shiny {#survival-kit-javascript}
-Design an outstanding interface is not just about making it look nice with HTML and CSS. 
-How do we handle __interactivity__, widget creation, data flow between R and JS? This is where __JavaScript__ (JS) is our biggest ally. To understand how Shiny works from inside, especially how inputs are handled, we gradually dive into its core which contains a substantial amount of JS. Therefore, this chapter proposes a rather brief introduction to JS and __jQuery__ but still necessary as this book is supposed to be standalone. Advanced JS users may likely skip this part. If you wish to know more about this language, MDN web docs by Mozilla is an excellent [resource](https://developer.mozilla.org/en-US/docs/Web/JavaScript). 
+Design an outstanding interface is not just about making it look nice with HTML and CSS.
+How do we handle __interactivity__, widget creation, data flow between R and JS? This is where __JavaScript__ (JS) is our biggest ally. To understand how Shiny works from inside, especially how inputs are handled, we gradually dive into its core which contains a substantial amount of JS. Therefore, this chapter proposes a rather brief introduction to JS and __jQuery__ but still necessary as this book is supposed to be standalone. Advanced JS users may likely skip this part. If you wish to know more about this language, MDN web docs by Mozilla is an excellent [resource](https://developer.mozilla.org/en-US/docs/Web/JavaScript).
 
 ## Shiny JavaScript sources
 ::: {.importantblock data-latex=""}
-Since commit [`1b8635d`](https://github.com/rstudio/shiny/commit/1b8635db327a753007b1d7d052b138353745d251), 
-the whole JS core has been converted to TypeScript. As this book was written before these changes, we'll point the user to the code prior to `1b8635d`, that is this [state](https://github.com/rstudio/shiny/tree/60db1e02b03d8e6fb146c9bb1bbfbce269231add). Practically, the underlying mechanisms remain __exactly__ the same. 
+Since commit [`1b8635d`](https://github.com/rstudio/shiny/commit/1b8635db327a753007b1d7d052b138353745d251),
+the whole JS core has been converted to TypeScript. As this book was written before these changes, we'll point the user to the code prior to `1b8635d`, that is this [state](https://github.com/rstudio/shiny/tree/60db1e02b03d8e6fb146c9bb1bbfbce269231add). Practically, the underlying mechanisms remain __exactly__ the same.
 :::
 
 Let's have a look at the `{shiny}` [@R-shiny] github [project](https://github.com/rstudio/shiny/tree/60db1e02b03d8e6fb146c9bb1bbfbce269231add). As a R package, it is composed of standard folders like `R`, `man`, `tests` and other elements. The `inst` folder contains resources for external dependencies like [Bootstrap 3](https://getbootstrap.com/docs/3.3/), [jQuery](https://jquery.com/), [datatables](https://datatables.net/), [fontawesome](https://fontawesome.com/), ... mentioned in Chapter \@ref(web-dependencies) sorted in the `www/shared` sub-folder as well as the whole CSS and JS Shiny codes. Notice the presence of minified files like `shiny.min.js` and non minified elements such as `shiny.css`. Overall, the minification process reduces the loading time of a web page by removing comments, extra spaces, thereby decreasing the file size. For instance `shiny.js` has more than 6500 lines of code (240kb), while `shiny.min.js` is only 91.4kb.
@@ -19,7 +19,7 @@ knitr::include_graphics("images/survival-kit/shiny-js-sources.png")
 Since in Chapter \@ref(shiny-input-system) we'll use some of those scripts, a little understanding of the basic underlying JavaScript concepts is necessary.
 
 ## Introduction to JavaScript
-JavaScript was created in 1995 by Brendan Eich and is also known as ECMAScript (ES). Interestingly, you might have heard about ActionScript, which is no more than an implementation of ES by Adobe Systems. Nowadays, JavaScript is the centerpiece of web development across all websites. 
+JavaScript was created in 1995 by Brendan Eich and is also known as ECMAScript (ES). Interestingly, you might have heard about ActionScript, which is no more than an implementation of ES by Adobe Systems. Nowadays, JavaScript is the centerpiece of web development across all websites.
 
 Here is a quick example. If you have a personal blog, you probably know [Hugo](https://gohugo.io/) or [Jekyll](https://jekyllrb.com/), especially the R interfaces like [blogdown](https://bookdown.org/yihui/blogdown/) [@R-blogdown]. These tools allow one to rapidly develop a nice looking blog in just a few minutes, focusing on the content rather than technical aspects, which is really the point! Now, if you open the HTML inspector introduced in Chapter \@ref(web-intro-html), click on the elements tab, which may open by default, and uncollapse the `<head>` tag, you see that a lot of scripts are included, as shown in Figure \@ref(fig:scripts-list). Similarly for the `<body>` tag.
 
@@ -32,7 +32,7 @@ There are three ways to include scripts in an HTML document:
   - Use the `<script>` tag with the JS code inside.
   - Add the `onclick` attribute to an HTML tag (preferably a button) to trigger JS as soon as it is clicked.
   - Import an external file containing the JS code and only.
-  
+
 ```html
 <script type="text/javascript">
 // JS code here
@@ -48,7 +48,7 @@ There are three ways to include scripts in an HTML document:
 <script type="text/javascript" src="file.js">
 ```
 
-Whether to choose the first, second or third method depends on the content of your script. If we consider the JS library jQuery, it unfortunately contains so much code making it a challenge to understand. This make user chose the third method, most of the time. 
+Whether to choose the first, second or third method depends on the content of your script. If we consider the JS library jQuery, it unfortunately contains so much code making it a challenge to understand. This make user chose the third method, most of the time.
 
 ## Setup
 Like [R](https://www.r-project.org/) or [Python](https://www.python.org/), JavaScript (JS) is an __interpreted__ language. It is executed __client-side__, in other words in the browser. This also means that JS code may not be run without a suitable tool. In the following, we'll list some tools to test JS code, even though JS may also be run through the web browser developer tools, as demonstrated in section \@ref(shiny-js-inspector).
@@ -60,14 +60,14 @@ Like [R](https://www.r-project.org/) or [Python](https://www.python.org/), JavaS
 which node
 node --version
 ```
-returns something. If not, Node may not be properly [installed](https://www.taniarascia.com/how-to-install-and-use-node-js-and-npm-mac-and-windows/). 
+returns something. If not, Node may not be properly [installed](https://www.taniarascia.com/how-to-install-and-use-node-js-and-npm-mac-and-windows/).
 
 ::: {.noteblock data-latex=""}
 If you prefer not installing Node, there exists alternatives like [repl.it](https://repl.it/languages/nodejs), offering a Node.js online compiler environment. This will be more than enough to follow this part.
 :::
 
 ### Choose a good IDE
-Personally, I really like [VSCode](https://code.visualstudio.com) for coding with JS, as it contains a Node interpreter allowing you to seamlessly execute any JS code. As a side note, I encourage you to try the [dracula](https://draculatheme.com/visual-studio-code/) color theme, which is my favorite! As R user, I also like [Rstudio IDE](https://rstudio.com/products/rstudio/), provided that you have Node installed. Below, we will explain how to run a JS code in both IDE's. In section \@ref(shiny-js-inspector), we will show how to manipulate JS code directly in the web browser, through the HTML inspector. This is the method we will mostly use in the remaining of the book since we will also work with HTML and CSS at the same time.  
+Personally, I really like [VSCode](https://code.visualstudio.com) for coding with JS, as it contains a Node interpreter allowing you to seamlessly execute any JS code. As a side note, I encourage you to try the [dracula](https://draculatheme.com/visual-studio-code/) color theme, which is my favorite! As R user, I also like [RStudio IDE](https://rstudio.com/products/rstudio/), provided that you have Node installed. Below, we will explain how to run a JS code in both IDE's. In section \@ref(shiny-js-inspector), we will show how to manipulate JS code directly in the web browser, through the HTML inspector. This is the method we will mostly use in the remaining of the book since we will also work with HTML and CSS at the same time.
 
 ### First Script
 Let's write our first script:
@@ -76,7 +76,7 @@ Let's write our first script:
 console.log("Hello World");
 ```
 
-You notice that all instruction end by `;`. You can run this script either in Rstudio IDE or VSCode. 
+You notice that all instruction end by `;`. You can run this script either in RStudio IDE or VSCode.
 
 ```{r script-vscode, echo=FALSE, fig.cap='Run JS in VSCode', out.width='100%'}
 knitr::include_graphics("images/survival-kit/script-vscode.png")
@@ -97,7 +97,7 @@ JS defines several __types__:
   - __Number__. JS does not distinguish between integers and others. In R for instance, numeric contains integers and double.
   - __String__: characters ('blabla').
   - __Boolean__: true/false.
-  
+
 To check the type of an element, we may use the `typeof` operator:
 
 ```js
@@ -116,12 +116,12 @@ Variables are key elements to programming languages. They allow to store interme
   - A type.
   - A name.
   - A value.
-  
+
 ::: {.importantblock data-latex=""}
 A valid variable name:
 
-  - Doesn't use a reserved JS name like `typeof`! 
-  - Doesn't start with a number (123soleil)! 
+  - Doesn't use a reserved JS name like `typeof`!
+  - Doesn't start with a number (123soleil)!
   - Doesn't include any space (total price)!
 :::
 
@@ -163,7 +163,7 @@ console.log(myNumber); // print 0
 ```
 
 ::: {.noteblock data-latex=""}
-List of numerical operators in JS: 
+List of numerical operators in JS:
 
   - `+`. `+` also allows to concatenate strings together.
   - `-`
@@ -174,7 +174,7 @@ List of numerical operators in JS:
   - `--` (decrementation)
 :::
 
-You may also know `var` to declare variables. What is the difference with `let`? It is mainly a __scope__ [reason](https://www.w3schools.com/js/js_let.asp): 
+You may also know `var` to declare variables. What is the difference with `let`? It is mainly a __scope__ [reason](https://www.w3schools.com/js/js_let.asp):
 
 ```js
 var i = 1;
@@ -215,9 +215,9 @@ To test conditions there exists several ways:
 
   - `if (condition) { console.log('Test passed'); }`
   - `if (condition) { instruction A } else { instruction B }`
-  
+
 The __ternary__ operator is a shortcut `condition ? instruction if true : instruction if false` that may be chained. For complex instructions, we recommend not using it, as it may affect code readability.
-  
+
 Whenever a lot of possible conditions have to be evaluated, it is better to choose the `switch`:
 
 
@@ -238,7 +238,7 @@ JavaScript is an __object__ oriented programming language (like Python). An obje
   - A __type__.
   - Some __properties__.
   - Some __methods__ (to manipulate properties).
-  
+
 Let's construct our first object:
 
 ```js
@@ -253,8 +253,8 @@ const me = {
 
 me.geek = true; // works (see const variables above)
 // print a human readable object.
-console.log(JSON.stringify(me)); 
-  
+console.log(JSON.stringify(me));
+
 console.log(me.name);
 console.log(me.age);
 console.log(me.music);
@@ -277,7 +277,7 @@ Some comments on the above code:
   - To print a human readable version of the object, `JSON.stringify` will do the job.
   - We introduced string __interpolation__ with `${*}`. `*` may be any valid expression.
   - Methods are called with ``object.<method>``. We use `this` to refer to the object itself. Take note, we will see it a lot!
-  
+
 In JavaScript, there are already predefined objects to interact with arrays, dates, ...
 
 #### Arrays
@@ -296,12 +296,12 @@ const nested = [1, ['a', [1, 2, 3]], 'plop'];
 console.log(nested);
 ```
 
-In arrays, elements may be accessed by their __index__, but as mentioned before, the first index is 0 (not 1 like in R). 
+In arrays, elements may be accessed by their __index__, but as mentioned before, the first index is 0 (not 1 like in R).
 For instance, if we want to get the first element of the `nested` array, we do:
 
 ```js
 console.log(nested[0];
-// To get deeply nested element 
+// To get deeply nested element
 // we may chain index
 nested[1][1] // Access [1, 2, 3]
 ```
@@ -316,12 +316,12 @@ nested[1][1].length // 3
 
 Below is a table referencing the principal methods for arrays.
 
-| Method/Property   |      Description     | 
+| Method/Property   |      Description     |
 |:----------:|:-------------:|
-| length |  Return the number of elements in an array  | 
-| Join(string separator) |  Transform an array in a string | 
-| concat(array1, array2) |    Assemble 2 arrays   |  
-| pop() | Remove the last element of an array |    
+| length |  Return the number of elements in an array  |
+| Join(string separator) |  Transform an array in a string |
+| concat(array1, array2) |    Assemble 2 arrays   |
+| pop() | Remove the last element of an array |
 | shift() | Remove the first element of an array |
 | unshift(el1, el2, ...) | Insert elements at the beginning of an array |
 | push(el1, el2, ...) | Add extra elements at the end of an array |
@@ -338,10 +338,10 @@ table.push('hello'); // [1, "plop", "hello"]
 #### Strings
 Below are the main methods related to the String object (character in R).
 
-| Method/Property/Operator   |     Description     | 
+| Method/Property/Operator   |     Description     |
 |:----------:|:-------------:|
-| + (operator) |  String concatenation  | 
-| length |  String length  | 
+| + (operator) |  String concatenation  |
+| length |  String length  |
 | indexOf() | Gives the position of the character following the input string |
 | toLowerCase() | Put the string in small letters |
 | toUpperCase() | Put the string in capital letters |
@@ -350,10 +350,10 @@ Below are the main methods related to the String object (character in R).
 #### Math
 Below we mention some useful methods to handle mathematical objects.
 
-| Method   |     Description     | 
+| Method   |     Description     |
 |:----------:|:-------------:|
-| parseInt() |  Convert a string to integer  | 
-| parseFloat() |  Conversion to floating number  | 
+| parseInt() |  Convert a string to integer  |
+| parseFloat() |  Conversion to floating number  |
 
 All classic functions like `sqrt`, trigonometric functions are of course available. We call them with the `Math.*` prefix.
 
@@ -379,8 +379,8 @@ for (let i = 0; i < nested.length; i++) {
 
 The modern approach (ES6) consists in the `for`, `let` and `of` keywords. We define the variable
 `i` that will take all values among the `nested` array and print them. Importantly, `i` does not refer
-to the element index, but the element itself! The classic approach shown below uses the `index`, being slightly more 
-verbose. 
+to the element index, but the element itself! The classic approach shown below uses the `index`, being slightly more
+verbose.
 
 ::: {.importantblock data-latex=""}
 Contrary to R, JavaScript index starts from 0 (not from 1)! This is good to keep in mind when we will mix both R and JS.
@@ -419,7 +419,7 @@ const fun = (parm1, parm2) => {
   console.log(a);
   let p = 3;
   // The Math object contains the max method
-  return Math.max(parm1, parm2); 
+  return Math.max(parm1, parm2);
 }
 let res = fun(1, 2);
 console.log(res); // prints a and 2. a global
@@ -434,7 +434,7 @@ function initShiny() {
 }
 ```
 
-The main difference being that the ES6 syntax may not be understood by all environments. 
+The main difference being that the ES6 syntax may not be understood by all environments.
 
 #### Export functions: about modules {#about-js-modules}
 What happens if you wrote 100 functions that you want to reuse in different scripts? To prevent copying and pasting, we will now introduce the concept of modules. Let's save the below function in a script `utils.js`:
@@ -464,7 +464,7 @@ import { findMax, ...} from './utils.js'; // in test.js
 ```
 
 ### JS code compatibility
-As ES6 is not fully supported by all web browsers, you might wonder how to make your JS code standard. There exists tools called __transpiler__, that convert any modern JS code into a universal JS code. This is the case of [Babel](https://babeljs.io/), one of the most commonly used. In chapter \@ref(workflow-charpente), we'll see how to do it with a JS __bundler__, namely`esbuild`. 
+As ES6 is not fully supported by all web browsers, you might wonder how to make your JS code standard. There exists tools called __transpiler__, that convert any modern JS code into a universal JS code. This is the case of [Babel](https://babeljs.io/), one of the most commonly used. In chapter \@ref(workflow-charpente), we'll see how to do it with a JS __bundler__, namely`esbuild`.
 
 ### Event listeners
 When you explore a web application, clicking on a button usually triggers something like a computation, a modal or an alert. How does this work? In JavaScript, interactivity plays a critical role. Indeed, you want the web application to react to user inputs like mouse clicks or keyboard events. Below we introduce DOM __events__.
@@ -485,7 +485,7 @@ We then apply the `addEventListener` method. In short, an event __listener__ is 
 
   - The event: click, change, mouseover, ...
   - The function to call, also known as __callback__.
-  
+
 ```js
 btn.addEventListener('click', function() {
   alert('Thanks!');
@@ -495,7 +495,7 @@ btn.addEventListener('click', function() {
 ## jQuery
 
 ### Introduction
-[jQuery](https://jquery.com) is a famous JavaScript library providing a user friendly interface to manipulate the DOM and is present in almost all actual websites. It is slightly easier (understand more convenient to use) than vanilla JS. To use jQuery in a web page, we must import its code in the `head` of our HTML page: 
+[jQuery](https://jquery.com) is a famous JavaScript library providing a user friendly interface to manipulate the DOM and is present in almost all actual websites. It is slightly easier (understand more convenient to use) than vanilla JS. To use jQuery in a web page, we must import its code in the `head` of our HTML page:
 
 ```html
 <!doctype html>
@@ -508,13 +508,13 @@ btn.addEventListener('click', function() {
     </script>
   </head>
   <body>
-   
+
     <p>Hello World</p>
-  
+
   <script>
     $('p').css('color', 'red');
   </script>
-   
+
   </body>
 </html>
 ```
@@ -535,9 +535,9 @@ To select and interact with this element, we use JavaScript and jQuery:
 
 ```js
 // vanilla JS
-let inner = document.getElementsByClassName('text').innerHTML; 
+let inner = document.getElementsByClassName('text').innerHTML;
 // jQuery
-let inner = $('.text').html(); 
+let inner = $('.text').html();
 ```
 
 This is of course possible to chain selectors:
@@ -560,13 +560,13 @@ This is of course possible to chain selectors:
 
 ```js
 // Returns an array containing 8 li tags
-let items = $('.list .item'); 
+let items = $('.list .item');
 // Selects only li tags from the second ul element
-let otherItems = $('#list2 .item'); 
+let otherItems = $('#list2 .item');
 // Returns an array with 2 ul elements
-let lists = $('ul'); 
+let lists = $('ul');
 // Returns the first li element of the second ul.
-let firstItem = $('#list2:first-child'); 
+let firstItem = $('#list2:first-child');
 ```
 
 The very good new is that you should already be at ease with CSS selectors from section \@ref(css-selectors)!
@@ -587,17 +587,17 @@ $(function() {
 ```
 
 This is to avoid to interact with the DOM before it is actually ready. Most of the time,
-if you forget this, you'll end up with many issues involving `undefined` elements. 
+if you forget this, you'll end up with many issues involving `undefined` elements.
 
 ### Useful functions
 There exist filtering functions dedicated to simplify item [selection](https://api.jquery.com/category/traversing/). Below are is a list containing the mostly used in Shiny.
 
 #### Travel in the DOM
 
-| Method   |     Description     | 
+| Method   |     Description     |
 |:----------:|:-------------:|
 | children() | Get the children of each element passed in the selector (important: only travels a single level down the DOM tree) |
-| first() | Given an list of elements, select the first item | 
+| first() | Given an list of elements, select the first item |
 | last() | Given an list of elements, select the last item |
 | find() | Look for a descendant of the selected element(s) that could be multiple levels down in the DOM |
 | closest() | Returns the first ancestor matching the condition (travels up in the DOM) |
@@ -605,13 +605,13 @@ There exist filtering functions dedicated to simplify item [selection](https://a
 | siblings() | Get all siblings of the selected element(s) |
 | next() | Get the immediately following sibling |
 | prev() | Get the immediately preceding sibling |
-| not() | Given an existing set of selected elements, remove element(s) that match the given condition | 
+| not() | Given an existing set of selected elements, remove element(s) that match the given condition |
 
 
 #### Manipulate tags
 Below is a list of the main jQuery [methods](https://api.jquery.com/category/manipulation/) to manipulate tags (adding class, css property...)
 
-| Method   |     Description     | 
+| Method   |     Description     |
 |:----------:|:-------------:|
 | addClass() | Add class or multiple classes to the set of matched elements |
 | hasClass() | Check if the matched element(s) have a given class |
@@ -619,7 +619,7 @@ Below is a list of the main jQuery [methods](https://api.jquery.com/category/man
 | attr() | Get or set the value of a specific attribute |
 | after() | Insert content after |
 | before () | Insert content before |
-| css() | Get or set a css property | 
+| css() | Get or set a css property |
 | remove() | Remove element(s) from the DOM |
 | val() | Get the current value of the matched element(s) |
 
@@ -671,7 +671,7 @@ Instead, we just have to write:
 $('li').css('visibility', 'hidden');
 ```
 
-which is much better. The `map` method has a different purpose. It creates a new object based on the provided one: 
+which is much better. The `map` method has a different purpose. It creates a new object based on the provided one:
 
 ```js
 const items = [0, 1, 2, 3, 4, 5];
@@ -679,7 +679,7 @@ const threshold = 3;
 
 let filteredItems = $.map(items, function(i) {
   // removes all items > threshold
-  if (i > threshold) 
+  if (i > threshold)
     return null;
   return i;
 });
@@ -692,31 +692,31 @@ In jQuery there exists a significant number methods related to events. Below are
 $(element).click(); // click event
 $(element).change(); // trigger change on an element
 
-// attach an event handler function. 
-// Here we add click 
+// attach an event handler function.
+// Here we add click
 $(element).on('click', function() {
  // whatever
-}); 
+});
 
 
 // one triggers only once
 $(element).one('click', function() {
  // whatever
-}); 
+});
 
-// useful to trigger plot resize in Shiny so that 
+// useful to trigger plot resize in Shiny so that
 // they correctly fit their container
-$(element).resize(); 
+$(element).resize();
 
 // similar to $(element).change();
-$(element).trigger('change'); 
+$(element).trigger('change');
 ```
 
 The `.on` event is frequently used in Shiny since it allows to pass custom events which are not part of the JS predefined events. For instance `{shinydashboard}` [@R-shinydashboard] relies on a specific HTML/JavaScript/CSS template including a homemade API for handling the dashboard events.
 
 
 ### Extending objects
-A last feature we need to mention about jQuery is the ability to extend objects with additional properties and/or method. 
+A last feature we need to mention about jQuery is the ability to extend objects with additional properties and/or method.
 
 ```js
 // jQuery way
@@ -763,7 +763,7 @@ shinyApp(ui, server)
 
 ```{r dom-console, echo=FALSE, fig.cap='Console panel in the DevTools', out.width='100%'}
 knitr::include_graphics("images/survival-kit/dom-console.png")
-```  
+```
 
 Interestingly, you may access any element contained in the window. Copy and paste `$("body").addClass("plop");` in the prompt. Notice what happens in the `Elements` tab.
 
@@ -781,20 +781,20 @@ In the following, we consider a very simple shiny app deployed on [shinyapps.io]
   3. Click on the action button (I am pretty sure you clicked before step 2 ;))
   4. As expected and shown Figure \@ref(fig:dom-debug-shiny-error), the console displays an
   error message: `Uncaught TypeError: Cannot read property 'show' of undefined`. Sounds good isn't it?
-  
+
 ```{r dom-debug-shiny-error, echo=FALSE, fig.cap='Error in the console panel', out.width='100%'}
 knitr::include_graphics("images/survival-kit/dom-debug-shiny-error.png")
-```  
-  
+```
+
   5. Expand the error message to show the stack trace. We see that the error occurred during an `onclick` event calling the `sendNotif` function. Interestingly, we can open this file by clicking on the provided link (notif.js:2). You should get a layout similar to Figure \@ref(fig:dom-debug-shiny-sources), depending on your screen width.
-  
+
 
 ```{r dom-debug-shiny-sources, echo=FALSE, fig.cap='Inspect the source causing the error', out.width='100%'}
 knitr::include_graphics("images/survival-kit/dom-debug-shiny-sources.png")
 ```
-  
-  6. Let's briefly describe Figure \@ref(fig:dom-debug-shiny-sources). On the left side, you can navigate through all files accessible by the web server, that is shiny internal resources, shiny external dependencies (like Bootstrap 3) as well as your own scripts. If the app is deployed on shinyapps.io, all scripts are located in a folder starting by `_w_`, which corresponds to the shinyapps.io workerId (this is a detail and not important to understand. See more [here](https://github.com/rstudio/shiny/blob/master/R/shiny.R#L69)). The central part contains any opened script like a classic IDE. The right side displays debugging tools which you may trigger by clicking on the corresponding accordion. The scope shows all variables/object values at a break point, watch allows to track specific elements and Event listener Breakpoints allows to stop at given listener type. We could create a new "watcher" by entering `typeof message` and clicking the add icon to check the message type within the `sendNotif` function. Watched expressions are saved when you close the browser. 
-  
+
+  6. Let's briefly describe Figure \@ref(fig:dom-debug-shiny-sources). On the left side, you can navigate through all files accessible by the web server, that is shiny internal resources, shiny external dependencies (like Bootstrap 3) as well as your own scripts. If the app is deployed on shinyapps.io, all scripts are located in a folder starting by `_w_`, which corresponds to the shinyapps.io workerId (this is a detail and not important to understand. See more [here](https://github.com/rstudio/shiny/blob/master/R/shiny.R#L69)). The central part contains any opened script like a classic IDE. The right side displays debugging tools which you may trigger by clicking on the corresponding accordion. The scope shows all variables/object values at a break point, watch allows to track specific elements and Event listener Breakpoints allows to stop at given listener type. We could create a new "watcher" by entering `typeof message` and clicking the add icon to check the message type within the `sendNotif` function. Watched expressions are saved when you close the browser.
+
   7. Put a break point line 2 by clicking on the left side of the center panel and click again on the action button to trigger the break point. I also additionally set 2 Watch Expressions (for message and duration) which type is string and number, respectively, as depicted on Figure \@ref(fig:dom-debug-shiny-breakpoint). According to the results, nothing seems wrong for the function arguments.
 
 ```{r dom-debug-shiny-breakpoint, echo=FALSE, fig.cap='Inspection of the scope at the breakpoint', out.width='100%'}
@@ -836,7 +836,7 @@ At this point, users may find `options(shiny.minified = FALSE)` convenient to de
 
 Because the JavaScript console is a REPL, all JavaScript exercises may be done inside, except exercise 3 which also involves HTML. In that case, the reader may browse to [jsfiddle](https://jsfiddle.net/).
 
-### Exercise 1: define variables 
+### Exercise 1: define variables
 
 1. Play with the example below
 
@@ -846,7 +846,7 @@ myNumber--; // decrement
 console.log(myNumber); // print 0
 ```
 
-### Exercise 2: define objects 
+### Exercise 2: define objects
 
 Below is an object skeleton.
 
@@ -892,7 +892,7 @@ code, share and more. It also does not require you to have any specific configur
 
 This is a very basic HTML skeleton
 
-3. In the JavaScript windows, select jQuery 3.4.1 in the dropdown menu (why 3.4.1? The latest Shiny release relies on that version. It is therefore best practice to ensure dependencies are similar, at least the major version). 
+3. In the JavaScript windows, select jQuery 3.4.1 in the dropdown menu (why 3.4.1? The latest Shiny release relies on that version. It is therefore best practice to ensure dependencies are similar, at least the major version).
 4. Since it is best practice to run jQuery code only when the document is ready (avoiding to target non existing elements), we wrap our JS code in the following:
 
 ```js
@@ -906,7 +906,7 @@ $(document).ready(function() {
 });
 ```
 
-5. Create an event listener to change the third item color as soon as one click on it. 
+5. Create an event listener to change the third item color as soon as one click on it.
 Hint 1: To select the a specific item you may use `$(selector:eq(i))` where i is the index of the element. Keep in mind that JavaScript starts from 0 and not 1 like R!
 Hint 2: as a reminder, to create an event listener in jQuery, we use the following pattern.
 
@@ -936,23 +936,23 @@ Below is another example of a button element with an attached event listener. Cl
 
 ```js
 $(function() {
-	
+
   // recover the button inner html
   const btnText = ...;
 
 	// event listener for button element
 	$(...).click(function() {
   	var val = ...;
-    // (1) increment button 
+    // (1) increment button
     // (2) add the button value to the inner text
     ...
-    
+
     // show alert given condition
     if (val > 3) {
       // do whatever you want
     	...
     }
   });
-  
+
 });
 ```
