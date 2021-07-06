@@ -867,7 +867,6 @@ look for all texts with `find(".direct-chat-text")`, refine our choice by target
 
 ```js
 else if (action === "update") {
-      
   // today's date
   let d = new Date();
   let month = d.getMonth() + 1;
@@ -896,111 +895,109 @@ else if (action === "update") {
 Don't forget to __unbind__, re-__initialize__ and __bind__ all inputs by successively calling `Shiny.unbindAll();`, `Shiny.initializeInputs();` and `Shiny.bindAll();`. If you ommit this part, the newly inserted input/output elements won't work! The whole JS code may be found below:
 
 ```js
-// userMessages
-  // ------------------------------------------------------------------
-  // This code creates acustom handler for userMessages
-  Shiny.addCustomMessageHandler(
-    "user-messages", function(message) {
-    let id = message.id, 
-      action = message.action, 
-      content = message.body, 
-      index = message.index;
+// This code creates a custom handler for userMessages
+Shiny.addCustomMessageHandler(
+  "user-messages", function(message) {
+  let id = message.id, 
+    action = message.action, 
+    content = message.body, 
+    index = message.index;
+  
+  // message text
+  // We use Shiny.renderHtml to handle the case where 
+  // the user pass input/outputs in the updated content 
+  // that require a new dependency not available in the 
+  // page at startup. 
+  if (content.hasOwnProperty("text")) {
+    let text;
+    if (content.text.html === undefined) {
+      text = content.text;
+    } else {
+      text = Shiny.renderHtml(
+        content.text.html, $([]), 
+        content.text.deps
+      ).html;
+    } 
+  }
+  
+  // unbind all
+  Shiny.unbindAll();
+  
+  if (action === "remove") {
+    $("#" + id)
+      .find(".direct-chat-msg")
+      .eq(index - 1)
+      .remove();
+  } else if (action === "add") {
+    let author = content.author, 
+      date = content.date, 
+      image = content.image, 
+      type = content.type;
     
-    // message text
-    // We use Shiny.renderHtml to handle the case where 
-    // the user pass input/outputs in the updated content 
-    // that require a new dependency not available in the 
-    // page at startup. 
-    if (content.hasOwnProperty("text")) {
-     let text;
-      if (content.text.html === undefined) {
-        text = content.text;
-      } else {
-        text = Shiny.renderHtml(
-          content.text.html, $([]), 
-          content.text.deps
-        ).html;
-      } 
+    // build the new message 
+    let newMessage = `
+      <div class="direct-chat-info clearfix">
+        <span class="direct-chat-name"> 
+          ${author}
+        </span>
+        <span class="direct-chat-timestamp" 
+          style="margin-left: 4px">
+          ${date}
+        </span>
+      </div>
+      <img class="direct-chat-img" src="${image}"/> 
+      <div class="direct-chat-text">${text}</div>`;
+      
+    // build wrapper
+    let newMessageWrapper;
+    if (type === "sent") {
+      newMessageWrapper = `
+        <div class="direct-chat-msg right">
+          ${newMessage} 
+        </div>`;
+    } else {
+      newMessageWrapper = `
+        <div class="direct-chat-msg">
+          ${newMessage} 
+        </div>`;
     }
     
-    // unbind all
-    Shiny.unbindAll();
+    // append message
+    $("#" + id)
+      .find(".direct-chat-messages")
+      .append(newMessageWrapper);
+  } else if (action === "update") {
     
-    if (action === "remove") {
-      $("#" + id)
-        .find(".direct-chat-msg")
-        .eq(index - 1)
-        .remove();
-    } else if (action === "add") {
-      let author = content.author, 
-        date = content.date, 
-        image = content.image, 
-        type = content.type;
+    // today's date
+    let d = new Date();
+    let month = d.getMonth() + 1;
+    let day = d.getDate();
+    let today = d.getFullYear() + '/' +
+      ((''+month).length<2 ? '0' : '') + month + '/' +
+      ((''+day).length<2 ? '0' : '') + day;
       
-      // build the new message 
-      let newMessage = `
-        <div class="direct-chat-info clearfix">
-          <span class="direct-chat-name"> 
-            ${author}
-          </span>
-          <span class="direct-chat-timestamp" 
-            style="margin-left: 4px">
-            ${date}
-          </span>
+    // we assume only text may be updated. 
+    // Does not make sense to modify author/date
+    
+    $("#" + id)
+      .find(".direct-chat-text")
+      .eq(index - 1)
+      .replaceWith(`
+        <div class="direct-chat-text">
+          <small class="text-red">
+            (modified: ${today})
+          </small>
+          <br>
         </div>
-        <img class="direct-chat-img" src="${image}"/> 
-        <div class="direct-chat-text">${text}</div>`;
-        
-      // build wrapper
-      let newMessageWrapper;
-      if (type === "sent") {
-        newMessageWrapper = `
-          <div class="direct-chat-msg right">
-            ${newMessage} 
-          </div>`;
-      } else {
-        newMessageWrapper = `
-          <div class="direct-chat-msg">
-            ${newMessage} 
-          </div>`;
-      }
-      
-      // append message
-      $("#" + id)
-        .find(".direct-chat-messages")
-        .append(newMessageWrapper);
-    } else if (action === "update") {
-      
-      // today's date
-      let d = new Date();
-      let month = d.getMonth() + 1;
-      let day = d.getDate();
-      let today = d.getFullYear() + '/' +
-        ((''+month).length<2 ? '0' : '') + month + '/' +
-        ((''+day).length<2 ? '0' : '') + day;
-        
-      // we assume only text may be updated. 
-      // Does not make sense to modify author/date
-      
-      $("#" + id)
-        .find(".direct-chat-text")
-        .eq(index - 1)
-        .replaceWith(`
-          <div class="direct-chat-text">
-            <small class="text-red">
-              (modified: ${today})
-            </small>
-            <br>
-          </div>
-        `)
-    }
-    
-    // Calls .initialize() for all of the input 
-    // objects in all input bindings,
-    // in the given scope (document)
-    Shiny.initializeInputs();
-    Shiny.bindAll(); // bind all inputs/outputs
-  });
+      `)
+  }
+  
+  // Calls .initialize() for all of the input 
+  // objects in all input bindings,
+  // in the given scope (document)
+  Shiny.initializeInputs();
+  Shiny.bindAll(); // bind all inputs/outputs
+});
 ```
 
 Output is shown on Figure \@ref(fig:shinydashboardPlus-chat-api). To reproduce that figure,
