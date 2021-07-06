@@ -114,64 +114,39 @@ We would like to create a __JSON__ configuration file like this:
     }
     // ...
   ],
-  "start_url": "https://whatever-url.com/",
+  "start_url": "<APP_URL>",
   "background_color": "#3367D6",
   "display": "standalone",
   "scope": "/",
-  "theme_color": "#3367D6"
+  "theme_color": "#3367D6",
+  "shortcuts": [
+    {
+      "name": "Open toast",
+      "short_name": "Shortcut",
+      "description": "Do something",
+      "url": "<APP_URL>/...",
+      "icons": [{ "src": "icons/shortcut.png", "sizes": "192x192" }]
+    }
+  ]
 }
 ```
 
 This file has to be accessible by the app, hence best practice is to put it in the `/www` folder, 
-images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest()` function writes a JSON file at the provided location:
+images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest` function writes a JSON file at the provided location.
+Interestingly the `shortcuts` fields gives the ability to start the app in a specific state, so that end users save time. This feature is only supported by latest Android devices as well as up to date Windows 10 computers (no Apple support). In practice, the shortcut url can be processed by `shiny::parseQueryString` on the server side. For instance, if the url contains a query string like `https://domain/path/?foo=1`, we could do:
 
-```{r}
-create_manifest <- function(
-  path, 
-  name = "My Progressive Web App", 
-  shortName = "My App",
-  description = "What it does!", 
-  lang = "en-US",
-  startUrl = "/", 
-  display = c("minimal-ui", "standalone", "fullscreen", "browser"),
-  background_color = "#ffffff", 
-  theme_color = "#ffffff"
-) {
-
-  display <- match.arg(display)
-
-  manifest <- list(
-    name = name,
-    short_name = shortName,
-    description = description,
-    lang = lang,
-    start_url = startUrl,
-    display = display,
-    background_color = background_color,
-    theme_color = theme_color,
-    icons = data.frame(
-      src = "icons/icon-144.png",
-      sizes = "144x144"
-    )
-  )
-
-  # create /www folder if does not exist yet
-  if (!dir.exists(paste0(path, "/www"))) {
-    dir.create(paste0(path, "/www/icons"), recursive = TRUE)
+```{r, eval=FALSE}
+observeEvent(session$clientData$url_search, {
+  query <- parseQueryString(session$clientData$url_search)
+  req(length(query) > 0)
+  # Ways of accessing the values
+  if (as.numeric(query$foo) == 1) {
+    f7Toast(text = "Plop")
   }
-  jsonlite::write_json(
-    manifest, 
-    path = paste0(path, "/www/manifest.webmanifest"),
-    pretty = TRUE,
-    auto_unbox = TRUE
-  )
-  
-  ui_done("Web manifest successfully created!")
-}
+})
 ```
 
-The web manifest and icons have to be included in the `head` before the Google PWA compatibility
-script:
+The web manifest and icons have to be included in the `head` before the Google PWA compatibility script:
 
 ```html
 <link rel="manifest" href="manifest.webmanifest" />
@@ -181,8 +156,7 @@ script:
 ```
 
 
-`set_pwa()` includes a `create_pwa_dependency()` function that creates an HTML __dependency__ 
-containing all necessary resources:
+`set_pwa()` includes a `create_pwa_dependency()` function that creates an HTML __dependency__ containing all necessary resources:
 
 ```{r, eval=FALSE}
 #' PWA dependencies utils
@@ -306,8 +280,7 @@ knitr::include_graphics("images/mobile/mobile-pwa-missing-sw.png")
 
 ### Service worker and offline page
 The second mandatory step to make our app installable is the __service worker__.
-We borrowed the code from [web.dev](https://web.dev/offline-fallback-page/). `set_pwa()` copies
-this code in the the provided app `/www` folder:
+We borrowed and modified the code from [web.dev](https://web.dev/offline-fallback-page/). `set_pwa()` copies this code in the the provided app `/www` folder:
 
 ```js
 /*
@@ -334,10 +307,13 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      // Setting {cache: 'reload'} in the new request will ensure that the
-      // response isn't fulfilled from the HTTP cache; i.e., it will be from
-      // the network.
+      // Setting {cache: 'reload'} in the new request will 
+      // ensure that the response isn't fulfilled from the 
+      // HTTP cache; i.e., it will be from the network.
       await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
+      await cache.add( new Request("framework7-5.7.14/css/framework7.bundle.min.css", { cache: "reload" }) );
+      await cache.add( new Request("framework7-5.7.14/js/framework7.bundle.min.js", { cache: "reload" }) );
+      await cache.add( new Request("shared/jquery.min.js", { cache: "reload" }) );
     })()
   );
   // Force the waiting service worker to become the active service worker.
@@ -355,18 +331,24 @@ self.addEventListener("activate", (event) => {
     })()
   );
 
-  // Tell the active service worker to take control of the page immediately.
+  // Tell the active service worker to take control of 
+  // the page immediately.
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  // We only want to call event.respondWith() if this is a navigation request
-  // for an HTML page.
+
+  // Fix service-worker bug
+  if (event.request.cache === 'only-if-cached') return;
+
+  // We only want to call event.respondWith() if this 
+  // is a navigation request for an HTML page ...
   if (event.request.mode === "navigate") {
     event.respondWith(
       (async () => {
         try {
-          // First, try to use the navigation preload response if it's supported.
+          // First, try to use the navigation preload response 
+          // if it's supported.
           const preloadResponse = await event.preloadResponse;
           if (preloadResponse) {
             return preloadResponse;
@@ -376,11 +358,12 @@ self.addEventListener("fetch", (event) => {
           const networkResponse = await fetch(event.request);
           return networkResponse;
         } catch (error) {
-          // catch is only triggered if an exception is thrown, which is likely
-          // due to a network error.
-          // If fetch() returns a valid HTTP response with a response code in
-          // the 4xx or 5xx range, the catch() will NOT be called.
-          console.log("Fetch failed; returning offline page instead.", error);
+          // catch is only triggered if an exception is thrown, 
+          // which is likely due to a network error.
+          // If fetch() returns a valid HTTP response with a 
+          // response code in the 4xx or 5xx range, the catch() 
+          // will NOT be called.
+          console.log("Returning offline page instead.", error);
 
           const cache = await caches.open(CACHE_NAME);
           const cachedResponse = await cache.match(OFFLINE_URL);
@@ -388,25 +371,53 @@ self.addEventListener("fetch", (event) => {
         }
       })()
     );
+  } else {
+    // ... but also serve other cached assets 
+    // (not a navigation request).
+    event.respondWith(
+      (async () => {
+        
+        try {
+          // Always try the network first.
+          const networkResponse = await fetch(event.request);
+          return networkResponse;
+          
+        } catch (error) {
+          
+          const cache = await caches.open(CACHE_NAME);
+          const cachedResponse = await cache.match(event.request);
+          if (cachedResponse) return cachedResponse;
+          
+        }
+      })()
+    );
   }
 
-  // If our if() condition is false, then this fetch handler won't intercept the
-  // request. If there are any other fetch handlers registered, they will get a
-  // chance to call event.respondWith(). If no fetch handlers call
-  // event.respondWith(), the request will be handled by the browser as if there
-  // were no service worker involvement.
+  // If our if() condition is false, then this fetch handler 
+  // will still intercept the
+  // request and tries to return an answer either from 
+  // network or from the relevant cache location. If there 
+  // are any other fetch handlers registered, they will get a
+  // chance to call event.respondWith(). If no fetch handlers 
+  // call event.respondWith(), the request will be handled by 
+  // the browser as if there were no service worker involvement.
 });
 ```
 
-This service worker redirects the end user to the offline cached page (`offline.html`) whenever
-the app is offline, thereby offering a better user experience. 
+Overall, the above service worker is composed of three steps:
+
+  - __Installation__: cache is initialized and assets like HTML page, CSS, JS, images are asynchronously cached. In addition to caching the `offline.html` page, we also 
+  cache necessary assets. Their respective path is taken from the server location, for instance, Framework7 assets are located in `framework7-5.7.14/...` and jQuery assets in `shared/`. Best practice is to look at the developer tools `Source` tab which provides the right location. 
+  - __Activation__.
+  - __Fetch__: the service worker intercepts all network requests sent by the client and returns answers according to a predefined strategy. Here we set the "network first" strategy, meaning we always try to return an answer from the network and fall back to the cache if the request failed (for instance in case of missing internet connection). In the above code, there are two kind of requests: navigation, that is related to an HTML page and other requests corresponding to static assets like CSS or JS. Therefore, we have an `if` and `else` statement to consider those two cases. If you would like to know more about caching strategies please refer to the Google documentation: https://developers.google.com/web/tools/workbox/modules/workbox-strategies. 
+
+This service worker redirects the end user to the offline cached page (`offline.html`) whenever the app is offline, thereby offering a better user experience. 
 
 ::: {.importantblock data-latex=""}
 We strongly advise to keep the same file names. 
 :::
 
-The next step involves the service worker registration. Framework7 has a dedicated module in the 
-app configuration. We modify `init.js` and run `build_js()` to update the minified file:
+The next step involves the service worker registration. Framework7 has a dedicated module in the app configuration. We modify `init.js` and run `build_js()` to update the minified file:
 
 ```js
 serviceWorker: {
@@ -421,58 +432,115 @@ If the process is successful, you get the result shown in Figure \@ref(fig:mobil
 knitr::include_graphics("images/mobile/mobile-pwa-registered-sw.png")
 ```
 
-The new standard imposes to return a valid response when the app is __offline__. The offline page is
-also copied from `{charpente}`:
+The new PWA standard imposes to return a valid response when the app is __offline__. The offline page is also copied from `{charpente}`:
 
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, 
-    initial-scale=1" />
-
-    <title>You are offline</title>
-
-    <!-- inline the webpage's stylesheet -->
-    <style>
-      body {
-        font-family: helvetica, arial, sans-serif;
-        margin: 2em;
-      }
-
-      h1 {
-        font-style: italic;
-        color: #373fff;
-      }
-
-      p {
-        margin-block: 1rem;
-      }
-
-      button {
-        display: block;
-      }
-    </style>
+    <!-- Required meta tags-->
+    <meta charset="utf-8">
+    <meta name="viewport" 
+    content="width=device-width, 
+    initial-scale=1, 
+    maximum-scale=1, 
+    minimum-scale=1, 
+    user-scalable=no, 
+    viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Color theme for statusbar (Android only) -->
+    <meta name="theme-color" content="#2196f3">
+    <!-- Your app title -->
+    <title>Oups</title>
+    <!-- Path to Framework7 Library Bundle CSS -->
+    <link 
+      rel="stylesheet" 
+      href="framework7-5.7.14/css/framework7.bundle.min.css">
+    <!-- Path to your custom app styles-->
   </head>
   <body>
-    <h1>You are offline</h1>
+    <!-- App root element -->
+    <div id="app">
 
-    <p>Click the button below to try reloading.</p>
-    <button type="button">⤾ Reload</button>
+      <!-- Your main view, should have "view-main" class -->
+      <div class="view view-main">
+        <!-- Initial Page, "data-name" contains page name -->
+        <div data-name="home" class="page">
 
-    <!-- inline the webpage's javascript file -->
+          <!-- Top Navbar -->
+          <div class="navbar">
+            <div class="navbar-bg"></div>
+            <div class="navbar-inner">
+              <div class="title">Offline page</div>
+            </div>
+          </div>
+
+          <!-- Bottom Toolbar -->
+          <div class="toolbar toolbar-bottom">
+            <div class="toolbar-inner">
+              <!-- Toolbar links -->
+              <a href="#" class="link">Link 1</a>
+              <a href="#" class="link">Link 2</a>
+            </div>
+          </div>
+
+          <!-- Scrollable page content -->
+          <div class="page-content">
+            <div class="block">
+              <p>Welcome to the offline page</p>
+              <button 
+                onclick="location.reload();" 
+                class="toast-button button color-red col">
+                Reload
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- jQuery -->
+    <script 
+      type="text/javascript" 
+      src="shared/jquery.min.js">
+    </script>
+    <!-- Path to Framework7 Library Bundle JS -->
+    <script 
+      type="text/javascript"     
+      src="framework7-5.7.14/js/framework7.bundle.min.js">
+    </script>
+    <!-- Path to your app js -->
     <script>
-      document
-        .querySelector("button")
-        .addEventListener("click", () => {
-          window.location.reload();
+      var app = new Framework7({
+        // App root element
+        root: '#app',
+        // App Name
+        name: 'My App',
+        // App id
+        id: 'com.myapp.test',
+        // Enable swipe panel
+        panel: {
+          swipe: true,
+        },
+        autoDarkTheme: true,
+        // ... other parameters
       });
+
+      var mainView = app.views.create('.view-main');
+      
+      if (Framework7.device.standalone) {
+        $("html, body").css({ height: "100vh", width: "100vw" });
+        if ($(".appbar").length > 0) {
+          $(".toolbar").css("margin-bottom", "20px");
+        }
+      }
     </script>
   </body>
 </html>
 ```
+
+Notice that jQuery, required for easier DOM interactions, as well as Framework7 CSS and JS assets are cached in the above service worker script, thereby making them
+available to `offline.html`. This offline fallback relies on Framework7 for consistency reasons but could be replace by any other HTML page, keeping in mind the update
+the service worker. 
 
 Now, let's audit our app again: congrats! It is __installable__, reliable, although 
 further PWA optimization may be provided. 
@@ -482,14 +550,13 @@ knitr::include_graphics("images/mobile/mobile-pwa-audit-final.png")
 ```
 
 ::: {.importantblock data-latex=""}
-A common source of error is the __browser cache__. It is best practice to regularly empty the it.
-Alternatively, one may runs in incognito mode, which does not cache files. 
+A common source of error is the __browser cache__. It is best practice to regularly empty it. Alternatively, one may runs in incognito mode, which does not cache files. 
 :::
 
 ### Disable PWA for the end user
 With the above approach, `{shinyMobile}` will always look for a service worker to register.
 Particularly, this would raise an error in case no service worker is found on the server.
-What if the user don't want to create a PWA, let's say for less important applications? 
+What if the user doesn't want to create a PWA, let's say for less important applications? 
 We may add a parameter to `f7_page`, for instance `allowPWA`, that is either `TRUE` or `FALSE`,
 store its value in the `body` `data-pwa` attribute and recover it on the JS side within `init.js`:
 
@@ -591,7 +658,7 @@ app.utils.nextTick(function() {
 }, 500);
 ```
 
-We run `build_js()` and deploy the app to shinyapps.io. Figure \@ref(fig:mobile-pwa-installable)
+We run `build_js()` and deploy the app to shinyapps.io (remember: we must serve the app under HTTPS!). Figure \@ref(fig:mobile-pwa-installable)
 illustrates the install prompt window that appears to install the app. Once installed, the __beforeinstallprompt__
 event does not fire anymore and the app may be launched as a standalone app, for instance on macOSX (Figure \@ref(fig:mobile-pwa-installed)).
 
@@ -618,8 +685,7 @@ shinyAppDir(system.file("shinyMobile/pwa", package = "OSUICode"))
 
 ## Workbox
 [Workbox](https://developers.google.com/web/tools/workbox) is a more robust alternative 
-to the approach described above. Interestingly, Framework7
-uses Workbox as a service worker generator by default. It does:
+to the approach described above with boilerplate code to enable:
 
   - pre-caching of dependencies like CSS and JS but also images and Google fonts
   to improve performances.

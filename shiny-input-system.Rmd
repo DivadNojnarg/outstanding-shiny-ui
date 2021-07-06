@@ -100,7 +100,7 @@ find: function(scope) {
 ```
 
 ::: {.importantblock data-latex=""}
-Don't forget the `return` statement. Omitting it would simply make the binding step failing, and all other downstream
+Don't forget the `return` statement. Omitting it would cause the binding step to fail, as well as all other downstream
 steps!
 :::
 
@@ -505,14 +505,13 @@ There are a couple of methods not described above that are contained in the `Inp
 
   - __getId__ returns the object id (Figure \@ref(fig:binding-getId)). If you don't provide your own method, the binding falls back to the default one provided in the `InputBinding` class. This method is called after `find`. The next Chapter \@ref(shiny-input-lifecycle) provides more details. 
   - __getType__ required to handle custom data format. It is called after `getId`. A entire section \@ref(custom-data-format) is dedicated.
-  - __getState__ ?
   
 ```{r binding-getId, echo=FALSE, fig.cap='The binding getId method', out.width='100%'}
 knitr::include_graphics("images/survival-kit/binding-getId.png")
 ```
 
 ### Edit an input binding {#edit-input-binding}
-In some cases, we would like to access the input binding and change it's default behavior, even though not always recommended, since it will affect **all** related inputs. As bindings are contained in a registry, namely `Shiny.inputBindings`, one may seamlessly access and modify them. This is a five steps process:
+In some cases, we would like to access the input binding and change its default behavior, even though not always recommended, since it will affect **all** related inputs. As bindings are contained in a registry, namely `Shiny.inputBindings`, one may seamlessly access and modify them. This is a five steps process:
 
 1. Wait for the `shiny:connected` [event](https://shiny.rstudio.com/articles/js-events.html), so that the `Shiny` JS
 object exists. 
@@ -851,7 +850,7 @@ box2 <- function(..., id = NULL, title = NULL, footer = NULL,
     )
   )
   
-  # I removed some of the code to highlight that part
+  # ....; Extra code removed
 }
 ```
 
@@ -863,7 +862,7 @@ box2 <- function(..., id = NULL, title = NULL, footer = NULL,
                  background = NULL, width = 6, height = NULL,
                  collapsible = FALSE, collapsed = FALSE) {
   
-  # code not shown
+  # ....; Extra code removed
   
   boxTag <- shiny::tags$div(
     class = if (!is.null(width)) paste0("col-sm-", width), 
@@ -1039,7 +1038,7 @@ setValue: function(el, value) {
 }
 ```
 
-If it represents a significant amount of work, it is also the guarantee to lower the load on the server side, thereby offering a faster end-user experience. A working prototype has been implemented in `{shinydashboardPlus}` and `{bs4Dash}`:
+If it represents a significant amount of work, it is also guarantees to lower the load on the server side, thereby offering a faster end-user experience. A working prototype has been implemented in `{shinydashboardPlus}` and `{bs4Dash}`:
 
 ```{r, eval=FALSE}
 shinyAppDir(system.file(
@@ -1061,14 +1060,14 @@ exports.setInputValue = function(name, value, opts) {
 ```
 
 We recommend using `Shiny.setInputValue` over `Shiny.onInputChange`, the first one being slightly misleading.
-Briefly, this function avoids the creation an input binding and is faster to code but there is a price to pay: losing the ability to easily update the new input through R. Indeed, without input binding, there is no R side `updateInput` function! By default, `Shiny.setInputValue` is able to cache the last set value from that input, so that if is is identical, no value is being assigned. If this behavior does not meet your needs and you need to set the input even when the value did not change, be aware that you may specifify a __priority__ option like:
+Briefly, this function avoids the creation an input binding and is faster to code but there is a price to pay: losing the ability to easily update the new input through R. Indeed, without an input binding, there is no R side `updateInput` function! By default, `Shiny.setInputValue` is able to cache the last set value from that input, so that if is is identical, no value is being assigned. If this behavior does not meet your needs and you need to set the input even when the value did not change, be aware that you may specifify a __priority__ option like:
 
 ```js
 Shiny.setInputValue("myinput", value, {priority: "event"});
 ```
 
 ### Examples
-`Shiny.setInputValues` becomes powerful when combined to the numerous Shiny JavaScript events listed [here](https://shiny.rstudio.com/articles/js-events.html). This is what
+`Shiny.setInputValue` becomes powerful when combined to the numerous Shiny JavaScript events listed [here](https://shiny.rstudio.com/articles/js-events.html). This is what
 we use in the [shinyMobile](https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html) package to store the current device information in a shiny input.
 Briefly, Framework7 (on top of which is built shinyMobile) has a method `Framework7.device`, which gives many [details](https://framework7.io/docs/device.html) related to the user device.
 
@@ -1103,7 +1102,7 @@ shinyApp(
 
     # generate a card only for desktop
     output$card <- renderUI({
-      if (!input$deviceInfo$desktop) {
+      if (!isTRUE(input$deviceInfo$desktop)) {
         f7Card(
           "This is a simple card with plain text,
           but cards can also contain their own header,
@@ -1111,10 +1110,11 @@ shinyApp(
         )
       } else {
         f7Toast(
-          session, 
           "You are on desktop! The card will not display", 
-          position = "center"
+          position = "center",
+          session = session
         )
+        NULL
       }
     })
   }
@@ -1131,7 +1131,7 @@ For instance, assume we create a date in JS with `new Date()` and store it in a 
   - __type__ allows to connect the handler to `Shiny.setInputValue`. Note that the id is followed by the handler type, for instance `Shiny.setInputValue('test:handler', ...)` is connected to `shiny::registerInputHandler('handler', ...)`. As recommended by the Shiny documentation, if the input handler is part of a package, it is best practice to name it like `packageName.widgetName`.
   - a __function__ to transform data, having data as main parameter.
   
-Below we exceptionally include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result:
+Below we directly include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result:
 
 ```{r, eval=FALSE}
 registerInputHandler("OSUICode.textDate", function(data, ...) {
@@ -1141,7 +1141,6 @@ registerInputHandler("OSUICode.textDate", function(data, ...) {
     res <- try(as.Date(unlist(data)), silent = TRUE)
     if ("try-error" %in% class(res)) {
       warning("Failed to parse dates!")
-      # as.Date(NA)
       data
     } else {
       res
@@ -1150,7 +1149,7 @@ registerInputHandler("OSUICode.textDate", function(data, ...) {
 }, force = TRUE)
 
 ui <- fluidPage(
-  tags$script(
+  tags$script(HTML(
     "$(function(){
       $(document).on('shiny:connected', function() {
         var currentTime = new Date();
@@ -1162,7 +1161,7 @@ ui <- fluidPage(
       });
     });
     "
-  ),
+  )),
   verbatimTextOutput("res1"),
   verbatimTextOutput("res2")
 )
@@ -1216,7 +1215,6 @@ We then define our custom handler. This code is run when the package is loaded a
         res <- try(as.Date(unlist(data)), silent = TRUE)
         if ("try-error" %in% class(res)) {
           warning("Failed to parse dates!")
-          # as.Date(NA)
           data
         } else {
           res
@@ -1237,7 +1235,6 @@ On the JavaScript side, we refer to the `OSUICode.textDate` defined input handle
 getType: function getType(el) {
   var dataType = $(el).data("data-type");
   if (dataType === "date") return "OSUICode.textDate";
-  // if (dataType === "date") return "shiny.date"
   else return false;
 }
 ```

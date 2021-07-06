@@ -43,7 +43,7 @@ server <- function(input, output, session) {
   sliderValue <- reactive({
     # computationally intensive task
     Sys.sleep(3)
-    50
+    150
   })
   
   observeEvent(sliderValue(), {
@@ -361,9 +361,8 @@ Combining `Shiny.setInputValue` and `Shiny.addCustomMessageHandler`, here is a f
 that sets the body background as a result of a simple button click.
 We defined three JS pieces:
 
-  - `getPokemon` whose script is adapted from Colin Fay et al. (see [here](https://engineering-shiny.org/optimjs.html)). This function fetch the [pokeapi](https://pokeapi.co/).
-  data and if successful sets an input value, which will be available on the R side
-  - An event listener is set to the only button of the page so that each time we click,
+  - `getPokemon` whose script is adapted from Colin Fay et al. (see [here](https://engineering-shiny.org/optimjs.html)). This function fetches the [pokeapi](https://pokeapi.co/) data and if successful sets an input value, which will be available on the R side.
+  - An event listener is set to the only button on the page so that each time we click,
   we call `getPokemon` to select a random background image.
   - `input$pokeData` is actually a quite complex list and some manipulation is done from R in the `observeEvent()` block. Once done, we send the data back to JS through the websocket (the session object sends a message). 
   - On the JS side, the last block is a custom message handler that will add some inline
@@ -377,7 +376,7 @@ $(function() {
     let randId = Math.floor(Math.random() * (+151 + 1 - +1)) + +1;
     fetch('https://pokeapi.co/api/v2/pokemon/' + randId)
     // DEFINE WHAT HAPPENS WHEN JAVASCRIPT RECEIVES THE DATA
-    .then((data) =>{
+    .then((data) => {
       // TURN THE DATA TO JSON
       data.json().then((res) => {
         // SEND THE JSON TO R
@@ -433,7 +432,7 @@ insertDropdownItem <- function(
 
 We create the `insertMessageItem` function with two parameters:
 
-  - item, the HTML element we want to insert in the DOM.
+  - __item__, the HTML element we want to insert in the DOM.
   - __session__, used to send a message to JavaScript with `session$sendCustomMessage`.
   
 We don't use `processDeps` as it is very unlikely that our `messageItem` contains any extra dependency. item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a __type__, that is `add-message-item`, to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
@@ -456,8 +455,8 @@ $(function() {
 });
 ```
 
- We update dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. The number of items is given by the dropdown children (without the `dropdown-divier` class). These two extra JS steps save us to create extra `observeEvent()` on the server, as shown before.
-We then recover the sent message on the JS side with `Shiny.addCustomMessageHandler`, parse the string to HTML with `$.parseHTML` and insert it after the header (that is the next UI element of the dropdown body). The `bs4Dash::dropdownMenu()` is modified so that dependencies are [attached](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/insertMessageItem.R#L67). You may run the example yourself. Note we load `{OSUICode}` to overwrite the `{bs4Dash}` function:
+We also update the dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. The number of items is given by the dropdown children (without the `dropdown-divier` class). These two extra JS steps save us to create extra `observeEvent()` on the server, as shown before.
+We then recover the sent message on the JS side with `Shiny.addCustomMessageHandler`, parse the string to HTML with `$.parseHTML` and insert it after the header (that is the next UI element of the dropdown body). The `bs4Dash::dropdownMenu()` is modified so that dependencies are [attached](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/85cb171642de7a564e2774390964d1bfbbd5b4ee/R/insertMessageItem.R#L61). You may run the example yourself. Note we load `{OSUICode}` to overwrite the `{bs4Dash}` function:
 
 ```{r, eval=FALSE}
 # shinyAppDir(system.file(
@@ -467,7 +466,20 @@ We then recover the sent message on the JS side with `Shiny.addCustomMessageHand
 user <- "https://adminlte.io/themes/v3/dist/img/user2-160x160.jpg"
 library(OSUICode)
 shinyApp(
-  ui = ui,
+  ui = dashboardPage(
+    dark = FALSE,
+    header = dashboardHeader(
+      rightUi = OSUICode::dropdownMenu(
+        badgeStatus = "danger",
+        type = "messages"
+      )
+    ),
+    sidebar = dashboardSidebar(),
+    controlbar = dashboardControlbar(),
+    footer = dashboardFooter(),
+    title = "test",
+    body = dashboardBody(actionButton("add", "Add dropdown item"))
+  ),
   server = function(input, output, session) {
     observeEvent(input$add, {
       insertMessageItem(
@@ -613,8 +625,8 @@ userMessage <- function(..., author, date = NULL, image = NULL,
 There are three parts:
 
   - The __author__ tag, defined in the `messageInfo` variable.
-  - The __message__ itself, defined in the `messageTxt` variable.
   - The author __image__, contained in the `messageImg` variable.
+  - The __message__ itself, defined in the `messageTxt` variable.
 
 The message class varies depending whether it is __received__ or __sent__, which actually changes its position (left and right, respectively). Note the corresponding HTML classes like `direct-chat-text` since we will use them in the JS code.
 
@@ -650,6 +662,7 @@ list(
     ),
     plotOutput("distPlot")
   )
+)
 ```
 
 Interestingly, we may offer the ability to add input/output element in the message content (as shown above) with __dependencies__ that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the `shiny:::processDeps()` function on the R side for all elements with `lapply()` function. Finally, the message is sent to JS with `session$sendCustomMessage`:
@@ -760,7 +773,7 @@ whenever not necessary.
 
 Then, the next step is to implement the multiple options provided by the user (update, add, remove). We consider the simplest case, that is `remove` a message. We remind the reader that the __action__ contains the user choice in `updateUserMessages()`. What do we need to remove a given message?
 
-  - It's index contained in the __index__ variable.
+  - Its index contained in the __index__ variable.
   - The container __id__.
   - Remember that a message has the `direct-chat-msg` class.
   - Use the `remove` jQuery method.
@@ -799,7 +812,7 @@ author, the date, the image and the message type. Below is a reminder of the mes
 ```
 
 In our JS logic, we use the same template and replace any relevant element (see capital letters) 
-by the previously created variables. We might use the string [interpolation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#browser_compatibility), keeping in mind this is not compatible with Internet Explorer. We wrap all of these elements in a `direct-chat-msg` div which class may vary depending on the message type. If sent, the class is `direct-chat-msg right` and `direct-chat-msg` otherwise. The final step is to target the main container with `$("#" + id)`, look for the messages slot `find(".direct-chat-messages")` (the message container is nested in the main wrapper) and `append` it 
+by the previously created variables. We might use the string [interpolation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#browser_compatibility). We wrap all of these elements in a `direct-chat-msg` div which class may vary depending on the message type. If sent, the class is `direct-chat-msg right` and `direct-chat-msg` otherwise. The final step is to target the main container with `$("#" + id)`, look for the messages slot `find(".direct-chat-messages")` (the message container is nested in the main wrapper) and `append` it 
 to the DOM. We used `append` which adds the message at the end but could choose `prepend` to add it on top
 of all other messages. This behavior may be defined by the programmer with no option for the end-user.
 Alternatively, the developer could expose an external parameter to control the add position. 
@@ -854,7 +867,6 @@ look for all texts with `find(".direct-chat-text")`, refine our choice by target
 
 ```js
 else if (action === "update") {
-      
   // today's date
   let d = new Date();
   let month = d.getMonth() + 1;
@@ -883,111 +895,109 @@ else if (action === "update") {
 Don't forget to __unbind__, re-__initialize__ and __bind__ all inputs by successively calling `Shiny.unbindAll();`, `Shiny.initializeInputs();` and `Shiny.bindAll();`. If you ommit this part, the newly inserted input/output elements won't work! The whole JS code may be found below:
 
 ```js
-// userMessages
-  // ------------------------------------------------------------------
-  // This code creates acustom handler for userMessages
-  Shiny.addCustomMessageHandler(
-    "user-messages", function(message) {
-    let id = message.id, 
-      action = message.action, 
-      content = message.body, 
-      index = message.index;
+// This code creates a custom handler for userMessages
+Shiny.addCustomMessageHandler(
+  "user-messages", function(message) {
+  let id = message.id, 
+    action = message.action, 
+    content = message.body, 
+    index = message.index;
+  
+  // message text
+  // We use Shiny.renderHtml to handle the case where 
+  // the user pass input/outputs in the updated content 
+  // that require a new dependency not available in the 
+  // page at startup. 
+  if (content.hasOwnProperty("text")) {
+    let text;
+    if (content.text.html === undefined) {
+      text = content.text;
+    } else {
+      text = Shiny.renderHtml(
+        content.text.html, $([]), 
+        content.text.deps
+      ).html;
+    } 
+  }
+  
+  // unbind all
+  Shiny.unbindAll();
+  
+  if (action === "remove") {
+    $("#" + id)
+      .find(".direct-chat-msg")
+      .eq(index - 1)
+      .remove();
+  } else if (action === "add") {
+    let author = content.author, 
+      date = content.date, 
+      image = content.image, 
+      type = content.type;
     
-    // message text
-    // We use Shiny.renderHtml to handle the case where 
-    // the user pass input/outputs in the updated content 
-    // that require a new dependency not available in the 
-    // page at startup. 
-    if (content.hasOwnProperty("text")) {
-     let text;
-      if (content.text.html === undefined) {
-        text = content.text;
-      } else {
-        text = Shiny.renderHtml(
-          content.text.html, $([]), 
-          content.text.deps
-        ).html;
-      } 
+    // build the new message 
+    let newMessage = `
+      <div class="direct-chat-info clearfix">
+        <span class="direct-chat-name"> 
+          ${author}
+        </span>
+        <span class="direct-chat-timestamp" 
+          style="margin-left: 4px">
+          ${date}
+        </span>
+      </div>
+      <img class="direct-chat-img" src="${image}"/> 
+      <div class="direct-chat-text">${text}</div>`;
+      
+    // build wrapper
+    let newMessageWrapper;
+    if (type === "sent") {
+      newMessageWrapper = `
+        <div class="direct-chat-msg right">
+          ${newMessage} 
+        </div>`;
+    } else {
+      newMessageWrapper = `
+        <div class="direct-chat-msg">
+          ${newMessage} 
+        </div>`;
     }
     
-    // unbind all
-    Shiny.unbindAll();
+    // append message
+    $("#" + id)
+      .find(".direct-chat-messages")
+      .append(newMessageWrapper);
+  } else if (action === "update") {
     
-    if (action === "remove") {
-      $("#" + id)
-        .find(".direct-chat-msg")
-        .eq(index - 1)
-        .remove();
-    } else if (action === "add") {
-      let author = content.author, 
-        date = content.date, 
-        image = content.image, 
-        type = content.type;
+    // today's date
+    let d = new Date();
+    let month = d.getMonth() + 1;
+    let day = d.getDate();
+    let today = d.getFullYear() + '/' +
+      ((''+month).length<2 ? '0' : '') + month + '/' +
+      ((''+day).length<2 ? '0' : '') + day;
       
-      // build the new message 
-      let newMessage = `
-        <div class="direct-chat-info clearfix">
-          <span class="direct-chat-name"> 
-            ${author}
-          </span>
-          <span class="direct-chat-timestamp" 
-            style="margin-left: 4px">
-            ${date}
-          </span>
+    // we assume only text may be updated. 
+    // Does not make sense to modify author/date
+    
+    $("#" + id)
+      .find(".direct-chat-text")
+      .eq(index - 1)
+      .replaceWith(`
+        <div class="direct-chat-text">
+          <small class="text-red">
+            (modified: ${today})
+          </small>
+          <br>
         </div>
-        <img class="direct-chat-img" src="${image}"/> 
-        <div class="direct-chat-text">${text}</div>`;
-        
-      // build wrapper
-      let newMessageWrapper;
-      if (type === "sent") {
-        newMessageWrapper = `
-          <div class="direct-chat-msg right">
-            ${newMessage} 
-          </div>`;
-      } else {
-        newMessageWrapper = `
-          <div class="direct-chat-msg">
-            ${newMessage} 
-          </div>`;
-      }
-      
-      // append message
-      $("#" + id)
-        .find(".direct-chat-messages")
-        .append(newMessageWrapper);
-    } else if (action === "update") {
-      
-      // today's date
-      let d = new Date();
-      let month = d.getMonth() + 1;
-      let day = d.getDate();
-      let today = d.getFullYear() + '/' +
-        ((''+month).length<2 ? '0' : '') + month + '/' +
-        ((''+day).length<2 ? '0' : '') + day;
-        
-      // we assume only text may be updated. 
-      // Does not make sense to modify author/date
-      
-      $("#" + id)
-        .find(".direct-chat-text")
-        .eq(index - 1)
-        .replaceWith(`
-          <div class="direct-chat-text">
-            <small class="text-red">
-              (modified: ${today})
-            </small>
-            <br>
-          </div>
-        `)
-    }
-    
-    // Calls .initialize() for all of the input 
-    // objects in all input bindings,
-    // in the given scope (document)
-    Shiny.initializeInputs();
-    Shiny.bindAll(); // bind all inputs/outputs
-  });
+      `)
+  }
+  
+  // Calls .initialize() for all of the input 
+  // objects in all input bindings,
+  // in the given scope (document)
+  Shiny.initializeInputs();
+  Shiny.bindAll(); // bind all inputs/outputs
+});
 ```
 
 Output is shown on Figure \@ref(fig:shinydashboardPlus-chat-api). To reproduce that figure,

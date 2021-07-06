@@ -6,7 +6,7 @@ driving the R/JavaScript __communication__, which is quite frankly mind blowing.
 This is a feature leveraging the [httpuv](https://github.com/rstudio/httpuv) package. The __HTTP__ protocol is not very convenient to chain numerous __requests__ since the connection is closed after each request. If you already built complex apps festooned with __inputs__ and __outputs__, you may imagine the amount of exchanges necessary between R and JS, thereby making HTTP definitely not suitable. What we would need instead is a permanent connection, allowing __bidirectional__ fluxes, that is, if R wants to inform JS about something or if JS wants to send information to R. 
 
 ## JSON: exhange data
-Since R and JS a very different languages, we can't just send R code to JS and conversely. We must find a __common language__ to exchange data. Guess what? We'll be using JSON! __JSON__ stands for JavaScript Object Notation. JSON has the great advantage to be suitable for many languages, particularly R. It has the same structure as a JS object but represented as a character string, for instance:
+Since R and JS are very different languages, we can't just send R code to JS and conversely. We must find a __common language__ to exchange data. Guess what? We'll be using JSON! __JSON__ stands for JavaScript Object Notation. JSON has the great advantage that it is suitable for many languages, particularly R. It has the same structure as a JS object but can be serialized as a character string, for instance:
 
 ```{r}
 my_json <- '
@@ -240,7 +240,7 @@ ws_handler <- function(ws) {
 }
 ```
 
-The critical part is the `onMessage` call back which has to process the client message. As we'll send a JSON (from the client), we leverage `fromJSON()` to properly treat the message. It is printed for debugging purposes and the value is injected inside a `hist(rnorm())` function. The second task is to send a message to JS in order to update the gauge value. See it like an `updateSlider()` function for instance. We utilize `toJSON()` to send a random value to JS as well as a polite message. 
+The critical part is the `onMessage` call back which has to process the client message. As we'll send a JSON (from the client), we leverage `fromJSON()` to properly treat the message. It is printed for debugging purposes and the value is injected inside a `hist(rnorm())` function. The second task is to send a message to JS in order to update the gauge value. See it like an `updateSlider()` function for instance. We utilize `toJSON()` to send a random value to JS as well as a polite message.
 
 The HTTP response is returned by the `call` function and is typically defined as follows:
 
@@ -264,7 +264,7 @@ The app code is:
 startServer(
   "127.0.0.1",
   8080,
-  list(call = http_reponse, onWSOpen = ws_handler)
+  list(call = http_response, onWSOpen = ws_handler)
 )
 ```
 
@@ -431,7 +431,7 @@ ws$onMessage(function(binary, message) {
 })
 ```
 
-This is to simulate __concurrency__ that could occur between multiple client. To test it, you may try to call `my_app <- httpuv_app(5)`, open two browser tabs pointing to `127.0.0.1:8080`, update the slider on the first client and update it on the second client. What happens? Why? This highlights one fundamental limitation about Shiny: as R is single threaded, clients have to queue to get an answer from the server. 
+This is to simulate __concurrency__ that could occur between multiple client. To test it, you may try to call `my_app <- httpuv_app(5)`, open two browser tabs pointing to `127.0.0.1:8080`, update the slider on the first client and update it on the second client. What happens? Why? This highlights one fundamental limitation about Shiny: as R is single threaded, clients have to queue to get an answer from the server.
 
 ::: {.importantblock data-latex=""}
 Once done, don't forget to close the server connection with `my_app$stop()`!
@@ -445,7 +445,7 @@ The reader must understand that when Shiny inputs/outputs are modified on the cl
 In the previous section, we showed how R and JS can communicate through a `{httpuv}` powered websocket. Now let's see what happens in the context of Shiny. 
 
 ### The Shiny session object {#shiny-session}
-We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.4.0/session.html) object. Why do we say object? __session__ is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) __R6__ class. 
+We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.6.0/session.html) object. Why do we say object? __session__ is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) __R6__ class.
 Importantly, the session is unique to a given user. It means that two different clients cannot share the same session. This is important since it contains all information about input, output and client data.
 
 Upon calling `ShinySession$new()`, the initialization method takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. The session object exposes two methods to communicate with from R with JavaScript:
@@ -511,7 +511,8 @@ On the server, that is R, a websocket is initiated in the [startApp](https://git
 
 ```{r, eval=FALSE}
 ws = function(ws) {
-  # many things
+  
+  # ....; Extra code removed
   
   shinysession <- ShinySession$new(ws)
   
@@ -530,7 +531,7 @@ ws = function(ws) {
 }
 ```
 
-Overall, handlers drive the server websocket behavior. When the Shiny session is initialized, a message is sent through the WS, providing the sessionId, workerId and user to the client (see `Shiny.shinyapp.config` and section \@ref(shiny-js-object)):
+Overall, handlers drive the server websocket behavior. When the Shiny session is initialized, a message is sent through the WS, providing the `sessionId`, `workerId`, and `user` to the client (see `Shiny.shinyapp.config` and section \@ref(shiny-js-object)):
 
 ```{r, eval=FALSE}
 private$sendMessage(
@@ -542,19 +543,19 @@ private$sendMessage(
 )
 ```
 
-The workerId is not always used. In practice, it is relevant only in the context of solutions able to 
-load balance clients across multiple workers, that is shinyapps.io, RStudio Connect and Shiny server pro. 
+The `workerId` is not always used. In practice, it is relevant only in the context of solutions able to
+load balance clients across multiple workers, that is shinyapps.io, RStudio Connect, and Shiny server pro.
 
 `ws$onMessage` describes what should happen when the server receives an message from the client.
 It applies the `messageHandler` function that, in short:
 
   - __Decodes__ the received message.
-  - __Processes__ the message. At initialization, the client send a message with an `init` method tag,
-  which tells Shiny to manage input (`manageInputs(msg$data, now = TRUE)`) before running any observer (since input don't have value yet). After initialization, client messages have the `update` tag, meaning that we wait for observers to run before. 
+  - __Processes__ the message. At initialization, the client send a message with an `init` key,
+  which tells Shiny to manage `inputs` before running any observer (since `inputs` does not have values yet). After initialization, client messages have the `update` key, meaning that we wait for observers to run before.
 
 Finally, when the server connection is closed, all client connections are also closed.
 
-All those handlers are [applied](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L537) by `handlerManager$addWSHandler(appHandlers$ws, "/", tail = TRUE)`:
+<!-- All those handlers are [applied](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L537) by `handlerManager$addWSHandler(appHandlers$ws, "/", tail = TRUE)`:
 ```{r, eval=FALSE}
 # see middleware.R
 httpuvApp <- handlerManager$createHttpuvApp()
@@ -567,6 +568,7 @@ addWSHandler = function(wsHandler, key, tail = FALSE) {
   wsHandlers$add(wsHandler, key, tail)
 }
 ```
+-->
 
 ### Client side
 On the JS side, the socket creation occurs in the `shinyapps.js` [file](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L58):
@@ -601,7 +603,7 @@ socket.onopen = function() {
 }
 ```
 
-The `shiny:connected` event is triggered, any disconnected overlay (the famous grayed out screen) is then removed from the DOM. Initial input values are sent to the server via the `send` method. The `onmessage` registry aims at handling messages received from the server:
+The `shiny:connected` event is triggered, any disconnected overlay (the _famous_ grayed out screen) is then removed from the DOM. Initial input values are sent to the server via the `send` method. The `onmessage` registry aims at handling messages received from the server:
 
 
 ```js
@@ -610,7 +612,7 @@ socket.onmessage = function(e) {
 };
 ```
 
-It subsequently invokes the `dispatchMessage` method that sends message to all handlers (through `_sendMessagesToHandlers`), triggering the `shiny:message` event. Shiny has internal and custom provided handlers (understand user-defined) stored in separate arrays. Each time, a message type matches a given handler, it is treated. For instance, there is a dedicated internal handler for input messages, that bridges the gap between a given input and the corresponding input binding. This handler eventually triggers the `inputBinding.receiveMessage` method so that the input value is updated on the client. We discuss this in detail in the following section \@ref(update-input-lifecycle).
+It subsequently invokes the `dispatchMessage` method that sends message to all handlers, triggering the `shiny:message` event. Shiny has internal and custom provided handlers (read user-defined) stored in separate arrays. Each time, a message type matches a given handler, it is treated. For instance, there is a dedicated internal handler for input messages, that bridges the gap between a given input and the corresponding input binding. This handler eventually triggers the `inputBinding.receiveMessage` method so that the input value is updated on the client. We discuss this in detail in the following section \@ref(update-input-lifecycle).
 
 Finally the `onclose` method is called when the websocket connection is closed. 
 
