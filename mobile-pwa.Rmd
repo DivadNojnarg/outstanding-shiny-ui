@@ -114,64 +114,39 @@ We would like to create a __JSON__ configuration file like this:
     }
     // ...
   ],
-  "start_url": "https://whatever-url.com/",
+  "start_url": "<APP_URL>",
   "background_color": "#3367D6",
   "display": "standalone",
   "scope": "/",
-  "theme_color": "#3367D6"
+  "theme_color": "#3367D6",
+  "shortcuts": [
+    {
+      "name": "Open toast",
+      "short_name": "Shortcut",
+      "description": "Do something",
+      "url": "<APP_URL>/...",
+      "icons": [{ "src": "icons/shortcut.png", "sizes": "192x192" }]
+    }
+  ]
 }
 ```
 
 This file has to be accessible by the app, hence best practice is to put it in the `/www` folder, 
-images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest()` function writes a JSON file at the provided location:
+images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest` function writes a JSON file at the provided location.
+Interestingly the `shortcuts` fields gives the ability to start the app in a specific state, so that end users save time. This feature is only supported by latest Android devices as well as up to date Windows 10 computers (no Apple support). In practice, the shortcut url can be processed by `shiny::parseQueryString` on the server side. For instance, if the url contains a query string like `https://domain/path/?foo=1`, we could do:
 
-```{r}
-create_manifest <- function(
-  path, 
-  name = "My Progressive Web App", 
-  shortName = "My App",
-  description = "What it does!", 
-  lang = "en-US",
-  startUrl = "/", 
-  display = c("minimal-ui", "standalone", "fullscreen", "browser"),
-  background_color = "#ffffff", 
-  theme_color = "#ffffff"
-) {
-
-  display <- match.arg(display)
-
-  manifest <- list(
-    name = name,
-    short_name = shortName,
-    description = description,
-    lang = lang,
-    start_url = startUrl,
-    display = display,
-    background_color = background_color,
-    theme_color = theme_color,
-    icons = data.frame(
-      src = "icons/icon-144.png",
-      sizes = "144x144"
-    )
-  )
-
-  # create /www folder if does not exist yet
-  if (!dir.exists(paste0(path, "/www"))) {
-    dir.create(paste0(path, "/www/icons"), recursive = TRUE)
+```{r, eval=FALSE}
+observeEvent(session$clientData$url_search, {
+  query <- parseQueryString(session$clientData$url_search)
+  req(length(query) > 0)
+  # Ways of accessing the values
+  if (as.numeric(query$foo) == 1) {
+    f7Toast(text = "Plop")
   }
-  jsonlite::write_json(
-    manifest, 
-    path = paste0(path, "/www/manifest.webmanifest"),
-    pretty = TRUE,
-    auto_unbox = TRUE
-  )
-  
-  ui_done("Web manifest successfully created!")
-}
+})
 ```
 
-The web manifest and icons have to be included in the `head` before the Google PWA compatibility
-script:
+The web manifest and icons have to be included in the `head` before the Google PWA compatibility script:
 
 ```html
 <link rel="manifest" href="manifest.webmanifest" />
@@ -181,8 +156,7 @@ script:
 ```
 
 
-`set_pwa()` includes a `create_pwa_dependency()` function that creates an HTML __dependency__ 
-containing all necessary resources:
+`set_pwa()` includes a `create_pwa_dependency()` function that creates an HTML __dependency__ containing all necessary resources:
 
 ```{r, eval=FALSE}
 #' PWA dependencies utils
