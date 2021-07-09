@@ -67,9 +67,10 @@ validate_width <- function(width) {
   }
 }
 
-# validate_width(-1)
-# validate_width(13)
-# validate_width("string")
+validate_width(4)
+try(validate_width(-1)) # will fail
+try(validate_width(13)) # will fail
+try(validate_width("string")) # will fail
 ```
 
 To check the status parameter, we save the valid statuses in a vector and take the `validStatuses` function from `{shinydashboard}` [utils](https://github.com/rstudio/shinydashboard/blob/master/R/utils.R). It also make sense to create a function since this parameter is widely used among other template components. 
@@ -168,18 +169,18 @@ We recommend to be __reasonable__ and not to validate every single parameter, as
 #### Validating tags
 With the above approach, it takes some time to create all validation functions. Fortunately, packages like `{shinydashboard}` include really powerful validation functions, especially `tagAssert()`. This function has been included in the book side package (`{OSUICode}`) so that you may use it at any time:
 
-```{r, eval=FALSE}
+```{r}
 library(OSUICode)
 myTag <- div(class = "bg-blue")
 
 tagAssert(myTag, type = "div")
-tagAssert(myTag, type = "li") # will fail
+try(tagAssert(myTag, type = "li")) # will fail
 tagAssert(myTag, class = "bg-blue")
 ```
 
 Importantly, `tagAssert()` raises an error if the condition is not fulfilled. Another function, `tagMatches()` simply returns `TRUE` or `FALSE`. It looks for `ìd`, `class`, `name` and any other tag attribute like `data-value`. Like `tagAssert()`, `tagMatches()` is also available in `{OSUICode}`.
 
-```{r, eval=FALSE}
+```{r}
 tagMatches(myTag, id = "d")
 tagMatches(myTag, class = "bg-blue")
 ```
@@ -260,8 +261,8 @@ validate_tabName <- function(tabName) {
     )
   }
 }
-# validate_tabName("test%") # fails
 validate_tabName("plop")
+try(validate_tabName("test%")) # will fail
 ```
 
 `validate_tabName()` must be then inserted at the beginning of `tabler_navbar_menu_item()` as well as in `tabler_tab_item()`, the latter also relying on tabName.
@@ -277,7 +278,7 @@ tabler_navbar_menu <- function(...) {
 
 A classic method to inspect items provided to `tabler_navbar_menu()` is to capture them in a list. We extract the children of those items `lapply(list(...) , "[", 3)`. As a reminder, a shiny tag is a structure where the first position holds the tag name, the second is a named list of attributes and the third slot is for children (See chapter \@ref(htmltools-overview)). For each children we apply the `{shinydashboard}` internal function `findAttribute()`, that allows to search for a specific attribute value in a given tag. We use the `vapply()` to return an atomic vector (like `c(1, 2`), lists are vectors but recursive!) and compute the sum of the vector. Each `TRUE` occurrence is counted as 1 and `FALSE` 0. Therefore, if the latter is higher than 1, it means that the user provided more than 1 selected tab, which should subsequently raise an error:
 
-```{r, eval=FALSE}
+```{r}
 tabler_navbar_menu <- function(...) {
   
   items <- lapply(list(...) , `[`, 3)
@@ -297,21 +298,23 @@ tabler_navbar_menu <- function(...) {
   tags$ul(class = "nav nav-pills navbar-nav", ...)
 }
 
-# the code below must fail
-menu <- tabler_navbar_menu(
-  tabler_navbar_menu_item(
-    text = "Tab 1",
-    icon = NULL,
-    tabName = "tab1",
-    selected = TRUE
-  ),
-  tabler_navbar_menu_item(
-    text = "Tab 2",
-    icon = NULL,
-    tabName = "tab2",
-    selected = TRUE
+# will fail
+try({
+  menu <- tabler_navbar_menu(
+    tabler_navbar_menu_item(
+      text = "Tab 1",
+      icon = NULL,
+      tabName = "tab1",
+      selected = TRUE
+    ),
+    tabler_navbar_menu_item(
+      text = "Tab 2",
+      icon = NULL,
+      tabName = "tab2",
+      selected = FALSE
+    )
   )
-)
+})
 ```
 
 
@@ -345,7 +348,7 @@ test_that("validate padding works", {
 
 So far so good. In few lines of code, we substantially increased the __robustness__ of our function without increasing its __complexity__. Now, let's try to remove the `validate_width()` step from the `tabler_card()`.
 
-```{r, eval=FALSE}
+```{r}
 tabler_card <- function(..., title = NULL, status = NULL, 
                         width = 6, stacked = FALSE, 
                         padding = NULL) {
@@ -469,7 +472,7 @@ This is time to set expectations:
   
 and translate into `{testthat}`:
 
-```{r, eval=FALSE}
+```{r}
 test_that("update progress works", {
   update_tabler_progress(
     id = "myprogress", 
