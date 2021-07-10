@@ -95,7 +95,8 @@ window.addEventListener('load', () => {
 ```
 
 In the `{shinyMobile}` case, as Framework7 already registers any provided __service
-worker__, we don't need that initialization script. Therefore, we actually call:
+worker__, we don't need that initialization script. Therefore, to skip the creation 
+of `sw-register.js` and importing it in `main.js`, we should actually call:
 
 ```{r, eval=FALSE}
 set_pwa("inst/examples/pwa-app", register_service_worker = FALSE)
@@ -142,7 +143,7 @@ We would like to create a __JSON__ configuration file like this:
 ```
 
 This file has to be accessible by the app, hence best practice is to put it in the `/www` folder, 
-images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest` function writes a JSON file at the provided location.
+icon images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest` function writes a JSON file at the provided location.
 Interestingly the `shortcuts` fields gives the ability to start the app in a specific state, so that end users save time. This feature is only supported by latest Android devices as well as up to date Windows 10 computers (no Apple support). In practice, the shortcut url can be processed by `shiny::parseQueryString` on the server side. For instance, if the url contains a query string like `https://domain/path/?foo=1`, we could do:
 
 ```{r, eval=FALSE}
@@ -162,11 +163,11 @@ The web manifest and icons have to be included in the `head` before the Google P
 <link rel="manifest" href="manifest.webmanifest" />
 <!-- include icon also from manifest -->
 <link rel="icon" type="image/png" 
-  href="icons/logo-144.png" sizes="144x144" />
+  href="icons/icon-144.png" sizes="144x144" />
 ```
 
 
-`set_pwa()` includes a `create_pwa_dependency()` function that creates an HTML __dependency__ containing all necessary resources:
+`set_pwa()` internally calls `create_pwa_dependency()` which creates an HTML __dependency__ containing all necessary resources:
 
 ```{r, eval=FALSE}
 #' PWA dependencies utils
@@ -210,7 +211,7 @@ which is convenient. Indeed, having to handle all possible screen sizes and diff
 tricky, repetitive and not interesting.
 
 The HTML dependency is downloaded with `create_dependency("pwacompat", options = charpente_options(bundle = FALSE))`.
-Don't forget to update the `add_dependencies()` list by including the two new dependencies:
+Don't forget to update the `add_dependencies()` call in `f7_page()` by including the two new dependencies:
 
 ```{r, eval=FALSE}
 f7_page <- function(..., navbar, toolbar, title = NULL, 
@@ -427,7 +428,7 @@ This service worker redirects the end user to the offline cached page (`offline.
 We strongly advise to keep the same file names. 
 :::
 
-The next step involves the service worker registration. Framework7 has a dedicated module in the app configuration. We modify `init.js` and run `build_js()` to update the minified file:
+The next step involves the service worker registration. Framework7 has a dedicated module in the app configuration. We modify the `config` in `init.js` before initializing the `app` and run `build_js()` to update the minified file:
 
 ```js
 serviceWorker: {
