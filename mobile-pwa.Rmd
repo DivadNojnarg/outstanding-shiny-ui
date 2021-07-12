@@ -18,7 +18,7 @@ To get a good idea of what our mission exactly is, we leverage the `Application`
 developer tools.
 
 The overall expected result is shown Figure \@ref(fig:mobile-pwa-1). Alternatively, one
-may use the Google Lighthouse utility to provide a general diagnosis to the app, as illustrated on Figure \@ref(fig:mobile-pwa-2). There are many categories like performance, accessibility. In our case, let's just select the PWA category, check the mobile device radio and click on generate a report.
+may use the [Google Lighthouse](https://developers.google.com/web/tools/lighthouse/) utility to provide a general diagnosis to the app, as illustrated on Figure \@ref(fig:mobile-pwa-2). There are many categories like performance, accessibility. In our case, let's just select the PWA category, check the mobile device radio and click on generate a report.
 
 ```{r mobile-pwa-1, echo=FALSE, fig.cap='Application tab of the developers tools', out.width='100%', fig.align = "center"}
 knitr::include_graphics("images/mobile/mobile-pwa-application.png")
@@ -40,12 +40,12 @@ knitr::include_graphics("images/mobile/mobile-pwa-lighthouse-result.png")
 
 ## `{charpente}` and PWA tools
 
-`{charpente}` has tools to help designing a PWA, particularly the `set_pwa` function, that does all the previously mentioned step in only one line of code. There are however few prerequisites:
+`{charpente}` has tools to help design a PWA, particularly the `set_pwa` function which does all the previously mentioned steps in only one line of code. There are however a few prerequisites:
 
   - The app must __belong to a package__.
   - The function must target the app directory.
   
-We create the `pwa-app` sub-folder and the `app.R` file:
+Let's create a `inst/examples/pwa-app` sub-folder and the `app.R` file:
 
 ```{r, eval=FALSE}
 library(shiny)
@@ -55,7 +55,17 @@ ui <- f7_page(
   "Test",
   navbar = f7_navbar("Title"),
   toolbar = f7_toolbar(),
-  title = "shinyMobile"
+  title = "shinyMobile",
+  list(
+    theme = "ios",
+    version = "1.0.0",
+    touch = list(
+      tapHold = TRUE
+    ),
+    color = "#42f5a1",
+    filled = TRUE,
+    dark = TRUE
+  )
 )
 
 server <- function(input, output, session) {}
@@ -71,7 +81,7 @@ set_pwa("inst/examples/pwa-app")
 This function generates a `manifest.webmanifest` file, downloads the Google PWA compatibility
 script, adds a custom dependency pointing to the `manifest.webmanifest` file and a `144x144` icon file,
 copies a boilerplate `service-worker.js` with its `offline.html` page and optionally registers the
-service worker (whose code is borrowed from [web.dev](https://web.dev/offline-fallback-page/#registering-the-service-worker):
+service worker (whose code is borrowed from [web.dev](https://web.dev/offline-fallback-page/#registering-the-service-worker)):
 
 ```js
 window.addEventListener('load', () => {
@@ -85,13 +95,14 @@ window.addEventListener('load', () => {
 ```
 
 In the `{shinyMobile}` case, as Framework7 already registers any provided __service
-worker__, we don't need that initialization script. Therefore, we actually call:
+worker__, we don't need that initialization script. Therefore, to skip the creation 
+of `sw-register.js` and importing it in `main.js`, we should actually call:
 
 ```{r, eval=FALSE}
 set_pwa("inst/examples/pwa-app", register_service_worker = FALSE)
 ```
 
-Importantly, this functions does not handle icon creation. There are tools such as 
+Importantly, this function does not handle icon creation. There are tools such as 
 [appsco](https://appsco.pe/developer/splash-screens) and 
 [app-manifest](https://app-manifest.firebaseapp.com), to create 
 those custom icons and splash screens, if you need to.
@@ -132,7 +143,7 @@ We would like to create a __JSON__ configuration file like this:
 ```
 
 This file has to be accessible by the app, hence best practice is to put it in the `/www` folder, 
-images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest` function writes a JSON file at the provided location.
+icon images being hosted in the `/www/icons` sub-directory. The `{charpente}` `create_manifest` function writes a JSON file at the provided location.
 Interestingly the `shortcuts` fields gives the ability to start the app in a specific state, so that end users save time. This feature is only supported by latest Android devices as well as up to date Windows 10 computers (no Apple support). In practice, the shortcut url can be processed by `shiny::parseQueryString` on the server side. For instance, if the url contains a query string like `https://domain/path/?foo=1`, we could do:
 
 ```{r, eval=FALSE}
@@ -152,11 +163,11 @@ The web manifest and icons have to be included in the `head` before the Google P
 <link rel="manifest" href="manifest.webmanifest" />
 <!-- include icon also from manifest -->
 <link rel="icon" type="image/png" 
-  href="icons/logo-144.png" sizes="144x144" />
+  href="icons/icon-144.png" sizes="144x144" />
 ```
 
 
-`set_pwa()` includes a `create_pwa_dependency()` function that creates an HTML __dependency__ containing all necessary resources:
+`set_pwa()` internally calls `create_pwa_dependency()` which creates an HTML __dependency__ containing all necessary resources:
 
 ```{r, eval=FALSE}
 #' PWA dependencies utils
@@ -197,10 +208,10 @@ However, we found some discrepancies between the developer tools recommendations
 PWA compatibility script. Therefore, we recommend to follow the developer tools prescriptions, that
 is to include at least one icon of size 144x144. All other elements are generated by the script itself, 
 which is convenient. Indeed, having to handle all possible screen sizes and different OS is particularly
-tricky, repetitive and not interesting.
+tricky, repetitive, and not interesting.
 
 The HTML dependency is downloaded with `create_dependency("pwacompat", options = charpente_options(bundle = FALSE))`.
-Don't forget to update the `add_dependencies()` list by including the two new dependencies:
+Don't forget to update the `add_dependencies()` call in `f7_page()` by including the two new dependencies:
 
 ```{r, eval=FALSE}
 f7_page <- function(..., navbar, toolbar, title = NULL, 
@@ -263,7 +274,7 @@ f7_page <- function(..., navbar, toolbar, title = NULL,
 }
 ```
 
-If you do `devtools::load_all()` and run the app again, you should see the new dependencies
+Calling `devtools::load_all()` and running the app again, you should see the new dependencies
 in the `head` (Figure \@ref(fig:mobile-pwa-deps)).
 
 ```{r mobile-pwa-deps, echo=FALSE, fig.cap='New PWA dependencies in the head tag.', out.width='100%'}
@@ -417,10 +428,10 @@ This service worker redirects the end user to the offline cached page (`offline.
 We strongly advise to keep the same file names. 
 :::
 
-The next step involves the service worker registration. Framework7 has a dedicated module in the app configuration. We modify `init.js` and run `build_js()` to update the minified file:
+The next step involves the service worker registration. Framework7 has a dedicated module in the app configuration. We modify the `config` in `init.js` before initializing the `app` and run `build_js()` to update the minified file:
 
 ```js
-serviceWorker: {
+config.serviceWorker = {
   path: window.location.pathname + 'service-worker.js',
   scope: window.location.pathname
 }
@@ -542,7 +553,7 @@ Notice that jQuery, required for easier DOM interactions, as well as Framework7 
 available to `offline.html`. This offline fallback relies on Framework7 for consistency reasons but could be replace by any other HTML page, keeping in mind the update
 the service worker. 
 
-Now, let's audit our app again: congrats! It is __installable__, reliable, although 
+Now, let's audit our app again: congrats! It is __installable__ and reliable, although 
 further PWA optimization may be provided. 
 
 ```{r mobile-pwa-audit-final, echo=FALSE, fig.cap='Installable shinyMobile app.', out.width='100%'}
@@ -584,8 +595,8 @@ To be able to install the app, make sure to replace `start_url` by the url
  Missing that step would cause an issue during the service worker registration.  
 :::
 
-Once the installation criteria are met, the web browser raises the __beforeinstallprompt__ event, except
-on the iOS platform, that is not yet compatible. We edit the `init.js` script and write:
+Once the installation criteria are met, the web browser raises the __beforeinstallprompt__ event, (except
+on the iOS platform which is not compatible yet. We edit the `init.js` script and write:
 
 ```js
 let deferredPrompt;
