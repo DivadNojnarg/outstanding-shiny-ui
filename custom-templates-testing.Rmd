@@ -38,7 +38,6 @@ tabler_card <- function(..., title = NULL, status = NULL, width = 6,
       )
     )
   )
-  
 }
 ```
 
@@ -48,7 +47,7 @@ The first thing is to think about what to validate. Here, we see at least three 
   - Checking the __width__ value.
   - Checking the __padding__ value.
   
-Writing validation tests requires knowledge about the underlying mechanisms. In our case, we must know the Bootstrap 4 __grid__ rules and valid color __statuses__. The Bootstrap 4 [grid](https://getbootstrap.com/docs/4.0/layout/grid/) ranges from 1 to 12. In other words, a card having a width of 12 will take the full page whereas, we may align three cards or width 4. Valid [statuses](https://getbootstrap.com/docs/4.0/utilities/colors/) are primary, secondary, success, info, danger, warning, light and dark.
+Writing validation tests requires knowledge about the underlying mechanisms. In our case, we must know the Bootstrap 4 __grid__ rules and valid color __statuses__. The Bootstrap 4 [grid](https://getbootstrap.com/docs/4.0/layout/grid/) ranges from 1 to 12. In other words, a card having a width of 12 will take the full page whereas, we may align three cards of width 4. Valid [statuses](https://getbootstrap.com/docs/4.0/utilities/colors/) are primary, secondary, success, info, danger, warning, light and dark.
 
 It is therefore pretty straightforward to validate the card width as it must be numeric and between 1 and 12. Moreover, since the template has other containers including the width parameter, we create a function to rule them all:
 
@@ -67,9 +66,10 @@ validate_width <- function(width) {
   }
 }
 
-# validate_width(-1)
-# validate_width(13)
-# validate_width("string")
+validate_width(4)
+try(validate_width(-1)) # will fail
+try(validate_width(13)) # will fail
+try(validate_width("string")) # will fail
 ```
 
 To check the status parameter, we save the valid statuses in a vector and take the `validStatuses` function from `{shinydashboard}` [utils](https://github.com/rstudio/shinydashboard/blob/master/R/utils.R). It also make sense to create a function since this parameter is widely used among other template components. 
@@ -153,7 +153,6 @@ tabler_card <- function(..., title = NULL, status = NULL,
       )
     )
   )
-  
 }
 ```
 
@@ -168,18 +167,18 @@ We recommend to be __reasonable__ and not to validate every single parameter, as
 #### Validating tags
 With the above approach, it takes some time to create all validation functions. Fortunately, packages like `{shinydashboard}` include really powerful validation functions, especially `tagAssert()`. This function has been included in the book side package (`{OSUICode}`) so that you may use it at any time:
 
-```{r, eval=FALSE}
+```{r}
 library(OSUICode)
 myTag <- div(class = "bg-blue")
 
 tagAssert(myTag, type = "div")
-tagAssert(myTag, type = "li") # will fail
+try(tagAssert(myTag, type = "li")) # will fail
 tagAssert(myTag, class = "bg-blue")
 ```
 
 Importantly, `tagAssert()` raises an error if the condition is not fulfilled. Another function, `tagMatches()` simply returns `TRUE` or `FALSE`. It looks for `ìd`, `class`, `name` and any other tag attribute like `data-value`. Like `tagAssert()`, `tagMatches()` is also available in `{OSUICode}`.
 
-```{r, eval=FALSE}
+```{r}
 tagMatches(myTag, id = "d")
 tagMatches(myTag, class = "bg-blue")
 ```
@@ -260,8 +259,8 @@ validate_tabName <- function(tabName) {
     )
   }
 }
-# validate_tabName("test%") # fails
 validate_tabName("plop")
+try(validate_tabName("test%")) # will fail
 ```
 
 `validate_tabName()` must be then inserted at the beginning of `tabler_navbar_menu_item()` as well as in `tabler_tab_item()`, the latter also relying on tabName.
@@ -275,12 +274,15 @@ tabler_navbar_menu <- function(...) {
 }
 ```
 
-A classic method to inspect items provided to `tabler_navbar_menu()` is to capture them in a list. We extract the children of those items `lapply(list(...) , "[", 3)`. As a reminder, a shiny tag is a structure where the first position holds the tag name, the second is a named list of attributes and the third slot is for children (See chapter \@ref(htmltools-overview)). For each children we apply the `{shinydashboard}` internal function `findAttribute()`, that allows to search for a specific attribute value in a given tag. We use the `vapply()` to return an atomic vector (like `c(1, 2`), lists are vectors but recursive!) and compute the sum of the vector. Each `TRUE` occurrence is counted as 1 and `FALSE` 0. Therefore, if the latter is higher than 1, it means that the user provided more than 1 selected tab, which should subsequently raise an error:
+A classic method to inspect items provided to `tabler_navbar_menu()` is to capture them in a list. We extract the children of those items via ``lapply(list(...), `[[`, "children")``. As a reminder, a shiny tag is a structure containing the tag name, a named list of attributes, and the children (See chapter \@ref(htmltools-overview)). For each children we apply the `{shinydashboard}` internal function `findAttribute()`, that allows to search for a specific attribute value in a given tag. We use the `vapply()` to return an atomic vector (like `c(1, 2`), lists are vectors but recursive!) and compute the sum of the vector. Each `TRUE` occurrence is counted as 1 and `FALSE` 0. Therefore, if the latter is higher than 1, it means that the user provided more than 1 selected tab, which should subsequently raise an error:
 
-```{r, eval=FALSE}
+```{r}
 tabler_navbar_menu <- function(...) {
   
-  items <- lapply(list(...) , `[`, 3)
+  items <- unlist(
+    lapply(list(...) , `[[`, "children"), 
+    recursive = FALSE
+  )
   res <- sum(
     vapply(
       items, 
@@ -297,26 +299,28 @@ tabler_navbar_menu <- function(...) {
   tags$ul(class = "nav nav-pills navbar-nav", ...)
 }
 
-# the code below must fail
-menu <- tabler_navbar_menu(
-  tabler_navbar_menu_item(
-    text = "Tab 1",
-    icon = NULL,
-    tabName = "tab1",
-    selected = TRUE
-  ),
-  tabler_navbar_menu_item(
-    text = "Tab 2",
-    icon = NULL,
-    tabName = "tab2",
-    selected = TRUE
+# will fail
+try({
+  menu <- tabler_navbar_menu(
+    tabler_navbar_menu_item(
+      text = "Tab 1",
+      icon = NULL,
+      tabName = "tab1",
+      selected = TRUE
+    ),
+    tabler_navbar_menu_item(
+      text = "Tab 2",
+      icon = NULL,
+      tabName = "tab2",
+      selected = FALSE
+    )
   )
-)
+})
 ```
 
 
 ## Testing templates elements
-Imagine if one day, someone or yourself accidentally remove the width validation function, after a significant refactoring. Later, you receive a new message from github, stating that someone opened a new issue. According to the report, the card is not properly displayed although no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes, so is your end user, which is even worse. 
+Imagine if one day, someone or yourself accidentally remove the width validation function, after a significant refactoring. Later, you receive a new message from GitHub, stating that someone opened a new issue. According to the report, the card is not properly displayed although no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes, so is your end user, which is even worse. 
 
 With a proper testing pipeline, this problem could have been avoided. Ironically, writing the corresponding test takes only two minutes.
 
@@ -345,13 +349,13 @@ test_that("validate padding works", {
 
 So far so good. In few lines of code, we substantially increased the __robustness__ of our function without increasing its __complexity__. Now, let's try to remove the `validate_width()` step from the `tabler_card()`.
 
-```{r, eval=FALSE}
+```{r}
 tabler_card <- function(..., title = NULL, status = NULL, 
                         width = 6, stacked = FALSE, 
                         padding = NULL) {
   
   # validation
-  validate_width(width)
+  # validate_width(width)
   validate_status(status)
   validate_padding(padding)
   
@@ -457,10 +461,10 @@ res <- session$lastCustomMessage
 
 ::: {.importantblock data-latex=""}
 Importantly, don't forget to set the session parameter to `session`, otherwise,
-it will default to `shiny::getDefaultReactiveDomain` that is `NULL`.
+it will default to `shiny::getDefaultReactiveDomain` which is `NULL` outside of the Shiny app.
 :::
 
-This is time to set expectations:
+Now we can set expectations:
 
   - `res` must be a list of length 2.
   - The expected custom handler type is `update-progress`.
@@ -469,7 +473,7 @@ This is time to set expectations:
   
 and translate into `{testthat}`:
 
-```{r, eval=FALSE}
+```{r}
 test_that("update progress works", {
   update_tabler_progress(
     id = "myprogress", 
@@ -504,7 +508,7 @@ We leverage the `{crrry}` packages developed by Colin Fay from ThinkR.
 Overall, `{crrry}` is an adaptation of `{crrri}`, specifically optimized for `{shiny}`, which is a native Chrome Remote Interface in R using the Chrome Debugging Protocol. In other words, it provides tools to programmatically control
 the web browser and do many things like inspecting a web page, 
 taking screenshots, testing... You may know `{shinytest}` that relies on another technology,
-phantomjs. The latter does not play well with `Bootstrap 4` templates, that's why we don't use it
+phantomjs. The latter does not play well with `Bootstrap 4` templates, which is why we don't use it
 here. 
 
 ::: {.noteblock data-latex=""}
@@ -527,6 +531,7 @@ p <- processx::process$new(
 Sys.sleep(2)
 
 p$is_alive()
+#> [1] TRUE
 ```
 
 That way, we can run our test in the main R process, after checking that our task `p` is alive. Here the app
@@ -541,15 +546,20 @@ test <- CrrryOnPage$new(
   url = "http://localhost:3515/",
   headless = TRUE
 )
+#> Running '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --no-first-run --headless \
+#>   '--user-data-dir=/Users/david/Library/Application Support/r-crrri/chrome-data-dir-qvxnsycg' \
+#>   '--remote-debugging-port=31683'
 ```
 
 We wait Shiny to be ready:
 
 ```{r, eval=FALSE}
 test$wait_for_shiny_ready()
+#> Shiny is computing
+#> ✔ Shiny is still running
 ```
 
-Note the `--remote-debugging-port=31683` that gives the link to the Chrome devtools link
+Note the output of `--remote-debugging-port=31683` that gives the link to the Chrome devtools link
 to inspect the current app, as shown Figure \@ref(fig:tabler-crrry-debug). 
 
 
@@ -575,6 +585,11 @@ test$call_js(
    slider.noUiSlider.set(50);
   "
 )
+#> ── Launching JS: var slider = document.getElementById('progress_value');
+#>     slider.noUiSlider.set(50);
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 ```
 
 According to Figure \@ref(fig:tabler-crrry-debug-2), the slider is properly updated,
@@ -592,6 +607,10 @@ val <- test$call_js(
   "parseInt($('#progress1').attr('aria-valuenow'));
   "
 )
+#> ── Launching JS: parseInt($('#progress1').attr('aria-valuenow'));
+#>     ──────────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(val$result$value, 50)
 
 # stop the test whenever satisfied
@@ -636,6 +655,7 @@ p <- processx::process$new(
 Sys.sleep(2)
 
 p$is_alive()
+#> [1] TRUE
 
 test <- CrrryOnPage$new(
   chrome_bin = pagedown::find_chrome(),
@@ -643,8 +663,13 @@ test <- CrrryOnPage$new(
   url = "http://localhost:3515/",
   headless = TRUE
 )
+#> Running '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --no-first-run --headless \
+#>   '--user-data-dir=/Users/david/Library/Application Support/r-crrri/chrome-data-dir-gwzcnjjd' \
+#>   '--remote-debugging-port=11028'
 
 test$wait_for_shiny_ready()
+#> Shiny is computing
+#> ✔ Shiny is still running
 ```
 
 At start, no link was selected, meaning we expect the first link to be active and shown. The navbar
@@ -656,15 +681,27 @@ of the active nav link items. We extract its index with `index` which is contain
 active <- test$call_js(
   "$('.navbar-nav').find('.nav-link.active').length"
 )
+#> ── Launching JS: $('.navbar-nav').find('.nav-link.active').length 
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(active$result$value, 1)
 
 test$wait_for_shiny_ready()
+#> Shiny is computing
+#> ✔ Shiny is still running
 
 res1 <- test$call_js(
   "$('.navbar-nav')
     .find('.nav-link.active')
     .attr('data-value')"
 )
+#> ── Launching JS: $('.navbar-nav')
+#>     .find('.nav-link.active')
+#>     .attr('data-value')
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(res1$result$value, "tab1")
 ```
 
@@ -675,6 +712,10 @@ for the element having `active show` classes. We recover its id which contains t
 res2 <- test$call_js(
   "$('.tab-content').find('.active.show').attr('id')"
 )
+#> ── Launching JS: $('.tab-content').find('.active.show').attr('id') 
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(res1$result$value, res2$result$value)
 ```
 
@@ -691,15 +732,27 @@ res3 <- test$call_js(
     .find('.nav-link.active')
     .attr('data-value')"
 )
+#> ── Launching JS: $('.navbar-nav')
+#>     .find('.nav-link.active')
+#>     .attr('data-value') 
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(res3$result$value, "tab2")
 
 test$wait_for_shiny_ready()
+#> Shiny is computing
+#> ✔ Shiny is still running
 
 res4 <- test$call_js(
   "$('.tab-content')
     .find('.active.show')
     .attr('id')"
 )
+#> ── Launching JS: $('.tab-content')
+#>     .find('.active.show')
+#>     .attr('id')
+#>     ───────────────────────────────────────────────────────────
 expect_equal(res3$result$value, res4$result$value)
 ```
 
@@ -709,21 +762,35 @@ to be back on tab 1:
 
 ```{r, eval=FALSE}
 test$call_js("$('#update').click();")
+#> ── Launching JS: $('#update').click(); 
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 
 res5 <- test$call_js(
   "$('.navbar-nav')
     .find('.nav-link.active')
     .attr('data-value')"
 )
+#> ── Launching JS: $('.navbar-nav')
+#>     .find('.nav-link.active')
+#>     .attr('data-value')
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(res5$result$value, "tab1")
 
 test$wait_for_shiny_ready()
+#> Shiny is computing
+#> ✔ Shiny is still running
 
 res6 <- test$call_js(
   "$('.tab-content')
     .find('.active.show')
     .attr('id')"
 )
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(res5$result$value, res6$result$value)
 ```
 
@@ -733,9 +800,17 @@ All Shiny input values are stored in the `Shiny.shinyapp.$inputValues` object, a
 
 ```{r, eval=FALSE}
 test$shiny_set_input("current_tab", "tab2")
+#> ── Setting id current_tab with value tab2 
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 tab_input <- test$call_js(
   "Shiny.shinyapp.$inputValues.current_tab"
 )
+#> ── Launching JS: Shiny.shinyapp.$inputValues.current_tab 
+#>     ───────────────────────────────────────────────────────────
+#> Shiny is computing
+#> ✔ Shiny is still running
 expect_equal(tab_input$result$value, "tab2")
 test$stop()
 ```
@@ -744,5 +819,3 @@ This does not effect the navbar but triggers the notification.
 
 As an exercise, we leave the reader to write a test to check the app behavior when
 the second tab is active at start. 
-
-

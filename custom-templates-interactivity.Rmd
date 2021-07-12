@@ -10,7 +10,7 @@ All the JavaScript handlers described below are gathered in an HTML dependency, 
 tabler_custom_js <- htmlDependency(
   name = "tabler-bindings",
   version = "1.0.7",
-  src = c(href = "tabler"),
+  src = "tabler",
   package = "OSUICode",
   script = c(
     "input-bindings/navbarMenuBinding.js",
@@ -177,7 +177,7 @@ server <- function(input, output, session) {}
 shinyApp(ui, server)
 ```
 
-Question: Run the above example in an external web browser, then stop the app from RStudio. Try to move both sliders. What happens for the progress bars? Compare with a classic `update` function. How could you explain this? 
+**Question:** Run the above example in an external web browser, then stop the app from RStudio. Try to move both sliders. What happens for the progress bars? Compare with a classic `update` function. How could you explain this? 
 
 Overall this way is a bit more complex. Yet, assuming a very complex app with data manipulation, tons of inputs and visualizations, everything that can be done from the client (web browser) is less work for the R server part and a better end-user experience! Building outstanding shiny apps is not only designing amazing user interfaces, it's also about __optimization__ and speed as mentioned by Colin Fay et al. in their [book](https://engineering-shiny.org/optimjs.html) [@thinkrShiny].
 
@@ -207,7 +207,7 @@ aria-atomic="true" data-autohide="false" data-toggle="toast">
 </div>
 ```
 
-Toasts are mainly composed of a header and a body. There might be a close button in case the toast does not hide itself. If multiple toasts appear one after each others, they are stacked, the latest being at the bottom of the stack. The position is controlled with the style attribute like `style="position: absolute; top: 0; right: 0;"` for a top-right placement. Accessibility parameters like `aria-live` are detailed [here](https://getbootstrap.com/docs/4.3/components/toasts/#accessibility).
+Toasts are mainly composed of a header and a body. There might be a close button in case the toast does not hide itself after a period of time. If multiple toasts appear one after each others, they are stacked, the latest being at the bottom of the stack. The position is controlled with the style attribute like `style="position: absolute; top: 0; right: 0;"` for a top-right placement. Accessibility parameters like `aria-live` are detailed [here](https://getbootstrap.com/docs/4.3/components/toasts/#accessibility).
 
 ### The toast API
 Toasts have a JS API to control their behavior, for instance `$('<toast_selector>').toast(option)`, where option is a __JSON__ with the following fields:
@@ -219,7 +219,7 @@ Toasts have a JS API to control their behavior, for instance `$('<toast_selector
 There are three methods: __hide__, __show__ and __dispose__ (dispose ensures the toast does not appear anymore). Finally, we may fine tune the toast behavior with four events: `show.bs.toast`, `shown.bs.toast`, `hide.bs.toast`, `hidden.bs.toast` (like for tabs).
 
 ### R implementation
-We first create the toast skeleton. We assume our toast hides automatically, so that we may remove the delete button as well as the `data-autohide="false` attribute. All parameters are optional except the toast id, which is required to toggle the toast:
+We first create the toast skeleton. We assume our toast will eventually hide automatically, so we may remove the delete button as well as the `data-autohide="false` attribute. All parameters are optional except the toast id, which is required to toggle the toast:
 
 ```{r}
 tabler_toast <- function(id, title = NULL, subtitle = NULL, 
@@ -283,7 +283,7 @@ $(function() {
         .toast('show');
 
       // add custom Shiny input to listen to the toast state
-      $(`#${message.id}`).on('hidden.bs.toast', function() {
+      $(`#${message.id}`).once('hidden.bs.toast', function() {
         Shiny.setInputValue(
           message.id, 
           true, 
@@ -343,7 +343,7 @@ knitr::include_graphics("images/practice/tabler-toast.png")
 ```
 
 ## Transform an element in a custom action button
-As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The Tabler template has dropdown menus in the navbar and we would like to transform those dropdown items in action buttons. The `tabler_dropdown` functions takes the following parameters:
+As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The Tabler template has dropdown menus in the navbar and we would like to transform those dropdown items in action buttons. The `tabler_dropdown` function takes the following parameters:
 
   - __id__ is required by the `show_tabler_dropdown` (see below) function which opens the menu.
   - __title__ is the dropdown menu name.
@@ -385,14 +385,15 @@ tabler_dropdown <- function(..., id = NULL, title,
     ...
   )
   
-  div(class = "nav-item dropdown") %>% tagAppendChildren(
-    link_tag,
-    dropdown_tag
-  )
+  div(class = "nav-item dropdown") %>% 
+    tagAppendChildren(
+      link_tag,
+      dropdown_tag
+    )
 }
 ```
 
-To convert a dropdown item in an action button , we add the `action-button` class as well as the `id` parameter to recover the corresponding input id.
+To convert a dropdown item in an action button, we add the `action-button` class as well as the `id` parameter to recover the corresponding input id.
 
 ```{r}
 tabler_dropdown_item <- function(..., id = NULL) {
@@ -482,7 +483,7 @@ knitr::include_graphics("images/practice/tabler-dropdown.png")
 ```
 
 ## Tab events
-Do you remember about the navbar element and the __tabsetpanel__ system of Chapter \@ref(custom-templates-skeleton)? __Navs__ allow to organize any app into several tabs, acting like a multi pages application. This is a powerful tool for Shiny since it is currently not straightforward to create [multi-pages](https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698) Shiny apps like anyone would do with a website. Navs relie on the Bootstrap4 API but we only used few JS functions.
+Do you remember about the navbar element and the __tabsetpanel__ system of Chapter \@ref(custom-templates-skeleton)? __Navs__ allow to organize any app into several tabs, acting like a multi pages application. This is a powerful tool for Shiny since it is currently not straightforward to create [multi-pages](https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698) Shiny apps like anyone would do with a website. Navs rely on the Bootstrap4 API but we only use a few JS functions.
 
 ### Insert/Remove tabs in tabsetpanel {#insert-tabs}
 How about dynamically inserting/removing tabs from a `tabler_navbar()`? We chose this example since it involves extra technical details about Shiny. 
@@ -490,7 +491,7 @@ How about dynamically inserting/removing tabs from a `tabler_navbar()`? We chose
 How do we proceed? If you recall about the `tabler_navbar_menu_item()` and `tabler_tab_item()` coupling, inserting a tab implies to insert the trigger in the navigation menu as well as the content in the dashboard body. Therefore, we need to know the structure of what we insert. Below is a reminder:
 
   - `tabler_navbar_menu_item()` are `<li>` elements.
-  - `tabler_navbar_menu_item()` is a `<div>` element with specific classes.
+  - `tabler_tab_item()` is a `<div>` element with specific classes.
 
 ```html
 <li class="nav-item">
@@ -606,7 +607,7 @@ How could we explain that? It is a __dependency__ issue: the slider input relies
 knitr::include_graphics("images/practice/slider-deps.png")
 ```
 
-Even stranger, when we use `renderUI()` to conditionally render the slider, the dependency is only included when the go button is pressed. How does Shiny includes them? 
+Even stranger, when we use `renderUI()` to conditionally render the slider, the dependency is only included when the go button is pressed. How does Shiny include them? 
 
 
 ```{r, eval=FALSE}
@@ -647,14 +648,14 @@ renderUI <- function (
   expr, 
   env = parent.frame(), 
   quoted = FALSE, 
-  outputArgs = list()) {
+  outputArgs = list()
+) {
   installExprFunction(expr, "func", env, quoted)
   createRenderFunction(func, function(result, shinysession, 
                                       name, ...) {
     if (is.null(result) || length(result) == 0) 
       return(NULL)
-    #processDeps(result, shinysession)
-    result
+    processDeps(result, shinysession)
   }, uiOutput, outputArgs)
 }
 ```
