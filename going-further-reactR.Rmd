@@ -17,16 +17,16 @@ node -v
 npm -v
 ```
 
-At that stage it is also good to have [`yarn`](https://classic.yarnpkg.com/en/docs/install#mac-stable) as we'll need it for `{reactR}`.
+At that stage it is also good to have [`yarn`](https://classic.yarnpkg.com/en/docs/install#mac-stable), as we'll need it for `{reactR}`.
 
-If nothing is returned, please refer to section \@ref(install-node). To initiate a React [project](https://create-react-app.dev/), we leverage the __npx__ command:
+If nothing is returned, please refer to section \@ref(install-node). To initiate a React [project](https://create-react-app.dev/), we leverage the [`npx`](https://docs.npmjs.com/cli/v7/commands/npx) command:
 
 ```
 npx create-react-app <PROJECT_NAME>
 ```
 
 Replace `<PROJECT_NAME>` by the real name of your project. If this seems intimidating, 
-keep in mind this is the same concept has using the `{golem}` [package](https://github.com/ThinkR-open/golem) to initiate the creation of robust shiny projects, except that we work from the terminal.
+keep in mind this is the same concept that the `{golem}` [package](https://github.com/ThinkR-open/golem) uses to initiate the creation of robust shiny projects, except that we work from the terminal.
 
 Once done (the package initialization takes some time), 
 move to the project folder and launch the demo app:
@@ -78,7 +78,7 @@ ReactDOM.render(
 ```
 
 ::: {.noteblock data-latex=""}
-Recent version of `npx create-react-app` have `<React.StrictMode><App /></React.StrictMode>` instead of `App`, which does the same thing. You may also find `<App />`. In practice, we rarely modify this part.
+Recent versions of `npx create-react-app` have `<React.StrictMode><App /></React.StrictMode>` instead of `App`, which does the same thing. You may also find `<App />`. In practice, we rarely modify this part.
 :::
 
 In short, this inserts the `App` component inside the element having __root__ as id in the main
@@ -300,7 +300,10 @@ In this part, we see how to leverage `{reactR}` to bring the Argon design React 
 To install `{reactR}`:
 
 ```{r, eval=FALSE}
+# stable from CRAN
 install.packages("reactR")
+
+# lastest from GitHub
 remotes::install_github("react-R/reactR")
 ```
 
@@ -326,8 +329,7 @@ usethis::create_package(path, rstudio = TRUE)
 reactR::scaffoldReactShinyInput(
   "argon_action_button", 
   list(
-    name = "argon-design-system-react", 
-    version = "^1.1.0"
+    "argon-design-system-react" = "^1.1.0"
   )
 )
 ```
@@ -347,16 +349,14 @@ yarn run webpack --mode=development
 This installs all dependencies listed in the `package.json` file and create a `package-lock.json` file. If you ever used `{renv}`, this is very similar and guarantees isolation of your package. All dependencies are stored in the `node_modules` folder.
 
 ::: {.importantblock data-latex=""}
-We encountered few cases where the `yarn install` failed. In that case, you may 
-try `npm i argon-design-system-react` and also check your VPN settings. To check whether argon
-is properly installed, have a look inside the package __node_modules__ folder.
+We encountered few cases where the `yarn install` failed. In that case, downgrade your Node version to v12.x using `npx n 12`. In addition to downgrading Node, you might need to [tell `npm` to use `python` version 2.7](https://github.com/yarnpkg/yarn/issues/3519#issuecomment-395281871) and run `npm i argon-design-system-react`. If you are still running into errors, double check your VPN settings. To check whether argon is properly installed, the `argon-design-system-react` package folder should exist inside __./node_modules__.
 :::
 
 The `run webpack` command compiles the JS in production ready code. Should you need to customize the build pipeline, the webpack configuration is located in `webpack.config.js`. On the R side, the generated JS file is referenced in an HTML dependencies, located in the `<input_name>.R` file. 
 If you specify the `--mode=development` tag, it falls back to development code. 
 
 #### Implement the input JS logic
-It's time to develop the logic. The Argon documentation provides a [boilerplate](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/documentation/buttons), which we slightly simplified, as show below:
+It's time to develop the logic. The Argon documentation provides a [boilerplate](https://demos.creative-tim.com/argon-design-system-react/#/documentation/buttons), which we slightly simplified, as show below:
 
 ```jsx
 import { reactShinyInput } from 'reactR';
@@ -379,7 +379,7 @@ reactShinyInput(
 ```
 
 ::: {.noteblock data-latex=""}
-As you can see, we also need __reactstrap__ which is a Bootstrap React template.
+As you can see, we also need __reactstrap__ which is a Bootstrap React template. Install it with `yarn add --dev reactstrap`
 :::
 
 Notice the first two lines where we import the `reactShinyInput` function from the `{reactR}` JS core and [`reactstrap`](https://reactstrap.github.io/), a React powered Bootstrap 4 library. `reactShinyInput` provides a wrapper to automatically __bind__ the input element. This is extremely convenient as it allows to solely focus on the component logic rather than binding it to the shiny system. It takes three parameters:
@@ -401,7 +401,7 @@ setInputConfiguration(el, configuration) {
 }
 ```
 
-`getInputConfiguration` and `setInputConfiguration`, respectively get and set the user provided configuration, passed in the `createReactShinyInput()` R side function. Under the hood, in addition to ship the `{reactR}`, React, ReactTools HTML dependencies (and any user defined custom dependency), `createReactShinyInput()` does generate three tag elements:
+`getInputConfiguration` and `setInputConfiguration`, respectively get and set the user provided configuration, passed in the `createReactShinyInput()` R side function. Under the hood (in addition to ship the `{reactR}`, React, ReactTools HTML dependencies and any user defined custom dependencies), `createReactShinyInput()` generates three tag elements:
 
   - The first tag is the element placeholder containing the unique __id__. React will insert 
   the component inside this target with `ReactDOM.render`. 
@@ -419,9 +419,10 @@ reactR::createReactShinyInput(
 )
 ```
   
-The configuration and values are processed in the __initialize__ method, which is a great place since it is called before the input is bound:
+The configuration and values are processed in the __initialize__ method since it is called before the input is bound:
 
 ```js
+// Within reactR's initialize method...
 $(el).data('value', JSON.parse($(el).next().text()));
 $(el).data(
   'configuration', 
@@ -429,9 +430,10 @@ $(el).data(
 );
 ```
 
-They are stored in the corresponding data attributes. The most important part is the __render__ method that creates the React element , based upon its configuration, value and renders it in the DOM:
+The configuration and values are stored in the corresponding data attributes. The most important part is the __render__ method that creates the React element based upon its configuration and value and renders it in the DOM:
 
 ```js
+// reactR's render method
 render(el) {
   const element = React.createElement(component, {
     configuration: this.getInputConfiguration(el),
@@ -446,11 +448,11 @@ render(el) {
 The `render` method is called once inside `subscribe` and also each time the element is updated
 with `receiveMessage`. 
 
-Interestingly, `setValue` is made available to the React component. For the action button case, it is called each time the `onClick` event is triggered, that is each time the user clicks on the button. This is the only way to update its value since it is not accessible to the user through `update_argon_action_button()`. Other inputs like `textInput()` have the `onChange` event, fired each time the text field is updated. The value may also be updated 
+Interestingly, `setValue` is made available to the React component. For the action button case, it is called each time the `onClick` event is triggered, that is each time the user clicks on the button. This is the only way to update its value since it is not accessible to the user through `update_argon_action_buttonInput()`. Other inputs like `textInput()` have the `onChange` event, fired each time the text field is updated. The value may also be updated 
 by the user with `updateTextInput()`. Consequently, there is no general rule and the situation may
 vary from an input to another!
 
-For now, let's just erase the `{creatR}` boilerplate (`argon_action_button.jsx`) with the above code an recompile with `yarn run webpack`. We also have to tell Shiny we want to
+For now, let's just erase the `{reactR}` boilerplate (`argon_action_button.jsx`) with the above code an recompile with `yarn run webpack`. We also have to tell Shiny we want to
 use Bootstrap 4 instead of Bootstrap 3, through the `bslib::bs_theme` function:
 
 ```{r, eval=FALSE}
@@ -461,7 +463,7 @@ library(mypkg)
 
 ui <- fluidPage(
   theme = bslib::bs_theme(version = "4"),
-  argon_action_button("plop")
+  argon_action_buttonInput("plop")
 )
 
 server <- function(input, output, session) {
@@ -537,7 +539,7 @@ in the configuration named list. Be careful! Names matter since they are recover
 with `configuration.prop_name`:
 
 ```{r, eval=FALSE}
-argon_action_button <- function(
+argon_action_buttonInput <- function(
   inputId, 
   label, 
   status = "primary"
@@ -567,7 +569,7 @@ Once everything is up to date, we rebuild the JS, reload/document the package an
 ```{r, eval=FALSE}
 ui <- fluidPage(
   theme = bslib::bs_theme(version = "4"),
-  argon_action_button("plop", "Click me!")
+  argon_action_buttonInput("plop", "Click me!")
 )
 
 server <- function(input, output, session) {
@@ -580,7 +582,7 @@ shinyApp(ui, server)
 We may also modify the update input boilerplate since we don't change the button value:
 
 ```{r, eval=FALSE}
-update_argon_action_button <- function(
+update_argon_action_buttonInput <- function(
   session, 
   inputId, 
   configuration = NULL
@@ -597,15 +599,15 @@ devtools::load_all()
 ui <- fluidPage(
   theme = bslib::bs_theme(version = "4"),
   fluidRow(
-    argon_action_button("plop", "Click me!"),
-    argon_action_button("update", "Update button 1")
+    argon_action_buttonInput("plop", "Click me!"),
+    argon_action_buttonInput("update", "Update button 1")
   )
 )
 
 server <- function(input, output, session) {
   observe(print(input$plop))
   observeEvent(input$update, {
-    update_argon_action_button(
+    update_argon_action_buttonInput(
       session, "plop", 
       configuration = list(
         label = "New text", 
@@ -621,7 +623,7 @@ shinyApp(ui, server)
 
 #### Exercise
 1. Add a `size`, `outline` and `icon` (from fontawesome) parameters to the `ArgonButton` component in the corresponding R script.
-Hint: the `icon` parameter is the trickiest one. You might find helpful to capture its HTML dependency with `htmltools::htmlDependencies(iconTag)` so as to properly render it. In HTML `icon("bicycle")` produces `<i class="fa fa-bicycle" role="presentation" aria-label="bicycle icon"></i>`. However, in React we want `<i className="fa fa-bicycle />`. Therefore, you will have to extract the icon class and send it to JS in the configuration list.
+Hint: the `icon` parameter is the trickiest one. You might find helpful to capture its HTML dependency with `htmltools::findDependencies(iconTag)` so as to properly render it. In HTML `icon("bicycle")` produces `<i class="fa fa-bicycle" role="presentation" aria-label="bicycle icon"></i>`. However, in React we want `<i className="fa fa-bicycle />`. Therefore, you will have to extract the icon class and send it to JS in the configuration list.
 2. Implement the logic on the JS side. Hint: you may use the below code:
 
 ```jsx
@@ -678,13 +680,13 @@ library(mypkg)
 ui <- fluidPage(
   theme = bslib::bs_theme(version = "4"),
   fluidRow(
-    argon_action_button(
+    argon_action_buttonInput(
       "plop", 
       "Click me!", 
       size = "lg", 
       outline = TRUE
     ),
-    argon_action_button(
+    argon_action_buttonInput(
       "update", 
       "Update button 1", 
       icon = icon("bicycle")
@@ -695,7 +697,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   observe(print(input$plop))
   observeEvent(input$update, {
-    update_argon_action_button(
+    update_argon_action_buttonInput(
       session, "plop", 
       configuration = list(
         label = "New text", 
@@ -739,9 +741,10 @@ reactR::scaffoldReactShinyInput("argon_slider", edit = FALSE)
 ```
 
 It creates a new `srcjs/argon_slider.jsx` script. As Argon uses the pure JS API for noUIslider, 
-this would be too much work for us mainly because the provided `reactShinyInput` JS helper does not have a proper initialization method to create the slider instance. We would have to change it as per below:
+this would be too much work for us mainly because the provided `reactShinyInput` JS helper does not have a proper initialization method to create the slider instance. We would need to change it as per below:
 
 ```js
+// Within reactShinyInput
 initialize(el) {
   // Unchanged compared to reactR
   $(el).data('value', JSON.parse($(el).next().text()));
@@ -804,14 +807,7 @@ reactShinyInput(
 
 The `connect` property makes the slider bar background filled with the theme color. Figure \@ref(fig:react-argon-slider) shows what happens when this parameter is disabled.
 
-As we start to accumulate components, it is good practice to start modularizing our code. We create a `main.jsx` file:
-
-```
-nano srcjs/main.jsx
-```
-
-which contains the necessary code to load the common CSS assets, import 
-both button and slider components and initialize them:
+As we start to accumulate components, it is good practice to start modularizing our code. We create a `main.jsx` file containing the necessary code to load the common CSS assets and initialize both the button and slider components:
 
 ```jsx
 // Import argon CSS
@@ -907,7 +903,7 @@ shinyApp(ui, server)
 ```
 
 As shown on Figure \@ref(fig:react-argon-slider), the slider is properly displayed and the value
-is recovered from the server. However, nothing happens when the range is dragged. 
+is recovered from the server. However, Shiny is not notified when the range is dragged. 
 The reason is quite simple: we did not set the __setValue__ inside our JSX code yet.
 
 ```{r react-argon-slider, echo=FALSE, fig.cap='Slider input with Argon React', out.width='100%'}
@@ -915,7 +911,7 @@ knitr::include_graphics("images/going-further/react-argon-slider.png")
 ```
 
 The slider API provides many [events](https://refreshless.com/nouislider/events-callbacks/) but not all
-are suitable for us. Ideally, we would like an update:
+are suitable for us. Ideally, we would like to notify Shiny whenever:
 
   - Each time the range is released after dragging.
   - Each time the range is moved by arrow key (keyboard).
@@ -945,13 +941,22 @@ directly within the React component. We pass a parameter to the function, which 
 latest value:
 
 ```jsx
-value => setValue(parseFloat(value))
+(value) => setValue(parseFloat(value))
 ```
 
 The trick is to convert the value to a number since we recover a string by default. You may 
 use `parseInt` or `parseFloat`, depending whether you want a integer or the exact value.
 Right now, the slider cannot be moved with the keyboard. Adding the `keyboardSupport` prop
-make it possible. This may correspond to a parameter provided in the `argon_slider_input()` configuration. The `tooltips` parameter enhances the user experience by showing the current value, on top of the slider, while `pips` add a simple grid. Not mentioned in the documentation, we add some CSS properties (top and bottom margins) to improve the display. Importantly, as the update slider function passes a named list to JS, any missing property is dropped, which can lead to undefined values on the JS side and unexpected behavior. Therefore, it is good to put default values whenever necessary to avoid this kind of issue. For instance, assume you passed `orientation = "horizontal"` upon slider creation and forgot to put that parameter in the update list, you can do the following in the JSX code:
+enables this behavior. This prop value could also correspond to a parameter provided in the `argon_slider_input()`
+configuration. The `tooltips` parameter enhances the user experience by showing the current
+value, on top of the slider, while `pips` add a simple grid. Finally, we add some CSS 
+properties (top and bottom margins) to improve the display. 
+
+Importantly, as the update slider function passes a named list to JS, any missing property 
+are dropped. This can lead to undefined values on the JS side and unexpected behavior. 
+Therefore, it is good to put default values whenever necessary to avoid this kind of issue. 
+For instance, assume you passed `orientation = "horizontal"` upon slider creation and forgot 
+to put that parameter in the update list, you can do the following in the JSX code:
 
 ```jsx
 if (configuration.orientation === undefined) {
@@ -983,7 +988,7 @@ function ArgonSlider({configuration, value, setValue, el}) {
       range={rangeOpts}
       start={[value]}
       connect={[true, false]}
-      onChange={value => setValue(parseFloat(value))}
+      onChange={(value) => setValue(parseFloat(value))}
       keyboardSupport={configuration.keyboard}
       tooltips={configuration.tooltips}
       pips={pipOpts}
