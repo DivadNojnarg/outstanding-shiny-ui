@@ -25,10 +25,70 @@ Inside the function call, all named elements become __attributes__, whereas unna
 the corresponding R code is `input(disabled = NA)`. Since tag functions produce shiny tags, that is HTML elements, we can capture the HTML output by converting it to a character with `as.character()`, as shown above.
 
 ## Notations
-Whether to use `tags$div` or `div` depends if the tag is exported by default.
-For instance, you could use `div()` but not `nav` since nav does not have a dedicated function (only for `p`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `a`, `br`, `div`, `span`, `pre`, `code`, `img`, `strong`, `em`, `hr`). Rather prefer `tags$nav`. Alternatively, there exists a function called `withTags()`. Wrapping your code in this function allows code like this `withTags(nav(), ...)` instead of `tags$nav()`, thereby omitting the `tags$` prefixes. If you had to gather multiple tags together, choose `tagList()` over `list()`, although the HTML output is the same. The first has the `shiny.tag.list` class in addition to `list`. `{golem}` [@R-golem] allows to test if an R object is a tag list. In this case, using a list would cause the test fail.
+If you type `htmltools::tags$` in the R console, you should be suggested the most common available HTML tags, thereby making it fairly easy to switch between HTML and R, as shown Figure \@ref(fig:htmltools-tags)
 
-<!-- You're giving the reader a lot of options but at this point have limited ability to discern between them. I think you should give more concrete advice about what to use. And show some examples. -->
+```{r htmltools-tags, echo=FALSE, fig.cap='htmltools tags builder', out.width='100%'}
+knitr::include_graphics("images/htmltools/htmltools-tags.png")
+```
+
+However, for convenience, the most commonly used tags like `p`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `a`, `br`, `div`, `span`, `pre`, `code`, `img`, `strong`, `em`, `hr`, ...
+are accessible by a simple function call like:
+
+```{r, eval=FALSE}
+# good
+h1("This is a title")
+
+# correct but not necessary
+tags$h1("This is a title")
+```
+
+Therefore, whether to use `tags$<TAG_NAME` or `<TAG_NAME>` depends if the tag is exported by default. Since `nav` is not exported, we write:
+
+```{r, eval=FALSE}
+# correct
+tags$nav("This is the navigation")
+
+# fail
+try(nav("This is the navigation"))
+```
+
+When building custom templates, you will be writing a lot of tags! It might seem
+too much work to always write `tags$<TAG_NAME>`. There exists a function called `withTags()`, such that wrapping your code in this function allows code like this, much
+easier to write and read:
+
+```{r, eval=FALSE}
+# Better
+withTags(
+  nav(div(), ul(li(), li()))
+)
+
+# instead of 
+tags$nav(div(), tags$ul(tags$li(), tags$li()))
+```
+
+If you had to gather multiple tags together, choose `tagList()` over `list()`, although the HTML output is the same:
+
+```{r}
+# good
+tag_list_1 <- tagList(
+  p("Some text"),
+  div("Content")
+)
+
+str(tag_list_1)
+
+# correct but not optimal
+tag_list_2 <- list(
+  p("Some text"),
+  div("Content")
+)
+
+str(tag_list_2)
+```
+
+
+The first has the `shiny.tag.list` class in addition to `list`. `{golem}` [@R-golem] allows to test if an R object is a tag list. In this case, using a list would cause the test fail.
+
 
 ## Adding new tags
 You may define extra HTML tags with the `tag()` function:
@@ -45,13 +105,10 @@ str(customTag)
 tag_to_string(customTag)
 ```
 
-Good practice is to check whether the created tag is in line with the HTML validation [rules](https://validator.w3.org/). 
-
-<!-- Why is that important? How exactly do you check it? -->
+Good practice is to check whether the created tag is in line with the HTML validation rules. If you want to check a web page, particularly a Shiny generated HTML page, W3C has an online validation [tool](https://validator.w3.org/). Be careful as, not following this rule will cause the HTML code to be invalid. By default, Shiny complies with all the recommendations, but we suggest you to be careful with any exotic template. 
 
 ## Alternative way to write tags
-`{htmltools}` comes with the `HTML()` function that you can feed with raw HTML. Below, both
-code give exactly the same output:
+`{htmltools}` comes with the `HTML()` function that you can feed with raw HTML. Below, both code give exactly the same output:
 
 ```{r, eval = FALSE}
 HTML("<div>Blabla</div>")
@@ -79,11 +136,26 @@ Dipert from RStudio, namely [html2R](https://github.com/alandipert/html2r), show
 knitr::include_graphics("images/htmltools/htmltools-html2R.png")
 ```
 
-<!-- What's the advantage of converting HTML to R functions? -->
+By converting HTML to R functions, it's possible to easily parameterize the generated tag.
+and reuse it later in the code. It also allows to maintain one single code base (only R), which is much simpler in the long run if the code had to be reviewed by people non familiar with HTML.
 
 ## Playing with tags
 
-<!-- I think you need some concrete goal to motivate the work below. Can you come up with a use case for why you'd want to do this? -->
+The ultimate goal of `{htmltools}` is to manipulate, combine and rearrange tags in order to create flexible and rich HTML structures from R. Would you believe that the below example heavily relies on `{htmltools}` (Figure \@ref(fig:shinyRPG))?
+
+```{r shinyRPG, echo=FALSE, fig.cap='shinyRPG was built with htmltools', out.width='100%'}
+knitr::include_graphics("images/htmltools/shinyRPG.png")
+```
+
+If you want to try out this example, below is the showcase code:
+
+```{r, eval=FALSE}
+remotes::install_github("RinteRface/shinyRPG")
+library(shinyRPG)
+shinyRPGDemo()
+```
+
+Before becoming an `{htmltools}` wizard, let's learn the shiny tags fundamentals. 
 
 ### Tags structure
 
@@ -140,11 +212,167 @@ myTag$children[[2]]$attribs$class <- "adult"
 tag_to_string(myTag)
 ```
 
+
+### Practical examples: shinyRPG
+
+Below we give concrete example on how to customize tags in the real life. There exists a 
+nice RPG HTML template, that is [rpgui](http://ronenness.github.io/RPGUI/). It provides
+the necessary elements to get started developing nice RPG looking user interfaces, as depicted by Figure \@ref(fig:rpgui-select).
+
+```{r rpgui-select, echo=FALSE, fig.cap='rpgui select input', out.width='100%'}
+knitr::include_graphics("images/htmltools/rpgui-select.png")
+```
+
+In the following, we consider the select input, which does not have exactly the same 
+structure as the original shiny tag. However, it is convenient to reuse the shiny function
+to limit our amount of work. We therefore start to write our custom input:
+
+```{r}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+}
+```
+
+According to the rpgui documentation, a select tag is composed of the following HTML elements:
+
+```html
+<select class="rpgui-dropdown">
+	<option value="option1">option1</option>
+	<option value="option2">option2</option>
+	...
+</select>
+```
+
+Adding a label tag on top of the slider, this is what we would like to get:
+
+```html
+<div>
+  <label id="variable-label" for="variable">Variable:</label>
+  <select 
+    id="variable" 
+    class="rpgui-dropdown">
+    <option value="cyl" selected>Cylinders</option>
+    <option value="am">Transmission</option>
+    <option value="gear">Gears</option>
+  </select>
+</div>
+```
+
+We compare with our own `rpgSelect` function:
+
+```{r, eval=FALSE}
+rpgSelect(
+  "variable", 
+  "Variable:",
+  c("Cylinders" = "cyl",
+    "Transmission" = "am",
+    "Gears" = "gear")
+)
+```
+
+```{r, echo=FALSE}
+rpgSelect(
+  "variable", 
+  "Variable:",
+  c("Cylinders" = "cyl",
+    "Transmission" = "am",
+    "Gears" = "gear")
+) %>% tag_to_string()
+```
+
+As shown in the above output, this is not exactly matching:
+
+  - The outer div should not have any class.
+  - The label should not have any class.
+  - The input tag is wrapped inside a div container. It should not.
+  - The input tag should have the `rpgui-dropdown` or `rpgui-list` class,
+  depending on the size value. 
+  
+To fix the first problem we target the outer tag (`selectTag`), that is the tag returned by our `rpgSelect` function. The second row cleans the label class. The third row removes the extra outer div and only keeps its children, corresponding to the input tag. The last instruction ensure to set the appropriate class, depending on the size value:
+
+```{r, eval=FALSE}
+# Modify tag
+selectTag$attribs$class <- NULL
+# Clean extra label class
+selectTag$children[[1]]$attribs$class <- NULL
+# Remove extra outer div
+selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
+
+# Add good class for rppgui binding
+selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
+  "rpgui-dropdown"
+} else {
+  "rpgui-list"
+}
+```
+
+The final version is shown below:
+
+```{r}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  selectTag <- shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+
+  # Modify tag
+  selectTag$attribs$class <- NULL
+  # Clean extra label class
+  selectTag$children[[1]]$attribs$class <- NULL
+  # Remove extra outer div
+  selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
+
+  # Add good class for rppgui binding
+  selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
+    "rpgui-dropdown"
+  } else {
+    "rpgui-list"
+  }
+
+  selectTag
+}
+```
+
+This yields:
+
+```{r, echo=FALSE}
+rpgSelect(
+  "variable", 
+  "Variable:",
+  c("Cylinders" = "cyl",
+    "Transmission" = "am",
+    "Gears" = "gear")
+) %>% tag_to_string()
+```
+
+
 ### Useful functions for tags
+As shown in the previous shinyRPG example, adding a class and an id to a tag may be done with:
 
-`{htmltools}` provides powerful functions to seamlessly manipulate tags. Let's review some of them below.
+```{r, eval=FALSE}
+tag$attribs$class <- "class"
+tag$attribs$id <- "id"
+```
 
-<!-- Why are these functions important? When would you use them? -->
+These are two lines of code, and believe me, for complex examples, it might be much worse, thereby significantly impairing code readability.
+Fortunately, `{htmltools}` provides powerful functions to overcome this issue. Let's review some of them below.
 
 #### Add attributes
 
@@ -173,7 +401,7 @@ myTag <- tagAppendAttributes(
 tag_to_string(myTag)
 ```
 
-You could proceed as follows but this requires two steps:
+As a reminder, even though correct, the classic approach would requires two steps:
 
 ```{r}
 myTag$attribs[["data-toggle"]] <- "newValue"
@@ -428,156 +656,27 @@ map(1:5, function(i) span(i)) %>% div()
 tag_to_string(div(lapply(1:5, function(i) span(i))))
 ```
 
-## Practical examples
+## Modern `{htmltools}`
 
-<!-- Could you move this earlier and make it the motivation for the rest of the chapter? -->
+As of `{htmltools}` 0.5.2, the new `tagQuery` function makes manipulating shiny tags a real pleasure, in addition to be more efficient. If you know and like jQuery (Chapter \@ref(intro-jquery)), the API is really similar. If you don't know jQuery yet, no problem, we'll see it later in the book!
 
-Below we give concrete example on how to customize tags in the real life. There exists a 
-nice RPG HTML template, that is [rpgui](http://ronenness.github.io/RPGUI/). It provides
-the necessary elements to get started developing nice RPG looking user interfaces, as depicted by Figure \@ref(fig:rpgui-select).
+### Basics
+`tagQuery` accepts a tag or list of tags as input and returns a data structure containing:
 
-```{r rpgui-select, echo=FALSE, fig.cap='rpgui select input', out.width='100%'}
-knitr::include_graphics("images/htmltools/rpgui-select.png")
-```
+- `$allTags()`: all tags.
+- `$selectedTags()`: selected tags, default to `$allTags()`.
 
-In the following, we consider the select input, which does not have exactly the same 
-structure as the original shiny tag. However, it is convenient to reuse the shiny function
-to limit our amount of work. We therefore start to write our custom input:
+As an example:
 
 ```{r}
-rpgSelect <- function(inputId, label, choices, selected = NULL,
-                      multiple = FALSE, size = NULL) {
-  shiny::selectInput(
-    inputId,
-    label,
-    choices,
-    selected,
-    multiple,
-    selectize = FALSE,
-    width = NULL,
-    size
-  )
-}
+tag_query <- tagQuery(div(p()))
+class(tag_query)
+tag_query
 ```
 
-According to the rpgui documentation, a select tag is composed of the following HTML elements:
+As shown above, the returned result is not a shiny tag. Instead, it is a [R6](https://r6.r-lib.org/articles/Introduction.html) class having methods to handle those tags.
 
-```html
-<select class="rpgui-dropdown">
-	<option value="option1">option1</option>
-	<option value="option2">option2</option>
-	...
-</select>
-```
 
-Adding a label tag on top of the slider, this is what we would like to get:
-
-```html
-<div>
-  <label id="variable-label" for="variable">Variable:</label>
-  <select 
-    id="variable" 
-    class="rpgui-dropdown">
-    <option value="cyl" selected>Cylinders</option>
-    <option value="am">Transmission</option>
-    <option value="gear">Gears</option>
-  </select>
-</div>
-```
-
-We compare with our own `rpgSelect` function:
-
-```{r, eval=FALSE}
-rpgSelect(
-  "variable", 
-  "Variable:",
-  c("Cylinders" = "cyl",
-    "Transmission" = "am",
-    "Gears" = "gear")
-)
-```
-
-```{r, echo=FALSE}
-rpgSelect(
-  "variable", 
-  "Variable:",
-  c("Cylinders" = "cyl",
-    "Transmission" = "am",
-    "Gears" = "gear")
-) %>% tag_to_string()
-```
-
-As shown in the above output, this is not exactly matching:
-
-  - The outer div should not have any class.
-  - The label should not have any class.
-  - The input tag is wrapped inside a div container. It should not.
-  - The input tag should have the `rpgui-dropdown` or `rpgui-list` class,
-  depending on the size value. 
-  
-To fix the first problem we target the outer tag (`selectTag`), that is the tag returned by our `rpgSelect` function. The second row cleans the label class. The third row removes the extra outer div and only keeps its children, corresponding to the input tag. The last instruction ensure to set the appropriate class, depending on the size value:
-
-```{r, eval=FALSE}
-# Modify tag
-selectTag$attribs$class <- NULL
-# Clean extra label class
-selectTag$children[[1]]$attribs$class <- NULL
-# Remove extra outer div
-selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
-
-# Add good class for rppgui binding
-selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
-  "rpgui-dropdown"
-} else {
-  "rpgui-list"
-}
-```
-
-The final version is shown below:
-
-```{r}
-rpgSelect <- function(inputId, label, choices, selected = NULL,
-                      multiple = FALSE, size = NULL) {
-  selectTag <- shiny::selectInput(
-    inputId,
-    label,
-    choices,
-    selected,
-    multiple,
-    selectize = FALSE,
-    width = NULL,
-    size
-  )
-
-  # Modify tag
-  selectTag$attribs$class <- NULL
-  # Clean extra label class
-  selectTag$children[[1]]$attribs$class <- NULL
-  # Remove extra outer div
-  selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
-
-  # Add good class for rppgui binding
-  selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
-    "rpgui-dropdown"
-  } else {
-    "rpgui-list"
-  }
-
-  selectTag
-}
-```
-
-This yields:
-
-```{r, echo=FALSE}
-rpgSelect(
-  "variable", 
-  "Variable:",
-  c("Cylinders" = "cyl",
-    "Transmission" = "am",
-    "Gears" = "gear")
-) %>% tag_to_string()
-```
 
 ## Exercises
 
