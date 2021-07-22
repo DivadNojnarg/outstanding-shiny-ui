@@ -161,6 +161,10 @@ The content is processed by `shiny:::processDeps` that:
   - For each dependency, makes sure the corresponding files can be accessed on the server with `createWebDependency()` and `addResourcePath()`. 
   - Returns a list of the HTML element and dependencies. The HTML will be accessed by `message.content.html` and dependencies by `message.content.deps`.
   
+::: {.importantblock data-latex=""}
+I strongly discourage to use `shiny:::processDeps` or any other internal function, since they might change in future Shiny releases. Instead, we'll leverage the `htmltools::renderTags` function mentioned earlier in \@ref(build-shiny-ui).
+:::
+  
 On the UI side, Shiny has a predefined message [handler](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L671):
 
 ```js
@@ -435,7 +439,7 @@ We create the `insertMessageItem` function with two parameters:
   - __item__, the HTML element we want to insert in the DOM.
   - __session__, used to send a message to JavaScript with `session$sendCustomMessage`.
   
-We don't use `processDeps` as it is very unlikely that our `messageItem` contains any extra dependency. item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a __type__, that is `add-message-item`, to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
+We don't use `htmltools::renderTags` as it is very unlikely that our `messageItem` contains any extra dependency. item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a __type__, that is `add-message-item`, to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
 
 ```js
 $(function() {
@@ -665,7 +669,7 @@ list(
 )
 ```
 
-Interestingly, we may offer the ability to add input/output element in the message content (as shown above) with __dependencies__ that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the `shiny:::processDeps()` function on the R side for all elements with `lapply()` function. Finally, the message is sent to JS with `session$sendCustomMessage`:
+Interestingly, we may offer the ability to add input/output element in the message content (as shown above) with __dependencies__ that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the `htmltools::renderTags()` function on the R side for all elements with `lapply()` function. Finally, the message is sent to JS with `session$sendCustomMessage`:
 
 ```{r, eval=FALSE}
 updateUserMessages <- function(
@@ -683,7 +687,7 @@ updateUserMessages <- function(
       # necessary if the user pass input/output with deps
       # that are not yet available in the page before 
       # inserting the new tag
-      c <- processDeps(c, session)
+      c <- htmltools::renderTags(c)
     }
     c
   })
@@ -738,7 +742,7 @@ Shiny.addCustomMessageHandler(
 In the following we show how to process any message content. For sake of simplicity, we assume to be able to only edit the message text. As mentioned earlier, there are two possible cases:
 
   - The text is simple text or simple HTML without any extra dependency, we do nothing more than storing it into a meaningful variable.
-  - The text is a list of shiny tags containing input/output with extra dependencies like `sliderInput()`. We have to leverage the `renderHtml` method to correctly process the missing dependencies passed from R via `shiny:::processDeps()` in `updateUserMessages()`.
+  - The text is a list of shiny tags containing input/output with extra dependencies like `sliderInput()`. We have to leverage the `renderHtml` method to correctly process the missing dependencies passed from R via `htmltools::renderTags()` in `updateUserMessages()`.
   
 This yields:
 
@@ -758,7 +762,7 @@ Shiny.addCustomMessageHandler(
       text = Shiny.renderHtml(
         content.text.html, 
         $([]), 
-        content.text.deps
+        content.text.dependencies
       ).html;
     } 
   }
@@ -914,8 +918,9 @@ Shiny.addCustomMessageHandler(
       text = content.text;
     } else {
       text = Shiny.renderHtml(
-        content.text.html, $([]), 
-        content.text.deps
+        content.text.html, 
+        $([]), 
+        content.text.dependencies
       ).html;
     } 
   }

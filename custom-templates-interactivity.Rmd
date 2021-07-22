@@ -660,16 +660,16 @@ renderUI <- function (
 }
 ```
 
-The last line returned is `processDeps(result, shinysession)`. This function is responsible to handle dependencies during run time. `processDeps` (R side) works with `Shiny.renderContent` (JS side), 
-as already mentioned in part \@ref(insert-ui). The latter takes a tag element as well as an 
-object containing its HTML code and dependencies, for instance:
+The last line returned is `processDeps(result, shinysession)`. As stated in section \@ref(insert-ui), this function is responsible to handle dependencies during run time. `processDeps` (R side) works with `Shiny.renderContent` (JS side), as already mentioned in part 15.3. The latter takes a tag element as well as an object containing its HTML code and dependencies, for instance:
 
 ```js
 exports.renderContent($tag[0], {
   html: $tag.html(),
   deps: message.tag.deps
-}); 
+});  
 ```
+
+Note that, as it is bad practice to rely on internal functions (from another package), we'll rely on `htmltools::renderTags`, that is very similar.
 
 In the following, we modify the `insert_tabler_tab()` to include the dependencies processing step.
 
@@ -701,8 +701,8 @@ insert_tabler_tab <- function(
   message <- dropNulls(
     list(
       inputId = inputId,
-      content = processDeps(tab, session),
-      link = processDeps(navbar_menu_item, session),
+      content = htmltools::renderTags(tab),
+      link = htmltools::renderTags(navbar_menu_item),
       target = target,
       position = position,
       select = select
@@ -741,11 +741,11 @@ $(function() {
     // included in the page so it can't render properly
     Shiny.renderContent(
       $liTag[0], 
-      {html: $liTag.html(), deps: message.link.deps}
+      {html: $liTag.html(), deps: message.link.dependencies}
     );
     Shiny.renderContent(
       $divTag[0], 
-      {html: $divTag.html(), deps: message.content.deps}
+      {html: $divTag.html(), deps: message.content.dependencies}
     );
     
     if (message.select) {
@@ -768,7 +768,7 @@ We check if our approach works as expected.
 insert_tabler_tab_example(2)
 ```
 
-```{r process-deps, echo=FALSE, fig.cap='processDeps and Shiny.renderContent in action.', out.width='100%'}
+```{r process-deps, echo=FALSE, fig.cap='htmltools::renderTags and Shiny.renderContent in action.', out.width='100%'}
 knitr::include_graphics("images/practice/process-deps.png")
 ```
 
