@@ -1,17 +1,22 @@
 # Beautify with `{bslib}` {#beautify-with-bootstraplib}
 `{bslib}` [@R-bslib] is a package developed by RStudio, built on top `{sass}`.
-Contrary to `{fresh}`, `{bslib}` does not support `{shinydashboard}` and `{bs4Dash}`.
+At the time of writing, `{bslib}` does not support `{shinydashboard}` and `{bs4Dash}`.
 Again, you'll see that in few lines of code, you may provide impressive
 design modifications to your apps, in a ridiculously short amount of time.
 
 ## Disclaimer
 
 ::: {.importantblock data-latex=""}
-This feature requires [`{shiny} >= 1.6.0`](https://blog.rstudio.com/2021/02/01/shiny-1-6-0/).
+`{bslib}` requires [`{shiny} >= 1.6.0`](https://blog.rstudio.com/2021/02/01/shiny-1-6-0/).
 :::
 
-## Plug and play customization
-Like `{fresh}`, `{bslib}` offers a high level set of functions allowing to quickly customize shiny apps. For many users, this step will be enough. `bs_theme()` seamlessly modifies the main CSS properties like:
+## High level customization
+Like `{fresh}`, `{bslib}` offers a high level set of functions allowing to quickly customize shiny apps. For many users, this step will be enough. 
+
+
+### Create a theme {#bslib-high-level}
+
+`bs_theme()` seamlessly modifies the main CSS properties like:
 
   - The __background__ color, namely `bg`.
   - The __foreground__ color, namely `fg`.
@@ -22,8 +27,9 @@ Additionally, it gives the flexibility to choose __Bootstrap version__ with `ver
 
   - __Bootstrap 3__, with `"3"`.
   - __Bootstrap 4__ + compatibility with Bootstrap 3, with `"4"`.
+  - More __Bootstrap__ versions 
 
-Advanced users appreciate a `...` slot to add extra variables through `bs_add_variables()`, with literally hundreds of choices.
+Advanced users appreciate a `...` slot to add extra variables through `bs_add_variables()`, with literally hundreds of choices. We give more details in the \@ref(bslib-low-level) section.
 
 ```{r, eval=FALSE}
 library(bslib)
@@ -46,8 +52,79 @@ bs_theme(
 )
 ```
 
-`bs_update_theme()` is able to update a give theme object, generated with `bs_theme()`.
+Let's create a very simple theme:
 
+```{r}
+simple_bs4_theme <- bs_theme(version = 4)
+```
+
+We deliberately trimmed the corresponding output to get a better rendering in the book. 
+
+```
+/* Sass Bundle: _root, _reboot, ..., _toasts, _modal, ... */
+
+/* MORE Sass imports ... */
+
+@import "../scss/_toasts.scss";
+@import "../scss/_modal.scss";
+
+.table th[align=left] { text-align: left; }
+.table th[align=right] { text-align: right; }
+.table th[align=center] { text-align: center; }
+
+/* MORE Sass imports ... */
+
+/* *** */
+
+Other Sass Bundle information:
+List of 2
+ $ html_deps       :List of 1
+  ..$ :List of 10
+  .. ..$ name      : chr "bs3compat"
+  .. ..$ version   : chr "0.2.5.9002"
+  .. ..$ src       :List of 1
+  .. .. ..$ file: chr "bs3compat/js"
+  .. ..$ meta      : NULL
+  .. ..$ script    : chr [1:3] "transition.js" "tabs.js" 
+  "bs3compat.js"
+  .. ..$ stylesheet: NULL
+  .. ..$ head      : NULL
+  .. ..$ attachment: NULL
+  .. ..$ package   : chr "bslib"
+  .. ..$ all_files : logi TRUE
+  .. ..- attr(*, "class")= chr "html_dependency"
+ $ file_attachments: Named chr "..."
+  ..- attr(*, "names")= chr "fonts"
+```
+
+At a glance, the output contains a bundle with Sass code for all Bootstrap 4 components (toasts, modals, ...). Then, each of those modules are imported with the __@import__ statement. The remaining consists in an HTML dependency providing compatibility with Bootstrap 3 and fonts assets. 
+
+### Update a theme
+`{bslib}` exposes handy functions to alter the theme Sass code, that is remove (`bs_remove()`) or add (`bs_theme_update()`) rules to/from a preexisting theme. This may be useful to reduce the code size or add missing rules on the fly. For instance, if we don't need to alter the toast component, there is no need to include its Sass code in the theme. We therefore do:
+
+```{r}
+simple_bs4_theme <- bs_remove(simple_bs4_theme, "_toasts")
+```
+
+Inversely, if we missed a CSS rule, we may leverage `bs_theme_update()`, which is able to update a given theme object, generated with `bs_theme()`. Below, we change the default primary color (<span style="width:12px;height:12px;background:#007bff;border-radius:2px;display:inline-block;margin-right:5px;"></span>) to a lighter blue: 
+
+```{r}
+simple_bs4_theme <- bs_theme_update(
+  simple_bs4_theme, 
+  primary = htmltools::parseCssColors("lightblue")
+)
+```
+
+As stated in the previous chapter, don't mess too much with the color logic. For instance, setting `primary = htmltools::parseCssColors("pink")` is a rather bad idea. 
+
+Note the use of `htmltools::parseCssColors()` which converts a color name to the corresponding HEX code:
+
+```{r}
+htmltools::parseCssColors("blue")
+htmltools::parseCssColors("gainsboro")
+```
+
+### Preview a theme
 At any time, developers may preview the resulting theme with `bs_theme_preview()`, for instance:
 
 ```{r, eval=FALSE}
@@ -74,8 +151,129 @@ This gives the result shown on Figure \@ref(fig:bootstraplib-theme-preview).
 knitr::include_graphics("images/beautify/bootstraplib-theme-preview.png")
 ```
 
-Passing `with_themer = TRUE` will show a __live theming tools__ to modify the current theme.
+### Live theming
+Let's go even further! Wouldn't be that cool to be able to modify the app at runtime with a plug and play widget? This is possible with `{bslib}`, owing to the `run_with_themer()` wrapper. 
+It takes a Shiny App object as input (ie defined with `shiny::shinyApp()`):
 
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = neon_theme,
+  tabsetPanel(
+    tabPanel("First tab",
+      "The contents of the first tab",
+      actionButton("test", "Test")
+    ),
+    tabPanel("Second tab",
+      "The contents of the second tab"
+    )
+  )
+)
+server <- function(input, output, session) {}
+run_with_themer(shinyApp(ui, server))
+```
+
+As depicted by Figure \@ref(fig:bslib-bs-themer), the themer not only shows a live
+theming widget. It also shows the corresponding code output step by step, so as to
+update the original theme. Under the hood, it leverages the `bs_theme_update()` function, described above.  
+
+```{r bslib-bs-themer, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap="Live theming with bslib. Left: themer widget. Right: code output."}
+knitr::include_graphics("images/beautify/bslib-bs-themer-app.png")
+knitr::include_graphics("images/beautify/bslib-bs-themer-code.png")
+```
+
+Alternatively, passing `with_themer = TRUE` inside `bs_theme_preview` does also the same thing.
+There are few limitations and we refer the reader to the official [documentation](https://rstudio.github.io/bslib/reference/run_with_themer.html#limitations). 
+Even though there exists a third function, namely `bs_themer`, I don't encourage using it, as it has to be inserted in the server function, which can be easily forgotten by mistake. 
+
+## Low level customization {#bslib-low-level}
+
+### Add new variables
+`bs_add_variables()` adds new variables at a specific position within a theme. By default, they are inserted before other Sass __defaults__. It is a lower level function since you have to
+know the corresponding Bootstrap variable(s). Let's consider the example of a Bootstrap 4 badge where we aim at changing the font size, font weight and padding. The corresponding Sass code may be found [here](https://github.com/twbs/bootstrap/blob/5d24fef741944c168ad0ca9cabd1509d5803e441/scss/_badge.scss), and we identify few variables, whose default values are shown in the Bootstrap 4 variables code [here](https://github.com/twbs/bootstrap/blob/v4-dev/scss/_variables.scss):
+
+```scss
+// Typography
+//
+// Font, line-height, and color for body text, headings, and more.
+$font-weight-bold:        700 !default;
+
+// Define common padding and border radius sizes and more.
+$border-radius:           .25rem !default;
+
+// Badges
+
+$badge-font-size:         75% !default;
+$badge-font-weight:       $font-weight-bold !default;
+$badge-padding-y:         .25em !default;
+$badge-padding-x:         .4em !default;
+$badge-border-radius:     $border-radius !default;
+```
+
+Now we create our custom theme, increasing the font weight, size and changing the border radius to obtain more rounder [corners](https://shoelace.style/tokens/border-radius):
+
+```{r}
+library(magrittr)
+
+custom_badge_theme <- bs_theme(
+  version = 4,
+  # high level theming  
+  success = htmltools::parseCssColors("lightgreen")
+) %>% 
+  bs_add_variables(
+    # low level theming
+    "badge-font-weight" = 900,
+    "badge-font-size" = "100%",
+    "badge-padding-y" = "0.5em",
+    "badge-padding-x" = "0.8em",
+    "badge-border-radius" = "1rem"
+  )
+```
+
+Note: it would be tempting to change the global `$font-weight-bold` but it might affect
+other elements. Let's just overwrite the `badge-font-weight`. 
+
+The badge code is given by the following HTML:
+
+```html
+<span class="badge badge-success">Success</span>
+```
+
+We leverage our previous knowledge to convert it to R and make it browsable with `{htmltools}`:
+
+```{r}
+library(htmltools)
+
+my_badge <- tags$a(class = "badge badge-success", "1")
+preview_badge <- function(theme = NULL) {
+  if (interactive()) {
+    tag <- if (is.null(theme)) {
+      # default bs4 theme
+      bs_theme(version = 4)
+    } else {
+      # altered badge
+      theme
+    }
+    browsable(
+      tags$body(
+        br(), 
+        bs_theme_dependencies(theme), 
+        my_badge
+      )
+    )
+  }
+}
+
+# preview_badge(custom_badge_theme)
+# preview_badge() # default badge
+```
+
+```{r bslib-custom-badge, echo=FALSE, fig.cap='Custom Bootstrao 4 badge with bslib. Left: custom badge, right: default badge.', out.width='100%'}
+knitr::include_graphics("images/beautify/bslib-custom-badge.png")
+```
+
+`bs_theme_dependencies` is used outside of a Shiny context to include the theme Sass code as a dependency. 
+
+### Import external rules
 Let's try with another example. We would like to bring a refreshment to the Bootstrap UI elements with one of the most modern UI kit to date, namely [98.css](https://jdan.github.io/98.css/), a Windows 98 CSS kit. The CSS assets may be accessed from [jsdelivr](https://cdn.jsdelivr.net/npm/98.css@0.1.16/dist/98.min.css), as shown below:
 
 ```{r}
@@ -181,7 +379,7 @@ shinyApp(ui, server)
 ```
 
 ::: {.warningblock data-latex=""}
-An issue with `bindCache()` not aware of `session$setCurrentTheme()` is described [here](https://github.com/rstudio/shiny/issues/3208), with `{shiny}` 1.6.
+At the time of writing, an issue with `bindCache()` not aware of `session$setCurrentTheme()` is described [here](https://github.com/rstudio/shiny/issues/3208), with `{shiny}` 1.6.
 :::
 
 ## Custom elements
