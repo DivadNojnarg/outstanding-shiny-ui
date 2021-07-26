@@ -325,6 +325,8 @@ knitr::include_graphics("images/beautify/bslib-windows-98.png")
 ```
 
 ## Dynamic theming
+
+### Basics 
 Now, let's say you design an app and want to give the choice between the vanilla shiny design and your new cyberpunk theme, created in the previous section. We leverage the new `session$setCurrentTheme` feature that allows to pass `{bslib}` generated themes to JavaScript through the __session__ object. Our Shiny app contains a toggle, which value is either TRUE or FALSE. On the JavaScript side, we first create a custom shiny input with `Shiny.setInputValue` that gets the current mode value from the toggle. If TRUE, then the custom theme is applied by `session$setCurrentTheme` in an `observeEvent()`.
 
 Like for `{fresh}`, the `{bslib}` theme does not apply to static plots, as they are not HTML elements. Therefore we load `{thematic}`:
@@ -382,7 +384,7 @@ shinyApp(ui, server)
 At the time of writing, an issue with `bindCache()` not aware of `session$setCurrentTheme()` is described [here](https://github.com/rstudio/shiny/issues/3208), with `{shiny}` 1.6.
 :::
 
-## Custom elements
+### Custom elements
 For other elements than core shiny components like `numericInput()` or `{thematic}` compatible elements such as `plotOutput()`, `{bslib}` provides tools to design dynamically themeable custom components.
 
 Let's take the example of a simple card where the Sass code is defined below:
@@ -524,6 +526,30 @@ ui <- fluidPage(super_card("Hello World!"))
 server <- function(input, output) {}
 shinyApp(ui, server)
 ```
+
+
+### Advanced
+The above approach allows us to apply a theme based on a user input, like a theme switcher. 
+However, we can't access and modify the theme at run time to apply specific rendering properties.
+Let's go further! How do we recover the currently active theme on the server side? Look no further, `bs_current_theme()` is the weapon you need:  
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = bs_theme(version = 4),
+  verbatimTextOutput("current_theme")
+)
+
+server <- function(input, output, session) {
+  output$current_theme <- renderPrint(bs_current_theme())
+}
+
+shinyApp(ui, server)
+```
+
+In a reactive context (Shiny), this calls `session$getCurrentTheme()`. 
+
+`tagAddRenderHook()`: https://github.com/rstudio/shiny/pull/3372/files#diff-befe9146792f0d65aeeaf781e8ba00a1a3638ac2be162b61b6c8958440860b56R1029-R1040,
+ ...
 
 
 ## Further resources

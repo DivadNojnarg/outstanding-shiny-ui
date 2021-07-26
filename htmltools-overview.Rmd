@@ -658,10 +658,62 @@ tag_to_string(div(lapply(1:5, function(i) span(i))))
 
 ## Modern `{htmltools}`
 
-As of `{htmltools}` 0.5.2, the new `tagQuery` function makes manipulating shiny tags a real pleasure, in addition to be more efficient. If you know and like jQuery (Chapter \@ref(intro-jquery)), the API is really similar. If you don't know jQuery yet, no problem, we'll see it later in the book!
+::: {.importantblock data-latex=""}
+This section requires basic CSS knowledge, particularly CSS selectors. Please read Chapter \@ref(beautify-css) before going further.  
+:::
+
+As of `{htmltools}` 0.5.2, the new `tagQuery()` function makes manipulating shiny tags a real pleasure, in addition to be more efficient. If you know and like jQuery (Chapter \@ref(intro-jquery)), the API is really similar. If you don't know jQuery yet, no problem, we'll see it later in the book!
+
+As a preliminary example, we want to modify the third `span` element from the above example:
+
+```{r}
+spans <- div(div(p(), lapply(1:5, function(i) span(i))))
+spans$children[[1]]$children[[2]][[3]]$attribs$class <- "test" 
+```
+
+```{r, echo=FALSE}
+tag_to_string(spans)
+```
+
+Below is the new `{htmltools}` approach which leverages `tagQuery()`:
+ 
+```{r}
+spans <- div(div(p(), lapply(1:5, function(i) span(i))))
+spans <- tagQuery(spans)$
+  find("span")$
+  filter(function(x, i) i == 3)$
+  addAttrs("class" = "amazing-tag")$
+  allTags()
+```
+
+```{r, echo=FALSE}
+tag_to_string(spans)
+```
+
+As you may notice, the first approach may lead to poorly written code as soon as the 
+tag structure gets more complex. You may easily end up with things like `tag$children[[1]]$children[[2]]$children[[1]]$attribs$class` which is nearly impossible to maintain. 
+The second approach is much more human readable, even though not necessarily shorter in this example. 
+The biggest advantage is that is does not always depends on the overall tag structure. As an exercise, you may wrap the `span` elements inside another `div` parent:
+
+```{r}
+spans <- div(div(p(), div(lapply(1:5, function(i) span(i)))))
+spans <- tagQuery(spans)$
+  find("span")$
+  filter(function(x, i) i == 3)$
+  addAttrs("class" = "amazing-tag")$
+  allTags()
+```
+
+```{r, echo=FALSE}
+tag_to_string(spans)
+```
+
+The above code still works will the previous one would require to be updated. See it as a sort of `tidyverse` style for R tags!
+
+Are you ready to become a tag witcher?
 
 ### Basics
-`tagQuery` accepts a tag or list of tags as input and returns a data structure containing:
+`tagQuery()` accepts a tag or list of tags as input and returns a data structure containing:
 
 - `$allTags()`: all tags.
 - `$selectedTags()`: selected tags, default to `$allTags()`.
@@ -676,6 +728,41 @@ tag_query
 
 As shown above, the returned result is not a shiny tag. Instead, it is a [R6](https://r6.r-lib.org/articles/Introduction.html) class having methods to handle those tags.
 
+### Query tags
+
+Below is a table summarizing all available query methods. Note that at the time of writing, `tagQuery()` only support simple CSS selectors. For instance, `data-...` selectors are not covered. However, we'll see below there are many options to work around. 
+
+Let's consider an example consisting of a tabset panel with three tabs. Those menu items are one of the most challenging elements to handle when building a custom Shiny template and the new `tagQuery()` literally make it a breeze to handle. A detailed case study is available section \@ref(tabler-navbar-navigation). 
+
+```{r}
+temp_tabs <- lapply(1:3, function(i) tabPanel(i))
+tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
+tabs_query <- tagQuery(tabs)
+```
+
+| Method   |     Description     | Example |
+|:----------:|:-------------:|
+| children | Get all the direct descendants | `r tabs_query$children("a")`                                | 
+| find     | Get all descendants            | `r tabs_query$find("a")$selectedTags()`                     |
+| parent   | Get the direct ancestors       | `r tabs_query$find("li a.active")$parent()$selectedTags()`  |
+| parents  | Get all parents                | `r tabs_query$find("li a.active")$parents()$selectedTags()` |   | filter   | Subset selected tags with CSS selectors or R function |        
+| reset    | Reset set of selected tags to the root tag |
+
+
+How would you select the third tab content element?
+
+```{r}
+tabs_query$
+  find("div.tab-pane")$ # div element with tab-pane class
+  filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
+  selectedTags()
+```
+
+As an exercise, I give you 2 minutes to find the classic `{htmltools}` equivalent. If you don't manage,
+well, it means that the new `tagQuery()` system is rather convenient. 
+
+### Modify tags
+As shows in the preliminary example, the main interest of querying tag is to ultimately modify them! 
 
 
 ## Exercises
