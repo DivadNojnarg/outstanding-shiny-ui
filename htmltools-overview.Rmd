@@ -712,7 +712,7 @@ spans <- tagQuery(spans)$
 tag_to_string(spans)
 ```
 
-The above code still works will the previous one would require to be updated. See it as a sort of `tidyverse` style for R tags!
+The above code still works, while the previous one would require to be updated. See it as a sort of `tidyverse` style for R tags!
 
 Are you ready to become a tag witcher?
 
@@ -734,16 +734,7 @@ As shown above, the returned result is not a shiny tag. Instead, it is a [R6](ht
 
 ### Query tags
 
-Below is a table summarizing all available query methods. Note that at the time of writing, `tagQuery()` only support simple CSS selectors. For instance, `data-...` selectors are not covered. However, we'll see below there are many options to work around. 
-
-Let's consider an example consisting of a tabset panel with three tabs. Those menu items are one of the most challenging elements to handle when building a custom Shiny template and the new `tagQuery()` literally make it a breeze to handle. A detailed case study is available section \@ref(tabler-navbar-navigation). 
-
-```{r}
-temp_tabs <- lapply(1:3, function(i) {
-  tabPanel(i, paste("Tab", i))
-})
-tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
-```
+Below is a table summarizing all available query methods. Note that at the time of writing, `tagQuery()` only support simple CSS selectors. For instance, `data-...` selectors are not covered, as well as `,`, `+` and `~`. However, we'll see below there are many options to work around. 
 
 | Method   |     Description     | Example |
 |:----------:|:-------------:|
@@ -754,14 +745,37 @@ tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
 | filter   | Subset selected tags with CSS selectors or R function |        
 | reset    | Reset set of selected tags to the root tag |
 
+Let's consider an example consisting of a tabset panel with three tabs. Those menu items are one of the most challenging elements to handle when building a custom Shiny template and the new `tagQuery()` literally make it a breeze to handle. A detailed case study is available section \@ref(tabler-navbar-navigation). 
+
+```{r}
+temp_tabs <- lapply(1:3, function(i) {
+  tabPanel(i, paste("Tab", i))
+})
+tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
+```
+
+
+```{r, echo=FALSE}
+tag_to_string(tabs)
+```
+
+TO DO: describes a bit more the tabset structure
 
 How would you select the third tab content element?
 
-```{r}
+```{r, eval=FALSE}
 tagQuery(tabs)$
+  find("div.tab-pane")$ # div element with tab-pane class
+  filter(function(x, i) tagGetAttribute(x, "data-value") == 3)
+```
+
+```{r, echo=FALSE}
+tag_to_string(
+  tagQuery(tabs)$
   find("div.tab-pane")$ # div element with tab-pane class
   filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
   selectedTags()
+)
 ```
 
 Note that we provided an anonymous R function to `$filter()`, where x is the tag and i the index, allowing us to drill down to the third tab which has `data-value = 3`. 
@@ -786,11 +800,19 @@ There are currently two main methods to alter tag attributes, namely `$addAttrs(
 
 Bootstrap 4 allows to apply a fade [transition](https://getbootstrap.com/docs/4.6/components/navs/#fade-effect) between tabs, provided that those tabs have the `fade` class. Below is how to seamlessly do it with `tagQuery()`:
 
-```{r}
+```{r, eval=FALSE}
 tagQuery(tabs)$
+  find(".tab-pane")$
+  addClass("fade")
+```
+
+```{r, echo=FALSE}
+tag_to_string(
+  tagQuery(tabs)$
   find(".tab-pane")$
   addClass("fade")$
   selectedTags()
+)
 ```
 
 #### Altering tag/children/siblings
@@ -813,8 +835,12 @@ Going back to our previous tabs example, we would like to include an icon before
 new_tabs <- tagQuery(tabs)$
   find("a")$
   prepend(icon("flag"))
+```
 
-new_tabs$selectedTags()
+```{r, echo=FALSE}
+tag_to_string(
+  new_tabs$selectedTags()
+)
 ```
 
 ```{r, eval=FALSE}
@@ -831,7 +857,7 @@ knitr::include_graphics("images/htmltools/htmltools-tabs-icons.png")
 
 
 ### Chain tag queries
-One of the strength of the `tagQuery()` API is the ability to chain methods, where the classic `{htmltools}` syntax might be repetitive and heavy. `$resetSelected()` allows to reset the tag selection to the root tag after a given operation, thereby making it possible to chain multiple queries with different purposes. The overall flow is more human readable than a step by step approach, similarly to the `tidyverse` or `ggplot` grammar. In the following example, let's combine all previous examples:
+One of the strength of the `tagQuery()` API is the ability to chain methods, where the classic `{htmltools}` syntax might be repetitive and heavy. `$resetSelected()` allows to reset the tag selection to the root tag after a given operation, thereby making it possible to chain multiple queries with different purposes. The overall flow is more human readable than a step by step approach, similarly to the `tidyverse` or `ggplot` grammar. Let's combine all previous examples:
 
 ```{r}
 # add fade class to all panels
@@ -860,16 +886,26 @@ tagQuery(tabs)$
 There are situations where the previous methods won't work. What if you want to modify all
 tabs content from `Tab i` to `This is tab i`. A common mistake would be to proceed as follows:
 
-```{r}
+```{r, eval=FALSE}
 tagQuery(tabs)$
   find(".tab-pane")$
   empty()$
   append(lapply(1:3, function(i) paste("This is tab", i)))
 ```
 
+```{r, echo=FALSE}
+tag_to_string(
+  tagQuery(tabs)$
+  find(".tab-pane")$
+  empty()$
+  append(lapply(1:3, function(i) paste("This is tab", i)))$
+  selectedTags()
+)
+```
+
 You may think it will add each text to the corresponding panel item but methods like `$append()` and `$prepend()` add the same elements. Therefore it will actually adds three new children to each selected panel. For this case where the content is index specific, we have to utilize `$each()`. It takes an anonymous function as input, with two parameters, x is the tag and i is the current index. Inside that function, you may edit the tag depending on the index and return the modified structure:
 
-```{r}
+```{r, eval=FALSE}
 tagQuery(tabs)$
   find(".tab-pane")$
   empty()$
@@ -879,6 +915,21 @@ tagQuery(tabs)$
     # return edited tag
     x
   })
+```
+
+```{r, echo=FALSE}
+tag_to_string(
+  tagQuery(tabs)$
+  find(".tab-pane")$
+  empty()$
+  each(function(x, i) {
+    # replace text
+    x <- tagAppendChildren(x, paste("This is tab", i))
+    # return edited tag
+    x
+  })$
+  selectedTags()
+)
 ```
 
 ### Practice
