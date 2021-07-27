@@ -213,7 +213,7 @@ tag_to_string(myTag)
 ```
 
 
-### Practical examples: shinyRPG
+### Practical examples: shinyRPG {#htmltools-shinyRPG}
 
 Below we give concrete example on how to customize tags in the real life. There exists a 
 nice RPG HTML template, that is [rpgui](http://ronenness.github.io/RPGUI/). It provides
@@ -533,6 +533,10 @@ tag_to_string(res1)
 tag_to_string(res2)
 ```
 
+::: {.noteblock data-latex=""}
+As of `{htmltools}` 0.5.2, there is a new `tagInsertChildren` [function](https://rstudio.github.io/htmltools/reference/tagAppendChild.html). 
+:::
+
 
 ### Other functions
 The [golem](https://github.com/ThinkR-open/golem/blob/dev/inst/utils/golem_utils_ui.R) package written by [thinkr](https://thinkr.fr) contains neat functions to edit your tags. 
@@ -735,64 +739,217 @@ Below is a table summarizing all available query methods. Note that at the time 
 Let's consider an example consisting of a tabset panel with three tabs. Those menu items are one of the most challenging elements to handle when building a custom Shiny template and the new `tagQuery()` literally make it a breeze to handle. A detailed case study is available section \@ref(tabler-navbar-navigation). 
 
 ```{r}
-temp_tabs <- lapply(1:3, function(i) tabPanel(i))
+temp_tabs <- lapply(1:3, function(i) {
+  tabPanel(i, paste("Tab", i))
+})
 tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
-tabs_query <- tagQuery(tabs)
 ```
 
 | Method   |     Description     | Example |
 |:----------:|:-------------:|
-| children | Get all the direct descendants | `r tabs_query$children("a")`                                | 
-| find     | Get all descendants            | `r tabs_query$find("a")$selectedTags()`                     |
-| parent   | Get the direct ancestors       | `r tabs_query$find("li a.active")$parent()$selectedTags()`  |
-| parents  | Get all parents                | `r tabs_query$find("li a.active")$parents()$selectedTags()` |   | filter   | Subset selected tags with CSS selectors or R function |        
+| children | Get all the direct descendants | 
+| find     | Get all descendants            | 
+| parent   | Get the direct ancestors       | 
+| parents  | Get all parents                |  
+| filter   | Subset selected tags with CSS selectors or R function |        
 | reset    | Reset set of selected tags to the root tag |
 
 
 How would you select the third tab content element?
 
 ```{r}
-tabs_query$
+tagQuery(tabs)$
   find("div.tab-pane")$ # div element with tab-pane class
   filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
   selectedTags()
 ```
 
-As an exercise, I give you 2 minutes to find the classic `{htmltools}` equivalent. If you don't manage,
-well, it means that the new `tagQuery()` system is rather convenient. 
+Note that we provided an anonymous R function to `$filter()`, where x is the tag and i the index, allowing us to drill down to the third tab which has `data-value = 3`. 
+
+As an exercise, I give you 2 minutes to find the classic `{htmltools}` equivalent. If you don't manage, it means the new `tagQuery()` system is rather convenient. 
 
 ### Modify tags
-As shows in the preliminary example, the main interest of querying tag is to ultimately modify them! 
+As shown in the preliminary example, the main interest of querying tag is to ultimately modify them! 
+`tagQuery()` exposes methods to modify attributes, children of the query selection. 
 
+#### Playing with attributes
+There are currently two main methods to alter tag attributes, namely `$addAttrs()` (equivalent of `tagAppendAttributes`) and `$removeAttrs()`, even though more specific methods exists, for instance `$addClass()`, `$removeClass()` and `$toggleClass()`.
 
-## Exercises
+| Method   |     Description     | Example |
+|:----------:|:-------------:|
+| addAttrs | Add any number of attributes to each selected tag |                     
+| removeAttrs  | Remove any number of attributes to each selected tag            | 
+| hasAttrs | Check if the selected tag have the specified attribute(s) |
+| addClass  | Add any number of new classes to each selected tag          | 
+| removeClass  | Remove any number of classes to each selected tag          |
+| hasClass | Check if the selected tag have the specified classe(s) |
 
-### Exercise 1: tags structure 
-Consider the following shiny tag:
+Bootstrap 4 allows to apply a fade [transition](https://getbootstrap.com/docs/4.6/components/navs/#fade-effect) between tabs, provided that those tabs have the `fade` class. Below is how to seamlessly do it with `tagQuery()`:
 
-```{r, eval=FALSE}
-myTag <- a(
-  class = "btn btn-large",
-  type = "button",
-  span(class = "child1", id = "super-span", 1),
-  span(class = "child2", 2)
-)
-
-myTag
+```{r}
+tagQuery(tabs)$
+  find(".tab-pane")$
+  addClass("fade")$
+  selectedTags()
 ```
 
-1. Inspect its structure. Hint: you may use `str()`.
-2. Access its class using `tagGetAttribute()` and another method of your choice.
-3. Modify the first child class to `custom class`.
+#### Altering tag/children/siblings
+Below are listed some methods to alter the current tag or its children.
 
-### Exercise 2: modifiying tags 
-Let us consider the following tag:
+| Method   |     Description     | Example |
+|:----------:|:-------------:|
+| append | Insert content after the children of each selected tag |                     
+| prepend  | Insert content before the children of each selected tag            | 
+| empty  | Remove all children from the selected tag |
+| remove | Remove all selected tags |
+| before | Insert content before each selected tag |
+| after | Insert content after each selected tag |
+| replaceWith | Replace the currently selected tag by the provided tag |
 
-```{r, eval=FALSE}
-temp <- div("Hello World")
+Going back to our previous tabs example, we would like to include an icon before each tab title. We leverage the `$prepend()` method, after selecting the `a` elements part of the tab navigation:
+
+```{r}
+# Add extra item to tabs at the end
+new_tabs <- tagQuery(tabs)$
+  find("a")$
+  prepend(icon("flag"))
+
+new_tabs$selectedTags()
 ```
 
-(You may chain functions with `%>%`)
+```{r, eval=FALSE}
+ui <- fluidPage(new_tabs$allTags())
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
 
-1. Replace its unique child by `a(href = "http://www.google.com", "click me!")`. Hint: `tagSetChildren()` is your friend.
-2. Add 10 other `span()`. Hint: tags may be programmatically generated with `lapply()` or `purrr::map`.
+Result is shown Figure \@ref(fig:htmltools-tabs-icons).
+
+```{r htmltools-tabs-icons, echo=FALSE, fig.cap='tagQuery API in action: a customized Shiny tabsetPanel.', out.width='100%'}
+knitr::include_graphics("images/htmltools/htmltools-tabs-icons.png")
+```
+
+
+### Chain tag queries
+One of the strength of the `tagQuery()` API is the ability to chain methods, where the classic `{htmltools}` syntax might be repetitive and heavy. `$resetSelected()` allows to reset the tag selection to the root tag after a given operation, thereby making it possible to chain multiple queries with different purposes. The overall flow is more human readable than a step by step approach, similarly to the `tidyverse` or `ggplot` grammar. In the following example, let's combine all previous examples:
+
+```{r}
+# add fade class to all panels
+tagQuery(tabs)$
+  find(".tab-pane")$
+  addClass("fade")$
+  removeClass("active")$
+  filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
+  addClass("active")$
+  resetSelected()$
+  # new operation: add icon before each nav link title
+  find("a")$
+  prepend(icon("flag"))$
+  # Here the next operation use the same target
+  # We don't need to reset the scope
+  removeClass("active")$
+  # Select third nav link
+  filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
+  # Make it active
+  addClass("active")$
+  allTags()
+```
+
+
+### Specific cases
+There are situations where the previous methods won't work. What if you want to modify all
+tabs content from `Tab i` to `This is tab i`. A common mistake would be to proceed as follows:
+
+```{r}
+tagQuery(tabs)$
+  find(".tab-pane")$
+  empty()$
+  append(lapply(1:3, function(i) paste("This is tab", i)))
+```
+
+You may think it will add each text to the corresponding panel item but methods like `$append()` and `$prepend()` add the same elements. Therefore it will actually adds three new children to each selected panel. For this case where the content is index specific, we have to utilize `$each()`. It takes an anonymous function as input, with two parameters, x is the tag and i is the current index. Inside that function, you may edit the tag depending on the index and return the modified structure:
+
+```{r}
+tagQuery(tabs)$
+  find(".tab-pane")$
+  empty()$
+  each(function(x, i) {
+    # replace text
+    x <- tagAppendChildren(x, paste("This is tab", i))
+    # return edited tag
+    x
+  })
+```
+
+### Practice
+
+Let's rewrite the shinyRPG select (see \@ref(htmltools-shinyRPG)) input using the new `tagQuery()` API. As a reminder, the function is given by:
+
+```{r}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  selectTag <- shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+
+  # Modify tag
+  selectTag$attribs$class <- NULL
+  # Clean extra label class
+  selectTag$children[[1]]$attribs$class <- NULL
+  # Remove extra outer div
+  selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
+
+  # Add good class for rppgui binding
+  selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
+    "rpgui-dropdown"
+  } else {
+    "rpgui-list"
+  }
+
+  selectTag
+}
+```
+
+The new approach is described below and leverages almost all the `tagQuery()` API tools. We first remove the outer div class and the label class with `$removeAttrs()`. These two steps don't need any reset since the label is a child of the outer div. The next step, that is targeting the select element requires to use `$siblings()` to catch the `div` parent followed by a `$children()`, which will capture the select (interestingly, we could also have reset the selection with `$resetSelected()` and apply `$find()`). We add it a custom class with `$addClass()`. We finally go back to the parent outer `div` with `$resetSelected()` and apply `$each()` to replace the inner `div` by its children. 
+
+```{r}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  selectTag <- shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+  
+  selectClass <- if (is.null(size)) { # add class
+    "rpgui-dropdown"
+  } else {
+    "rpgui-list"
+  }
+  
+  tagQuery(selectTag)$
+    removeAttrs("class")$ # remove outer div class
+    find(".control-label")$
+    removeAttrs("class")$ # remove class from child label
+    siblings()$ # go down to the div 
+    children()$ # go down to the select tag
+    addClass(selectClass)$ # add class to child select
+    resetSelected()$# go back to div parent
+    each(function(x, i) {
+      x$children[[2]] <- x$children[[2]]$children
+    })$ # replace div parent 
+    allTags()
+}
+```
