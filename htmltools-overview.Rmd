@@ -143,7 +143,7 @@ and reuse it later in the code. It also allows to maintain one single code base 
 
 The ultimate goal of `{htmltools}` is to manipulate, combine and rearrange tags in order to create flexible and rich HTML structures from R. Would you believe that the below example heavily relies on `{htmltools}` (Figure \@ref(fig:shinyRPG))?
 
-```{r shinyRPG, echo=FALSE, fig.cap='shinyRPG was built with htmltools', out.width='100%'}
+```{r shinyRPG, echo=FALSE, fig.cap='shinyRPG was built with htmltools', out.width='50%', fig.align = 'center'}
 knitr::include_graphics("images/htmltools/shinyRPG.png")
 ```
 
@@ -714,6 +714,9 @@ tag_to_string(spans)
 
 The above code still works, while the previous one would require to be updated. See it as a sort of `tidyverse` style for R tags!
 
+Another reason to prefer the new `tagQuery()` API is the substantial performance [gains](https://rstudio.github.io/htmltools/articles/tagQuery.html#performance-1). Interestingly, under the hood, most if not all older `{htmltools}` functions like `tagAppendChildren()` or `tagAppendAttributes()` call the `tagQuery()` API when `.cssSelector` is provided. In practice,
+while one can achieve multiple modifications at once with a single `tagQuery()` call, it requires a combination of multiple `tagAppendChildren()`/`tagAppendAttributes()` to reach the same result, thereby leading to less performance. 
+
 Are you ready to become a tag witcher?
 
 ### Basics
@@ -738,12 +741,19 @@ Below is a table summarizing all available query methods. Note that at the time 
 
 | Method   |     Description     | Example |
 |:----------:|:-------------:|
-| children | Get all the direct descendants | 
-| find     | Get all descendants            | 
-| parent   | Get the direct ancestors       | 
-| parents  | Get all parents                |  
+| children | Get all the direct descendants of each selected tag | 
+| find     | Get all descendants of each selected tag          | 
+| parent   | Get the direct ancestors of each selected tag      | 
+| parents  | Get all parents of each selected tag               |  
+| siblings | Get all siblings of each selected tag
 | filter   | Subset selected tags with CSS selectors or R function |        
-| reset    | Reset set of selected tags to the root tag |
+| resetSelected   | Reset set of selected tags to the root tag |
+
+According to Figure \@ref(fig:htmltools-query-tags), while `$children()` selects only direct descendants, `$find()` is slightly more powerful and drills down to any level deeper. `$filter()` is convenient to subset selected tags, for instance, depending on a specific attribute. A dedicated section  (\@ref(htmtools-chain-queries)) covers `$resetSelected()` which essentially reset the current selection to the root tag. Whereas `$parent()` allow to go up step by step returning each time the direct ancestor, `$parents()` returns all ancestors. If you need to be even more specific, `$closest(cssSelector)` goes up until it finds the matching `cssSelector`. Note that, if `cssSelector = NULL`, `$closest()` is equivalent to call `$selectedTags()`. 
+
+```{r htmltools-query-tags, echo=FALSE, fig.cap='tagQuery API: overview of query methods.', out.width='100%'}
+knitr::include_graphics("images/htmltools/htmltools-query-tags.png")
+```
 
 Let's consider an example consisting of a tabset panel with three tabs. Those menu items are one of the most challenging elements to handle when building a custom Shiny template and the new `tagQuery()` literally make it a breeze to handle. A detailed case study is available section \@ref(tabler-navbar-navigation). 
 
@@ -787,7 +797,7 @@ As shown in the preliminary example, the main interest of querying tag is to ult
 `tagQuery()` exposes methods to modify attributes, children of the query selection. 
 
 #### Playing with attributes
-There are currently two main methods to alter tag attributes, namely `$addAttrs()` (equivalent of `tagAppendAttributes`) and `$removeAttrs()`, even though more specific methods exists, for instance `$addClass()`, `$removeClass()` and `$toggleClass()`.
+As shown Figure \@ref(fig:htmltools-modify-attributes), there are currently two main methods to alter tag attributes, namely `$addAttrs()` (equivalent of `tagAppendAttributes`) and `$removeAttrs()`, even though more specific methods exists, for instance `$addClass()`, `$removeClass()` and `$toggleClass()`.
 
 | Method   |     Description     | Example |
 |:----------:|:-------------:|
@@ -797,6 +807,11 @@ There are currently two main methods to alter tag attributes, namely `$addAttrs(
 | addClass  | Add any number of new classes to each selected tag          | 
 | removeClass  | Remove any number of classes to each selected tag          |
 | hasClass | Check if the selected tag have the specified classe(s) |
+
+
+```{r htmltools-modify-attributes, echo=FALSE, fig.cap='tagQuery API: modify tag attributes.', out.width='100%'}
+knitr::include_graphics("images/htmltools/htmltools-modify-attributes.png")
+```
 
 Bootstrap 4 allows to apply a fade [transition](https://getbootstrap.com/docs/4.6/components/navs/#fade-effect) between tabs, provided that those tabs have the `fade` class. Below is how to seamlessly do it with `tagQuery()`:
 
@@ -816,7 +831,7 @@ tag_to_string(
 ```
 
 #### Altering tag/children/siblings
-Below are listed some methods to alter the current tag or its children.
+Below are listed some methods to alter the current tag or its children, as depicted Figure \@ref(fig:htmltools-alter-tags).
 
 | Method   |     Description     | Example |
 |:----------:|:-------------:|
@@ -827,6 +842,10 @@ Below are listed some methods to alter the current tag or its children.
 | before | Insert content before each selected tag |
 | after | Insert content after each selected tag |
 | replaceWith | Replace the currently selected tag by the provided tag |
+
+```{r htmltools-alter-tags, echo=FALSE, fig.cap='tagQuery API: alter tags children.', out.width='100%'}
+knitr::include_graphics("images/htmltools/htmltools-alter-tags.png")
+```
 
 Going back to our previous tabs example, we would like to include an icon before each tab title. We leverage the `$prepend()` method, after selecting the `a` elements part of the tab navigation:
 
@@ -856,7 +875,7 @@ knitr::include_graphics("images/htmltools/htmltools-tabs-icons.png")
 ```
 
 
-### Chain tag queries
+### Chain tag queries {#htmtools-chain-queries}
 One of the strength of the `tagQuery()` API is the ability to chain methods, where the classic `{htmltools}` syntax might be repetitive and heavy. `$resetSelected()` allows to reset the tag selection to the root tag after a given operation, thereby making it possible to chain multiple queries with different purposes. The overall flow is more human readable than a step by step approach, similarly to the `tidyverse` or `ggplot` grammar. Let's combine all previous examples:
 
 ```{r}

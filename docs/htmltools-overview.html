@@ -259,9 +259,9 @@ and reuse it later in the code. It also allows to maintain one single code base 
 <span class="header-section-number">2.5</span> Playing with tags<a class="anchor" aria-label="anchor" href="#playing-with-tags"><i class="fas fa-link"></i></a>
 </h2>
 <p>The ultimate goal of <a href="https://github.com/rstudio/htmltools">htmltools</a> is to manipulate, combine and rearrange tags in order to create flexible and rich HTML structures from R. Would you believe that the below example heavily relies on <a href="https://github.com/rstudio/htmltools">htmltools</a> (Figure <a href="htmltools-overview.html#fig:shinyRPG">2.3</a>)?</p>
-<div class="figure">
+<div class="figure" style="text-align: center">
 <span id="fig:shinyRPG"></span>
-<img src="images/htmltools/shinyRPG.png" alt="shinyRPG was built with htmltools" width="100%"><p class="caption">
+<img src="images/htmltools/shinyRPG.png" alt="shinyRPG was built with htmltools" width="50%"><p class="caption">
 FIGURE 2.3: shinyRPG was built with htmltools
 </p>
 </div>
@@ -781,6 +781,8 @@ The biggest advantage is that is does not always depends on the overall tag stru
 ## [11] "  &lt;/div&gt;"
 ## [12] "&lt;/div&gt;"</code></pre>
 <p>The above code still works, while the previous one would require to be updated. See it as a sort of <code>tidyverse</code> style for R tags!</p>
+<p>Another reason to prefer the new <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code> API is the substantial performance <a href="https://rstudio.github.io/htmltools/articles/tagQuery.html#performance-1">gains</a>. Interestingly, under the hood, most if not all older <a href="https://github.com/rstudio/htmltools">htmltools</a> functions like <code><a href="https://rdrr.io/pkg/htmltools/man/tagAppendChild.html">tagAppendChildren()</a></code> or <code><a href="https://rdrr.io/pkg/htmltools/man/tagAppendAttributes.html">tagAppendAttributes()</a></code> call the <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code> API when <code>.cssSelector</code> is provided. In practice,
+while one can achieve multiple modifications at once with a single <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code> call, it requires a combination of multiple <code><a href="https://rdrr.io/pkg/htmltools/man/tagAppendChild.html">tagAppendChildren()</a></code>/<code><a href="https://rdrr.io/pkg/htmltools/man/tagAppendAttributes.html">tagAppendAttributes()</a></code> to reach the same result, thereby leading to less performance.</p>
 <p>Are you ready to become a tag witcher?</p>
 <div id="basics" class="section level3">
 <h3>
@@ -821,30 +823,41 @@ The biggest advantage is that is does not always depends on the overall tag stru
 <tbody>
 <tr class="odd">
 <td align="center">children</td>
-<td align="center">Get all the direct descendants</td>
+<td align="center">Get all the direct descendants of each selected tag</td>
 </tr>
 <tr class="even">
 <td align="center">find</td>
-<td align="center">Get all descendants</td>
+<td align="center">Get all descendants of each selected tag</td>
 </tr>
 <tr class="odd">
 <td align="center">parent</td>
-<td align="center">Get the direct ancestors</td>
+<td align="center">Get the direct ancestors of each selected tag</td>
 </tr>
 <tr class="even">
 <td align="center">parents</td>
-<td align="center">Get all parents</td>
+<td align="center">Get all parents of each selected tag</td>
 </tr>
 <tr class="odd">
+<td align="center">siblings</td>
+<td align="center">Get all siblings of each selected tag</td>
+</tr>
+<tr class="even">
 <td align="center">filter</td>
 <td align="center">Subset selected tags with CSS selectors or R function</td>
 </tr>
-<tr class="even">
-<td align="center">reset</td>
+<tr class="odd">
+<td align="center">resetSelected</td>
 <td align="center">Reset set of selected tags to the root tag</td>
 </tr>
 </tbody>
 </table></div>
+<p>According to Figure <a href="htmltools-overview.html#fig:htmltools-query-tags">2.5</a>, while <code>$children()</code> selects only direct descendants, <code>$find()</code> is slightly more powerful and drills down to any level deeper. <code>$filter()</code> is convenient to subset selected tags, for instance, depending on a specific attribute. A dedicated section (<a href="htmltools-overview.html#htmtools-chain-queries">2.6.4</a>) covers <code>$resetSelected()</code> which essentially reset the current selection to the root tag. Whereas <code>$parent()</code> allow to go up step by step returning each time the direct ancestor, <code>$parents()</code> returns all ancestors. If you need to be even more specific, <code>$closest(cssSelector)</code> goes up until it finds the matching <code>cssSelector</code>. Note that, if <code>cssSelector = NULL</code>, <code>$closest()</code> is equivalent to call <code>$selectedTags()</code>.</p>
+<div class="figure">
+<span id="fig:htmltools-query-tags"></span>
+<img src="images/htmltools/htmltools-query-tags.png" alt="tagQuery API: overview of query methods." width="100%"><p class="caption">
+FIGURE 2.5: tagQuery API: overview of query methods.
+</p>
+</div>
 <p>Let’s consider an example consisting of a tabset panel with three tabs. Those menu items are one of the most challenging elements to handle when building a custom Shiny template and the new <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code> literally make it a breeze to handle. A detailed case study is available section <a href="custom-templates-skeleton.html#tabler-navbar-navigation">18.2.4.1</a>.</p>
 <div class="sourceCode" id="cb99"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">temp_tabs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span>
@@ -852,21 +865,21 @@ The biggest advantage is that is does not always depends on the overall tag stru
 <span class="op">}</span><span class="op">)</span>
 <span class="va">tabs</span> <span class="op">&lt;-</span> <span class="fu">bs4Dash</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/bs4Dash/man/tabsetPanel.html">tabsetPanel</a></span><span class="op">(</span>.list <span class="op">=</span> <span class="va">temp_tabs</span><span class="op">)</span></code></pre></div>
 <pre><code>##  [1] "&lt;div class="tabbable"&gt;"
-##  [2] "  &lt;ul class="nav nav-tabs" data-tabsetid="8198"&gt;"
+##  [2] "  &lt;ul class="nav nav-tabs" data-tabsetid="8900"&gt;"
 ##  [3] "    &lt;li class="nav-item"&gt;"
-##  [4] "      &lt;a href="#" data-toggle="tab" data-value="1" class="nav-link active" data-target="#tab-8198-1"&gt;1&lt;/a&gt;"
+##  [4] "      &lt;a href="#" data-toggle="tab" data-value="1" class="nav-link active" data-target="#tab-8900-1"&gt;1&lt;/a&gt;"
 ##  [5] "    &lt;/li&gt;"
 ##  [6] "    &lt;li class="nav-item"&gt;"
-##  [7] "      &lt;a href="#" data-toggle="tab" data-value="2" class="nav-link" data-target="#tab-8198-2"&gt;2&lt;/a&gt;"
+##  [7] "      &lt;a href="#" data-toggle="tab" data-value="2" class="nav-link" data-target="#tab-8900-2"&gt;2&lt;/a&gt;"
 ##  [8] "    &lt;/li&gt;"
 ##  [9] "    &lt;li class="nav-item"&gt;"
-## [10] "      &lt;a href="#" data-toggle="tab" data-value="3" class="nav-link" data-target="#tab-8198-3"&gt;3&lt;/a&gt;"
+## [10] "      &lt;a href="#" data-toggle="tab" data-value="3" class="nav-link" data-target="#tab-8900-3"&gt;3&lt;/a&gt;"
 ## [11] "    &lt;/li&gt;"
 ## [12] "  &lt;/ul&gt;"
-## [13] "  &lt;div class="tab-content" data-tabsetid="8198"&gt;"
-## [14] "    &lt;div class="tab-pane active" data-value="1" id="tab-8198-1"&gt;Tab 1&lt;/div&gt;"
-## [15] "    &lt;div class="tab-pane" data-value="2" id="tab-8198-2"&gt;Tab 2&lt;/div&gt;"
-## [16] "    &lt;div class="tab-pane" data-value="3" id="tab-8198-3"&gt;Tab 3&lt;/div&gt;"
+## [13] "  &lt;div class="tab-content" data-tabsetid="8900"&gt;"
+## [14] "    &lt;div class="tab-pane active" data-value="1" id="tab-8900-1"&gt;Tab 1&lt;/div&gt;"
+## [15] "    &lt;div class="tab-pane" data-value="2" id="tab-8900-2"&gt;Tab 2&lt;/div&gt;"
+## [16] "    &lt;div class="tab-pane" data-value="3" id="tab-8900-3"&gt;Tab 3&lt;/div&gt;"
 ## [17] "  &lt;/div&gt;"
 ## [18] "&lt;/div&gt;"</code></pre>
 <p>TO DO: describes a bit more the tabset structure</p>
@@ -875,7 +888,7 @@ The biggest advantage is that is does not always depends on the overall tag stru
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery</a></span><span class="op">(</span><span class="va">tabs</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">find</span><span class="op">(</span><span class="st">"div.tab-pane"</span><span class="op">)</span><span class="op">$</span> <span class="co"># div element with tab-pane class</span>
   <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">i</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagAppendAttributes.html">tagGetAttribute</a></span><span class="op">(</span><span class="va">x</span>, <span class="st">"data-value"</span><span class="op">)</span> <span class="op">==</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
-<pre><code>## [1] "&lt;div class="tab-pane" data-value="3" id="tab-8198-3"&gt;Tab 3&lt;/div&gt;"</code></pre>
+<pre><code>## [1] "&lt;div class="tab-pane" data-value="3" id="tab-8900-3"&gt;Tab 3&lt;/div&gt;"</code></pre>
 <p>Note that we provided an anonymous R function to <code>$filter()</code>, where x is the tag and i the index, allowing us to drill down to the third tab which has <code>data-value = 3</code>.</p>
 <p>As an exercise, I give you 2 minutes to find the classic <a href="https://github.com/rstudio/htmltools">htmltools</a> equivalent. If you don’t manage, it means the new <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code> system is rather convenient.</p>
 </div>
@@ -889,7 +902,7 @@ The biggest advantage is that is does not always depends on the overall tag stru
 <h4>
 <span class="header-section-number">2.6.3.1</span> Playing with attributes<a class="anchor" aria-label="anchor" href="#playing-with-attributes"><i class="fas fa-link"></i></a>
 </h4>
-<p>There are currently two main methods to alter tag attributes, namely <code>$addAttrs()</code> (equivalent of <code>tagAppendAttributes</code>) and <code>$removeAttrs()</code>, even though more specific methods exists, for instance <code>$addClass()</code>, <code>$removeClass()</code> and <code>$toggleClass()</code>.</p>
+<p>As shown Figure <a href="htmltools-overview.html#fig:htmltools-modify-attributes">2.6</a>, there are currently two main methods to alter tag attributes, namely <code>$addAttrs()</code> (equivalent of <code>tagAppendAttributes</code>) and <code>$removeAttrs()</code>, even though more specific methods exists, for instance <code>$addClass()</code>, <code>$removeClass()</code> and <code>$toggleClass()</code>.</p>
 <div class="inline-table"><table class="table table-sm">
 <thead><tr class="header">
 <th align="center">Method</th>
@@ -922,20 +935,26 @@ The biggest advantage is that is does not always depends on the overall tag stru
 </tr>
 </tbody>
 </table></div>
+<div class="figure">
+<span id="fig:htmltools-modify-attributes"></span>
+<img src="images/htmltools/htmltools-modify-attributes.png" alt="tagQuery API: modify tag attributes." width="100%"><p class="caption">
+FIGURE 2.6: tagQuery API: modify tag attributes.
+</p>
+</div>
 <p>Bootstrap 4 allows to apply a fade <a href="https://getbootstrap.com/docs/4.6/components/navs/#fade-effect">transition</a> between tabs, provided that those tabs have the <code>fade</code> class. Below is how to seamlessly do it with <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code>:</p>
 <div class="sourceCode" id="cb103"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery</a></span><span class="op">(</span><span class="va">tabs</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">find</span><span class="op">(</span><span class="st">".tab-pane"</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">addClass</span><span class="op">(</span><span class="st">"fade"</span><span class="op">)</span></code></pre></div>
-<pre><code>## [1] "&lt;div class="tab-pane active fade" data-value="1" id="tab-8198-1"&gt;Tab 1&lt;/div&gt;"
-## [2] "&lt;div class="tab-pane fade" data-value="2" id="tab-8198-2"&gt;Tab 2&lt;/div&gt;"
-## [3] "&lt;div class="tab-pane fade" data-value="3" id="tab-8198-3"&gt;Tab 3&lt;/div&gt;"</code></pre>
+<pre><code>## [1] "&lt;div class="tab-pane active fade" data-value="1" id="tab-8900-1"&gt;Tab 1&lt;/div&gt;"
+## [2] "&lt;div class="tab-pane fade" data-value="2" id="tab-8900-2"&gt;Tab 2&lt;/div&gt;"
+## [3] "&lt;div class="tab-pane fade" data-value="3" id="tab-8900-3"&gt;Tab 3&lt;/div&gt;"</code></pre>
 </div>
 <div id="altering-tagchildrensiblings" class="section level4">
 <h4>
 <span class="header-section-number">2.6.3.2</span> Altering tag/children/siblings<a class="anchor" aria-label="anchor" href="#altering-tagchildrensiblings"><i class="fas fa-link"></i></a>
 </h4>
-<p>Below are listed some methods to alter the current tag or its children.</p>
+<p>Below are listed some methods to alter the current tag or its children, as depicted Figure <a href="htmltools-overview.html#fig:htmltools-alter-tags">2.7</a>.</p>
 <div class="inline-table"><table class="table table-sm">
 <thead><tr class="header">
 <th align="center">Method</th>
@@ -972,21 +991,27 @@ The biggest advantage is that is does not always depends on the overall tag stru
 </tr>
 </tbody>
 </table></div>
+<div class="figure">
+<span id="fig:htmltools-alter-tags"></span>
+<img src="images/htmltools/htmltools-alter-tags.png" alt="tagQuery API: alter tags children." width="100%"><p class="caption">
+FIGURE 2.7: tagQuery API: alter tags children.
+</p>
+</div>
 <p>Going back to our previous tabs example, we would like to include an icon before each tab title. We leverage the <code>$prepend()</code> method, after selecting the <code>a</code> elements part of the tab navigation:</p>
 <div class="sourceCode" id="cb105"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Add extra item to tabs at the end</span>
 <span class="va">new_tabs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery</a></span><span class="op">(</span><span class="va">tabs</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">find</span><span class="op">(</span><span class="st">"a"</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">prepend</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/icon.html">icon</a></span><span class="op">(</span><span class="st">"flag"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>##  [1] "&lt;a href="#" data-toggle="tab" data-value="1" class="nav-link active" data-target="#tab-8198-1"&gt;"
+<pre><code>##  [1] "&lt;a href="#" data-toggle="tab" data-value="1" class="nav-link active" data-target="#tab-8900-1"&gt;"
 ##  [2] "  &lt;i class="fa fa-flag" role="presentation" aria-label="flag icon"&gt;&lt;/i&gt;"
 ##  [3] "  1"
 ##  [4] "&lt;/a&gt;"
-##  [5] "&lt;a href="#" data-toggle="tab" data-value="2" class="nav-link" data-target="#tab-8198-2"&gt;"
+##  [5] "&lt;a href="#" data-toggle="tab" data-value="2" class="nav-link" data-target="#tab-8900-2"&gt;"
 ##  [6] "  &lt;i class="fa fa-flag" role="presentation" aria-label="flag icon"&gt;&lt;/i&gt;"
 ##  [7] "  2"
 ##  [8] "&lt;/a&gt;"
-##  [9] "&lt;a href="#" data-toggle="tab" data-value="3" class="nav-link" data-target="#tab-8198-3"&gt;"
+##  [9] "&lt;a href="#" data-toggle="tab" data-value="3" class="nav-link" data-target="#tab-8900-3"&gt;"
 ## [10] "  &lt;i class="fa fa-flag" role="presentation" aria-label="flag icon"&gt;&lt;/i&gt;"
 ## [11] "  3"
 ## [12] "&lt;/a&gt;"</code></pre>
@@ -994,18 +1019,18 @@ The biggest advantage is that is does not always depends on the overall tag stru
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span><span class="va">new_tabs</span><span class="op">$</span><span class="fu">allTags</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
 <span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
-<p>Result is shown Figure <a href="htmltools-overview.html#fig:htmltools-tabs-icons">2.5</a>.</p>
+<p>Result is shown Figure <a href="htmltools-overview.html#fig:htmltools-tabs-icons">2.8</a>.</p>
 <div class="figure">
 <span id="fig:htmltools-tabs-icons"></span>
 <img src="images/htmltools/htmltools-tabs-icons.png" alt="tagQuery API in action: a customized Shiny tabsetPanel." width="100%"><p class="caption">
-FIGURE 2.5: tagQuery API in action: a customized Shiny tabsetPanel.
+FIGURE 2.8: tagQuery API in action: a customized Shiny tabsetPanel.
 </p>
 </div>
 </div>
 </div>
-<div id="chain-tag-queries" class="section level3">
+<div id="htmtools-chain-queries" class="section level3">
 <h3>
-<span class="header-section-number">2.6.4</span> Chain tag queries<a class="anchor" aria-label="anchor" href="#chain-tag-queries"><i class="fas fa-link"></i></a>
+<span class="header-section-number">2.6.4</span> Chain tag queries<a class="anchor" aria-label="anchor" href="#htmtools-chain-queries"><i class="fas fa-link"></i></a>
 </h3>
 <p>One of the strength of the <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code> API is the ability to chain methods, where the classic <a href="https://github.com/rstudio/htmltools">htmltools</a> syntax might be repetitive and heavy. <code>$resetSelected()</code> allows to reset the tag selection to the root tag after a given operation, thereby making it possible to chain multiple queries with different purposes. The overall flow is more human readable than a step by step approach, similarly to the <code>tidyverse</code> or <code>ggplot</code> grammar. Let’s combine all previous examples:</p>
 <div class="sourceCode" id="cb108"><pre class="downlit sourceCode r">
@@ -1029,30 +1054,30 @@ FIGURE 2.5: tagQuery API in action: a customized Shiny tabsetPanel.
   <span class="fu">addClass</span><span class="op">(</span><span class="st">"active"</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">allTags</span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <div class="tabbable">
-<ul class="nav nav-tabs" data-tabsetid="8198">
+<ul class="nav nav-tabs" data-tabsetid="8900">
 <li class="nav-item">
-<a href="#" data-toggle="tab" data-value="1" class="nav-link" data-target="#tab-8198-1">
+<a href="#" data-toggle="tab" data-value="1" class="nav-link" data-target="#tab-8900-1">
 <i class="fa fa-flag" role="presentation" aria-label="flag icon"></i>
 1
 </a>
 </li>
 <li class="nav-item">
-<a href="#" data-toggle="tab" data-value="2" class="nav-link" data-target="#tab-8198-2">
+<a href="#" data-toggle="tab" data-value="2" class="nav-link" data-target="#tab-8900-2">
 <i class="fa fa-flag" role="presentation" aria-label="flag icon"></i>
 2
 </a>
 </li>
 <li class="nav-item">
-<a href="#" data-toggle="tab" data-value="3" class="nav-link active" data-target="#tab-8198-3">
+<a href="#" data-toggle="tab" data-value="3" class="nav-link active" data-target="#tab-8900-3">
 <i class="fa fa-flag" role="presentation" aria-label="flag icon"></i>
 3
 </a>
 </li>
 </ul>
-<div class="tab-content" data-tabsetid="8198">
-<div class="tab-pane fade" data-value="1" id="tab-8198-1">Tab 1</div>
-<div class="tab-pane fade" data-value="2" id="tab-8198-2">Tab 2</div>
-<div class="tab-pane fade active" data-value="3" id="tab-8198-3">Tab 3</div>
+<div class="tab-content" data-tabsetid="8900">
+<div class="tab-pane fade" data-value="1" id="tab-8900-1">Tab 1</div>
+<div class="tab-pane fade" data-value="2" id="tab-8900-2">Tab 2</div>
+<div class="tab-pane fade active" data-value="3" id="tab-8900-3">Tab 3</div>
 </div>
 </div>
 </div>
@@ -1067,17 +1092,17 @@ tabs content from <code>Tab i</code> to <code>This is tab i</code>. A common mis
   <span class="fu">find</span><span class="op">(</span><span class="st">".tab-pane"</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">empty</span><span class="op">(</span><span class="op">)</span><span class="op">$</span>
   <span class="fu">append</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="st">"This is tab"</span>, <span class="va">i</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>##  [1] "&lt;div class="tab-pane active" data-value="1" id="tab-8198-1"&gt;"
+<pre><code>##  [1] "&lt;div class="tab-pane active" data-value="1" id="tab-8900-1"&gt;"
 ##  [2] "  This is tab 1"
 ##  [3] "  This is tab 2"
 ##  [4] "  This is tab 3"
 ##  [5] "&lt;/div&gt;"
-##  [6] "&lt;div class="tab-pane" data-value="2" id="tab-8198-2"&gt;"
+##  [6] "&lt;div class="tab-pane" data-value="2" id="tab-8900-2"&gt;"
 ##  [7] "  This is tab 1"
 ##  [8] "  This is tab 2"
 ##  [9] "  This is tab 3"
 ## [10] "&lt;/div&gt;"
-## [11] "&lt;div class="tab-pane" data-value="3" id="tab-8198-3"&gt;"
+## [11] "&lt;div class="tab-pane" data-value="3" id="tab-8900-3"&gt;"
 ## [12] "  This is tab 1"
 ## [13] "  This is tab 2"
 ## [14] "  This is tab 3"
@@ -1093,9 +1118,9 @@ tabs content from <code>Tab i</code> to <code>This is tab i</code>. A common mis
     <span class="co"># return edited tag</span>
     <span class="va">x</span>
   <span class="op">}</span><span class="op">)</span></code></pre></div>
-<pre><code>## [1] "&lt;div class="tab-pane active" data-value="1" id="tab-8198-1"&gt;This is tab 1&lt;/div&gt;"
-## [2] "&lt;div class="tab-pane" data-value="2" id="tab-8198-2"&gt;This is tab 2&lt;/div&gt;"
-## [3] "&lt;div class="tab-pane" data-value="3" id="tab-8198-3"&gt;This is tab 3&lt;/div&gt;"</code></pre>
+<pre><code>## [1] "&lt;div class="tab-pane active" data-value="1" id="tab-8900-1"&gt;This is tab 1&lt;/div&gt;"
+## [2] "&lt;div class="tab-pane" data-value="2" id="tab-8900-2"&gt;This is tab 2&lt;/div&gt;"
+## [3] "&lt;div class="tab-pane" data-value="3" id="tab-8900-3"&gt;This is tab 3&lt;/div&gt;"</code></pre>
 </div>
 <div id="practice" class="section level3">
 <h3>
@@ -1197,7 +1222,7 @@ tabs content from <code>Tab i</code> to <code>This is tab i</code>. A common mis
 <li><a class="nav-link" href="#basics"><span class="header-section-number">2.6.1</span> Basics</a></li>
 <li><a class="nav-link" href="#query-tags"><span class="header-section-number">2.6.2</span> Query tags</a></li>
 <li><a class="nav-link" href="#modify-tags"><span class="header-section-number">2.6.3</span> Modify tags</a></li>
-<li><a class="nav-link" href="#chain-tag-queries"><span class="header-section-number">2.6.4</span> Chain tag queries</a></li>
+<li><a class="nav-link" href="#htmtools-chain-queries"><span class="header-section-number">2.6.4</span> Chain tag queries</a></li>
 <li><a class="nav-link" href="#specific-cases"><span class="header-section-number">2.6.5</span> Specific cases</a></li>
 <li><a class="nav-link" href="#practice"><span class="header-section-number">2.6.6</span> Practice</a></li>
 </ul>
