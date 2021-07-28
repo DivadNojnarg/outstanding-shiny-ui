@@ -271,7 +271,7 @@ preview_badge <- function(theme = NULL) {
 knitr::include_graphics("images/beautify/bslib-custom-badge.png")
 ```
 
-`bs_theme_dependencies` is used outside of a Shiny context to include the theme Sass code as a dependency. 
+`bs_theme_dependencies()` is used outside of a Shiny context to include the theme Sass code as a dependency. 
 
 ### Import external rules
 Let's try with another example. We would like to bring a refreshment to the Bootstrap UI elements with one of the most modern UI kit to date, namely [98.css](https://jdan.github.io/98.css/), a Windows 98 CSS kit. The CSS assets may be accessed from [jsdelivr](https://cdn.jsdelivr.net/npm/98.css@0.1.16/dist/98.min.css), as shown below:
@@ -286,14 +286,13 @@ win98_css <- paste0(win98_cdn, "dist/98.min.css")
 ```{r, eval=FALSE}
 theme %>%
   bs_add_rules(
-    sprintf('@import %s', win98_css)
+    sprintf('@import "%s"', win98_css)
   )
 ```
 
 The three theme colors are `#c0c0c0` for the background and all colors (except primary), `#03158b` for primary and `#222222` for the text. We also disable the rounded option so that button borders stay squared.
 
 ```{r, eval=FALSE}
-
 windows_grey <- "#c0c0c0"
 windows98_theme <- bs_theme(
   bg = windows_grey,
@@ -529,6 +528,94 @@ shinyApp(ui, server)
 
 
 ### Advanced {#bslib-renderHook}
+In this section, we see how to create components whose rendering may adapt depending on the
+currently active theme properties, like the version. Bootstrap badges have slightly different structures between Bootstrap 3 and Bootstrap 4/5:
+
+```html
+<!-- BS3 -->
+<span class="badge">42</span>
+
+<!-- BS4 -->
+<span class="badge badge-secondary">New</span>
+
+<!-- BS5 -->
+<span class="badge bg-secondary">New</span>
+```
+
+Bootstrap 3 badges don't have any color class contrary to Bootstrap 4 or 5. Bootstrap 4 and 5 badges color classes slightly differ: `badge-<COLOR>` (BS4) vs `bg-<COLOR>` (BS5). Below, lets' write a common wrapper to create a `bs_badge()` function for Shiny that works for all Bootstrap versions. No question to create three different functions!
+The common skeleton tag is a simple `span` element with the `badge` class. Depending on the version, we
+create a render hook with `htmltools::tagAddRenderHook()` that is able to adequately alter the tag structure. We first get the currently active theme with `shiny::getCurrentTheme()`. We check if it is a `{bslib}` theme and if yes, we recover its version with `bslib::theme_version()`. Note the importance of timing. Calling `shiny::getCurrentTheme()` outside the render hook would give `NULL`, thereby preventing the code to work. We raise an error if color is used whenever the Bootstrap version is lower than 4. In case of Bootstrap 4 or 5, we utilize `htmltools::tagQuery()` to efficiently modify the tag structure in one single flow of instructions, as shown in section \@ref(htmltools-modern). Result is shown below:
+
+```{r}
+bs_badge <- function(text, color = NULL) {
+  # Create common badge skeleton for BS3/4/5
+  badge_skeleton <- tags$span(class = "badge", text)
+  
+  # Handle BS4 and BS5 extra class
+  if (!is.null(color)) {
+    badge_skeleton <- tagAddRenderHook(badge_skeleton, function(x) {
+      # get theme and version
+      theme <- getCurrentTheme()
+      version <- if (bslib::is_bs_theme(theme)) {
+        bslib::theme_version(theme)
+      }
+      
+      switch(
+        version,
+        # stop if color is used with BS3
+        "3" = stop(
+          sprintf(
+            "color is not available for Bootstrap %s", 
+            version
+          )
+        ),
+        "4" =  tagQuery(x)$
+          addClass(sprintf("badge-%s", color))$
+          allTags(),
+        "5" = tagQuery(x)$
+          addClass(sprintf("bg-%s", color))$
+          allTags()
+      )
+    })
+  }
+  
+  badge_skeleton
+  
+}
+```
+
+Let's test it below:
+
+```{r, eval=FALSE}
+# BS3
+ui <- fluidPage(
+  theme = bs_theme(version = 3),
+  bs_badge(42)
+)
+server <- function(input, output, session) {}
+
+shinyApp(ui, server)
+
+# BS4
+ui <- fluidPage(
+  theme = bs_theme(version = 4),
+  bs_badge(42, "primary")
+)
+shinyApp(ui, server)
+
+# BS5
+ui <- fluidPage(
+  theme = bs_theme(version = 5),
+  bs_badge(42, "primary")
+)
+shinyApp(ui, server)
+```
+
+Another great real life example if documented [here](https://github.com/rstudio/shiny/pull/3372/files#diff-befe9146792f0d65aeeaf781e8ba00a1a3638ac2be162b61b6c8958440860b56), which briefly consists in handling [nav](https://getbootstrap.com/docs/5.0/components/navs-tabs/) element differences
+between Bootstrap 3 and Bootstrap 4/5. 
+
+<!-- TO DO: rework later when I understand what is the role of bs_current_theme()...
+
 The above approach allows us to apply a theme based on a user input, like a theme switcher. 
 However, we can't access and modify the theme at run time to apply specific rendering properties.
 Let's go further! How do we recover the currently active theme on the server side? Look no further, `bs_current_theme()` is the weapon you need:  
@@ -547,10 +634,7 @@ shinyApp(ui, server)
 ```
 
 In a reactive context (Shiny), this calls `session$getCurrentTheme()`. 
-
-`tagAddRenderHook()`: https://github.com/rstudio/shiny/pull/3372/files#diff-befe9146792f0d65aeeaf781e8ba00a1a3638ac2be162b61b6c8958440860b56R1029-R1040,
- ...
-
+-->
 
 ## Further resources
 The reader will refer to the `{bslib}` various [vignettes](https://rstudio.github.io/bslib/articles/theming.html).

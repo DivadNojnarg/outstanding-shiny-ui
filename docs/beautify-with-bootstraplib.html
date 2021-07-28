@@ -343,7 +343,7 @@ other elements. Let’s just overwrite the <code>badge-font-weight</code>.</p>
 FIGURE 9.3: Custom Bootstrao 4 badge with bslib. Left: custom badge, right: default badge.
 </p>
 </div>
-<p><code>bs_theme_dependencies</code> is used outside of a Shiny context to include the theme Sass code as a dependency.</p>
+<p><code><a href="https://rstudio.github.io/bslib/reference/bs_theme_dependencies.html">bs_theme_dependencies()</a></code> is used outside of a Shiny context to include the theme Sass code as a dependency.</p>
 </div>
 <div id="import-external-rules" class="section level3">
 <h3>
@@ -357,7 +357,7 @@ FIGURE 9.3: Custom Bootstrao 4 badge with bslib. Left: custom badge, right: defa
 <div class="sourceCode" id="cb319"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">theme</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rstudio.github.io/bslib/reference/bs_bundle.html">bs_add_rules</a></span><span class="op">(</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">'@import %s'</span>, <span class="va">win98_css</span><span class="op">)</span>
+    <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">'@import "%s"'</span>, <span class="va">win98_css</span><span class="op">)</span>
   <span class="op">)</span></code></pre></div>
 <p>The three theme colors are <code>#c0c0c0</code> for the background and all colors (except primary), <code>#03158b</code> for primary and <code>#222222</code> for the text. We also disable the rounded option so that button borders stay squared.</p>
 <div class="sourceCode" id="cb320"><pre class="downlit sourceCode r">
@@ -589,23 +589,103 @@ FIGURE 9.5: Theme preview with custom component
 <h3>
 <span class="header-section-number">9.4.3</span> Advanced<a class="anchor" aria-label="anchor" href="#bslib-renderHook"><i class="fas fa-link"></i></a>
 </h3>
-<p>The above approach allows us to apply a theme based on a user input, like a theme switcher.
-However, we can’t access and modify the theme at run time to apply specific rendering properties.
-Let’s go further! How do we recover the currently active theme on the server side? Look no further, <code><a href="https://rstudio.github.io/bslib/reference/bs_current_theme.html">bs_current_theme()</a></code> is the weapon you need:</p>
-<div class="sourceCode" id="cb328"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
-  theme <span class="op">=</span> <span class="fu"><a href="https://rstudio.github.io/bslib/reference/bs_theme.html">bs_theme</a></span><span class="op">(</span>version <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,
-  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html">verbatimTextOutput</a></span><span class="op">(</span><span class="st">"current_theme"</span><span class="op">)</span>
+<p>In this section, we see how to create components whose rendering may adapt depending on the
+currently active theme properties, like the version. Bootstrap badges have slightly different structures between Bootstrap 3 and Bootstrap 4/5:</p>
+<div class="sourceCode" id="cb328"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb328-1"><a href="beautify-with-bootstraplib.html#cb328-1"></a><span class="co">&lt;!-- BS3 --&gt;</span></span>
+<span id="cb328-2"><a href="beautify-with-bootstraplib.html#cb328-2"></a><span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"badge"</span><span class="kw">&gt;</span>42<span class="kw">&lt;/span&gt;</span></span>
+<span id="cb328-3"><a href="beautify-with-bootstraplib.html#cb328-3"></a></span>
+<span id="cb328-4"><a href="beautify-with-bootstraplib.html#cb328-4"></a><span class="co">&lt;!-- BS4 --&gt;</span></span>
+<span id="cb328-5"><a href="beautify-with-bootstraplib.html#cb328-5"></a><span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"badge badge-secondary"</span><span class="kw">&gt;</span>New<span class="kw">&lt;/span&gt;</span></span>
+<span id="cb328-6"><a href="beautify-with-bootstraplib.html#cb328-6"></a></span>
+<span id="cb328-7"><a href="beautify-with-bootstraplib.html#cb328-7"></a><span class="co">&lt;!-- BS5 --&gt;</span></span>
+<span id="cb328-8"><a href="beautify-with-bootstraplib.html#cb328-8"></a><span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"badge bg-secondary"</span><span class="kw">&gt;</span>New<span class="kw">&lt;/span&gt;</span></span></code></pre></div>
+<p>Bootstrap 3 badges don’t have any color class contrary to Bootstrap 4 or 5. Bootstrap 4 and 5 badges color classes slightly differ: <code>badge-&lt;COLOR&gt;</code> (BS4) vs <code>bg-&lt;COLOR&gt;</code> (BS5). Below, lets’ write a common wrapper to create a <code>bs_badge()</code> function for Shiny that works for all Bootstrap versions. No question to create three different functions!
+The common skeleton tag is a simple <code>span</code> element with the <code>badge</code> class. Depending on the version, we
+create a render hook with <code><a href="https://rdrr.io/pkg/htmltools/man/tagAddRenderHook.html">htmltools::tagAddRenderHook()</a></code> that is able to adequately alter the tag structure. We first get the currently active theme with <code><a href="https://rdrr.io/pkg/shiny/man/getCurrentTheme.html">shiny::getCurrentTheme()</a></code>. We check if it is a <a href="https://rstudio.github.io/bslib/">bslib</a> theme and if yes, we recover its version with <code><a href="https://rstudio.github.io/bslib/reference/theme_version.html">bslib::theme_version()</a></code>. Note the importance of timing. Calling <code><a href="https://rdrr.io/pkg/shiny/man/getCurrentTheme.html">shiny::getCurrentTheme()</a></code> outside the render hook would give <code>NULL</code>, thereby preventing the code to work. We raise an error if color is used whenever the Bootstrap version is lower than 4. In case of Bootstrap 4 or 5, we utilize <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">htmltools::tagQuery()</a></code> to efficiently modify the tag structure in one single flow of instructions, as shown in section <a href="htmltools-overview.html#htmltools-modern">2.6</a>. Result is shown below:</p>
+<div class="sourceCode" id="cb329"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">bs_badge</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">text</span>, <span class="va">color</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+  <span class="co"># Create common badge skeleton for BS3/4/5</span>
+  <span class="va">badge_skeleton</span> <span class="op">&lt;-</span> <span class="va">tags</span><span class="op">$</span><span class="fu">span</span><span class="op">(</span>class <span class="op">=</span> <span class="st">"badge"</span>, <span class="va">text</span><span class="op">)</span>
+  
+  <span class="co"># Handle BS4 and BS5 extra class</span>
+  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">color</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+    <span class="va">badge_skeleton</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagAddRenderHook.html">tagAddRenderHook</a></span><span class="op">(</span><span class="va">badge_skeleton</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span>
+      <span class="co"># get theme and version</span>
+      <span class="va">theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/getCurrentTheme.html">getCurrentTheme</a></span><span class="op">(</span><span class="op">)</span>
+      <span class="va">version</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu">bslib</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/bslib/reference/bs_theme.html">is_bs_theme</a></span><span class="op">(</span><span class="va">theme</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fu">bslib</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/bslib/reference/theme_version.html">theme_version</a></span><span class="op">(</span><span class="va">theme</span><span class="op">)</span>
+      <span class="op">}</span>
+      
+      <span class="kw"><a href="https://rdrr.io/r/base/switch.html">switch</a></span><span class="op">(</span>
+        <span class="va">version</span>,
+        <span class="co"># stop if color is used with BS3</span>
+        <span class="st">"3"</span> <span class="op">=</span> <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span>
+          <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span>
+            <span class="st">"color is not available for Bootstrap %s"</span>, 
+            <span class="va">version</span>
+          <span class="op">)</span>
+        <span class="op">)</span>,
+        <span class="st">"4"</span> <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">$</span>
+          <span class="fu">addClass</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"badge-%s"</span>, <span class="va">color</span><span class="op">)</span><span class="op">)</span><span class="op">$</span>
+          <span class="fu">allTags</span><span class="op">(</span><span class="op">)</span>,
+        <span class="st">"5"</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">$</span>
+          <span class="fu">addClass</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span><span class="st">"bg-%s"</span>, <span class="va">color</span><span class="op">)</span><span class="op">)</span><span class="op">$</span>
+          <span class="fu">allTags</span><span class="op">(</span><span class="op">)</span>
+      <span class="op">)</span>
+    <span class="op">}</span><span class="op">)</span>
+  <span class="op">}</span>
+  
+  <span class="va">badge_skeleton</span>
+  
+<span class="op">}</span></code></pre></div>
+<p>Let’s test it below:</p>
+<div class="sourceCode" id="cb330"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># BS3</span>
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  theme <span class="op">=</span> <span class="fu"><a href="https://rstudio.github.io/bslib/reference/bs_theme.html">bs_theme</a></span><span class="op">(</span>version <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,
+  <span class="fu">bs_badge</span><span class="op">(</span><span class="fl">42</span><span class="op">)</span>
 <span class="op">)</span>
+<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span><span class="op">}</span>
 
-<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">output</span><span class="op">$</span><span class="va">current_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html">renderPrint</a></span><span class="op">(</span><span class="fu"><a href="https://rstudio.github.io/bslib/reference/bs_current_theme.html">bs_current_theme</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
-<span class="op">}</span>
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>
 
+<span class="co"># BS4</span>
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  theme <span class="op">=</span> <span class="fu"><a href="https://rstudio.github.io/bslib/reference/bs_theme.html">bs_theme</a></span><span class="op">(</span>version <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,
+  <span class="fu">bs_badge</span><span class="op">(</span><span class="fl">42</span>, <span class="st">"primary"</span><span class="op">)</span>
+<span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>
+
+<span class="co"># BS5</span>
+<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
+  theme <span class="op">=</span> <span class="fu"><a href="https://rstudio.github.io/bslib/reference/bs_theme.html">bs_theme</a></span><span class="op">(</span>version <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,
+  <span class="fu">bs_badge</span><span class="op">(</span><span class="fl">42</span>, <span class="st">"primary"</span><span class="op">)</span>
+<span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
-<p>In a reactive context (Shiny), this calls <code>session$getCurrentTheme()</code>.</p>
-<p><code><a href="https://rdrr.io/pkg/htmltools/man/tagAddRenderHook.html">tagAddRenderHook()</a></code>: <a href="https://github.com/rstudio/shiny/pull/3372/files#diff-befe9146792f0d65aeeaf781e8ba00a1a3638ac2be162b61b6c8958440860b56R1029-R1040" class="uri">https://github.com/rstudio/shiny/pull/3372/files#diff-befe9146792f0d65aeeaf781e8ba00a1a3638ac2be162b61b6c8958440860b56R1029-R1040</a>,
-…</p>
+<p>Another great real life example if documented <a href="https://github.com/rstudio/shiny/pull/3372/files#diff-befe9146792f0d65aeeaf781e8ba00a1a3638ac2be162b61b6c8958440860b56">here</a>, which briefly consists in handling <a href="https://getbootstrap.com/docs/5.0/components/navs-tabs/">nav</a> element differences
+between Bootstrap 3 and Bootstrap 4/5.</p>
+<!-- TO DO: rework later when I understand what is the role of bs_current_theme()...
+
+The above approach allows us to apply a theme based on a user input, like a theme switcher. 
+However, we can't access and modify the theme at run time to apply specific rendering properties.
+Let's go further! How do we recover the currently active theme on the server side? Look no further, `bs_current_theme()` is the weapon you need:  
+
+
+```r
+ui <- fluidPage(
+  theme = bs_theme(version = 4),
+  verbatimTextOutput("current_theme")
+)
+
+server <- function(input, output, session) {
+  output$current_theme <- renderPrint(bs_current_theme())
+}
+
+shinyApp(ui, server)
+```
+
+In a reactive context (Shiny), this calls `session$getCurrentTheme()`. 
+-->
 </div>
 </div>
 <div id="further-resources" class="section level2">
