@@ -1023,3 +1023,83 @@ rpgSelect <- function(inputId, label, choices, selected = NULL,
     allTags()
 }
 ```
+
+### Alter tag rendering
+In this section, we'll see what is probably one of the most advanced `{htmltools}` feature, recently introduced in 0.5.2. How would you render a tag differently depending on different conditions, like external options, specific theme version, ...?
+
+For instance, assume you want to create development specific tags, that only appear in Shiny `dev` mode:
+
+```{r}
+devmode(TRUE)
+getOption("shiny.devmode")
+```
+
+Then we create our custom tag with the `.renderHook` parameter available for `{htmltools}` tag element, providing a function (`hook`) that will be called upon tag rendering:
+
+```{r}
+customTag <- span("", .renderHook = function(x) {
+  if (getOption("shiny.devmode")) {
+    tagAppendAttributes(
+      x, 
+      style=
+      "color: red; 
+      border-style: dashed;
+      border-color: blue;"
+    )
+  } 
+})
+```
+
+```{r, echo=FALSE}
+tag_to_string(customTag)
+```
+
+Note that if the tag already has any existing hook, `tagAddRenderHook()` adds another hook to the current list. An option controls whether to erase existing hooks.
+
+```{r}
+customTag <- tagAddRenderHook(customTag, function(x) {
+  if (getOption("shiny.devmode")) {
+    tagAppendChildren(x, "UNDER REWORK")
+  } 
+})
+```
+
+The hooks list is accessible with:
+
+```{r}
+customTag$.renderHooks
+# Remove first hook
+# customTag$.renderHooks[[1]] <- NULL
+```
+
+which is convenient to remove previous hooks. 
+
+Let's try it in a Shiny app with the `dev` mode enabled:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(customTag),
+    mainPanel(customTag)
+  )
+)
+server <- function(input, output, session) {}
+shinyApp(ui, server)
+```
+
+We disable the `dev` mode:
+
+```{r, eval=FALSE}
+devmode(devmode = FALSE)
+getOption("shiny.devmode")
+shinyApp(ui, server)
+```
+
+The result is shown Figure \@ref(fig:htmltools-renderHook).
+
+```{r htmltools-renderHook, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap="tagAddRenderHook in action. Left: Shiny dev mode enabled; right: Shiny dev mode disabled."}
+knitr::include_graphics("images/htmltools/htmltools-renderHook-1.png")
+knitr::include_graphics("images/htmltools/htmltools-renderHook-2.png")
+```
+
+In Chapter \@ref(bslib-renderHook) we'll discuss another use case, which is about theme-dependent rendering, that is for instance, render a tag differently whether Shiny is in Bootstrap 3 or Bootstrap 4 mode. 
