@@ -7,7 +7,7 @@ design modifications to your apps, in a ridiculously short amount of time.
 ## Disclaimer
 
 ::: {.importantblock data-latex=""}
-`{bslib}` requires [`{shiny} >= 1.6.0`](https://blog.rstudio.com/2021/02/01/shiny-1-6-0/).
+`{bslib}` requires [`{shiny} >= 1.6.0`](https://blog.rstudio.com/2021/02/01/shiny-1-6-0/). Bootstrap 5 support requires `{shiny} >= 1.6.0.9001`.
 :::
 
 ## High level customization
@@ -527,7 +527,9 @@ shinyApp(ui, server)
 ```
 
 
-### Advanced {#bslib-renderHook}
+### Conditional rendering {#bslib-renderHook}
+
+#### Bootstrap badges
 In this section, we see how to create components whose rendering may adapt depending on the
 currently active theme properties, like the version. Bootstrap badges have slightly different structures between Bootstrap 3 and Bootstrap 4/5:
 
@@ -544,7 +546,7 @@ currently active theme properties, like the version. Bootstrap badges have sligh
 
 Bootstrap 3 badges don't have any color class contrary to Bootstrap 4 or 5. Bootstrap 4 and 5 badges color classes slightly differ: `badge-<COLOR>` (BS4) vs `bg-<COLOR>` (BS5). Below, lets' write a common wrapper to create a `bs_badge()` function for Shiny that works for all Bootstrap versions. No question to create three different functions!
 The common skeleton tag is a simple `span` element with the `badge` class. Depending on the version, we
-create a render hook with `htmltools::tagAddRenderHook()` that is able to adequately alter the tag structure. We first get the currently active theme with `shiny::getCurrentTheme()`. We check if it is a `{bslib}` theme and if yes, we recover its version with `bslib::theme_version()`. Note the importance of timing. Calling `shiny::getCurrentTheme()` outside the render hook would give `NULL`, thereby preventing the code to work. We raise an error if color is used whenever the Bootstrap version is lower than 4. In case of Bootstrap 4 or 5, we utilize `htmltools::tagQuery()` to efficiently modify the tag structure in one single flow of instructions, as shown in section \@ref(htmltools-modern). Result is shown below:
+create a render hook with `htmltools::tagAddRenderHook()` that is able to adequately alter the tag structure. We first get the currently active theme with `shiny::getCurrentTheme()` or `bslib::bs_current_theme()`. We check if it is a `{bslib}` theme and if yes, we recover its version with `bslib::theme_version()`. Note the importance of timing. Calling `shiny::getCurrentTheme()` outside the render hook would give `NULL`, thereby preventing the code to work. We raise an error if color is used whenever the Bootstrap version is lower than 4. In case of Bootstrap 4 or 5, we utilize `htmltools::tagQuery()` to efficiently modify the tag structure in one single flow of instructions, as shown in section \@ref(htmltools-modern). Result is shown below:
 
 ```{r}
 bs_badge <- function(text, color = NULL) {
@@ -573,7 +575,7 @@ bs_badge <- function(text, color = NULL) {
           addClass(sprintf("badge-%s", color))$
           allTags(),
         "5" = tagQuery(x)$
-          addClass(sprintf("bg-%s", color))$
+          addClass(sprintf("rounded-pill bg-%s", color))$
           allTags()
       )
     })
@@ -584,7 +586,7 @@ bs_badge <- function(text, color = NULL) {
 }
 ```
 
-Let's test it below:
+Let's test it below, result illustrated Figure \@ref(fig: bslib-dynamic-badges):
 
 ```{r, eval=FALSE}
 # BS3
@@ -611,30 +613,390 @@ ui <- fluidPage(
 shinyApp(ui, server)
 ```
 
+```{r bslib-dynamic-badges, echo=FALSE, fig.show = "hold", out.width = "33%", fig.align = "default", fig.cap="Conditional rendering of a Bootstrap component. Left: BS3 badge; center: BS4 badge; right: BS5 badge."}
+knitr::include_graphics("images/beautify/bslib-dynamic-badge-1.png")
+knitr::include_graphics("images/beautify/bslib-dynamic-badge-2.png")
+knitr::include_graphics("images/beautify/bslib-dynamic-badge-3.png")
+```
+
+#### Bootstrap navs
+
 Another great real life example if documented [here](https://github.com/rstudio/shiny/pull/3372/files#diff-befe9146792f0d65aeeaf781e8ba00a1a3638ac2be162b61b6c8958440860b56), which briefly consists in handling [nav](https://getbootstrap.com/docs/5.0/components/navs-tabs/) element differences
 between Bootstrap 3 and Bootstrap 4/5. 
 
-<!-- TO DO: rework later when I understand what is the role of bs_current_theme()...
+#### Guided exercise: Bootstrap accordions
+We conclude this part by a guided exercise. Similarly as badges, Bootstrap accordions differ
+between the three last major version. First, they don't natively exist in Bootstrap 3, and the tag structure is different between Bootstrap 4 and 5. The purpose of this exercise is to provide a generalized wrapper that would support all versions.
 
-The above approach allows us to apply a theme based on a user input, like a theme switcher. 
-However, we can't access and modify the theme at run time to apply specific rendering properties.
-Let's go further! How do we recover the currently active theme on the server side? Look no further, `bs_current_theme()` is the weapon you need:  
+Figure \@ref(fig:bslib-accordion-intro) illustrates the Bootstrap 5 accordion. It is 
+composed of items that can collapse if one clicks on their title. Overall, they are convenient to
+save space in any user interface, when the amount of text would be to much to be printed at once. 
+
+```{r bslib-accordion-intro, echo=FALSE, fig.cap='A Bootstrap 5 accordion.', out.width='100%'}
+knitr::include_graphics("images/beautify/bslib-accordion-intro.png")
+```
+
+From HTML point of view, the accordion has a main `div` wrapper with the `accordion` class, inside of which are found the accordion items. Whereas in Bootstrap 5, these elements are `div` with the `accordion-item` class, Bootstrap 4 considers `div` with `card` class. An accordion item is composed of a title with a button which is able to control the collapsed state of the linked body part, the latter being a simple `div`. The link is made with the `data-bs-target` attribute on the title that must match the `id` attribute of the body part. The `data-bs-toggle` activates the JS, which makes the whole component collapse. Each body element refers to the parent accordion with `data-bs-parent` that must match the parent `id`, thereby guarantying no unwanted interaction between multiple accordions. Below is the HTML structure of the BS5 accordion: 
+
+```html
+<!-- BS5 -->
+<div class="accordion" id="accordionExample">
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingOne">
+      <button 
+      class="accordion-button" 
+      type="button" 
+      data-bs-toggle="collapse" 
+      data-bs-target="#collapseOne" 
+      aria-expanded="true" 
+      aria-controls="collapseOne">
+        Accordion Item #1
+      </button>
+    </h2>
+    <div 
+    id="collapseOne" 
+    class="accordion-collapse collapse show" 
+    aria-labelledby="headingOne" 
+    data-bs-parent="#accordionExample">
+      <div class="accordion-body">
+        Blablabla
+      </div>
+    </div>
+  </div>
+  <!-- Other items ... -->
+</div>
+```
+
+and the BS4 accordion:
+
+```html
+<div class="accordion" id="accordionExample">
+  <div class="card">
+    <div class="card-header" id="headingOne">
+      <h2 class="mb-0">
+        <button 
+        class="btn btn-link btn-block text-left" 
+        type="button" 
+        data-toggle="collapse" 
+        data-target="#collapseOne" 
+        aria-expanded="true" 
+        aria-controls="collapseOne">
+          Accordion Item #1
+        </button>
+      </h2>
+    </div>
+
+    <div 
+    id="collapseOne" 
+    class="collapse show" 
+    aria-labelledby="headingOne" 
+    data-parent="#accordionExample">
+      <div class="card-body">
+        Blablabla
+      </div>
+    </div>
+  </div>
+```
+
+1. Compare the Bootstrap 4 and 5 HTML code. What are the differences?
+Is the tag structure the same? Are there differences for tag attributes?
+2. Based on the previous question, create the `bs_accordion()` function. This
+function starts by defining a tag structure common to BS4 and BS5.
+
+```{r, eval=FALSE}
+bs_... <- function(id, items) {
+  tags$div(
+    id = ...,
+    items
+  )
+}
+```
+
+3. Let's handle the Bootstrap differences for `bs_accordion()`. As shown above, leverage `tagAddRenderHook()`. First, create the `get_theme_version()` function to detect the currently 
+used theme version. Then call this function inside the `tagAddRenderHook()` and store it in the 
+`version` variable.
+
+```{r, eval=FALSE}
+# Function to get the current them version
+get_theme_version <- function() {
+  theme <- bslib::...
+  if (bslib::...(theme)) bslib::...(theme)
+}
+
+
+bs_... <- function(id, items) {
+  
+  ... <- tags$div(
+    id = ...,
+    items
+  )
+  
+  
+  tagAddRenderHook(accordion_tag, function(x) {
+    # get theme version
+    version <- ...
+  })
+}
+```
+
+4. Now, we'll edit `tagAddRenderHook()` so that we raise an error if the Bootstrap version is `3`.
+
+```{r, eval=FALSE}
+bs_... <- function(id, items) {
+  
+  ... <- tags$div(
+    id = ...,
+    items
+  )
+  
+  
+  tagAddRenderHook(accordion_tag, function(x) {
+    # get theme version
+    version <- ...
+    
+    # Raise error fro BS3
+    if (version == ...) {
+      stop(
+        sprintf(
+          "accordion is not available for Bootstrap %s", 
+          version
+        )
+      )
+    }
+  })
+}
+```
+
+5. We are good with the main wrapper. Let's create the `bs_accordion_item()` function, which will have to be nested inside the `bs_accordion()`. We assume it has two main parameters, title and content. To get a better code, we'll design intermediate components for the header and the body. In this step, we only create the body element since the header is slightly more complex to handle. If you have had a look to the HTML structure, you will notice below that `id`, `aria-labelledby` and `data-(bs)-parent` will be handled later from the `bs_accordion()`. These parameters require to know the `bs_accordion()` `id`, which is impossible to get within a child element. Fill in the `...` element below.
+
+```{r, eval=FALSE}
+bs_... <- function(title, content) {
+  
+  item_body <- tags$...(
+    # id will be added from bs_accordion
+    # aria-labelledby also added from bs_accordion
+    # data parent differs between BS4 and BS5
+    class = ...,
+    tags$div(
+      # class differs between BS4 and BS5
+      ...
+    )
+  )
+  
+  # accordion item wrapper 
+  tags$div(
+    # class differs between BS4 and BS5
+    ...
+  )
+}
+```
+
+6. Utilize `tagAddRenderHook()` to handle BS4 and BS5 differences in `bs_accordion_item()`.
+As in `bs_accordion()`, recover the version with `get_theme_version()`. 
+Then, create the header item in the render hook function based on the HTML structure shown above. 
+Again, some attributes will be handled later from the `bs_accordion()` function. We also added
+an `active` parameter to control the start state. Finally, based on the accordion item HTML structure,
+fill in the missing `tagQuery()` steps. Overall, this adds necessary classes as well as the newly created header. 
+
+```{r, eval=FALSE}
+bs_... <- function(title, content, active = FALSE) {
+  
+  item_body <- tags$...(
+    # id will be added from bs_accordion
+    # aria-labelledby also added from bs_accordion
+    # data parent differs between BS4 and BS5
+    class = ...,
+    tags$div(
+      # class differs between BS4 and BS5
+      content
+    )
+  )
+  
+  # accordion item wrapper 
+  ... <- tags$div(
+    # class differs between BS4 and BS5
+    ...
+  )
+  
+  tagAddRenderHook(..., function(x) {
+    # get theme and version
+    version <- ...
+    
+    # create accordion item header 
+    ... <- if (version == "4") {
+      tags$div(
+        class = ...,
+        # id will be added from bs_accordion
+        tags$h2(
+          class = "mb-0",
+          tags$button(
+            class = ...,
+            type = "button",
+            `data-toggle` = "collapse",
+            # data-target will be added from bs_accordion 
+            `aria-expanded` = tolower(...),
+            # aria-controls will be added from bs_accordion
+            title
+          )
+        )
+      )
+    } else if (version == "5") {
+      tags$h2(
+        class = ...,
+        tags$button(
+          class = ...,
+          type = "button",
+          `data-bs-toggle` = "collapse",
+          `aria-expanded` = tolower(...),
+          title
+        )
+      )
+    }
+    
+    # alter tag structure
+    switch(
+      version,
+      # don't need to handle BS3
+      "4" =  tagQuery(x)$
+        addClass(...)$
+        # prepend header tag
+        prepend(...)$
+        find(".collapse")$
+        children()$
+        # add class to item body
+        addClass(...)$
+        allTags(),
+      "5" = tagQuery(x)$
+        addClass(...)$
+        prepend(...)$
+        find(".collapse")$
+        addClass("accordion-collapse")$
+        children()$
+        addClass(...)$
+        allTags()
+    )
+  })
+}
+```
+
+7. We come back to `bs_accordion()` in order to create the correct
+`bs_accordion_item()` children ids and missing attributes. Fill in the blanks `...`.
+
+```{r, eval=FALSE}
+bs_... <- function(id, items) {
+  
+  ... <- tags$div(
+    class = "accordion",
+    id = ...,
+    items
+  )
+  
+  tagAddRenderHook(accordion_tag, function(x) {
+    # get theme and version
+    version <- ...
+    
+    if (version == ...) {
+      stop(
+        sprintf(
+          "accordion is not available for Bootstrap %s", 
+          version
+        )
+      )
+    }
+    
+    # process accordion items to add
+    # missing attributes
+    new_items <- lapply(seq_along(...), function(i) {
+      
+      # temp ids based on the parent id
+      heading_id <- paste(id, "heading", i, sep = "_")
+      controls_id <- paste0(id, "_collapse_", i)
+      target_id <- paste0("#", controls_id)
+      
+      # resolve bs_accordion_item
+      # This allows the accordion header to be properly
+      # treated: see more here
+      # https://github.com/rstudio/htmltools/issues/283
+      items[[i]] <- as.tags(items[[i]])
+      
+      # BS4 and BS5 have minor differences
+      switch(
+        version,
+        "4" = tagQuery(...[[i]])$
+          find(".card-header")$
+          addAttrs("id" = heading_id)$
+          find(".btn")$
+          addAttrs(
+            "data-target" = target_id,
+            "aria-controls" = controls_id
+          )$
+          resetSelected()$
+          find(".collapse")$
+          addAttrs(
+            "id" = controls_id,
+            "aria-labelledby" = heading_id,
+            "data-parent" = paste0("#", id)
+          )$
+          allTags(),
+        "5" = tagQuery(items[[i]])$
+          find(".accordion-header")$
+          addAttrs("id" = heading_id)$
+          children()$
+          addAttrs(
+            "data-bs-target" = target_id,
+            "aria-controls" = controls_id
+          )$
+          resetSelected()$
+          find(".accordion-collapse")$
+          addAttrs(
+            "id" = controls_id,
+            "aria-labelledby" = heading_id,
+            "data-bs-parent" = paste0("#", id)
+          )$
+          allTags()
+      )
+    })
+    
+    # alter main tag structure
+    tagQuery(x)$
+      # replace accordion items processed above
+      empty()$
+      append(new_items)$
+      allTags()
+  })
+}
+```
+
+8. Create a Shiny app to test the newly designed components.
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
-  theme = bs_theme(version = 4),
-  verbatimTextOutput("current_theme")
+  theme = bs_theme(version = ...),
+  bs_accordion(
+    id = "accordion",
+    items = tagList(
+      bs_accordion_item(
+        title = "Item 1",
+        "Item 1 content"
+      ),
+      bs_accordion_item(
+        title = "Item 2",
+        "Item 2 content"
+      )
+    )
+  )
 )
 
-server <- function(input, output, session) {
-  output$current_theme <- renderPrint(bs_current_theme())
-}
-
-shinyApp(ui, server)
+server <- function(input, output, session) {}
+run_with_themer(shinyApp(ui, server))
 ```
 
-In a reactive context (Shiny), this calls `session$getCurrentTheme()`. 
--->
+Figure \@ref(fig:bslib-bootstrap-accordions) shows the expected output for Bootstrap 4 and 5.
+
+```{r bslib-bootstrap-accordions, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap="Bootstrap accordions for Shiny. Left: BS4 accordion; right: BS5 accordion."}
+knitr::include_graphics("images/beautify/bslib-accordion-bs4.png")
+knitr::include_graphics("images/beautify/bslib-accordion-bs5.png")
+```
 
 ## Further resources
 The reader will refer to the `{bslib}` various [vignettes](https://rstudio.github.io/bslib/articles/theming.html).
