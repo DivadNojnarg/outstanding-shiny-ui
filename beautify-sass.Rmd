@@ -20,8 +20,13 @@ The main function is `sass()`, whose __input__ parameter accepts:
 
 ```{r}
 library(sass)
+# with a string
 sass(input = ".element-class { color: pink;}")
+# with named list
+sass(list(color = "pink", ".element-class { color: $color;}"))
 ```
+
+Note how the R code objects are seamlessly converted to Sass variable. For convenience, we will be using named lists in the remaining of the book.
 
 ### Variables
 Let us consider the following example, where two different classes have the same color:
@@ -39,15 +44,15 @@ Let us consider the following example, where two different classes have the same
 Shouldn't this be easier? Imagine if we had hundreds of elements with the same color.
 What happens in case the color changes? Do we have to update all properties by hand?
 
-If we let the Sass variable `$my-color`:
+If we let the Sass variable `$color`:
 
 ```css
-$my-color: purple;
+$color: purple;
 .class-1{
-  color: $my-color;
+  color: $color;
 }
 .class-2{
-  background-color: $my-color;
+  background-color: $color;
 }
 ```
 
@@ -55,19 +60,18 @@ we can quickly solve that problem. With `{sass}`, we define one variable holding
 our two rules, so that we obtain:
 
 ```{r}
-var <- "$my-color: purple;"
-rule1 <- ".class-1{ color: $my-color; }"
-rule2 <- ".class-2{ background-color: $my-color; }"
-sass(input = list(var, rule1, rule2))
+rule1 <- ".class-1{ color: $color; }"
+rule2 <- ".class-2{ background-color: $color; }"
+sass(input = list(color = "purple", rule1, rule2))
 ```
 
 ```{r, echo=FALSE}
-print(sass(input = list(var, rule1, rule2)))
+print(sass(input = list(color = "purple", rule1, rule2)))
 ```
 
 ::: {.noteblock data-latex=""}
 Add the __default!__ tag after the variable definition, if you want
-to let others modify it, that is `"$my-color: purple !default;"`.
+to let others modify it, that is `"$color: purple !default;"`.
 :::
 
 ### Partials and Modules
@@ -157,12 +161,12 @@ mixin <- "@mixin transform($property) {
   -ms-transform: $property;
   transform: $property;
 }"
-rule <- ".element1 { @include transform(rotate(90deg)); }"
-sass(input = list(mixin, rule))
+rule <- ".element1 { @include transform($prop); }"
+sass(input = list(prop = "rotate(90deg)", mixin, rule))
 ```
 
 ```{r, echo=FALSE}
-res <- sass(input = list(mixin, rule))
+res <- sass(input = list(prop = "rotate(90deg)", mixin, rule))
 print(res)
 ```
 
@@ -194,39 +198,45 @@ While debugging functions, it might be useful to capture intermediate elements.
 `@debug` allows this:
 
 ```css
-$my-var: 1;
-@debug myvar;
+$test: 1;
+@debug test;
 ```
 
 ```{r}
-sass("
-  @function multiply($parm1, $parm2) {
-    @debug 'parm1 is #{$parm1}';
-    @debug 'parm2 is #{$parm2}';
+sass(
+  list(
+    a = 2,
+    b = 4,
+    "@function multiply($parm1, $parm2) {
+      @debug 'parm1 is #{$parm1}';
+      @debug 'parm2 is #{$parm2}';
 
-    @return $parm1 * $parm2;
-  }
-
-  .my-class {
-    width: multiply(2, 4) * 1px;
-  }
-")
+      @return $parm1 * $parm2;
+    }",
+    ".my-class {
+      width: multiply($a, $b) * 1px;
+    }"
+  )
+)
 ```
 
 ```{r, echo=FALSE, warning=TRUE, message=TRUE}
 print(
-  sass("
-  @function multiply($parm1, $parm2) {
-    @debug 'parm1 is #{$parm1}';
-    @debug 'parm2 is #{$parm2}';
+  sass(
+    list(
+      a = 2,
+      b = 4,
+      "@function multiply($parm1, $parm2) {
+        @debug 'parm1 is #{$parm1}';
+        @debug 'parm2 is #{$parm2}';
 
-    @return $parm1 * $parm2;
-  }
-
-  .my-class {
-    width: multiply(2, 4) * 1px;
-  }
-")
+        @return $parm1 * $parm2;
+      }",
+      ".my-class {
+        width: multiply($a, $b) * 1px;
+      }"
+    )
+  )
 )
 ```
 
@@ -259,9 +269,6 @@ prefixed by the `%` symbol. It contains several rules and variables:
 Let's translate this into R:
 
 ```{r}
-y_padding <- "$alert-padding-y: 5px;"
-x_padding <- "$alert-padding-x: 10px;"
-b_margin <- "$alert-margin-bottom: 2px;"
 common <- "%alerts-common {
   position: relative;
   padding: $alert-padding-y $alert-padding-x;
@@ -278,9 +285,9 @@ alert_green <- ".alert-green {
 }
 "
 sass(input = list(
-  y_padding,
-  x_padding,
-  b_margin,
+  "alert-padding-y" = "5px",
+  "alert-padding-x" = "10px",
+  "alert-margin-bottom" = "2px",
   common,
   alert_red,
   alert_green
@@ -289,9 +296,9 @@ sass(input = list(
 
 ```{r, echo=FALSE}
 print(sass(input = list(
-  y_padding,
-  x_padding,
-  b_margin,
+  "alert-padding-y" = "5px",
+  "alert-padding-x" = "10px",
+  "alert-margin-bottom" = "2px",
   common,
   alert_red,
   alert_green
@@ -311,12 +318,12 @@ on some conditions.
 Below, we only want to conditionally control a shadow property, depending on the alert color:
 
 ```css
-@mixin add-shadow($box-color) {
-  @if $box-color == red {
+@mixin add-shadow($color) {
+  @if $color == red {
     box-shadow:
       0 4px 10px 0 rgb(255, 0, 0),
       0 4px 20px 0 rgb(255, 0, 0);
-  } @else if $box-color == green {
+  } @else if $color == green {
     box-shadow:
       0 4px 10px 0 rgb(0, 255, 0),
       0 4px 20px 0 rgb(0, 255, 0);
@@ -326,54 +333,54 @@ Below, we only want to conditionally control a shadow property, depending on the
 .alert-red {
   @extend %alerts-common;
   color: red;
-  @include add-shadow($box-color: red);
+  @include add-shadow($color: red);
 }
 
 .alert-green {
   @extend %alerts-common;
   color: green;
-  @include add-shadow($box-color: green);
+  @include add-shadow($color: green);
 }
 ```
 
 
 ```{r}
-add_shadow <- "@mixin add-shadow($box-color) {
-  @if $box-color == red {
+add_shadow <- "@mixin add-shadow($color) {
+  @if $color == red {
     box-shadow:
       0 4px 10px 0 rgb(255, 0, 0),
       0 4px 20px 0 rgb(255, 0, 0);
-  } @else if $box-color == green {
+  } @else if $color == green {
     box-shadow:
       0 4px 10px 0 rgb(0, 255, 0),
       0 4px 20px 0 rgb(0, 255, 0);
   }
 }
 "
-y_padding <- "$alert-padding-y: 5px;"
-x_padding <- "$alert-padding-x: 10px;"
-b_margin <- "$alert-margin-bottom: 2px;"
+
 common <- "%alerts-common {
   position: relative;
   padding: $alert-padding-y $alert-padding-x;
   margin-bottom: $alert-margin-bottom;
 }"
+
 alert_red <- ".alert-red {
   @extend %alerts-common;
   color: red;
-  @include add-shadow($box-color: red);
+  @include add-shadow($color: red);
 }
 "
+
 alert_green <- ".alert-green {
   @extend %alerts-common;
   color: green;
-  @include add-shadow($box-color: green);
+  @include add-shadow($color: green);
 }
 "
 sass(input = list(
-  y_padding,
-  x_padding,
-  b_margin,
+  "alert-padding-y" = "5px",
+  "alert-padding-x" = "10px",
+  "alert-margin-bottom" = "2px",
   common,
   add_shadow,
   alert_red,
@@ -382,7 +389,15 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
-print(sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alert_red, alert_green)))
+print(sass(input = list(
+  "alert-padding-y" = "5px",
+  "alert-padding-x" = "10px",
+  "alert-margin-bottom" = "2px",  
+  common, 
+  add_shadow, 
+  alert_red, 
+  alert_green
+)))
 ```
 
 #### Loops
@@ -407,39 +422,38 @@ insert any Sass expression in a string. As another example, if we want to create
 within a mixin, we could do `background-image: url("/some_path/#{$name}.svg")`, where `#{$name}` holds the file name.
 
 ```{r}
-add_shadow <- "@mixin add-shadow($box-color) {
-  @if $box-color == red {
+add_shadow <- "@mixin add-shadow($color) {
+  @if $color == red {
     box-shadow:
       0 4px 10px 0 rgb(255, 0, 0),
       0 4px 20px 0 rgb(255, 0, 0);
-  } @else if $box-color == green {
+  } @else if $color == green {
     box-shadow:
       0 4px 10px 0 rgb(0, 255, 0),
       0 4px 20px 0 rgb(0, 255, 0);
   }
 }
 "
-y_padding <- "$alert-padding-y: 5px;"
-x_padding <- "$alert-padding-x: 10px;"
-b_margin <- "$alert-margin-bottom: 2px;"
+
 common <- "%alerts-common {
   position: relative;
   padding: $alert-padding-y $alert-padding-x;
   margin-bottom: $alert-margin-bottom;
 }"
-alerts_rule <- "$colors: red, green;
-@each $color in $colors {
+
+alerts_rule <- "@each $color in $colors {
   .alert-#{$color} {
     @extend %alerts-common;
     color: green;
-    @include add-shadow($box-color: $color);
+    @include add-shadow($color: $color);
   }
 }
 "
 sass(input = list(
-  y_padding,
-  x_padding,
-  b_margin,
+  colors = c("green", "red"),
+  "alert-padding-y" = "5px",
+  "alert-padding-x" = "10px",
+  "alert-margin-bottom" = "2px", 
   common,
   add_shadow,
   alerts_rule
@@ -447,7 +461,15 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
-print(sass(input = list(y_padding, x_padding, b_margin, common, add_shadow, alerts_rule)))
+print(sass(input = list(
+  colors = c("green", "red"),
+  "alert-padding-y" = "5px",
+  "alert-padding-x" = "10px",
+  "alert-margin-bottom" = "2px",  
+  common, 
+  add_shadow, 
+  alerts_rule
+)))
 ```
 
 It becomes even more powerful while working with __maps__ like `$font-weights: ("regular": 400, "medium": 500, "bold": 700);`, i.e by key/value [pairs](https://sass-lang.com/documentation/at-rules/control/each#with-maps).
@@ -470,12 +492,11 @@ As it's best practice, especially for debugging purposes, to include assets as H
 dependencies, it is a good idea to organize the Sass variable definition, function/mixins in __layers__, leveraging the `sass_layer()` function:
 
 ```{r, warning=FALSE}
-var <- "$my-color: purple !default;"
-rule1 <- ".class-1{ color: $my-color; }"
-rule2 <- ".class-2{ background-color: $my-color; }"
+rule1 <- ".class-1{ color: $color; }"
+rule2 <- ".class-2{ background-color: $color; }"
 layer1 <- sass_layer(
-  defaults = var,
-  rules = c(rule1, rule2)
+  defaults = list(color = "purple"),
+  rules = list(rule1, rule2)
 )
 ```
 
@@ -504,10 +525,9 @@ sass_layer(
 Ultimately, multiple layers may be bundled with `sass_bundle()`:
 
 ```{r, warning=FALSE}
-var2 <- "$my-color: blue !default;"
 layer2 <- sass_layer(
-  defaults = var2,
-  rules = c(rule1, rule2)
+  defaults = list(color = "blue"),
+  rules = list(rule1, rule2)
 )
 
 
@@ -541,7 +561,7 @@ this later in the book in Chapter \@ref(workflow-charpente). Overall those steps
 ```{r}
 sass(
   list(
-   "$color: pink;",
+   color = "pink",
    ".a { color: $color; }"
   ),
   options = sass_options(
@@ -575,15 +595,15 @@ The first option is rather simple since the Sass code is compiled with `sass()` 
 ```{r, eval=FALSE}
 sass(
   list(
-   c("$color: pink;", "$size: 30px;"),
-   c(".awesome-link {
-        color: $color;
-        font-size: $size;
-        &:hover{
-          color: green;
-        }
-      }"
-    )
+    color = "pink",
+    size = "30px",
+    ".awesome-link {
+      color: $color;
+      font-size: $size;
+      &:hover{
+        color: green;
+      }
+    }"
   ),
   output = sprintf("www/main.min.css"),
   options = sass_options(
@@ -664,26 +684,26 @@ $gray-x-light: #d1c5c0 !default;
 
 Now we would have to recompile the whole AdminLTE3 Sass code to account for these changes.
 It means, all scss assets must be accessible somewhere: this is what the `{fresh}` package is doing under the [hoods](https://github.com/dreamRs/fresh/blob/master/R/create_theme.R).
-No worries, we'll come back on `{fresh}` in the next Chapter. For now, we rely on the `{fresh}` Sass code stored at
-`system.file("assets/AdminLTE-3.1.0/AdminLTE.scss", package = "fresh")`:
+No worries, we'll come back on `{fresh}` in the next Chapter. For now, we rely on the `{OSUICode}` Sass code stored at
+`system.file("sass/adminlte/adminlte.scss", package = "OSUICode")` (since `{fresh}` may change in the future, `{OSUICode}` will be frozen to make sure the code always work):
 
 ```{r, eval=FALSE}
 library(bs4Dash)
 
 css <- sass(
   sass_layer(
-    defaults = c(
-      "$lightblue: #136377 !default;",
-      "$olive: #d8bc66 !default;",
-      "$lime: #fcec0c !default;",
-      "$orange: #978d01 !default;",
-      "$maroon: #58482c !default;",
-      "$gray-x-light: #d1c5c0 !default;"
+    defaults = list(
+      lightblue = "#136377",
+      olive = "#d8bc66",
+      lime = "#fcec0c",
+      orange = "#978d01",
+      maroon = "#58482c",
+      "gray-x-light" = "#d1c5c0"
     ),
     rules = sass_file(
       input = system.file(
-        "assets/AdminLTE-3.1.0/AdminLTE.scss",
-        package = "fresh"
+        "sass/adminlte/adminlte.scss",
+        package = "OSUICode"
       )
     )
   )
@@ -731,10 +751,15 @@ server <- function(input, output) {
 shinyApp(ui, server)
 ```
 
+Output is shown on Figure \@ref(fig:sass-adminlte-colors).
+
+```{r sass-adminlte-colors, echo=FALSE, fig.cap='Custom AdminLTE colors', out.width='100%'}
+knitr::include_graphics("images/beautify/sass-adminlte-colors.png")
+```
+
 You probably noticed a potential issue. We indeed have to rely on a specific AdminLTE version,
 namely `3.1.0`, that is not necessarily the one we want. Therefore, an alternative would
-be to download the Sass files from AdminLTE3, store them in a package, ideally the `/inst` folder, and recompile
-the code from that folder with new variables. As AdminLTE3 depends on Bootstrap 4, we would have to recover those dependencies in a separate folder, making sure it is accessible to the AdminLTE Sass code.
+be to download the Sass files from AdminLTE3, store them in a package, ideally the `/inst` folder, and recompile the code from that folder with new variables. As AdminLTE3 depends on Bootstrap 4, we would have to recover those dependencies in a separate folder, making sure it is accessible to the AdminLTE Sass code.
 
 ### Customize `{shinybulma}`
 For convenience, the Sass code is already included in the book side [package](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/tree/master/inst/sass/bulma).
@@ -768,14 +793,13 @@ to `$white`, we change its value to the default `$black`. We then Compile the ne
 ```{r, warning=FALSE}
 css <- sass(
   sass_layer(
-    defaults = c(
-      "$turquoise: #03a4ff;",
-      "$cyan: #e705be;",
-      "$green: #f3d6e9;",
-      "$yellow: #fdaf2c;",
-      "$red: #ff483e;",
-      "$scheme-main: hsl(0, 0%, 10%);"
-
+    defaults = list(
+      turquoise = "#03a4ff",
+			cyan = "#e705be",
+			green = "#f3d6e9",
+			yellow = "#fdaf2c",
+			red = "#ff483e",
+      "scheme-main" = "hsl(0, 0%, 10%)"
     ),
     rules = sass_file(input = system.file(
       "sass/bulma/bulma.sass",
