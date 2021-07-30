@@ -8,7 +8,21 @@
   - Generate HTML __tags__ from R.
   - Handle web __dependencies__ (see chapter \@ref(htmltools-dependencies)).
 
-Historically, `{htmltools}` was extracted out of `{shiny}` [@R-shiny] to be able to extend it, that is developing custom HTML tags, importing extra dependencies from the web. That's why, both packages have many common functions! At the moment, `{htmltools}` does not have a user guide, even though it is a key package for all web things!
+Historically, `{htmltools}` was extracted out of `{shiny}` [@R-shiny] to be able to extend it, that is developing custom HTML tags, importing extra dependencies from the web. That's why, both packages have many common functions! 
+
+The ultimate goal of `{htmltools}` is to manipulate, combine and rearrange tags in order to create flexible and rich HTML structures from R. Would you believe that the below example heavily relies on `{htmltools}` (Figure \@ref(fig:shinyRPG))?
+
+```{r shinyRPG, echo=FALSE, fig.cap='shinyRPG was built with htmltools', out.width='50%', fig.align = 'center'}
+knitr::include_graphics("images/htmltools/shinyRPG.png")
+```
+
+If you want to try out this example, below is the showcase code:
+
+```{r, eval=FALSE}
+remotes::install_github("RinteRface/shinyRPG")
+library(shinyRPG)
+shinyRPGDemo()
+```
 
 ## Writing HTML Tags from R
 
@@ -140,20 +154,6 @@ By converting HTML to R functions, it's possible to easily parameterize the gene
 and reuse it later in the code. It also allows to maintain one single code base (only R), which is much simpler in the long run if the code had to be reviewed by people non familiar with HTML.
 
 ## Playing with tags
-
-The ultimate goal of `{htmltools}` is to manipulate, combine and rearrange tags in order to create flexible and rich HTML structures from R. Would you believe that the below example heavily relies on `{htmltools}` (Figure \@ref(fig:shinyRPG))?
-
-```{r shinyRPG, echo=FALSE, fig.cap='shinyRPG was built with htmltools', out.width='50%', fig.align = 'center'}
-knitr::include_graphics("images/htmltools/shinyRPG.png")
-```
-
-If you want to try out this example, below is the showcase code:
-
-```{r, eval=FALSE}
-remotes::install_github("RinteRface/shinyRPG")
-library(shinyRPG)
-shinyRPGDemo()
-```
 
 Before becoming an `{htmltools}` wizard, let's learn the shiny tags fundamentals. 
 
@@ -1024,7 +1024,9 @@ rpgSelect <- function(inputId, label, choices, selected = NULL,
 }
 ```
 
-### Alter tag rendering
+### Alter tag rendering with render hooks
+
+#### Simple hooks
 In this section, we'll see what is probably one of the most advanced `{htmltools}` feature, recently introduced in 0.5.2. How would you render a tag differently depending on different conditions, like external options, specific theme version, ...?
 
 For instance, assume you want to create development specific tags, that only appear in Shiny `dev` mode:
@@ -1102,3 +1104,176 @@ knitr::include_graphics("images/htmltools/htmltools-renderHook-2.png")
 ```
 
 In Chapter \@ref(bslib-renderHook) we'll discuss another use case, which is about theme-dependent rendering, that is for instance, render a tag differently whether Shiny is in Bootstrap 3 or Bootstrap 4 mode. 
+
+
+#### Nested hooks
+In practice, you will rarely have only one render hook to handle. Most Shiny elements are composed
+of main wrappers and nested tags. For instance, nav elements like `tabsetPanel()` and `tabPanel()` are, again, the perfect example. 
+
+How do we handle render hooks with nested elements? Let's see below with a simple example.
+We first consider the main wrapper, namely `my_wrapper_tag()`. The function creates a single `div` wrapper inside which are included items, generated with another function. In the render hook, we simulate the impact of
+a `theme_version` option. We capture all passed items in a list and apply `tagQuery()` to edit a given
+element targeted with a specific class, using `$each()` to loop over all items and add them an `id` attribute. We store the query result in a new item variable and replace the old items by the newly generated ones in the main wrapper with `$empty()` and `$append()`. Note the commented row, we will discuss it later.
+
+```{r}
+my_wrapper_tag <- function(...) {
+  wrapper <- tags$div(class = "parent", ...)
+  items <- list(...)
+  
+  tagAddRenderHook(wrapper, function(x) {
+    version <- getOption("theme_version")
+    
+    if (!is.null(version)) {
+      if (version == "4") {
+        
+        # resolve sub items
+        # items <- lapply(items, as.tags)
+        
+        new_items <- tagQuery(items)$
+          find(".new-child")$
+          each(function(x, i) {
+            tagAppendAttributes(x, id = i)
+          })$
+          allTags()
+        
+        x <- tagQuery(x)$
+          # replace accordion items processed above
+          empty()$
+          append(new_items)$
+          allTags()
+      } 
+    }
+    
+    x
+    
+  })
+}
+```
+
+The next step is to design the nested item function. The tag consists in a
+simple `div` element with a class. In the render hook, we get the theme version
+and depending on the result, we add a child to the item with `$append()`. 
+Note the `new-child` class. This is the one targeted one level upper in `my_wrapper_tag()`.
+
+```{r}
+my_nested_tag <- function() {
+  wrapper <- tags$div(class = "nested")
+  
+  tagAddRenderHook(wrapper, function(x) {
+    version <- getOption("theme_version")
+    
+    if (!is.null(version)) {
+      x <- if (version == "4") {
+        
+        new_child <- tags$div(class = "new-child")
+        
+        tagQuery(x)$
+          append(new_child)$
+          allTags()
+      } 
+    }
+    
+    x
+    
+  })
+}
+```
+
+We test it below:
+
+```{r}
+# Define external option to mimic arbitrary change
+options("theme_version" = "4")
+my_wrapper_tag(my_nested_tag(), my_nested_tag())
+```
+
+```{r, echo=FALSE}
+tag_to_string(my_wrapper_tag(my_nested_tag(), my_nested_tag()))
+```
+
+The code does not seem to work as expected since the child items does not get any new `id` attribute,
+contrary to what is specified in the `my_wrapper_tag()` render hook. What is the problem here?
+
+It is basically a resolve issue. In the top level render hook, the newly added item is not yet available. To check this, we can put a browser just before the `tagQuery()` flow inside `my_wrapper_tag()`. Then we run `tagQuery(items)$find(".new-child")` and capture the output:
+
+```
+`$allTags()`:
+<div class="nested">
+  <div class="new-child"></div>
+</div>
+<div class="nested">
+  <div class="new-child"></div>
+</div>
+
+`$selectedTags()`: (Empty selection)
+```
+
+From what we see, `tagQuery()` does not manage to find the newly inserted element with `new-child` class
+in the lower level render hook. If we inspect `str(items[[1]])`:
+
+```
+# str(items[[1]])
+List of 4
+ $ name        : chr "div"
+ $ attribs     :List of 1
+  ..$ class: chr "nested"
+ $ children    : list()
+ $ .renderHooks:List of 1
+  ..$ :function (x)  
+  .. ..- attr(*, "srcref")= 'srcref' 
+  int [1:8] 4 31 20 5 31 5 4 20
+  .. .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 
+  'srcfile' <environment: 0x7fcbf889aba8> 
+ - attr(*, "class")= chr "shiny.tag"
+```
+
+We get the confirmation that the child item is not available for `{htmltools}`, even if it appears in the code output:
+
+```html
+<!-- items[[1]] -->
+<div class="nested">
+  <div class="new-child"></div>
+</div>
+```
+
+A workaround is to manually resolve the sub items with `as.tags()`, which converts
+any arbitrary element to be part of the tag structure. Therefore, if you uncomment `items <- lapply(items, as.tags)` in `my_wrapper_tag()`, we obtain:
+
+```
+# str(items[[1]])
+List of 4
+ $ name        : chr "div"
+ $ attribs     :List of 1
+  ..$ class: chr "nested"
+ $ children    :List of 1
+  ..$ :List of 3
+  .. ..$ name    : chr "div"
+  .. ..$ attribs :List of 1
+  .. .. ..$ class: chr "new-child"
+  .. ..$ children: list()
+  .. ..- attr(*, "class")= chr "shiny.tag"
+ $ .renderHooks: list()
+ - attr(*, "class")= chr "shiny.tag"
+```
+
+confirming the structure is now correctly processed. Running `my_wrapper_tag(my_nested_tag(), my_nested_tag())` yields:
+
+```html
+<!-- RUN: my_wrapper_tag(my_nested_tag(), my_nested_tag()) -->
+
+<div class="parent">
+  <div class="nested">
+    <div class="new-child" id="1"></div>
+  </div>
+  <div class="nested">
+    <div class="new-child" id="2"></div>
+  </div>
+</div>
+```
+
+which is exactly what we want! A real life case study is available later in the book in this section \@ref(bslib-bootstrap-accordion).
+
+```{r, echo=FALSE}
+# Remove option for security reasons
+.Options$theme_version <- NULL
+```
