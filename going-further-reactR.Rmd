@@ -3,8 +3,7 @@
 It has been developed by [Facebook](https://github.com/facebook/react) and the community (more than 1500 contributors) and made public in May 29 2013. It is currently used worldwide and has around 163k stars on the GitHub ranking and widely impacts the mobile market, through the [React Native](https://reactnative.dev/) library. __React__ is also really convenient to develop attractive documentations with [docusaurus](https://v2.docusaurus.io/).
 If you ever have built user interfaces with pure JS, you might like React! 
 
-Below, we give a short introduction to the React ecosystem and see how we can benefit from it from the
-R Shiny side. 
+Below, we give a short introduction to the React ecosystem and see how we can benefit from it from the R Shiny side. 
 
 ## Quick introduction to React
 To understand React there are few prerequisites notably basic HTML/CSS/JS knowledge, especially JS modules (see section \@ref(about-js-modules)). However, if you managed to reach this chapter, you should not worry too much! 
@@ -200,7 +199,7 @@ By convention, all elements inside a `map` require __keys__.
 __Props__ are __read-only__ and must not be modified withing their own component. 
 How do we update components then?
 
-#### Component state
+#### Component state {#react-hooks}
 A component __state__ is private and controlled by this same component. Since React 16.8 and the introduction of __hooks__, this is not necessary to convert the component function to a [class](https://reactjs.org/docs/components-and-props.html#function-and-class-components). 
 The easiest example to illustrate hooks capabilities is the button. Each time, we click on a button,
 we want to keep the current number of clicks in a state, like the `actionButton()`. We start by
@@ -288,6 +287,12 @@ That's all folks! Now that you get a better understanding of how React works,
 let's see how to use it with Shiny. 
 
 ## Introduction to `{reactR}`
+
+::: {.importantblock data-latex=""}
+This section has been written and tested with `{reactR}` `0.4.4`.
+Some feature may change in future releases. 
+:::
+
 The React ecosystem is rich and provides many plug and play boilerplate. For instance,
 `{reactable}` is an HTML widget developed on top of the [`react-table`](https://github.com/tannerlinsley/react-table) library. What about the modern React Argon design [system](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/), shown Figure \@ref(fig:argon-design-react)?
 
@@ -307,29 +312,34 @@ install.packages("reactR")
 remotes::install_github("react-R/reactR")
 ```
 
-### Scaffold inputs
+In the following, we are going to propose an implementation of the `reactstrap` button, which is a Bootstrap 4 and React powered action button. 
 
-#### Setup
+### Setup
 `{reactR}` exposes the `scaffoldReactShinyInput()` that sets the necessary pieces of code
 to get started with the input development (see Figure \@ref(fig:reactR-init-input)):
 
-  - An `<input_name>.R` file containing the input skeleton as well as its related update function.
+  - An `<input_name>.R` file containing the input skeleton as well as its related update function, located in the `./R` folder.
   It also creates a custom HTML dependency pointing to the input JS logic.
-  - A `jsx` file with a boilerplate to start developing the input JS logic.
-  - A `package.json` file containing dependencies.
+  - A `jsx` file with a boilerplate to start developing the input JS logic, located in the `./srcjs` folder.
+  - A `package.json` file containing dependencies. 
+  - An `app.R` file to host the input demonstration code. 
+  - A `webpack.config.js` file (discussed later).
+  - Classic R package files like `DESCRIPTION`, `.Rbuildignore`...
+  Interestingly, the `.Rbuildignore`contains few lines to ignore non standard files and
+  folders like `srcjs` and `package.json`.
 
-Besides, providing an optional dependency with a name and version taken from __npm__ installs
-all necessary dependencies in the `package.json` file. 
-  
-In our case, we want to build on top of Argon from [here](https://www.npmjs.com/package/argon-design-system-react):
+Besides, providing an optional dependency with a name and version taken from __npm__ installs all necessary dependencies in the `package.json` file:
 
 ```{r, eval=FALSE}
-path <- file.path(tempdir(), "mypkg")
+path <- file.path(tempdir(), "reactstrapTest")
 usethis::create_package(path, rstudio = TRUE)
+
+# Wait new project to be created before running 
+# the following!!!
 reactR::scaffoldReactShinyInput(
-  "argon_action_button", 
+  "action_button", 
   list(
-    "argon-design-system-react" = "^1.1.0"
+    "reactstrap" = "^8.9.0"
   )
 )
 ```
@@ -338,8 +348,7 @@ reactR::scaffoldReactShinyInput(
 knitr::include_graphics("images/going-further/reactR-init-input.png")
 ```
 
-Note that `{reactR}` provides __webpack__ as JS manager. To __build__ the JS code we go to the RStudio
-terminal tab (or any terminal) and run at the package root:
+Note that `{reactR}` provides __webpack__ as JS manager. To __build__ the JS code we go to the RStudio terminal tab (or any terminal) and run at the package root:
 
 ```
 yarn install
@@ -348,44 +357,203 @@ yarn run webpack --mode=development
 
 This installs all dependencies listed in the `package.json` file and create a `package-lock.json` file. If you ever used `{renv}`, this is very similar and guarantees isolation of your package. All dependencies are stored in the `node_modules` folder.
 
-::: {.importantblock data-latex=""}
-We encountered few cases where the `yarn install` failed. In that case, downgrade your Node version to v12.x using `npx n 12`. In addition to downgrading Node, you might need to [tell `npm` to use `python` version 2.7](https://github.com/yarnpkg/yarn/issues/3519#issuecomment-395281871) and run `npm i argon-design-system-react`. If you are still running into errors, double check your VPN settings. To check whether argon is properly installed, the `argon-design-system-react` package folder should exist inside __./node_modules__.
-:::
-
 The `run webpack` command compiles the JS in production ready code. Should you need to customize the build pipeline, the webpack configuration is located in `webpack.config.js`. On the R side, the generated JS file is referenced in an HTML dependencies, located in the `<input_name>.R` file. 
 If you specify the `--mode=development` tag, it falls back to development code. 
 
-#### Implement the input JS logic
-It's time to develop the logic. The Argon documentation provides a [boilerplate](https://demos.creative-tim.com/argon-design-system-react/#/documentation/buttons), which we slightly simplified, as show below:
+In the following, we see how to customize the newly created component.
+
+### Customize the R logic
+A `{reactR}` input is composed of R and JS code that both exchange information. Upon initialization, we obtained a `.R/action_button.R` code:
+
+```{r, eval=FALSE}
+action_buttonInput <- function(inputId, default = "") {
+  reactR::createReactShinyInput(
+    inputId,
+    "action_button",
+    htmltools::htmlDependency(
+      name = "action_button-input",
+      version = "1.0.0",
+      src = "www/reactstrapTest/action_button",
+      package = "reactstrapTest",
+      script = "action_button.js"
+    ),
+    default,
+    list(),
+    htmltools::tags$span
+  )
+}
+```
+
+For convenience, we remove the input suffix to name it `action_button`. 
+Overall, this function calls `reactR::createReactShinyInput()` that:
+  - Give the widget a class and id. The class is targeted on the JS side (see \@ref(reactR-jsx-logic)) and is necessary to make it working.
+  - Sets all necessary dependencies (React, ...) as well as the internal JS code (see \@ref(reactR-jsx-logic)).
+  - Creates the input HTML code with `{htmltools}`. 
+  - Sets the default value, through the `default` parameter.
+  - Allow to pass a list of options inside the `list()` container. By default,
+  nothing is sent but we will use it very soon. 
+  
+We also have the corresponding update input function, which we renamed to `update_action_button()` for consistency:
+
+```{r, eval=FALSE}
+update_action_button <- function(session, inputId, value, configuration = NULL) {
+  message <- list(value = value)
+  if (!is.null(configuration)) message$configuration <- configuration
+  session$sendInputMessage(inputId, message);
+}
+```
+
+In Shiny, the end-user cannot decide what is the initial value of an action button. It is always set to 0 by default. Therefore, we decided to remove the default parameter from `action_button()` and make it 0 by default. 
+In order to add a label and change the button color, we introduce two extra parameters and
+add them the the configuration list:
+
+```{r, eval=FALSE}
+action_button <- function(
+  inputId,
+  label,
+  status = "primary"
+) {
+  reactR::createReactShinyInput(
+    inputId,
+    "action_button",
+    htmltools::htmlDependency(
+      name = "action_button-input",
+      version = "1.0.0",
+      src = "www/reactstrapTest",
+      package = "reactstrapTest",
+      script = "action_button.js"
+    ),
+    default = 0,
+    configuration = list(
+      label = label,
+      status = status
+    ),
+    htmltools::tags$div
+  )
+}
+```
+
+Let's see below how to make this interactice with some JSX code!
+
+### Implement the JS logic {#reactR-jsx-logic}
+It's time to develop the logic. For now, the `action_button.jsx` file only contains a placeholder generated by `{reactR}`. The reactstrap documentation provides a [boilerplate](https://reactstrap.github.io/components/buttons/), which we slightly modified, according to the `{reactR}` documentation:
 
 ```jsx
 import { reactShinyInput } from 'reactR';
-// reactstrap components
-import { Button } from "reactstrap";
+import { Button } from 'reactstrap';
 
-function ArgonButton() {
+function ActionButton() {
   return (
-    <Button color="primary" type="button">
-      Button
+    <Button
+      color="primary">
     </Button>
   );
 }
 
 reactShinyInput(
-  '.argon_action_button', 
-  'mypkg.argon_action_button', 
-  ArgonButton
+  '.action_button',
+  'reactstrapTest.action_button',
+  ActionButton
 );
 ```
 
-::: {.noteblock data-latex=""}
-As you can see, we also need __reactstrap__ which is a Bootstrap React template. Install it with `yarn add --dev reactstrap`
-:::
+As you can see, we need to import the `Button` component from `reactstrap` as well as
+the `reactShinyInput` function from the `{reactR}` package. To generate our JS code, we recompile with `yarn run webpack`, document and reload the package functions:
 
-Notice the first two lines where we import the `reactShinyInput` function from the `{reactR}` JS core and [`reactstrap`](https://reactstrap.github.io/), a React powered Bootstrap 4 library. `reactShinyInput` provides a wrapper to automatically __bind__ the input element. This is extremely convenient as it allows to solely focus on the component logic rather than binding it to the shiny system. It takes three parameters:
+```{r, eval=FALSE}
+devtools::document()
+devtools::load_all()
+```
+
+In the `./app.R` script, we have to tell Shiny we want to use Bootstrap 4 instead of Bootstrap 3, through the `bslib::bs_theme` function. Erase the existing code and replace it by the following:
+
+```{r, eval=FALSE}
+library(reactstrapTest)
+
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  action_button("plop", "Click me!")
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+}
+
+shinyApp(ui, server)
+```
+
+As you can see Figure \@ref(fig:react-action-button-basic), the button label is not displayed nor its value. 
+This is because we missed to leverage the component arguments that are `configuration`, `value`, `setValue`, making the link between R and JS. 
+
+```{r react-action-button-basic, echo=FALSE, fig.cap='Work in progress action button with React', out.width='100%'}
+knitr::include_graphics("images/going-further/react-action-button-basic.png")
+```
+
+### Improve the JS logic
+We modify the `action_button.jsx` code to add those three parameters to the `ActionButton` component:
+
+```jsx
+function ActionButton({ configuration, value, setValue }) {
+  return (
+    <Button
+      color={configuration.status}
+      onClick={() => setValue(value + 1)}>
+      {configuration.label}
+    </Button>
+  );
+}
+```
+
+Remember that `configuration` is an R list and sent to JS as a JSON object with `reactR::createReactShinyInput()`. On the JS side, we access its properties with `configuration.<PROPERTY>`. `value` is the current button value, which is 0 when the app is started.
+
+How do we set handle the value change upon click? Well, this is pretty straightforward. The `Button` element has an `onClick` [property](https://reactstrap.github.io/components/buttons/) inside which we can pass the `setValue` function and increment it by 1 (`setValue` is an internal hook, see \@ref(react-hooks)). 
+
+
+In the below example, we update a button from the server side with `update_action_button()`:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  fluidRow(
+    action_button("plop", "Click me!"),
+    action_button("update", "Update button 1")
+  )
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+  observeEvent(input$update, {
+    update_action_button(
+      session, "plop", 
+      configuration = list(
+        label = "New text", 
+        status = "success"
+      )
+    )
+  }, ignoreInit = TRUE)
+}
+
+shinyApp(ui, server)
+```
+
+Clicking on the first button should increment its value in the R console. You may play around
+by changing the default color. After clicking on the second button, you should get the result shown Figure \@ref(fig:react-action-button).
+
+```{r react-action-button, echo=FALSE, fig.cap='Fully working React powered action button', out.width='100%'}
+knitr::include_graphics("images/going-further/react-action-button.png")
+```
+
+### Exercise 1
+Based on the previous example and the `reactstrap` documentation, improve the action button component.
+1. Add it a `size` style parameter.
+2. Add it a `disabled` parameter. 
+3. Add it an `outline` style parameter. 
+
+### Technical considerations
+`reactShinyInput` provides a wrapper to automatically __bind__ the input element. This is extremely convenient as it allows to solely focus on the component logic rather than binding it to the shiny system. It takes three parameters:
 
   - The __element__ class which is obtained from the R side by `createReactShinyInput()`.
-  - The __input binding__ name which is useful to store a reference in the `Shiny.InputBindings` registry.
+  - The __input binding__ name which is useful to store a reference in the `Shiny.InputBindings` registry. Recent version of `{reactR}` use `<PACKAGE_NAME>.<INPUT_NAME>` as convention, which avoids conflicts between inputs belonging to two different packages. 
   - The React __component__ function. 
   - There is an optional fourth parameter allowing to pass custom __options__ like
   rate [policies](https://github.com/react-R/reactR/blob/7dccb68a0989cf642d4a5a3eb90b59d1ae773002/srcjs/input.js#L137). 
@@ -409,6 +577,7 @@ setInputConfiguration(el, configuration) {
   - The second tag is a script containing the __configuration__, also passed as JSON.
   
 ```{r}
+library(shiny)
 reactR::createReactShinyInput(
   inputId = "plop", 
   class = "myinput", 
@@ -446,194 +615,19 @@ render(el) {
 ```
 
 The `render` method is called once inside `subscribe` and also each time the element is updated
-with `receiveMessage`. 
+with `receiveMessage`.
 
-Interestingly, `setValue` is made available to the React component. For the action button case, it is called each time the `onClick` event is triggered, that is each time the user clicks on the button. This is the only way to update its value since it is not accessible to the user through `update_argon_action_buttonInput()`. Other inputs like `textInput()` have the `onChange` event, fired each time the text field is updated. The value may also be updated 
-by the user with `updateTextInput()`. Consequently, there is no general rule and the situation may
-vary from an input to another!
-
-For now, let's just erase the `{reactR}` boilerplate (`argon_action_button.jsx`) with the above code an recompile with `yarn run webpack`. We also have to tell Shiny we want to
-use Bootstrap 4 instead of Bootstrap 3, through the `bslib::bs_theme` function:
-
-```{r, eval=FALSE}
-devtools::document()
-devtools::load_all()
-library(shiny)
-library(mypkg)
-
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  argon_action_buttonInput("plop")
-)
-
-server <- function(input, output, session) {
-  
-}
-
-shinyApp(ui, server)
-```
-
-The button is looking good but not really like in the Argon design system. Indeed, we forgot to import
-the argon CSS assets. Add this code to the `argon_action_button.jsx`:
-
-```js
-import argonAssets + "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";
-```
-
-Under the hood, __webpack__ knows how to load CSS in the `webpack.config.js`:
-
-```js
-rules: [
-  {
-      test: /\.jsx?$/,
-      loader: 'babel-loader',
-      options: {
-          presets: ['@babel/preset-env', '@babel/preset-react']
-      }
-  },
-  // For CSS so that import "path/style.css"; works
-  {
-      test: /\.css$/,
-      use: ['style-loader', 'css-loader']
-  }
-]
-```
-
-The next part of this tutorial consists in making the button interactive. 
-We edit the `argon_action_button.jsx` code to add three input parameters in the
-`ArgonButton` component:
-
-  - __value__ is the button count. The initial value is provided by the `default` slot on the R side (see below). 
-  - __configuration__ contains various user provided properties like the color status, outline style, ...
-  - __setValue__ is a way to increment the button value. Letting `setValue(value + 1)`,
-  ensures to increment the button value by 1 unit each click. 
-
-```jsx
-import { reactShinyInput } from 'reactR';
-// reactstrap components
-import { Button } from "reactstrap";
-// Import argon CSS
-import "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";
-
-function ArgonButton({configuration, value, setValue}) {
-  return (
-    <Button 
-      color={configuration.status} 
-      type="button" 
-      onClick={() => setValue(value + 1)}>
-      {configuration.label}
-    </Button>
-  );
-}
-
-reactShinyInput(
-  '.argon_action_button', 
-  'mypkg.argon_action_button', 
-  ArgonButton
-);
-```
-
-On the R side, we remove the `default` parameter from the external API but keep it internally to
-set the initial value to 0, like for `shiny::actionButton`. Status and label are stored
-in the configuration named list. Be careful! Names matter since they are recovered on the JS side
-with `configuration.prop_name`:
-
-```{r, eval=FALSE}
-argon_action_buttonInput <- function(
-  inputId, 
-  label, 
-  status = "primary"
-) {
-  reactR::createReactShinyInput(
-    inputId,
-    "argon_action_button",
-    htmltools::htmlDependency(
-      name = "argon_action_button-input",
-      version = "1.0.0",
-      src = "www/mypkg/argon_action_button",
-      package = "mypkg",
-      script = "argon_action_button.js"
-    ),
-    default = 0,
-    configuration = list(
-      label = label,
-      status = status
-    ),
-    htmltools::tags$div
-  )
-}
-```
-
-Once everything is up to date, we rebuild the JS, reload/document the package and run the app demo:
-
-```{r, eval=FALSE}
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  argon_action_buttonInput("plop", "Click me!")
-)
-
-server <- function(input, output, session) {
-  observe(print(input$plop))
-}
-
-shinyApp(ui, server)
-```
-
-We may also modify the update input boilerplate since we don't change the button value:
-
-```{r, eval=FALSE}
-update_argon_action_buttonInput <- function(
-  session, 
-  inputId, 
-  configuration = NULL
-) {
-  message <- list()
-  if (!is.null(configuration)) {
-    message$configuration <- configuration
-  }
-  session$sendInputMessage(inputId, message);
-}
-
-devtools::document()
-devtools::load_all()
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  fluidRow(
-    argon_action_buttonInput("plop", "Click me!"),
-    argon_action_buttonInput("update", "Update button 1")
-  )
-)
-
-server <- function(input, output, session) {
-  observe(print(input$plop))
-  observeEvent(input$update, {
-    update_argon_action_buttonInput(
-      session, "plop", 
-      configuration = list(
-        label = "New text", 
-        status = "success"
-      )
-    )
-  }, ignoreInit = TRUE)
-}
-
-shinyApp(ui, server)
-```
-
-
-#### Exercise
-1. Add a `size`, `outline` and `icon` (from fontawesome) parameters to the `ArgonButton` component in the corresponding R script.
-Hint: the `icon` parameter is the trickiest one. You might find helpful to capture its HTML dependency with `htmltools::findDependencies(iconTag)` so as to properly render it. In HTML `icon("bicycle")` produces `<i class="fa fa-bicycle" role="presentation" aria-label="bicycle icon"></i>`. However, in React we want `<i className="fa fa-bicycle />`. Therefore, you will have to extract the icon class and send it to JS in the configuration list.
+### Exercise 2
+1. Add an`icon` (from fontawesome) parameter to the `ActionButton` component.
+Hint: You might find helpful to capture its HTML dependency with `htmltools::findDependencies(iconTag)` so as to properly render it. In HTML `icon("bicycle")` produces `<i class="fa fa-bicycle" role="presentation" aria-label="bicycle icon"></i>`. However, in React we want `<i className="fa fa-bicycle />`. Therefore, you will have to extract the icon class and send it to JS in the configuration list.
 2. Implement the logic on the JS side. Hint: you may use the below code:
 
 ```jsx
 import { reactShinyInput } from 'reactR';
 // reactstrap components
 import { Button } from "reactstrap";
-// import argon CSS
-import "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";
 
-function ArgonButton({configuration, value, setValue}) {
+function ActionButton({configuration, value, setValue}) {
   let iconTag, btnCl, innerTag;
   if (...) {
     btnCl = "btn-icon";
@@ -655,7 +649,6 @@ function ArgonButton({configuration, value, setValue}) {
   return (
     <Button
       color={configuration.status}
-      type="button"
       className=...
       outline=...
       size=...
@@ -666,9 +659,9 @@ function ArgonButton({configuration, value, setValue}) {
 }
 
 reactShinyInput(
-  '.argon_action_button', 
-  'mypkg.argon_action_button', 
-  ArgonButton
+  '.action_button', 
+  'reactstrapTest.action_button', 
+  ActionButton
 );
 ```
 3. Try your code with:
@@ -680,13 +673,13 @@ library(mypkg)
 ui <- fluidPage(
   theme = bslib::bs_theme(version = "4"),
   fluidRow(
-    argon_action_buttonInput(
+    argon_action_button(
       "plop", 
       "Click me!", 
       size = "lg", 
       outline = TRUE
     ),
-    argon_action_buttonInput(
+    action_button(
       "update", 
       "Update button 1", 
       icon = icon("bicycle")
@@ -697,7 +690,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   observe(print(input$plop))
   observeEvent(input$update, {
-    update_argon_action_buttonInput(
+    update_action_button(
       session, "plop", 
       configuration = list(
         label = "New text", 
@@ -710,13 +703,11 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-You should get the result shown Figure \@ref(fig:react-action-button).
+## Another reactR example ...
 
-```{r react-action-button, echo=FALSE, fig.cap='Argon Action button with React', out.width='100%'}
-knitr::include_graphics("images/going-further/react-action-button.png")
-```
+TODO
 
-
+<!--
 ### A slider input
 Below we propose a preliminary implementation of the Argon slider input. The [documentation](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/documentation/forms) provides a JSX skeleton:
 
@@ -1126,3 +1117,6 @@ not handle all settings. The final result is displayed Figure \@ref(fig:react-ar
 ```{r react-argon-slider-final, echo=FALSE, fig.cap='Slider input with Argon React with more options', out.width='100%'}
 knitr::include_graphics("images/going-further/react-argon-slider-final.png")
 ```
+
+
+-->
