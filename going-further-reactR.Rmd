@@ -151,7 +151,7 @@ function App() {
 
 Notice that we write CSS properties following the __camelCase__ syntax, `font-size` being equivalent to `fontSize`.
 
-#### Combining components
+#### Combining components {#react-map}
 The whole interest is to combine multiple components to create reusable pieces. We edit the above code 
 to create a `SayHello` component. Notice the __props__ parameter. It is a way to pass configuration from the parent component. In that case, we want to display the person name, that is `props.name`. In the meantime, we edit the `App` parent component and call `SayHello` three times, passing a different name like `<SayHello name="David" />` (this is the reason why we recover `props.name` in the lower level component):
 
@@ -300,7 +300,7 @@ The React ecosystem is rich and provides many plug and play boilerplate. For ins
 knitr::include_graphics("images/going-further/argon-design-react.png")
 ```
 
-In this part, we see how to leverage `{reactR}` to bring the Argon design React template to Shiny.
+In this part, we see how to leverage `{reactR}` [@R-reactR] to bring few component from the `reactstrap` [library](https://reactstrap.github.io/) to Shiny.
 
 To install `{reactR}`:
 
@@ -673,7 +673,7 @@ library(mypkg)
 ui <- fluidPage(
   theme = bslib::bs_theme(version = "4"),
   fluidRow(
-    argon_action_button(
+    action_button(
       "plop", 
       "Click me!", 
       size = "lg", 
@@ -703,420 +703,209 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-## Another reactR example ...
+### Add another input
 
-TODO
+#### Button group input
 
-<!--
-### A slider input
-Below we propose a preliminary implementation of the Argon slider input. The [documentation](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/documentation/forms) provides a JSX skeleton:
+In this section, we design a radio input consisting of multiple buttons displayed side by side. The corresponding widget has a label and must show the currently selected value.
+
+We initialized the input elements with:
+
+```{r, eval=FALSE}
+reactR::scaffoldReactShinyInput("button_group")
+```
+
+As shown previously, this creates `./srcjs/button_group.jsx` and `.R/button_group.R`. 
+The `button_group()` function has four parameters, the most critical being `choices`.
+We expect the user to pass a vector like `names(mtcars)`, and we selected the first choice by default. We might add a `selected` parameter but leave this for the reader as a simple exercise. The function is defined below:
+
+```{r, eval=FALSE}
+button_group <- function(
+  inputId,
+  label,
+  choices,
+  status = "primary"
+) {
+  reactR::createReactShinyInput(
+    inputId,
+    "button_group",
+    htmltools::htmlDependency(
+      name = "button_group-input",
+      version = "1.0.0",
+      src = "www/reactstrapTest",
+      package = "reactstrapTest",
+      script = "button_group.js"
+    ),
+    default = choices[1],
+    configuration = list(
+      label = label,
+      choices = choices,
+      status = status
+    ),
+    htmltools::tags$div
+  )
+}
+```
+
+The expected `reactstrap` button HTML structure is rather simple including a title, the list of button tags and the selected item in a paragraph:
 
 ```jsx
-{/* Simple slider */}
-<div className="input-slider-container">
-  <div className="slider" ref="slider1" />
-  <Row className="mt-3 d-none">
-    <Col xs="6">
-      <span className="range-slider-value">
-        {this.state.simpleValue}
-      </span>
-    </Col>
-  </Row>
+<div>
+  <h5>Radio Buttons</h5>
+  <ButtonGroup>
+    <Button color="primary" onClick={() => setRSelected(1)} active={rSelected === 1}>One</Button>
+    <Button color="primary" onClick={() => setRSelected(2)} active={rSelected === 2}>Two</Button>
+    <Button color="primary" onClick={() => setRSelected(3)} active={rSelected === 3}>Three</Button>
+  </ButtonGroup>
+  <p>Selected: {rSelected}</p>
 </div>
 ```
 
-The slider JS API is actually taken from the well known [noUiSlider](https://refreshless.com/nouislider/) library and is already available in the package node modules. Still in the same package, we can call:
+Inside `./srcjs/button_group.jsx`, we first import the required function and components:
+
+```jsx
+import { reactShinyInput } from 'reactR';
+import { Button, ButtonGroup } from 'reactstrap';
+```
+
+We then design the `ButtonGroupUI` JS function that will return our component. The critical step is to recover the user choices (`configuration.choices`) and store them in a variable. Then, we leverage the `map` feature (see \@ref(react-map)) to iterate over each choice and programmatically create all buttons:
+
+```jsx
+function ButtonGroupUI({ configuration, value, setValue }) {
+  const choices = configuration.choices
+  // programmatically create buttons
+  const buttons = choices.map(
+    (choice) => <Button
+      key={choice}
+      color={configuration.status}
+      onClick={() => setValue(choice)}
+      active={value === choice}>
+        {choice}
+      </Button>
+  )
+  // ... other code
+```
+
+We finally return the whole component in a fragment `<>` to prevent from creating extra `div`. The whole code is shown below:
+
+```jsx
+import { reactShinyInput } from 'reactR';
+import { Button, ButtonGroup } from 'reactstrap';
+
+function ButtonGroupUI({ configuration, value, setValue }) {
+  const choices = configuration.choices
+  const buttons = choices.map(
+    (choice) => <Button
+      key={choice}
+      color={configuration.status}
+      onClick={() => setValue(choice)}
+      active={value === choice}>
+        {choice}
+      </Button>
+  )
+
+  return (
+    <>
+      <h5>{configuration.label}</h5>
+      <ButtonGroup>
+       {buttons}
+      </ButtonGroup>
+      <p>Selected: {value}</p>
+    </>
+  );
+}
+```
+
+Now, we may test the newly created element in a Shiny app:
 
 ```{r, eval=FALSE}
-reactR::scaffoldReactShinyInput("argon_slider", edit = FALSE)
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = "4"),
+  button_group("plop", "A group of buttons", choices = names(mtcars))
+)
+
+server <- function(input, output, session) {
+  observe(print(input$plop))
+}
+
+shinyApp(ui, server)
 ```
 
-It creates a new `srcjs/argon_slider.jsx` script. As Argon uses the pure JS API for noUIslider, 
-this would be too much work for us mainly because the provided `reactShinyInput` JS helper does not have a proper initialization method to create the slider instance. We would need to change it as per below:
+According to Figure \@ref(fig:react-button-group), there are rooms for improvements but it is a good start!
 
-```js
-// Within reactShinyInput
-initialize(el) {
-  // Unchanged compared to reactR
-  $(el).data('value', JSON.parse($(el).next().text()));
-  $(el).data(
-    'configuration', 
-    JSON.parse($(el).next().next().text())
+```{r react-button-group, echo=FALSE, fig.cap='Fully working React powered button group (similar to radio)', out.width='100%'}
+knitr::include_graphics("images/going-further/react-button-group.png")
+```
+
+
+#### Modularize JS code
+
+Imagine if we had to repeat this for ten different elements. As we start to accumulate components, it is good practice to start modularizing our code. Inside the `./srcjs/action_button.jsx`, we wrap the `reactShinyInput` call into an `export` statement:
+
+```
+// To add in ./srcjs/action_button.jsx
+export default function initActionButton(){
+  reactShinyInput(
+    '.action_button',
+    'reactstrapTest.action_button',
+    ActionButton
   );
-  
-  // Create the slider instance 
-  self = this;
-  Slider.create($(el).attr(id), {
-    start: self.getInputValue(el),
-    connect: [true, false],
-    step: self.getInputConfiguration(el).step,
-    range: { 
-      min: self.getInputConfiguration(el).min, 
-      max: self.getInputConfiguration(el).max 
-    }
-  });
 }
 ```
 
-as well as updating methods like `setInputValue`, `setInputConfiguration`. Fortunately, 
-there is already a [nouislider-react](https://mmarkelov.github.io/react-nouislider/) API, which will
-makes our job much easier than shown above. To add the new dependency we run:
-
-```
-yarn add nouislider-react
-// or
-npm i nouislider-react
-```
-
-and replace the import statement inside our JSX file to rely on `nouislider-react`. 
-The `Nouislider` component markup is fairly intuitive. We set the min and max as well as the current value:
+We apply the same strategy in the `./srcjs/button_group.jsx` script:
 
 ```jsx
-import { reactShinyInput } from 'reactR';
-import Nouislider from "nouislider-react";
-
-function ArgonSlider({configuration, value, setValue}) {
-  const rangeOpts = {
-    min: configuration.min,
-    max: configuration.max
-  };
-  return(
-    <Nouislider
-      range={rangeOpts}
-      start={value}
-      connect={[true, false]}
-    />
+// To add in `./srcjs/button_group.jsx`
+export default function initButtonGroup(){
+  reactShinyInput(
+    '.button_group',
+    'reactstrapTest.button_group',
+    ButtonGroupUI
   );
 }
-
-reactShinyInput(
-  '.argon_slider', 
-  'mypkg.argon_slider', 
-  ArgonSlider
-);
 ```
-
-The `connect` property makes the slider bar background filled with the theme color. Figure \@ref(fig:react-argon-slider) shows what happens when this parameter is disabled.
-
-As we start to accumulate components, it is good practice to start modularizing our code. We create a `main.jsx` file containing the necessary code to load the common CSS assets and initialize both the button and slider components:
+ 
+We create a `main.jsx` file containing the necessary code to import and initialize our two components:
 
 ```jsx
-// Import argon CSS
-import "argon-design-system-react/src/assets/css/argon-design-system-react.min.css";
+import initActionButton from './action_button.jsx';
+import initButtonGroup from './button_group.jsx';
 
-import initArgonButton from './argon_action_button.jsx';
-import initArgonSlider from './argon_slider.jsx';
-
-initArgonButton();
-initArgonSlider();
+initActionButton();
+initButtonGroup();
 ```
 
-The `argon_slider.jsx` looks like, where we export a __default__ function, namely `initArgonSlider`:
+We have to modify the `webpack.config.js` to change the entry point to `main.jsx`, whose output will be `main.js`:
 
-```jsx
-import { reactShinyInput } from 'reactR';
-import Nouislider from "nouislider-react";
-
-function ArgonSlider({configuration, value, setValue}) {
-  const rangeOpts = {
-    min: configuration.min,
-    max: configuration.max
-  };
-  return(
-    <Nouislider
-      range={rangeOpts}
-      start={value}
-      connect={[true, false]}
-    />
-  );
-}
-
-export default function initArgonSlider(){
-  return reactShinyInput(
-    '.argon_slider',
-    'mypkg.argon_slider',
-    ArgonSlider
-  );
-}
-```
-
-Don't forget to update `argon_action_button.jsx` code to export the `initArgonButton` function:
-
-```js
-export default function initArgonButton(){
-  return reactShinyInput(
-    '.argon_action_button',
-    'mypkg.argon_action_button',
-    ArgonButton
-  );
-}
-```
-
-We have to modify the `webpack.config.js` to change the entry point to `main.jsx`, whose output will be `argon.js`:
-
-```js
+```{js}
 entry: [
   path.join(__dirname, 'srcjs', 'main.jsx')
 ],
 output: {
-  path: path.join(__dirname, 'inst/www/mypkg/argon'),
-  filename: 'argon.js'
+  path: path.join(__dirname, 'inst/www/reactstrapTest'),
+  filename: 'main.js'
 }
 ```
 
-This means we have to update the HTML dependency on the R side, for instance for 
-the `argon_slider_input.R`:
+This means we have to update the HTML dependency on the R side, for instance in the `button_group.R`, we replace the existing dependency by the following:
 
 ```{r, eval=FALSE}
-argon_slider_input <- function(inputId, value, 
-                               default = value, min, max) {
-  reactR::createReactShinyInput(
-    inputId,
-    "argon_slider",
-    htmltools::htmlDependency(
-      name = "argon",
-      version = "1.0.0",
-      src = "www/mypkg/argon",
-      package = "mypkg",
-      script = "argon.js"
-    ),
-    default,
-    list(
-      min = min,
-      max = max
-    ),
-    htmltools::tags$div
+# ... button_group.R start
+# ... 
+  htmltools::htmlDependency(
+    name = "button_group-input",
+    version = "1.0.0",
+    src = "www/reactstrapTest",
+    package = "reactstrapTest",
+    script = "main.js"
   )
-}
+# ...
+# button_group.R end
 ```
 
-After rebuilding the JS and R package, we can run the app below:
-
-```{r, eval=FALSE}
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  argon_slider_input("obs", 10, min = 0, max = 100)
-)
-
-server <- function(input, output, session) {
-  observe(print(input$obs))
-}
-
-shinyApp(ui, server)
-```
-
-As shown on Figure \@ref(fig:react-argon-slider), the slider is properly displayed and the value
-is recovered from the server. However, Shiny is not notified when the range is dragged. 
-The reason is quite simple: we did not set the __setValue__ inside our JSX code yet.
-
-```{r react-argon-slider, echo=FALSE, fig.cap='Slider input with Argon React', out.width='100%'}
-knitr::include_graphics("images/going-further/react-argon-slider.png")
-```
-
-The slider API provides many [events](https://refreshless.com/nouislider/events-callbacks/) but not all
-are suitable for us. Ideally, we would like to notify Shiny whenever:
-
-  - Each time the range is released after dragging.
-  - Each time the range is moved by arrow key (keyboard).
-  
-This seems like a perfect shot for the __onChange__ prop. Let's add it to the `ArgonSlider` component:
-
-```jsx
-function ArgonSlider({configuration, value, setValue, el}) {
-  const rangeOpts = {
-    min: configuration.min,
-    max: configuration.max
-  };
-
-  return(
-    <Nouislider
-      range={rangeOpts}
-      start={[value]}
-      connect={[true, false]}
-      onChange={() => setValue()}
-    />
-  );
-}
-```
-
-What value should we pass to `setValue`? This is quite easy to recover the slider value
-directly within the React component. We pass a parameter to the function, which will recover the
-latest value:
-
-```jsx
-(value) => setValue(parseFloat(value))
-```
-
-The trick is to convert the value to a number since we recover a string by default. You may 
-use `parseInt` or `parseFloat`, depending whether you want an integer or the exact value.
-Right now, the slider cannot be moved with the keyboard. Adding the `keyboardSupport` prop
-enables this behavior. This prop value could also correspond to a parameter provided in the `argon_slider_input()`
-configuration. The `tooltips` parameter enhances the user experience by showing the current
-value, on top of the slider, while `pips` add a simple grid. Finally, we add some CSS 
-properties (top and bottom margins) to improve the display. 
-
-Importantly, as the update slider function passes a named list to JS, any missing property 
-are dropped. This can lead to undefined values on the JS side and unexpected behavior. 
-Therefore, it is good to put default values whenever necessary to avoid this kind of issue. 
-For instance, assume you passed `orientation = "horizontal"` upon slider creation and forgot 
-to put that parameter in the update list, you can do the following in the JSX code:
-
-```jsx
-if (configuration.orientation === undefined) {
-  configuration.orientation = "horizontal";
-}
-```
-
-The whole component code may be found below:
-
-```jsx
-function ArgonSlider({configuration, value, setValue, el}) {
-  const rangeOpts = {
-    min: configuration.min,
-    max: configuration.max
-  };
-  
-  // Better margins
-  const sliderStyle = {marginTop: "50px", marginBottom: "50px"};
-  
-  // Grid
-  const pipOpts = {
-    mode: 'range',
-    density: 3
-  };
-  
-  return(
-    <Nouislider
-      style={sliderStyle}
-      range={rangeOpts}
-      start={[value]}
-      connect={[true, false]}
-      onChange={(value) => setValue(parseFloat(value))}
-      keyboardSupport={configuration.keyboard}
-      tooltips={configuration.tooltips}
-      pips={pipOpts}
-    />
-  );
-}
-```
-
-The `argon_slider_input()` is given by:
-
-```{r, eval=FALSE}
-argon_slider_input <- function(inputId, value, default = value, 
-                               min, max, keyboard = TRUE,
-                               tooltips = TRUE) {
-  reactR::createReactShinyInput(
-    inputId,
-    "argon_slider",
-    htmltools::htmlDependency(
-      name = "argon",
-      version = "1.0.0",
-      src = "www/mypkg/argon",
-      package = "mypkg",
-      script = "argon.js"
-    ),
-    default,
-    list(
-      min = min,
-      max = max,
-      keyboardSupport = keyboard,
-      tooltips = tooltips
-    ),
-    htmltools::tags$div
-  )
-}
-```
-
-There are many more parameters that can be added to the following [API](https://refreshless.com/nouislider/slider-options/). We leave it as an
-exercise for the reader. 
-
-Finally, let's see how `update_argon_slider_input()` works:
-
-```{r, eval=FALSE}
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  argon_slider_input("obs", 10, min = 0, max = 100),
-  br(),
-  argon_action_button("update", "Update slider"),
-  plotOutput("distPlot")
-)
-
-server <- function(input, output, session) {
-  observe(print(input$obs))
-  
-  observeEvent(input$update, {
-    update_argon_slider_input(
-      session, 
-      "obs",
-      value = 100,
-      configuration = list(
-        min = 0,
-        max = 200,
-        tooltips = FALSE,
-        keyboardSupport = FALSE
-      )
-    )
-  }, ignoreInit = TRUE)
-  
-  output$distPlot <- renderPlot({
-    hist(rnorm(input$obs))
-  })
-}
-
-shinyApp(ui, server)
-```
-
-The `keyboardSupport` option does not seem changed, neither is the `tooltips` option. Actually, 
-only that [list](https://refreshless.com/nouislider/more/#section-update) may be modified. Let's address this below.
-The `nouiSlider` React API provides internal access to the slider instance from within the
-[component](https://github.com/mmarkelov/react-nouislider#using-with-ref). To make it work, we have to leverage the React Hook feature:
-
-  - Create a __Hook__ hosting the component reference and a method to update it with `React.useState`.
-  - Update the instance option each time the component is re-rendered by Shiny.
-  
-```jsx
-const [ref, setRef] = React.useState(null);
-
-const setConfiguration = () => {
-  if (ref && ref.noUiSlider) {
-    ref.noUiSlider.updateOptions(configuration);
-  }
-};
-
-setConfiguration();
-```
-
-We must specify the `instanceRef` property which will capture the slider reference when available and update
-the local ref:
-
-```jsx
-<Nouislider
-  style={sliderStyle}
-  keyboardSupport={configuration.keyboard}
-  connect={[true, false]}
-  range={rangeOpts}
-  start={[value]}
-  onChange={value => setValue(parseFloat(value))}
-  tooltips={configuration.tooltips}
-  pips={pipOpts}
-  instanceRef={
-    instance => {
-      if (instance && !ref) {
-        setRef(instance);
-      }
-    }
-  }
-/>
-```
-
-We recompile the code and run the previous example. While the tooltip is gone, 
-the keyboard interaction is still there. This is not surprising as `updateOptions` does
-not handle all settings. The final result is displayed Figure \@ref(fig:react-argon-slider-final).
-
-```{r react-argon-slider-final, echo=FALSE, fig.cap='Slider input with Argon React with more options', out.width='100%'}
-knitr::include_graphics("images/going-further/react-argon-slider-final.png")
-```
+We proceed similarly in the `action_button.R` script.
 
 
--->
+## Further resources
+`{shiny.fluent}` [@R-shiny.fluent] leverages `{shiny.react}` [@R-shiny.react], that is another [alternative](https://appsilon.github.io/shiny.react/index.html) to bring React to Shiny. 
