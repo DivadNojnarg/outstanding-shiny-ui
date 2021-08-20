@@ -1,3 +1,79 @@
 # (APPENDIX) Appendix {-}
 
 # Code outputs
+
+## Mastering {htmltools} {#mastering-htmltools-appendix}
+
+### Shiny RPG {#mastering-htmltools-appendix-1}
+Final code expected in section \@ref(htmltools-shinyRPG):
+
+```{r, eval = FALSE}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  selectTag <- shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+
+  # Modify tag
+  selectTag$attribs$class <- NULL
+  # Clean extra label class
+  selectTag$children[[1]]$attribs$class <- NULL
+  # Remove extra outer div
+  selectTag$children[[2]] <- selectTag$children[[2]]$children[[1]]
+
+  # Add good class for rppgui binding
+  selectTag$children[[2]]$attribs$class <- if (is.null(size)) {
+    "rpgui-dropdown"
+  } else {
+    "rpgui-list"
+  }
+
+  selectTag
+}
+```
+
+
+### Shiny RPG rework {#mastering-htmltools-appendix-2}
+Final code expected in section \@ref(htmltools-shinyRPG-rework):
+
+```{r}
+rpgSelect <- function(inputId, label, choices, selected = NULL,
+                      multiple = FALSE, size = NULL) {
+  selectTag <- shiny::selectInput(
+    inputId,
+    label,
+    choices,
+    selected,
+    multiple,
+    selectize = FALSE,
+    width = NULL,
+    size
+  )
+  
+  selectClass <- if (is.null(size)) { # add class
+    "rpgui-dropdown"
+  } else {
+    "rpgui-list"
+  }
+  
+  tagQuery(selectTag)$
+    removeAttrs("class")$ # remove outer div class
+    find(".control-label")$
+    removeAttrs("class")$ # remove class from child label
+    siblings()$ # go down to the div 
+    children()$ # go down to the select tag
+    addClass(selectClass)$ # add class to child select
+    resetSelected()$# go back to div parent
+    each(function(x, i) {
+      x$children[[2]] <- x$children[[2]]$children
+    })$ # replace div parent 
+    allTags()
+}
+```
