@@ -96,7 +96,7 @@ Other tools to manage your UI consist in <strong>toggle</strong> functions like 
 <span class="header-section-number">15.2</span> The renderUI case<a class="anchor" aria-label="anchor" href="#the-renderui-case"><i class="fas fa-link"></i></a>
 </h2>
 <p>The <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code> and <code><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html">uiOutput()</a></code> couple is the most famous way to render any HTML block from the server, without too much pain. While the <code>update&lt;INPUT_NAME&gt;</code> and <code>toggle</code> tools are component specific, meaning they only target the element to modify, <code>renderUI/uiOutput</code> re-renders the whole block each time an associated reactive dependency is invalidated, even though only a little part would deserve to be re-rendered. This approach is usually to avoid since it implies poor performances in complex apps. We consider a simple app in which a three seconds computation is required to get the slider input value, subsequently triggering the slider input rendering:</p>
-<div class="sourceCode" id="cb527"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb528"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.rstudio.com/">shiny</a></span><span class="op">)</span>
 <span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html">uiOutput</a></span><span class="op">(</span><span class="st">"moreControls"</span><span class="op">)</span>
@@ -116,7 +116,7 @@ Other tools to manage your UI consist in <strong>toggle</strong> functions like 
 <span class="op">}</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
 <p>The same example with the <code><a href="https://rdrr.io/pkg/shiny/man/updateSliderInput.html">updateSliderInput()</a></code> functions:</p>
-<div class="sourceCode" id="cb528"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb529"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput</a></span><span class="op">(</span><span class="st">"n"</span>, <span class="st">"N"</span>, <span class="fl">100</span>, <span class="fl">1000</span>, <span class="fl">500</span><span class="op">)</span>
 <span class="op">)</span>
@@ -144,7 +144,7 @@ Other tools to manage your UI consist in <strong>toggle</strong> functions like 
 <div class="importantblock">
 <p>This requires <a href="https://rinterface.github.io/bs4Dash/index.html">bs4Dash</a> &gt;= 2.0.0!</p>
 </div>
-<div class="sourceCode" id="cb529"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb530"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://rinterface.github.io/bs4Dash/index.html">bs4Dash</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/">tibble</a></span><span class="op">)</span>
 
@@ -217,7 +217,7 @@ FIGURE 15.1: renderUI is not specific
 <span class="header-section-number">15.3.1</span> The insertUI case<a class="anchor" aria-label="anchor" href="#the-insertui-case"><i class="fas fa-link"></i></a>
 </h3>
 <p>Under the hood, <code><a href="https://rdrr.io/pkg/shiny/man/insertUI.html">insertUI()</a></code> sends a R <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R#L1696">message</a> through <code>session$sendInsertUI</code>, via the <strong>websocket</strong>:</p>
-<div class="sourceCode" id="cb530"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb531"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">session</span><span class="op">$</span><span class="fu">sendInsertUI</span><span class="op">(</span>
   selector <span class="op">=</span> <span class="va">selector</span>, 
   multiple <span class="op">=</span> <span class="va">multiple</span>, 
@@ -246,33 +246,33 @@ FIGURE 15.1: renderUI is not specific
 <p>I strongly discourage to use <code>shiny:::processDeps</code> or any other internal function, since they might change in future Shiny releases. Instead, we’ll leverage the <code><a href="https://rdrr.io/pkg/htmltools/man/renderTags.html">htmltools::renderTags</a></code> function mentioned earlier in <a href="web-applications.html#build-shiny-ui">5.7.1</a>.</p>
 </div>
 <p>On the UI side, Shiny has a predefined message <a href="https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L671">handler</a>:</p>
-<div class="sourceCode" id="cb531"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb531-1"><a href="shiny-custom-handler.html#cb531-1"></a><span class="at">addMessageHandler</span>(<span class="st">'shiny-insert-ui'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb531-2"><a href="shiny-custom-handler.html#cb531-2"></a>  <span class="kw">let</span> targets <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="at">selector</span>)<span class="op">;</span></span>
-<span id="cb531-3"><a href="shiny-custom-handler.html#cb531-3"></a>  <span class="cf">if</span> (<span class="va">targets</span>.<span class="at">length</span> <span class="op">===</span> <span class="dv">0</span>) <span class="op">{</span></span>
-<span id="cb531-4"><a href="shiny-custom-handler.html#cb531-4"></a>    <span class="co">// render the HTML and deps to a null target, so</span></span>
-<span id="cb531-5"><a href="shiny-custom-handler.html#cb531-5"></a>    <span class="co">// the side-effect of rendering the deps, singletons,</span></span>
-<span id="cb531-6"><a href="shiny-custom-handler.html#cb531-6"></a>    <span class="co">// and &lt;head&gt; still occur</span></span>
-<span id="cb531-7"><a href="shiny-custom-handler.html#cb531-7"></a>    <span class="va">console</span>.<span class="at">warn</span>(</span>
-<span id="cb531-8"><a href="shiny-custom-handler.html#cb531-8"></a>      <span class="st">'The selector you chose ("'</span> <span class="op">+</span> </span>
-<span id="cb531-9"><a href="shiny-custom-handler.html#cb531-9"></a>      <span class="va">message</span>.<span class="at">selector</span> <span class="op">+</span></span>
-<span id="cb531-10"><a href="shiny-custom-handler.html#cb531-10"></a>      <span class="st">'") could not be found in the DOM.'</span></span>
-<span id="cb531-11"><a href="shiny-custom-handler.html#cb531-11"></a>    )<span class="op">;</span></span>
-<span id="cb531-12"><a href="shiny-custom-handler.html#cb531-12"></a>    <span class="va">exports</span>.<span class="at">renderHtml</span>(</span>
-<span id="cb531-13"><a href="shiny-custom-handler.html#cb531-13"></a>      <span class="va">message</span>.<span class="va">content</span>.<span class="at">html</span><span class="op">,</span> </span>
-<span id="cb531-14"><a href="shiny-custom-handler.html#cb531-14"></a>      <span class="at">$</span>([])<span class="op">,</span> </span>
-<span id="cb531-15"><a href="shiny-custom-handler.html#cb531-15"></a>      <span class="va">message</span>.<span class="va">content</span>.<span class="at">deps</span></span>
-<span id="cb531-16"><a href="shiny-custom-handler.html#cb531-16"></a>    )<span class="op">;</span></span>
-<span id="cb531-17"><a href="shiny-custom-handler.html#cb531-17"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb531-18"><a href="shiny-custom-handler.html#cb531-18"></a>    <span class="va">targets</span>.<span class="at">each</span>(<span class="kw">function</span> (i<span class="op">,</span> target) <span class="op">{</span></span>
-<span id="cb531-19"><a href="shiny-custom-handler.html#cb531-19"></a>      <span class="va">exports</span>.<span class="at">renderContent</span>(</span>
-<span id="cb531-20"><a href="shiny-custom-handler.html#cb531-20"></a>        target<span class="op">,</span> </span>
-<span id="cb531-21"><a href="shiny-custom-handler.html#cb531-21"></a>        <span class="va">message</span>.<span class="at">content</span><span class="op">,</span> </span>
-<span id="cb531-22"><a href="shiny-custom-handler.html#cb531-22"></a>        <span class="va">message</span>.<span class="at">where</span></span>
-<span id="cb531-23"><a href="shiny-custom-handler.html#cb531-23"></a>      )<span class="op">;</span></span>
-<span id="cb531-24"><a href="shiny-custom-handler.html#cb531-24"></a>      <span class="cf">return</span> <span class="va">message</span>.<span class="at">multiple</span><span class="op">;</span></span>
-<span id="cb531-25"><a href="shiny-custom-handler.html#cb531-25"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb531-26"><a href="shiny-custom-handler.html#cb531-26"></a>  <span class="op">}</span></span>
-<span id="cb531-27"><a href="shiny-custom-handler.html#cb531-27"></a><span class="op">}</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb532"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb532-1"><a href="shiny-custom-handler.html#cb532-1"></a><span class="at">addMessageHandler</span>(<span class="st">'shiny-insert-ui'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb532-2"><a href="shiny-custom-handler.html#cb532-2"></a>  <span class="kw">let</span> targets <span class="op">=</span> <span class="at">$</span>(<span class="va">message</span>.<span class="at">selector</span>)<span class="op">;</span></span>
+<span id="cb532-3"><a href="shiny-custom-handler.html#cb532-3"></a>  <span class="cf">if</span> (<span class="va">targets</span>.<span class="at">length</span> <span class="op">===</span> <span class="dv">0</span>) <span class="op">{</span></span>
+<span id="cb532-4"><a href="shiny-custom-handler.html#cb532-4"></a>    <span class="co">// render the HTML and deps to a null target, so</span></span>
+<span id="cb532-5"><a href="shiny-custom-handler.html#cb532-5"></a>    <span class="co">// the side-effect of rendering the deps, singletons,</span></span>
+<span id="cb532-6"><a href="shiny-custom-handler.html#cb532-6"></a>    <span class="co">// and &lt;head&gt; still occur</span></span>
+<span id="cb532-7"><a href="shiny-custom-handler.html#cb532-7"></a>    <span class="va">console</span>.<span class="at">warn</span>(</span>
+<span id="cb532-8"><a href="shiny-custom-handler.html#cb532-8"></a>      <span class="st">'The selector you chose ("'</span> <span class="op">+</span> </span>
+<span id="cb532-9"><a href="shiny-custom-handler.html#cb532-9"></a>      <span class="va">message</span>.<span class="at">selector</span> <span class="op">+</span></span>
+<span id="cb532-10"><a href="shiny-custom-handler.html#cb532-10"></a>      <span class="st">'") could not be found in the DOM.'</span></span>
+<span id="cb532-11"><a href="shiny-custom-handler.html#cb532-11"></a>    )<span class="op">;</span></span>
+<span id="cb532-12"><a href="shiny-custom-handler.html#cb532-12"></a>    <span class="va">exports</span>.<span class="at">renderHtml</span>(</span>
+<span id="cb532-13"><a href="shiny-custom-handler.html#cb532-13"></a>      <span class="va">message</span>.<span class="va">content</span>.<span class="at">html</span><span class="op">,</span> </span>
+<span id="cb532-14"><a href="shiny-custom-handler.html#cb532-14"></a>      <span class="at">$</span>([])<span class="op">,</span> </span>
+<span id="cb532-15"><a href="shiny-custom-handler.html#cb532-15"></a>      <span class="va">message</span>.<span class="va">content</span>.<span class="at">deps</span></span>
+<span id="cb532-16"><a href="shiny-custom-handler.html#cb532-16"></a>    )<span class="op">;</span></span>
+<span id="cb532-17"><a href="shiny-custom-handler.html#cb532-17"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb532-18"><a href="shiny-custom-handler.html#cb532-18"></a>    <span class="va">targets</span>.<span class="at">each</span>(<span class="kw">function</span> (i<span class="op">,</span> target) <span class="op">{</span></span>
+<span id="cb532-19"><a href="shiny-custom-handler.html#cb532-19"></a>      <span class="va">exports</span>.<span class="at">renderContent</span>(</span>
+<span id="cb532-20"><a href="shiny-custom-handler.html#cb532-20"></a>        target<span class="op">,</span> </span>
+<span id="cb532-21"><a href="shiny-custom-handler.html#cb532-21"></a>        <span class="va">message</span>.<span class="at">content</span><span class="op">,</span> </span>
+<span id="cb532-22"><a href="shiny-custom-handler.html#cb532-22"></a>        <span class="va">message</span>.<span class="at">where</span></span>
+<span id="cb532-23"><a href="shiny-custom-handler.html#cb532-23"></a>      )<span class="op">;</span></span>
+<span id="cb532-24"><a href="shiny-custom-handler.html#cb532-24"></a>      <span class="cf">return</span> <span class="va">message</span>.<span class="at">multiple</span><span class="op">;</span></span>
+<span id="cb532-25"><a href="shiny-custom-handler.html#cb532-25"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb532-26"><a href="shiny-custom-handler.html#cb532-26"></a>  <span class="op">}</span></span>
+<span id="cb532-27"><a href="shiny-custom-handler.html#cb532-27"></a><span class="op">}</span>)</span></code></pre></div>
 <p>It checks whether the provided selector has multiple DOM elements. If at least one item is found, it calls <strong>renderContent(html, el, dependencies)</strong> that triggers <strong>renderHtml(html, el, dependencies)</strong>:</p>
 <ul>
 <li>
@@ -293,7 +293,7 @@ FIGURE 15.1: renderUI is not specific
 <span class="header-section-number">15.3.2</span> Example<a class="anchor" aria-label="anchor" href="#example-1"><i class="fas fa-link"></i></a>
 </h3>
 <p>Going back to the previous example, why don’t we just go for <code><a href="https://rdrr.io/pkg/shiny/man/insertUI.html">insertUI()</a></code>?</p>
-<div class="sourceCode" id="cb532"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb533"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/bs4Dash/man/dashboardPage.html">dashboardPage</a></span><span class="op">(</span>
   dark <span class="op">=</span> <span class="cn">FALSE</span>,
   header <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/bs4Dash/man/dashboardHeader.html">dashboardHeader</a></span><span class="op">(</span>
@@ -339,7 +339,7 @@ FIGURE 15.2: insertUI is not enough specific
 </p>
 </div>
 <p>We may fix that by adding extra <code><a href="https://rdrr.io/pkg/shiny/man/insertUI.html">insertUI()</a></code> and <code><a href="https://rdrr.io/pkg/shiny/man/insertUI.html">removeUI()</a></code> to replace those parts (<code><a href="https://rdrr.io/pkg/shiny/man/insertUI.html">insertUI()</a></code> does not update the targeted item). Moreover, you we must set correct priority for each <code><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent()</a></code> (try to remove them, it will fail) to ensure that <strong>remove</strong> happens before <strong>insert</strong>:</p>
-<div class="sourceCode" id="cb533"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb534"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">user</span> <span class="op">&lt;-</span> <span class="st">"https://adminlte.io/themes/v3/dist/img/user2-160x160.jpg"</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span>
   ui <span class="op">=</span> <span class="va">ui</span>,
@@ -408,7 +408,7 @@ FIGURE 15.2: insertUI is not enough specific
 <span class="header-section-number">15.4.1</span> Theory<a class="anchor" aria-label="anchor" href="#theory"><i class="fas fa-link"></i></a>
 </h3>
 <p>Shiny provides tools to ease the communication between R and JavaScript, as illustrated in section <a href="shiny-intro.html#shiny-intro">11</a>. We already discussed the usage of <code>session$sendInputMessage()</code> in the input binding section <a href="shiny-input-system.html#shiny-input-system">12</a>. The other important method is <strong>session$sendCustomMessage(type, message)</strong>. It works by pair with the JS method <strong>Shiny.AddCustomMessageHandler</strong>, tightly linked by the type parameter.</p>
-<div class="sourceCode" id="cb534"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb535"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">say_hello_to_js</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
   <span class="va">text</span>, 
   <span class="va">session</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
@@ -416,14 +416,14 @@ FIGURE 15.2: insertUI is not enough specific
   <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>type <span class="op">=</span> <span class="st">'say-hello'</span>, message <span class="op">=</span> <span class="va">text</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>The JavaScript part is defined below:</p>
-<div class="sourceCode" id="cb535"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb535-1"><a href="shiny-custom-handler.html#cb535-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb535-2"><a href="shiny-custom-handler.html#cb535-2"></a>  <span class="va">Shiny</span>.<span class="at">AddCustomMessageHandler</span>(</span>
-<span id="cb535-3"><a href="shiny-custom-handler.html#cb535-3"></a>    <span class="st">'say-hello'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb535-4"><a href="shiny-custom-handler.html#cb535-4"></a>      <span class="at">alert</span>(<span class="vs">`R says </span><span class="sc">${</span>message<span class="sc">}</span><span class="vs"> to you!`</span>)</span>
-<span id="cb535-5"><a href="shiny-custom-handler.html#cb535-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb535-6"><a href="shiny-custom-handler.html#cb535-6"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb536"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb536-1"><a href="shiny-custom-handler.html#cb536-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb536-2"><a href="shiny-custom-handler.html#cb536-2"></a>  <span class="va">Shiny</span>.<span class="at">AddCustomMessageHandler</span>(</span>
+<span id="cb536-3"><a href="shiny-custom-handler.html#cb536-3"></a>    <span class="st">'say-hello'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb536-4"><a href="shiny-custom-handler.html#cb536-4"></a>      <span class="at">alert</span>(<span class="vs">`R says </span><span class="sc">${</span>message<span class="sc">}</span><span class="vs"> to you!`</span>)</span>
+<span id="cb536-5"><a href="shiny-custom-handler.html#cb536-5"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb536-6"><a href="shiny-custom-handler.html#cb536-6"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>The following shiny app example will simply print a welcome message every five seconds. We obviously set <code><a href="https://rdrr.io/r/base/options.html">options(shiny.trace = TRUE)</a></code> so as to capture all messages sent between R and JS. Figure <a href="shiny-custom-handler.html#fig:shiny-custom-message">15.3</a> summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/say_hello.R">here</a>. Don’t forget to load the <code><a href="https://rdrr.io/pkg/OSUICode/man/say_hello_to_js.html">say_hello_to_js()</a></code> function before:</p>
-<div class="sourceCode" id="cb536"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb537"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyAppDir</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html">system.file</a></span><span class="op">(</span>
   <span class="st">"custom-handlers/say_hello"</span>, 
@@ -448,42 +448,42 @@ we call <code>getPokemon</code> to select a random background image.</li>
 <li>On the JS side, the last block is a custom message handler that will add some inline
 CSS properties to the body element.</li>
 </ul>
-<div class="sourceCode" id="cb537"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb537-1"><a href="shiny-custom-handler.html#cb537-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb537-2"><a href="shiny-custom-handler.html#cb537-2"></a>  <span class="co">// Taken from Colin</span></span>
-<span id="cb537-3"><a href="shiny-custom-handler.html#cb537-3"></a>  <span class="kw">const</span> getPokemon <span class="op">=</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb537-4"><a href="shiny-custom-handler.html#cb537-4"></a>    <span class="co">// FETCHING THE API DATA</span></span>
-<span id="cb537-5"><a href="shiny-custom-handler.html#cb537-5"></a>    <span class="kw">let</span> randId <span class="op">=</span> <span class="va">Math</span>.<span class="at">floor</span>(<span class="va">Math</span>.<span class="at">random</span>() <span class="op">*</span> (<span class="op">+</span><span class="dv">151</span> <span class="op">+</span> <span class="dv">1</span> <span class="op">-</span> <span class="op">+</span><span class="dv">1</span>)) <span class="op">+</span> <span class="op">+</span><span class="dv">1</span><span class="op">;</span></span>
-<span id="cb537-6"><a href="shiny-custom-handler.html#cb537-6"></a>    <span class="at">fetch</span>(<span class="st">'https://pokeapi.co/api/v2/pokemon/'</span> <span class="op">+</span> randId)</span>
-<span id="cb537-7"><a href="shiny-custom-handler.html#cb537-7"></a>    <span class="co">// DEFINE WHAT HAPPENS WHEN JAVASCRIPT RECEIVES THE DATA</span></span>
-<span id="cb537-8"><a href="shiny-custom-handler.html#cb537-8"></a>    .<span class="at">then</span>((data) <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb537-9"><a href="shiny-custom-handler.html#cb537-9"></a>      <span class="co">// TURN THE DATA TO JSON</span></span>
-<span id="cb537-10"><a href="shiny-custom-handler.html#cb537-10"></a>      <span class="va">data</span>.<span class="at">json</span>().<span class="at">then</span>((res) <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb537-11"><a href="shiny-custom-handler.html#cb537-11"></a>        <span class="co">// SEND THE JSON TO R</span></span>
-<span id="cb537-12"><a href="shiny-custom-handler.html#cb537-12"></a>        <span class="va">Shiny</span>.<span class="at">setInputValue</span>(<span class="st">'pokeData'</span><span class="op">,</span> res<span class="op">,</span> <span class="op">{</span><span class="dt">priority</span><span class="op">:</span> <span class="st">'event'</span><span class="op">}</span>)</span>
-<span id="cb537-13"><a href="shiny-custom-handler.html#cb537-13"></a>      <span class="op">}</span>)</span>
-<span id="cb537-14"><a href="shiny-custom-handler.html#cb537-14"></a>    <span class="op">}</span>)</span>
-<span id="cb537-15"><a href="shiny-custom-handler.html#cb537-15"></a>    <span class="co">// DEFINE WHAT HAPPENS WHEN THERE IS AN ERROR FETCHING THE API</span></span>
-<span id="cb537-16"><a href="shiny-custom-handler.html#cb537-16"></a>    .<span class="at">catch</span>((error) <span class="kw">=&gt;</span> <span class="op">{</span></span>
-<span id="cb537-17"><a href="shiny-custom-handler.html#cb537-17"></a>      <span class="at">alert</span>(<span class="st">'Error catching result from API'</span>)</span>
-<span id="cb537-18"><a href="shiny-custom-handler.html#cb537-18"></a>    <span class="op">}</span>)</span>
-<span id="cb537-19"><a href="shiny-custom-handler.html#cb537-19"></a>  <span class="op">};</span></span>
-<span id="cb537-20"><a href="shiny-custom-handler.html#cb537-20"></a>        </span>
-<span id="cb537-21"><a href="shiny-custom-handler.html#cb537-21"></a>  <span class="co">// add event listener</span></span>
-<span id="cb537-22"><a href="shiny-custom-handler.html#cb537-22"></a>  <span class="at">$</span>(<span class="st">'#button'</span>).<span class="at">on</span>(<span class="st">'click'</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb537-23"><a href="shiny-custom-handler.html#cb537-23"></a>    <span class="at">getPokemon</span>()<span class="op">;</span></span>
-<span id="cb537-24"><a href="shiny-custom-handler.html#cb537-24"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb537-25"><a href="shiny-custom-handler.html#cb537-25"></a>        </span>
-<span id="cb537-26"><a href="shiny-custom-handler.html#cb537-26"></a>  <span class="co">// update background based on R data</span></span>
-<span id="cb537-27"><a href="shiny-custom-handler.html#cb537-27"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
-<span id="cb537-28"><a href="shiny-custom-handler.html#cb537-28"></a>    <span class="st">'update_background'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb537-29"><a href="shiny-custom-handler.html#cb537-29"></a>      <span class="at">$</span>(<span class="st">'body'</span>).<span class="at">css</span>(<span class="op">{</span></span>
-<span id="cb537-30"><a href="shiny-custom-handler.html#cb537-30"></a>        <span class="st">'background-image'</span><span class="op">:</span><span class="st">'url('</span> <span class="op">+</span> message <span class="op">+</span><span class="st">')'</span><span class="op">,</span> </span>
-<span id="cb537-31"><a href="shiny-custom-handler.html#cb537-31"></a>        <span class="st">'background-repeat'</span><span class="op">:</span><span class="st">'no-repeat'</span></span>
-<span id="cb537-32"><a href="shiny-custom-handler.html#cb537-32"></a>      <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb537-33"><a href="shiny-custom-handler.html#cb537-33"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb537-34"><a href="shiny-custom-handler.html#cb537-34"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb538"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb538-1"><a href="shiny-custom-handler.html#cb538-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb538-2"><a href="shiny-custom-handler.html#cb538-2"></a>  <span class="co">// Taken from Colin</span></span>
+<span id="cb538-3"><a href="shiny-custom-handler.html#cb538-3"></a>  <span class="kw">const</span> getPokemon <span class="op">=</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb538-4"><a href="shiny-custom-handler.html#cb538-4"></a>    <span class="co">// FETCHING THE API DATA</span></span>
+<span id="cb538-5"><a href="shiny-custom-handler.html#cb538-5"></a>    <span class="kw">let</span> randId <span class="op">=</span> <span class="va">Math</span>.<span class="at">floor</span>(<span class="va">Math</span>.<span class="at">random</span>() <span class="op">*</span> (<span class="op">+</span><span class="dv">151</span> <span class="op">+</span> <span class="dv">1</span> <span class="op">-</span> <span class="op">+</span><span class="dv">1</span>)) <span class="op">+</span> <span class="op">+</span><span class="dv">1</span><span class="op">;</span></span>
+<span id="cb538-6"><a href="shiny-custom-handler.html#cb538-6"></a>    <span class="at">fetch</span>(<span class="st">'https://pokeapi.co/api/v2/pokemon/'</span> <span class="op">+</span> randId)</span>
+<span id="cb538-7"><a href="shiny-custom-handler.html#cb538-7"></a>    <span class="co">// DEFINE WHAT HAPPENS WHEN JAVASCRIPT RECEIVES THE DATA</span></span>
+<span id="cb538-8"><a href="shiny-custom-handler.html#cb538-8"></a>    .<span class="at">then</span>((data) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb538-9"><a href="shiny-custom-handler.html#cb538-9"></a>      <span class="co">// TURN THE DATA TO JSON</span></span>
+<span id="cb538-10"><a href="shiny-custom-handler.html#cb538-10"></a>      <span class="va">data</span>.<span class="at">json</span>().<span class="at">then</span>((res) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb538-11"><a href="shiny-custom-handler.html#cb538-11"></a>        <span class="co">// SEND THE JSON TO R</span></span>
+<span id="cb538-12"><a href="shiny-custom-handler.html#cb538-12"></a>        <span class="va">Shiny</span>.<span class="at">setInputValue</span>(<span class="st">'pokeData'</span><span class="op">,</span> res<span class="op">,</span> <span class="op">{</span><span class="dt">priority</span><span class="op">:</span> <span class="st">'event'</span><span class="op">}</span>)</span>
+<span id="cb538-13"><a href="shiny-custom-handler.html#cb538-13"></a>      <span class="op">}</span>)</span>
+<span id="cb538-14"><a href="shiny-custom-handler.html#cb538-14"></a>    <span class="op">}</span>)</span>
+<span id="cb538-15"><a href="shiny-custom-handler.html#cb538-15"></a>    <span class="co">// DEFINE WHAT HAPPENS WHEN THERE IS AN ERROR FETCHING THE API</span></span>
+<span id="cb538-16"><a href="shiny-custom-handler.html#cb538-16"></a>    .<span class="at">catch</span>((error) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb538-17"><a href="shiny-custom-handler.html#cb538-17"></a>      <span class="at">alert</span>(<span class="st">'Error catching result from API'</span>)</span>
+<span id="cb538-18"><a href="shiny-custom-handler.html#cb538-18"></a>    <span class="op">}</span>)</span>
+<span id="cb538-19"><a href="shiny-custom-handler.html#cb538-19"></a>  <span class="op">};</span></span>
+<span id="cb538-20"><a href="shiny-custom-handler.html#cb538-20"></a>        </span>
+<span id="cb538-21"><a href="shiny-custom-handler.html#cb538-21"></a>  <span class="co">// add event listener</span></span>
+<span id="cb538-22"><a href="shiny-custom-handler.html#cb538-22"></a>  <span class="at">$</span>(<span class="st">'#button'</span>).<span class="at">on</span>(<span class="st">'click'</span><span class="op">,</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb538-23"><a href="shiny-custom-handler.html#cb538-23"></a>    <span class="at">getPokemon</span>()<span class="op">;</span></span>
+<span id="cb538-24"><a href="shiny-custom-handler.html#cb538-24"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb538-25"><a href="shiny-custom-handler.html#cb538-25"></a>        </span>
+<span id="cb538-26"><a href="shiny-custom-handler.html#cb538-26"></a>  <span class="co">// update background based on R data</span></span>
+<span id="cb538-27"><a href="shiny-custom-handler.html#cb538-27"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb538-28"><a href="shiny-custom-handler.html#cb538-28"></a>    <span class="st">'update_background'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb538-29"><a href="shiny-custom-handler.html#cb538-29"></a>      <span class="at">$</span>(<span class="st">'body'</span>).<span class="at">css</span>(<span class="op">{</span></span>
+<span id="cb538-30"><a href="shiny-custom-handler.html#cb538-30"></a>        <span class="st">'background-image'</span><span class="op">:</span><span class="st">'url('</span> <span class="op">+</span> message <span class="op">+</span><span class="st">')'</span><span class="op">,</span> </span>
+<span id="cb538-31"><a href="shiny-custom-handler.html#cb538-31"></a>        <span class="st">'background-repeat'</span><span class="op">:</span><span class="st">'no-repeat'</span></span>
+<span id="cb538-32"><a href="shiny-custom-handler.html#cb538-32"></a>      <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb538-33"><a href="shiny-custom-handler.html#cb538-33"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb538-34"><a href="shiny-custom-handler.html#cb538-34"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>A demonstration may be run from the <code>{OSUICode}</code> side package:</p>
-<div class="sourceCode" id="cb538"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb539"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/runPokemonExample.html">runPokemonExample</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 </div>
@@ -497,7 +497,7 @@ CSS properties to the body element.</li>
 </h4>
 <p>In this example, we go back to the <code><a href="https://rdrr.io/pkg/bs4Dash/man/dropdownMenu.html">bs4Dash::dropdownMenu()</a></code> issue, discussed earlier
 in the chapter. We propose a method only involving custom message handlers.</p>
-<div class="sourceCode" id="cb539"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb540"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">insertDropdownItem</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
   <span class="va">item</span>, 
   <span class="va">session</span> <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span>
@@ -515,24 +515,24 @@ in the chapter. We propose a method only involving custom message handlers.</p>
 <strong>session</strong>, used to send a message to JavaScript with <code>session$sendCustomMessage</code>.</li>
 </ul>
 <p>We don’t use <code><a href="https://rdrr.io/pkg/htmltools/man/renderTags.html">htmltools::renderTags</a></code> as it is very unlikely that our <code>messageItem</code> contains any extra dependency. item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a <strong>type</strong>, that is <code>add-message-item</code>, to be able to identify it from JavaScript with <code>Shiny.addCustomMessageHandler</code>.</p>
-<div class="sourceCode" id="cb540"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb540-1"><a href="shiny-custom-handler.html#cb540-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb540-2"><a href="shiny-custom-handler.html#cb540-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
-<span id="cb540-3"><a href="shiny-custom-handler.html#cb540-3"></a>    <span class="st">'add-message-item'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb540-4"><a href="shiny-custom-handler.html#cb540-4"></a>      <span class="co">// since we do not re-render the dropdown, </span></span>
-<span id="cb540-5"><a href="shiny-custom-handler.html#cb540-5"></a>      <span class="co">// we must update its item counter</span></span>
-<span id="cb540-6"><a href="shiny-custom-handler.html#cb540-6"></a>      <span class="kw">let</span> $items <span class="op">=</span> <span class="at">$</span>(<span class="st">'.dropdown-menu'</span>)</span>
-<span id="cb540-7"><a href="shiny-custom-handler.html#cb540-7"></a>        .<span class="at">find</span>(<span class="st">'.dropdown-item'</span>)</span>
-<span id="cb540-8"><a href="shiny-custom-handler.html#cb540-8"></a>        .<span class="at">length</span><span class="op">;</span></span>
-<span id="cb540-9"><a href="shiny-custom-handler.html#cb540-9"></a>      <span class="at">$</span>(<span class="st">'.dropdown-item.dropdown-header'</span>).<span class="at">html</span>($items <span class="op">+</span> <span class="st">' Items'</span>)<span class="op">;</span></span>
-<span id="cb540-10"><a href="shiny-custom-handler.html#cb540-10"></a>      <span class="at">$</span>(<span class="st">'.nav-item.dropdown'</span>).<span class="at">find</span>(<span class="st">'.navbar-badge'</span>).<span class="at">html</span>($items)<span class="op">;</span></span>
-<span id="cb540-11"><a href="shiny-custom-handler.html#cb540-11"></a>      <span class="co">// convert string to HTML</span></span>
-<span id="cb540-12"><a href="shiny-custom-handler.html#cb540-12"></a>      <span class="kw">let</span> itemTag <span class="op">=</span> <span class="va">$</span>.<span class="at">parseHTML</span>(message)[<span class="dv">0</span>]<span class="op">;</span></span>
-<span id="cb540-13"><a href="shiny-custom-handler.html#cb540-13"></a>      <span class="at">$</span>(itemTag).<span class="at">insertAfter</span>(<span class="at">$</span>(<span class="st">'.dropdown-item.dropdown-header'</span>))<span class="op">;</span></span>
-<span id="cb540-14"><a href="shiny-custom-handler.html#cb540-14"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb540-15"><a href="shiny-custom-handler.html#cb540-15"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb541"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb541-1"><a href="shiny-custom-handler.html#cb541-1"></a><span class="at">$</span>(<span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb541-2"><a href="shiny-custom-handler.html#cb541-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb541-3"><a href="shiny-custom-handler.html#cb541-3"></a>    <span class="st">'add-message-item'</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb541-4"><a href="shiny-custom-handler.html#cb541-4"></a>      <span class="co">// since we do not re-render the dropdown, </span></span>
+<span id="cb541-5"><a href="shiny-custom-handler.html#cb541-5"></a>      <span class="co">// we must update its item counter</span></span>
+<span id="cb541-6"><a href="shiny-custom-handler.html#cb541-6"></a>      <span class="kw">let</span> $items <span class="op">=</span> <span class="at">$</span>(<span class="st">'.dropdown-menu'</span>)</span>
+<span id="cb541-7"><a href="shiny-custom-handler.html#cb541-7"></a>        .<span class="at">find</span>(<span class="st">'.dropdown-item'</span>)</span>
+<span id="cb541-8"><a href="shiny-custom-handler.html#cb541-8"></a>        .<span class="at">length</span><span class="op">;</span></span>
+<span id="cb541-9"><a href="shiny-custom-handler.html#cb541-9"></a>      <span class="at">$</span>(<span class="st">'.dropdown-item.dropdown-header'</span>).<span class="at">html</span>($items <span class="op">+</span> <span class="st">' Items'</span>)<span class="op">;</span></span>
+<span id="cb541-10"><a href="shiny-custom-handler.html#cb541-10"></a>      <span class="at">$</span>(<span class="st">'.nav-item.dropdown'</span>).<span class="at">find</span>(<span class="st">'.navbar-badge'</span>).<span class="at">html</span>($items)<span class="op">;</span></span>
+<span id="cb541-11"><a href="shiny-custom-handler.html#cb541-11"></a>      <span class="co">// convert string to HTML</span></span>
+<span id="cb541-12"><a href="shiny-custom-handler.html#cb541-12"></a>      <span class="kw">let</span> itemTag <span class="op">=</span> <span class="va">$</span>.<span class="at">parseHTML</span>(message)[<span class="dv">0</span>]<span class="op">;</span></span>
+<span id="cb541-13"><a href="shiny-custom-handler.html#cb541-13"></a>      <span class="at">$</span>(itemTag).<span class="at">insertAfter</span>(<span class="at">$</span>(<span class="st">'.dropdown-item.dropdown-header'</span>))<span class="op">;</span></span>
+<span id="cb541-14"><a href="shiny-custom-handler.html#cb541-14"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb541-15"><a href="shiny-custom-handler.html#cb541-15"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>We also update the dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. The number of items is given by the dropdown children (without the <code>dropdown-divier</code> class). These two extra JS steps save us to create extra <code><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent()</a></code> on the server, as shown before.
 We then recover the sent message on the JS side with <code>Shiny.addCustomMessageHandler</code>, parse the string to HTML with <code>$.parseHTML</code> and insert it after the header (that is the next UI element of the dropdown body). The <code><a href="https://rdrr.io/pkg/bs4Dash/man/dropdownMenu.html">bs4Dash::dropdownMenu()</a></code> is modified so that dependencies are <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/85cb171642de7a564e2774390964d1bfbbd5b4ee/R/insertMessageItem.R#L61">attached</a>. You may run the example yourself. Note we load <code>{OSUICode}</code> to overwrite the <a href="https://rinterface.github.io/bs4Dash/index.html">bs4Dash</a> function:</p>
-<div class="sourceCode" id="cb541"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb542"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># shinyAppDir(system.file(</span>
 <span class="co">#   "custom-handlers/add-message-item", </span>
 <span class="co">#   package = "OSUICode"</span>
@@ -575,24 +575,24 @@ We then recover the sent message on the JS side with <code>Shiny.addCustomMessag
 <span class="header-section-number">15.4.2.2</span> A chat system for shinydashboardPlus<a class="anchor" aria-label="anchor" href="#a-chat-system-for-shinydashboardplus"><i class="fas fa-link"></i></a>
 </h4>
 <p><a href="https://github.com/RinteRface/shinydashboardPlus">shinydashboardPlus</a> user messages provide an easy way to create a chat system within a shiny app. <code><a href="https://rdrr.io/pkg/bs4Dash/man/userMessage.html">userMessages()</a></code> hosts the main container while <code><a href="https://rdrr.io/pkg/bs4Dash/man/userMessage.html">userMessage()</a></code> is the message element. All of this is pure HTML:</p>
-<div class="sourceCode" id="cb542"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb542-1"><a href="shiny-custom-handler.html#cb542-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-msg"</span><span class="kw">&gt;</span></span>
-<span id="cb542-2"><a href="shiny-custom-handler.html#cb542-2"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-info clearfix"</span><span class="kw">&gt;</span></span>
-<span id="cb542-3"><a href="shiny-custom-handler.html#cb542-3"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-name pull-left"</span><span class="kw">&gt;</span></span>
-<span id="cb542-4"><a href="shiny-custom-handler.html#cb542-4"></a>      Alexander Pierce</span>
-<span id="cb542-5"><a href="shiny-custom-handler.html#cb542-5"></a>    <span class="kw">&lt;/span&gt;</span></span>
-<span id="cb542-6"><a href="shiny-custom-handler.html#cb542-6"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-timestamp pull-right"</span><span class="kw">&gt;</span></span>
-<span id="cb542-7"><a href="shiny-custom-handler.html#cb542-7"></a>      23 Jan 2:00 pm</span>
-<span id="cb542-8"><a href="shiny-custom-handler.html#cb542-8"></a>    <span class="kw">&lt;/span&gt;</span></span>
-<span id="cb542-9"><a href="shiny-custom-handler.html#cb542-9"></a>  <span class="kw">&lt;/div&gt;</span></span>
-<span id="cb542-10"><a href="shiny-custom-handler.html#cb542-10"></a>  <span class="co">&lt;!-- /.direct-chat-info --&gt;</span></span>
-<span id="cb542-11"><a href="shiny-custom-handler.html#cb542-11"></a>  <span class="kw">&lt;img</span><span class="ot"> class=</span><span class="st">"direct-chat-img"</span><span class="ot"> src=</span><span class="st">"dist/img/user1-128x128.jpg"</span> </span>
-<span id="cb542-12"><a href="shiny-custom-handler.html#cb542-12"></a><span class="ot">  alt=</span><span class="st">"message user image"</span><span class="kw">&gt;</span></span>
-<span id="cb542-13"><a href="shiny-custom-handler.html#cb542-13"></a>  <span class="co">&lt;!-- /.direct-chat-img --&gt;</span></span>
-<span id="cb542-14"><a href="shiny-custom-handler.html#cb542-14"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-text"</span><span class="kw">&gt;</span></span>
-<span id="cb542-15"><a href="shiny-custom-handler.html#cb542-15"></a>    Is this template really for free? That's unbelievable!</span>
-<span id="cb542-16"><a href="shiny-custom-handler.html#cb542-16"></a>  <span class="kw">&lt;/div&gt;</span></span>
-<span id="cb542-17"><a href="shiny-custom-handler.html#cb542-17"></a>  <span class="co">&lt;!-- /.direct-chat-text --&gt;</span></span>
-<span id="cb542-18"><a href="shiny-custom-handler.html#cb542-18"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb543"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb543-1"><a href="shiny-custom-handler.html#cb543-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-msg"</span><span class="kw">&gt;</span></span>
+<span id="cb543-2"><a href="shiny-custom-handler.html#cb543-2"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-info clearfix"</span><span class="kw">&gt;</span></span>
+<span id="cb543-3"><a href="shiny-custom-handler.html#cb543-3"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-name pull-left"</span><span class="kw">&gt;</span></span>
+<span id="cb543-4"><a href="shiny-custom-handler.html#cb543-4"></a>      Alexander Pierce</span>
+<span id="cb543-5"><a href="shiny-custom-handler.html#cb543-5"></a>    <span class="kw">&lt;/span&gt;</span></span>
+<span id="cb543-6"><a href="shiny-custom-handler.html#cb543-6"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-timestamp pull-right"</span><span class="kw">&gt;</span></span>
+<span id="cb543-7"><a href="shiny-custom-handler.html#cb543-7"></a>      23 Jan 2:00 pm</span>
+<span id="cb543-8"><a href="shiny-custom-handler.html#cb543-8"></a>    <span class="kw">&lt;/span&gt;</span></span>
+<span id="cb543-9"><a href="shiny-custom-handler.html#cb543-9"></a>  <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb543-10"><a href="shiny-custom-handler.html#cb543-10"></a>  <span class="co">&lt;!-- /.direct-chat-info --&gt;</span></span>
+<span id="cb543-11"><a href="shiny-custom-handler.html#cb543-11"></a>  <span class="kw">&lt;img</span><span class="ot"> class=</span><span class="st">"direct-chat-img"</span><span class="ot"> src=</span><span class="st">"dist/img/user1-128x128.jpg"</span> </span>
+<span id="cb543-12"><a href="shiny-custom-handler.html#cb543-12"></a><span class="ot">  alt=</span><span class="st">"message user image"</span><span class="kw">&gt;</span></span>
+<span id="cb543-13"><a href="shiny-custom-handler.html#cb543-13"></a>  <span class="co">&lt;!-- /.direct-chat-img --&gt;</span></span>
+<span id="cb543-14"><a href="shiny-custom-handler.html#cb543-14"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-text"</span><span class="kw">&gt;</span></span>
+<span id="cb543-15"><a href="shiny-custom-handler.html#cb543-15"></a>    Is this template really for free? That's unbelievable!</span>
+<span id="cb543-16"><a href="shiny-custom-handler.html#cb543-16"></a>  <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb543-17"><a href="shiny-custom-handler.html#cb543-17"></a>  <span class="co">&lt;!-- /.direct-chat-text --&gt;</span></span>
+<span id="cb543-18"><a href="shiny-custom-handler.html#cb543-18"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
 <p>Figure <a href="shiny-custom-handler.html#fig:shinydashboardPlus-chat">15.4</a> shows the overall appearance.</p>
 <div class="figure">
 <span id="fig:shinydashboardPlus-chat"></span>
@@ -606,9 +606,9 @@ FIGURE 15.4: Chat user interface for AdminLTE2
 <span class="header-section-number">15.4.2.2.1</span> HTML elements<a class="anchor" aria-label="anchor" href="#html-elements"><i class="fas fa-link"></i></a>
 </h5>
 <p>The message container is a simple <code>div</code> element:</p>
-<div class="sourceCode" id="cb543"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb543-1"><a href="shiny-custom-handler.html#cb543-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-messages"</span><span class="kw">&gt;</span>...<span class="kw">&lt;/div&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb544"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb544-1"><a href="shiny-custom-handler.html#cb544-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-messages"</span><span class="kw">&gt;</span>...<span class="kw">&lt;/div&gt;</span></span></code></pre></div>
 <p>where <code>...</code> receives all messages. From the AdminLTE demonstration <a href="https://adminlte.io/themes/AdminLTE/index2.html">page</a>, the class <code>direct-chat-warning</code> gives the yellow color to the sent messages, while received messages are always gray. In <a href="https://github.com/RinteRface/shinydashboardPlus">shinydashboardPlus</a>, the container is defined as below:</p>
-<div class="sourceCode" id="cb544"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb545"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">userMessages</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">status</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">4</span>, 
                          <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">cl</span> <span class="op">&lt;-</span> <span class="st">"direct-chat-messages direct-chat"</span>
@@ -635,7 +635,7 @@ FIGURE 15.4: Chat user interface for AdminLTE2
   
 <span class="op">}</span></code></pre></div>
 <p>The most important element is the <strong>id</strong> parameter that makes the link with the custom message handler on the JavaScript side. The message element is defined as:</p>
-<div class="sourceCode" id="cb545"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb546"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">userMessage</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">author</span>, <span class="va">date</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">image</span> <span class="op">=</span> <span class="cn">NULL</span>, 
                         <span class="va">type</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sent"</span>, <span class="st">"received"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   
@@ -711,7 +711,7 @@ FIGURE 15.4: Chat user interface for AdminLTE2
 <p>Don’t forget that R starts from 1 while JS starts from 0.</p>
 </div>
 <p>Consequently, we have to decrease the R index by 1 so that JS receives the correct number. We must also provide a content parameter so as to update any existing message content. The content has to be compatible we the <code>userMessage</code> structure. We expect the user to pass a list like:</p>
-<div class="sourceCode" id="cb546"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb547"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">img</span> <span class="op">&lt;-</span> <span class="st">"https://adminlte.io/themes/v3/dist/img/user2-160x160.jpg"</span>
 <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
   author <span class="op">=</span> <span class="st">"David"</span>,
@@ -730,7 +730,7 @@ FIGURE 15.4: Chat user interface for AdminLTE2
   <span class="op">)</span>
 <span class="op">)</span></code></pre></div>
 <p>Interestingly, we may offer the ability to add input/output element in the message content (as shown above) with <strong>dependencies</strong> that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the <code><a href="https://rdrr.io/pkg/htmltools/man/renderTags.html">htmltools::renderTags()</a></code> function on the R side for all elements with <code><a href="https://rdrr.io/r/base/lapply.html">lapply()</a></code> function. Finally, the message is sent to JS with <code>session$sendCustomMessage</code>:</p>
-<div class="sourceCode" id="cb547"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb548"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateUserMessages</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
   <span class="va">id</span>, 
   <span class="va">action</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"add"</span>, <span class="st">"remove"</span>, <span class="st">"update"</span><span class="op">)</span>, 
@@ -766,48 +766,48 @@ FIGURE 15.4: Chat user interface for AdminLTE2
 <p>Note the <strong>session$ns</strong> that actually makes sure this function can work within shiny <a href="https://shiny.rstudio.com/reference/shiny/1.6.0/moduleServer.html">modules</a>.</p>
 </div>
 <p>We are now all done on the R side but still have to design the JS interface. The first step is to create a custom message handler skeleton:</p>
-<div class="sourceCode" id="cb548"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb548-1"><a href="shiny-custom-handler.html#cb548-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
-<span id="cb548-2"><a href="shiny-custom-handler.html#cb548-2"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb548-3"><a href="shiny-custom-handler.html#cb548-3"></a>    <span class="co">// JS logic</span></span>
-<span id="cb548-4"><a href="shiny-custom-handler.html#cb548-4"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb549"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb549-1"><a href="shiny-custom-handler.html#cb549-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb549-2"><a href="shiny-custom-handler.html#cb549-2"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb549-3"><a href="shiny-custom-handler.html#cb549-3"></a>    <span class="co">// JS logic</span></span>
+<span id="cb549-4"><a href="shiny-custom-handler.html#cb549-4"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>where the <strong>message</strong> parameter is actually the message sent through the R <code><a href="https://rdrr.io/pkg/bs4Dash/man/userMessage.html">updateUserMessages()</a></code> function. We recall that if we send a list, it is subsequently converted into a JS object. Therefore, to access the container <strong>id</strong> element, we do:</p>
-<div class="sourceCode" id="cb549"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb549-1"><a href="shiny-custom-handler.html#cb549-1"></a><span class="va">message</span>.<span class="at">id</span></span></code></pre></div>
+<div class="sourceCode" id="cb550"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb550-1"><a href="shiny-custom-handler.html#cb550-1"></a><span class="va">message</span>.<span class="at">id</span></span></code></pre></div>
 <p>and similarly for other elements. There may be nested lists, like the message content, which is not very complex to handle: we simply use the <code>.</code> JS notation to access lower level elements, that is <code>message.content.text</code> for the message text.</p>
 <p>The second step is to store all message elements in multiple variables separated by commas. This step is not mandatory but improves the code readability:</p>
-<div class="sourceCode" id="cb550"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb550-1"><a href="shiny-custom-handler.html#cb550-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
-<span id="cb550-2"><a href="shiny-custom-handler.html#cb550-2"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb550-3"><a href="shiny-custom-handler.html#cb550-3"></a>    <span class="kw">let</span> id <span class="op">=</span> <span class="va">message</span>.<span class="at">id</span><span class="op">,</span> </span>
-<span id="cb550-4"><a href="shiny-custom-handler.html#cb550-4"></a>      action <span class="op">=</span> <span class="va">message</span>.<span class="at">action</span><span class="op">,</span> </span>
-<span id="cb550-5"><a href="shiny-custom-handler.html#cb550-5"></a>      content <span class="op">=</span> <span class="va">message</span>.<span class="at">body</span><span class="op">,</span> </span>
-<span id="cb550-6"><a href="shiny-custom-handler.html#cb550-6"></a>      index <span class="op">=</span> <span class="va">message</span>.<span class="at">index</span><span class="op">;</span></span>
-<span id="cb550-7"><a href="shiny-custom-handler.html#cb550-7"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb551"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb551-1"><a href="shiny-custom-handler.html#cb551-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb551-2"><a href="shiny-custom-handler.html#cb551-2"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb551-3"><a href="shiny-custom-handler.html#cb551-3"></a>    <span class="kw">let</span> id <span class="op">=</span> <span class="va">message</span>.<span class="at">id</span><span class="op">,</span> </span>
+<span id="cb551-4"><a href="shiny-custom-handler.html#cb551-4"></a>      action <span class="op">=</span> <span class="va">message</span>.<span class="at">action</span><span class="op">,</span> </span>
+<span id="cb551-5"><a href="shiny-custom-handler.html#cb551-5"></a>      content <span class="op">=</span> <span class="va">message</span>.<span class="at">body</span><span class="op">,</span> </span>
+<span id="cb551-6"><a href="shiny-custom-handler.html#cb551-6"></a>      index <span class="op">=</span> <span class="va">message</span>.<span class="at">index</span><span class="op">;</span></span>
+<span id="cb551-7"><a href="shiny-custom-handler.html#cb551-7"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>In the following we show how to process any message content. For sake of simplicity, we assume to be able to only edit the message text. As mentioned earlier, there are two possible cases:</p>
 <ul>
 <li>The text is simple text or simple HTML without any extra dependency, we do nothing more than storing it into a meaningful variable.</li>
 <li>The text is a list of shiny tags containing input/output with extra dependencies like <code><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput()</a></code>. We have to leverage the <code>renderHtml</code> method to correctly process the missing dependencies passed from R via <code><a href="https://rdrr.io/pkg/htmltools/man/renderTags.html">htmltools::renderTags()</a></code> in <code><a href="https://rdrr.io/pkg/bs4Dash/man/userMessage.html">updateUserMessages()</a></code>.</li>
 </ul>
 <p>This yields:</p>
-<div class="sourceCode" id="cb551"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb551-1"><a href="shiny-custom-handler.html#cb551-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
-<span id="cb551-2"><a href="shiny-custom-handler.html#cb551-2"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb551-3"><a href="shiny-custom-handler.html#cb551-3"></a>  <span class="kw">let</span> id <span class="op">=</span> <span class="va">message</span>.<span class="at">id</span><span class="op">,</span> </span>
-<span id="cb551-4"><a href="shiny-custom-handler.html#cb551-4"></a>    action <span class="op">=</span> <span class="va">message</span>.<span class="at">action</span><span class="op">,</span> </span>
-<span id="cb551-5"><a href="shiny-custom-handler.html#cb551-5"></a>    content <span class="op">=</span> <span class="va">message</span>.<span class="at">body</span><span class="op">,</span> </span>
-<span id="cb551-6"><a href="shiny-custom-handler.html#cb551-6"></a>    index <span class="op">=</span> <span class="va">message</span>.<span class="at">index</span><span class="op">;</span></span>
-<span id="cb551-7"><a href="shiny-custom-handler.html#cb551-7"></a>  </span>
-<span id="cb551-8"><a href="shiny-custom-handler.html#cb551-8"></a>  <span class="cf">if</span> (<span class="va">content</span>.<span class="at">hasOwnProperty</span>(<span class="st">"text"</span>)) <span class="op">{</span></span>
-<span id="cb551-9"><a href="shiny-custom-handler.html#cb551-9"></a>    <span class="kw">let</span> text<span class="op">;</span></span>
-<span id="cb551-10"><a href="shiny-custom-handler.html#cb551-10"></a>    <span class="cf">if</span> (<span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span> <span class="op">===</span> <span class="kw">undefined</span>) <span class="op">{</span></span>
-<span id="cb551-11"><a href="shiny-custom-handler.html#cb551-11"></a>      text <span class="op">=</span> <span class="va">content</span>.<span class="at">text</span><span class="op">;</span></span>
-<span id="cb551-12"><a href="shiny-custom-handler.html#cb551-12"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb551-13"><a href="shiny-custom-handler.html#cb551-13"></a>      text <span class="op">=</span> <span class="va">Shiny</span>.<span class="at">renderHtml</span>(</span>
-<span id="cb551-14"><a href="shiny-custom-handler.html#cb551-14"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span><span class="op">,</span> </span>
-<span id="cb551-15"><a href="shiny-custom-handler.html#cb551-15"></a>        <span class="at">$</span>([])<span class="op">,</span> </span>
-<span id="cb551-16"><a href="shiny-custom-handler.html#cb551-16"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">dependencies</span></span>
-<span id="cb551-17"><a href="shiny-custom-handler.html#cb551-17"></a>      ).<span class="at">html</span><span class="op">;</span></span>
-<span id="cb551-18"><a href="shiny-custom-handler.html#cb551-18"></a>    <span class="op">}</span> </span>
-<span id="cb551-19"><a href="shiny-custom-handler.html#cb551-19"></a>  <span class="op">}</span></span>
-<span id="cb551-20"><a href="shiny-custom-handler.html#cb551-20"></a>  </span>
-<span id="cb551-21"><a href="shiny-custom-handler.html#cb551-21"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb552"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb552-1"><a href="shiny-custom-handler.html#cb552-1"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb552-2"><a href="shiny-custom-handler.html#cb552-2"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb552-3"><a href="shiny-custom-handler.html#cb552-3"></a>  <span class="kw">let</span> id <span class="op">=</span> <span class="va">message</span>.<span class="at">id</span><span class="op">,</span> </span>
+<span id="cb552-4"><a href="shiny-custom-handler.html#cb552-4"></a>    action <span class="op">=</span> <span class="va">message</span>.<span class="at">action</span><span class="op">,</span> </span>
+<span id="cb552-5"><a href="shiny-custom-handler.html#cb552-5"></a>    content <span class="op">=</span> <span class="va">message</span>.<span class="at">body</span><span class="op">,</span> </span>
+<span id="cb552-6"><a href="shiny-custom-handler.html#cb552-6"></a>    index <span class="op">=</span> <span class="va">message</span>.<span class="at">index</span><span class="op">;</span></span>
+<span id="cb552-7"><a href="shiny-custom-handler.html#cb552-7"></a>  </span>
+<span id="cb552-8"><a href="shiny-custom-handler.html#cb552-8"></a>  <span class="cf">if</span> (<span class="va">content</span>.<span class="at">hasOwnProperty</span>(<span class="st">"text"</span>)) <span class="op">{</span></span>
+<span id="cb552-9"><a href="shiny-custom-handler.html#cb552-9"></a>    <span class="kw">let</span> text<span class="op">;</span></span>
+<span id="cb552-10"><a href="shiny-custom-handler.html#cb552-10"></a>    <span class="cf">if</span> (<span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span> <span class="op">===</span> <span class="kw">undefined</span>) <span class="op">{</span></span>
+<span id="cb552-11"><a href="shiny-custom-handler.html#cb552-11"></a>      text <span class="op">=</span> <span class="va">content</span>.<span class="at">text</span><span class="op">;</span></span>
+<span id="cb552-12"><a href="shiny-custom-handler.html#cb552-12"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb552-13"><a href="shiny-custom-handler.html#cb552-13"></a>      text <span class="op">=</span> <span class="va">Shiny</span>.<span class="at">renderHtml</span>(</span>
+<span id="cb552-14"><a href="shiny-custom-handler.html#cb552-14"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span><span class="op">,</span> </span>
+<span id="cb552-15"><a href="shiny-custom-handler.html#cb552-15"></a>        <span class="at">$</span>([])<span class="op">,</span> </span>
+<span id="cb552-16"><a href="shiny-custom-handler.html#cb552-16"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">dependencies</span></span>
+<span id="cb552-17"><a href="shiny-custom-handler.html#cb552-17"></a>      ).<span class="at">html</span><span class="op">;</span></span>
+<span id="cb552-18"><a href="shiny-custom-handler.html#cb552-18"></a>    <span class="op">}</span> </span>
+<span id="cb552-19"><a href="shiny-custom-handler.html#cb552-19"></a>  <span class="op">}</span></span>
+<span id="cb552-20"><a href="shiny-custom-handler.html#cb552-20"></a>  </span>
+<span id="cb552-21"><a href="shiny-custom-handler.html#cb552-21"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <div class="noteblock">
 <p><code>hasOwnProperty</code> checks whether content has a text property, which avoids running code
 whenever not necessary.</p>
@@ -820,207 +820,207 @@ whenever not necessary.</p>
 <li>Use the <code>remove</code> jQuery method.</li>
 </ul>
 <p>We therefore target the main container with <code>$("#" + id)</code>, look for its messages with <code><a href="https://rdrr.io/r/utils/apropos.html">find(".direct-chat-msg")</a></code>, specify the target using <code>eq(index - 1)</code> (index is the R value) and apply the remove method:</p>
-<div class="sourceCode" id="cb552"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb552-1"><a href="shiny-custom-handler.html#cb552-1"></a><span class="cf">if</span> (action <span class="op">===</span> <span class="st">"remove"</span>) <span class="op">{</span></span>
-<span id="cb552-2"><a href="shiny-custom-handler.html#cb552-2"></a>  <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id).<span class="at">find</span>(<span class="st">".direct-chat-msg"</span>).<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>).<span class="at">remove</span>()<span class="op">;</span></span>
-<span id="cb552-3"><a href="shiny-custom-handler.html#cb552-3"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb553"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb553-1"><a href="shiny-custom-handler.html#cb553-1"></a><span class="cf">if</span> (action <span class="op">===</span> <span class="st">"remove"</span>) <span class="op">{</span></span>
+<span id="cb553-2"><a href="shiny-custom-handler.html#cb553-2"></a>  <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id).<span class="at">find</span>(<span class="st">".direct-chat-msg"</span>).<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>).<span class="at">remove</span>()<span class="op">;</span></span>
+<span id="cb553-3"><a href="shiny-custom-handler.html#cb553-3"></a><span class="op">}</span></span></code></pre></div>
 <p>We could add more security with <code>console.warn</code> whenever the user wants to delete a message that does not exist. We leave it to the reader as an exercise.</p>
 <p>The second case consists in adding a new message. We define new variables containing the
 author, the date, the image and the message type. Below is a reminder of the message HTML structure:</p>
-<div class="sourceCode" id="cb553"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb553-1"><a href="shiny-custom-handler.html#cb553-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-msg"</span><span class="kw">&gt;</span></span>
-<span id="cb553-2"><a href="shiny-custom-handler.html#cb553-2"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-info clearfix"</span><span class="kw">&gt;</span></span>
-<span id="cb553-3"><a href="shiny-custom-handler.html#cb553-3"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-name pull-left"</span><span class="kw">&gt;</span></span>
-<span id="cb553-4"><a href="shiny-custom-handler.html#cb553-4"></a>      AUTHOR (TO REPLACE)</span>
-<span id="cb553-5"><a href="shiny-custom-handler.html#cb553-5"></a>    <span class="kw">&lt;/span&gt;</span></span>
-<span id="cb553-6"><a href="shiny-custom-handler.html#cb553-6"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-timestamp pull-right"</span><span class="kw">&gt;</span></span>
-<span id="cb553-7"><a href="shiny-custom-handler.html#cb553-7"></a>      DATE (TO REPLACE)</span>
-<span id="cb553-8"><a href="shiny-custom-handler.html#cb553-8"></a>    <span class="kw">&lt;/span&gt;</span></span>
-<span id="cb553-9"><a href="shiny-custom-handler.html#cb553-9"></a>  <span class="kw">&lt;/div&gt;</span></span>
-<span id="cb553-10"><a href="shiny-custom-handler.html#cb553-10"></a>  <span class="co">&lt;!-- /.direct-chat-info --&gt;</span></span>
-<span id="cb553-11"><a href="shiny-custom-handler.html#cb553-11"></a>  <span class="kw">&lt;img</span><span class="ot"> class=</span><span class="st">"direct-chat-img"</span><span class="ot"> src=</span><span class="st">"IMAGE URL (TO REPLACE)"</span> </span>
-<span id="cb553-12"><a href="shiny-custom-handler.html#cb553-12"></a><span class="ot">  alt=</span><span class="st">"message user image"</span><span class="kw">&gt;</span></span>
-<span id="cb553-13"><a href="shiny-custom-handler.html#cb553-13"></a>    <span class="co">&lt;!-- /.direct-chat-img --&gt;</span></span>
-<span id="cb553-14"><a href="shiny-custom-handler.html#cb553-14"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-text"</span><span class="kw">&gt;</span>MAIN CONTENT (TO REPLACE)</span>
-<span id="cb553-15"><a href="shiny-custom-handler.html#cb553-15"></a>  <span class="kw">&lt;/div&gt;</span></span>
-<span id="cb553-16"><a href="shiny-custom-handler.html#cb553-16"></a>  <span class="co">&lt;!-- /.direct-chat-text --&gt;</span></span>
-<span id="cb553-17"><a href="shiny-custom-handler.html#cb553-17"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb554"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb554-1"><a href="shiny-custom-handler.html#cb554-1"></a><span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-msg"</span><span class="kw">&gt;</span></span>
+<span id="cb554-2"><a href="shiny-custom-handler.html#cb554-2"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-info clearfix"</span><span class="kw">&gt;</span></span>
+<span id="cb554-3"><a href="shiny-custom-handler.html#cb554-3"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-name pull-left"</span><span class="kw">&gt;</span></span>
+<span id="cb554-4"><a href="shiny-custom-handler.html#cb554-4"></a>      AUTHOR (TO REPLACE)</span>
+<span id="cb554-5"><a href="shiny-custom-handler.html#cb554-5"></a>    <span class="kw">&lt;/span&gt;</span></span>
+<span id="cb554-6"><a href="shiny-custom-handler.html#cb554-6"></a>    <span class="kw">&lt;span</span><span class="ot"> class=</span><span class="st">"direct-chat-timestamp pull-right"</span><span class="kw">&gt;</span></span>
+<span id="cb554-7"><a href="shiny-custom-handler.html#cb554-7"></a>      DATE (TO REPLACE)</span>
+<span id="cb554-8"><a href="shiny-custom-handler.html#cb554-8"></a>    <span class="kw">&lt;/span&gt;</span></span>
+<span id="cb554-9"><a href="shiny-custom-handler.html#cb554-9"></a>  <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb554-10"><a href="shiny-custom-handler.html#cb554-10"></a>  <span class="co">&lt;!-- /.direct-chat-info --&gt;</span></span>
+<span id="cb554-11"><a href="shiny-custom-handler.html#cb554-11"></a>  <span class="kw">&lt;img</span><span class="ot"> class=</span><span class="st">"direct-chat-img"</span><span class="ot"> src=</span><span class="st">"IMAGE URL (TO REPLACE)"</span> </span>
+<span id="cb554-12"><a href="shiny-custom-handler.html#cb554-12"></a><span class="ot">  alt=</span><span class="st">"message user image"</span><span class="kw">&gt;</span></span>
+<span id="cb554-13"><a href="shiny-custom-handler.html#cb554-13"></a>    <span class="co">&lt;!-- /.direct-chat-img --&gt;</span></span>
+<span id="cb554-14"><a href="shiny-custom-handler.html#cb554-14"></a>  <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">"direct-chat-text"</span><span class="kw">&gt;</span>MAIN CONTENT (TO REPLACE)</span>
+<span id="cb554-15"><a href="shiny-custom-handler.html#cb554-15"></a>  <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb554-16"><a href="shiny-custom-handler.html#cb554-16"></a>  <span class="co">&lt;!-- /.direct-chat-text --&gt;</span></span>
+<span id="cb554-17"><a href="shiny-custom-handler.html#cb554-17"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
 <p>In our JS logic, we use the same template and replace any relevant element (see capital letters)
 by the previously created variables. We might use the string <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#browser_compatibility">interpolation</a>. We wrap all of these elements in a <code>direct-chat-msg</code> div which class may vary depending on the message type. If sent, the class is <code>direct-chat-msg right</code> and <code>direct-chat-msg</code> otherwise. The final step is to target the main container with <code>$("#" + id)</code>, look for the messages slot <code><a href="https://rdrr.io/r/utils/apropos.html">find(".direct-chat-messages")</a></code> (the message container is nested in the main wrapper) and <code>append</code> it
 to the DOM. We used <code>append</code> which adds the message at the end but could choose <code>prepend</code> to add it on top
 of all other messages. This behavior may be defined by the programmer with no option for the end-user.
 Alternatively, the developer could expose an external parameter to control the add position.</p>
-<div class="sourceCode" id="cb554"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb554-1"><a href="shiny-custom-handler.html#cb554-1"></a><span class="co">// other condition before ...</span></span>
-<span id="cb554-2"><a href="shiny-custom-handler.html#cb554-2"></a><span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"add"</span>) <span class="op">{</span></span>
-<span id="cb554-3"><a href="shiny-custom-handler.html#cb554-3"></a>  <span class="kw">let</span> author <span class="op">=</span> <span class="va">content</span>.<span class="at">author</span><span class="op">,</span> </span>
-<span id="cb554-4"><a href="shiny-custom-handler.html#cb554-4"></a>    date <span class="op">=</span> <span class="va">content</span>.<span class="at">date</span><span class="op">,</span> </span>
-<span id="cb554-5"><a href="shiny-custom-handler.html#cb554-5"></a>    image <span class="op">=</span> <span class="va">content</span>.<span class="at">image</span><span class="op">,</span> </span>
-<span id="cb554-6"><a href="shiny-custom-handler.html#cb554-6"></a>    type <span class="op">=</span> <span class="va">content</span>.<span class="at">type</span><span class="op">;</span></span>
-<span id="cb554-7"><a href="shiny-custom-handler.html#cb554-7"></a>      </span>
-<span id="cb554-8"><a href="shiny-custom-handler.html#cb554-8"></a>  <span class="co">// build the new message </span></span>
-<span id="cb554-9"><a href="shiny-custom-handler.html#cb554-9"></a>  <span class="kw">let</span> newMessage <span class="op">=</span> <span class="vs">`</span></span>
-<span id="cb554-10"><a href="shiny-custom-handler.html#cb554-10"></a><span class="vs">    &lt;div class="direct-chat-info clearfix"&gt;</span></span>
-<span id="cb554-11"><a href="shiny-custom-handler.html#cb554-11"></a><span class="vs">      &lt;span class="direct-chat-name"&gt; </span></span>
-<span id="cb554-12"><a href="shiny-custom-handler.html#cb554-12"></a><span class="vs">        </span><span class="sc">${</span>author<span class="sc">}</span></span>
-<span id="cb554-13"><a href="shiny-custom-handler.html#cb554-13"></a><span class="vs">      &lt;/span&gt;</span></span>
-<span id="cb554-14"><a href="shiny-custom-handler.html#cb554-14"></a><span class="vs">      &lt;span class="direct-chat-timestamp" </span></span>
-<span id="cb554-15"><a href="shiny-custom-handler.html#cb554-15"></a><span class="vs">        style="margin-left: 4px"&gt;</span></span>
-<span id="cb554-16"><a href="shiny-custom-handler.html#cb554-16"></a><span class="vs">        </span><span class="sc">${</span>date<span class="sc">}</span></span>
-<span id="cb554-17"><a href="shiny-custom-handler.html#cb554-17"></a><span class="vs">      &lt;/span&gt;</span></span>
-<span id="cb554-18"><a href="shiny-custom-handler.html#cb554-18"></a><span class="vs">    &lt;/div&gt;</span></span>
-<span id="cb554-19"><a href="shiny-custom-handler.html#cb554-19"></a><span class="vs">    &lt;img class="direct-chat-img" src="</span><span class="sc">${</span>image<span class="sc">}</span><span class="vs">"/&gt; </span></span>
-<span id="cb554-20"><a href="shiny-custom-handler.html#cb554-20"></a><span class="vs">    &lt;div class="direct-chat-text"&gt;</span><span class="sc">${</span>text<span class="sc">}</span><span class="vs">&lt;/div&gt;`</span><span class="op">;</span></span>
-<span id="cb554-21"><a href="shiny-custom-handler.html#cb554-21"></a>    </span>
-<span id="cb554-22"><a href="shiny-custom-handler.html#cb554-22"></a>  <span class="co">// build wrapper</span></span>
-<span id="cb554-23"><a href="shiny-custom-handler.html#cb554-23"></a>  <span class="kw">let</span> newMessageWrapper<span class="op">;</span></span>
-<span id="cb554-24"><a href="shiny-custom-handler.html#cb554-24"></a>  <span class="cf">if</span> (type <span class="op">===</span> <span class="st">"sent"</span>) <span class="op">{</span></span>
-<span id="cb554-25"><a href="shiny-custom-handler.html#cb554-25"></a>    newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
-<span id="cb554-26"><a href="shiny-custom-handler.html#cb554-26"></a><span class="vs">      &lt;div class="direct-chat-msg right"&gt;</span></span>
-<span id="cb554-27"><a href="shiny-custom-handler.html#cb554-27"></a><span class="vs">        </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
-<span id="cb554-28"><a href="shiny-custom-handler.html#cb554-28"></a><span class="vs">      &lt;/div&gt;`</span><span class="op">;</span></span>
-<span id="cb554-29"><a href="shiny-custom-handler.html#cb554-29"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb554-30"><a href="shiny-custom-handler.html#cb554-30"></a>    newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
-<span id="cb554-31"><a href="shiny-custom-handler.html#cb554-31"></a><span class="vs">      &lt;div class="direct-chat-msg"&gt;</span></span>
-<span id="cb554-32"><a href="shiny-custom-handler.html#cb554-32"></a><span class="vs">        </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
-<span id="cb554-33"><a href="shiny-custom-handler.html#cb554-33"></a><span class="vs">      &lt;/div&gt;`</span><span class="op">;</span></span>
-<span id="cb554-34"><a href="shiny-custom-handler.html#cb554-34"></a>  <span class="op">}</span></span>
-<span id="cb554-35"><a href="shiny-custom-handler.html#cb554-35"></a>  </span>
-<span id="cb554-36"><a href="shiny-custom-handler.html#cb554-36"></a>  <span class="co">// append message</span></span>
-<span id="cb554-37"><a href="shiny-custom-handler.html#cb554-37"></a>  <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
-<span id="cb554-38"><a href="shiny-custom-handler.html#cb554-38"></a>    .<span class="at">find</span>(<span class="st">".direct-chat-messages"</span>)</span>
-<span id="cb554-39"><a href="shiny-custom-handler.html#cb554-39"></a>    .<span class="at">append</span>(newMessageWrapper)<span class="op">;</span></span>
-<span id="cb554-40"><a href="shiny-custom-handler.html#cb554-40"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb555"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb555-1"><a href="shiny-custom-handler.html#cb555-1"></a><span class="co">// other condition before ...</span></span>
+<span id="cb555-2"><a href="shiny-custom-handler.html#cb555-2"></a><span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"add"</span>) <span class="op">{</span></span>
+<span id="cb555-3"><a href="shiny-custom-handler.html#cb555-3"></a>  <span class="kw">let</span> author <span class="op">=</span> <span class="va">content</span>.<span class="at">author</span><span class="op">,</span> </span>
+<span id="cb555-4"><a href="shiny-custom-handler.html#cb555-4"></a>    date <span class="op">=</span> <span class="va">content</span>.<span class="at">date</span><span class="op">,</span> </span>
+<span id="cb555-5"><a href="shiny-custom-handler.html#cb555-5"></a>    image <span class="op">=</span> <span class="va">content</span>.<span class="at">image</span><span class="op">,</span> </span>
+<span id="cb555-6"><a href="shiny-custom-handler.html#cb555-6"></a>    type <span class="op">=</span> <span class="va">content</span>.<span class="at">type</span><span class="op">;</span></span>
+<span id="cb555-7"><a href="shiny-custom-handler.html#cb555-7"></a>      </span>
+<span id="cb555-8"><a href="shiny-custom-handler.html#cb555-8"></a>  <span class="co">// build the new message </span></span>
+<span id="cb555-9"><a href="shiny-custom-handler.html#cb555-9"></a>  <span class="kw">let</span> newMessage <span class="op">=</span> <span class="vs">`</span></span>
+<span id="cb555-10"><a href="shiny-custom-handler.html#cb555-10"></a><span class="vs">    &lt;div class="direct-chat-info clearfix"&gt;</span></span>
+<span id="cb555-11"><a href="shiny-custom-handler.html#cb555-11"></a><span class="vs">      &lt;span class="direct-chat-name"&gt; </span></span>
+<span id="cb555-12"><a href="shiny-custom-handler.html#cb555-12"></a><span class="vs">        </span><span class="sc">${</span>author<span class="sc">}</span></span>
+<span id="cb555-13"><a href="shiny-custom-handler.html#cb555-13"></a><span class="vs">      &lt;/span&gt;</span></span>
+<span id="cb555-14"><a href="shiny-custom-handler.html#cb555-14"></a><span class="vs">      &lt;span class="direct-chat-timestamp" </span></span>
+<span id="cb555-15"><a href="shiny-custom-handler.html#cb555-15"></a><span class="vs">        style="margin-left: 4px"&gt;</span></span>
+<span id="cb555-16"><a href="shiny-custom-handler.html#cb555-16"></a><span class="vs">        </span><span class="sc">${</span>date<span class="sc">}</span></span>
+<span id="cb555-17"><a href="shiny-custom-handler.html#cb555-17"></a><span class="vs">      &lt;/span&gt;</span></span>
+<span id="cb555-18"><a href="shiny-custom-handler.html#cb555-18"></a><span class="vs">    &lt;/div&gt;</span></span>
+<span id="cb555-19"><a href="shiny-custom-handler.html#cb555-19"></a><span class="vs">    &lt;img class="direct-chat-img" src="</span><span class="sc">${</span>image<span class="sc">}</span><span class="vs">"/&gt; </span></span>
+<span id="cb555-20"><a href="shiny-custom-handler.html#cb555-20"></a><span class="vs">    &lt;div class="direct-chat-text"&gt;</span><span class="sc">${</span>text<span class="sc">}</span><span class="vs">&lt;/div&gt;`</span><span class="op">;</span></span>
+<span id="cb555-21"><a href="shiny-custom-handler.html#cb555-21"></a>    </span>
+<span id="cb555-22"><a href="shiny-custom-handler.html#cb555-22"></a>  <span class="co">// build wrapper</span></span>
+<span id="cb555-23"><a href="shiny-custom-handler.html#cb555-23"></a>  <span class="kw">let</span> newMessageWrapper<span class="op">;</span></span>
+<span id="cb555-24"><a href="shiny-custom-handler.html#cb555-24"></a>  <span class="cf">if</span> (type <span class="op">===</span> <span class="st">"sent"</span>) <span class="op">{</span></span>
+<span id="cb555-25"><a href="shiny-custom-handler.html#cb555-25"></a>    newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
+<span id="cb555-26"><a href="shiny-custom-handler.html#cb555-26"></a><span class="vs">      &lt;div class="direct-chat-msg right"&gt;</span></span>
+<span id="cb555-27"><a href="shiny-custom-handler.html#cb555-27"></a><span class="vs">        </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
+<span id="cb555-28"><a href="shiny-custom-handler.html#cb555-28"></a><span class="vs">      &lt;/div&gt;`</span><span class="op">;</span></span>
+<span id="cb555-29"><a href="shiny-custom-handler.html#cb555-29"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb555-30"><a href="shiny-custom-handler.html#cb555-30"></a>    newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
+<span id="cb555-31"><a href="shiny-custom-handler.html#cb555-31"></a><span class="vs">      &lt;div class="direct-chat-msg"&gt;</span></span>
+<span id="cb555-32"><a href="shiny-custom-handler.html#cb555-32"></a><span class="vs">        </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
+<span id="cb555-33"><a href="shiny-custom-handler.html#cb555-33"></a><span class="vs">      &lt;/div&gt;`</span><span class="op">;</span></span>
+<span id="cb555-34"><a href="shiny-custom-handler.html#cb555-34"></a>  <span class="op">}</span></span>
+<span id="cb555-35"><a href="shiny-custom-handler.html#cb555-35"></a>  </span>
+<span id="cb555-36"><a href="shiny-custom-handler.html#cb555-36"></a>  <span class="co">// append message</span></span>
+<span id="cb555-37"><a href="shiny-custom-handler.html#cb555-37"></a>  <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
+<span id="cb555-38"><a href="shiny-custom-handler.html#cb555-38"></a>    .<span class="at">find</span>(<span class="st">".direct-chat-messages"</span>)</span>
+<span id="cb555-39"><a href="shiny-custom-handler.html#cb555-39"></a>    .<span class="at">append</span>(newMessageWrapper)<span class="op">;</span></span>
+<span id="cb555-40"><a href="shiny-custom-handler.html#cb555-40"></a><span class="op">}</span></span></code></pre></div>
 <p>Finally, the last case is to update a given message. As stated above, we assume to only edit the
 message text and the date. To update the message, we target the messages container with <code>$("#" + id)</code>,
 look for all texts with <code><a href="https://rdrr.io/r/utils/apropos.html">find(".direct-chat-text")</a></code>, refine our choice by targeting the good element with
 <code>eq(index - 1)</code> and call <code>replaceWith</code> containing the new text element:</p>
-<div class="sourceCode" id="cb555"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb555-1"><a href="shiny-custom-handler.html#cb555-1"></a><span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"update"</span>) <span class="op">{</span></span>
-<span id="cb555-2"><a href="shiny-custom-handler.html#cb555-2"></a>  <span class="co">// today's date</span></span>
-<span id="cb555-3"><a href="shiny-custom-handler.html#cb555-3"></a>  <span class="kw">let</span> d <span class="op">=</span> <span class="kw">new</span> <span class="at">Date</span>()<span class="op">;</span></span>
-<span id="cb555-4"><a href="shiny-custom-handler.html#cb555-4"></a>  <span class="kw">let</span> month <span class="op">=</span> <span class="va">d</span>.<span class="at">getMonth</span>() <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb555-5"><a href="shiny-custom-handler.html#cb555-5"></a>  <span class="kw">let</span> day <span class="op">=</span> <span class="va">d</span>.<span class="at">getDate</span>()<span class="op">;</span></span>
-<span id="cb555-6"><a href="shiny-custom-handler.html#cb555-6"></a>  <span class="kw">let</span> today <span class="op">=</span> <span class="va">d</span>.<span class="at">getFullYear</span>() <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
-<span id="cb555-7"><a href="shiny-custom-handler.html#cb555-7"></a>    ((<span class="st">''</span><span class="op">+</span>month).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> month <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
-<span id="cb555-8"><a href="shiny-custom-handler.html#cb555-8"></a>    ((<span class="st">''</span><span class="op">+</span>day).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> day<span class="op">;</span></span>
-<span id="cb555-9"><a href="shiny-custom-handler.html#cb555-9"></a>    </span>
-<span id="cb555-10"><a href="shiny-custom-handler.html#cb555-10"></a>  <span class="co">// we assume only text may be updated. </span></span>
-<span id="cb555-11"><a href="shiny-custom-handler.html#cb555-11"></a>  <span class="co">// Does not make sense to modify author</span></span>
-<span id="cb555-12"><a href="shiny-custom-handler.html#cb555-12"></a>  </span>
-<span id="cb555-13"><a href="shiny-custom-handler.html#cb555-13"></a>  <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
-<span id="cb555-14"><a href="shiny-custom-handler.html#cb555-14"></a>    .<span class="at">find</span>(<span class="st">".direct-chat-text"</span>)</span>
-<span id="cb555-15"><a href="shiny-custom-handler.html#cb555-15"></a>    .<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>)</span>
-<span id="cb555-16"><a href="shiny-custom-handler.html#cb555-16"></a>    .<span class="at">replaceWith</span>(<span class="vs">`</span></span>
-<span id="cb555-17"><a href="shiny-custom-handler.html#cb555-17"></a><span class="vs">      &lt;div class="direct-chat-text"&gt;</span></span>
-<span id="cb555-18"><a href="shiny-custom-handler.html#cb555-18"></a><span class="vs">        &lt;small class="text-red"&gt;</span></span>
-<span id="cb555-19"><a href="shiny-custom-handler.html#cb555-19"></a><span class="vs">          (modified: </span><span class="sc">${</span>today<span class="sc">}</span><span class="vs">)</span></span>
-<span id="cb555-20"><a href="shiny-custom-handler.html#cb555-20"></a><span class="vs">        &lt;/small&gt;</span></span>
-<span id="cb555-21"><a href="shiny-custom-handler.html#cb555-21"></a><span class="vs">        &lt;br&gt;</span></span>
-<span id="cb555-22"><a href="shiny-custom-handler.html#cb555-22"></a><span class="vs">      &lt;/div&gt;</span></span>
-<span id="cb555-23"><a href="shiny-custom-handler.html#cb555-23"></a><span class="vs">    `</span>)</span>
-<span id="cb555-24"><a href="shiny-custom-handler.html#cb555-24"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb556"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb556-1"><a href="shiny-custom-handler.html#cb556-1"></a><span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"update"</span>) <span class="op">{</span></span>
+<span id="cb556-2"><a href="shiny-custom-handler.html#cb556-2"></a>  <span class="co">// today's date</span></span>
+<span id="cb556-3"><a href="shiny-custom-handler.html#cb556-3"></a>  <span class="kw">let</span> d <span class="op">=</span> <span class="kw">new</span> <span class="at">Date</span>()<span class="op">;</span></span>
+<span id="cb556-4"><a href="shiny-custom-handler.html#cb556-4"></a>  <span class="kw">let</span> month <span class="op">=</span> <span class="va">d</span>.<span class="at">getMonth</span>() <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb556-5"><a href="shiny-custom-handler.html#cb556-5"></a>  <span class="kw">let</span> day <span class="op">=</span> <span class="va">d</span>.<span class="at">getDate</span>()<span class="op">;</span></span>
+<span id="cb556-6"><a href="shiny-custom-handler.html#cb556-6"></a>  <span class="kw">let</span> today <span class="op">=</span> <span class="va">d</span>.<span class="at">getFullYear</span>() <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
+<span id="cb556-7"><a href="shiny-custom-handler.html#cb556-7"></a>    ((<span class="st">''</span><span class="op">+</span>month).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> month <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
+<span id="cb556-8"><a href="shiny-custom-handler.html#cb556-8"></a>    ((<span class="st">''</span><span class="op">+</span>day).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> day<span class="op">;</span></span>
+<span id="cb556-9"><a href="shiny-custom-handler.html#cb556-9"></a>    </span>
+<span id="cb556-10"><a href="shiny-custom-handler.html#cb556-10"></a>  <span class="co">// we assume only text may be updated. </span></span>
+<span id="cb556-11"><a href="shiny-custom-handler.html#cb556-11"></a>  <span class="co">// Does not make sense to modify author</span></span>
+<span id="cb556-12"><a href="shiny-custom-handler.html#cb556-12"></a>  </span>
+<span id="cb556-13"><a href="shiny-custom-handler.html#cb556-13"></a>  <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
+<span id="cb556-14"><a href="shiny-custom-handler.html#cb556-14"></a>    .<span class="at">find</span>(<span class="st">".direct-chat-text"</span>)</span>
+<span id="cb556-15"><a href="shiny-custom-handler.html#cb556-15"></a>    .<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb556-16"><a href="shiny-custom-handler.html#cb556-16"></a>    .<span class="at">replaceWith</span>(<span class="vs">`</span></span>
+<span id="cb556-17"><a href="shiny-custom-handler.html#cb556-17"></a><span class="vs">      &lt;div class="direct-chat-text"&gt;</span></span>
+<span id="cb556-18"><a href="shiny-custom-handler.html#cb556-18"></a><span class="vs">        &lt;small class="text-red"&gt;</span></span>
+<span id="cb556-19"><a href="shiny-custom-handler.html#cb556-19"></a><span class="vs">          (modified: </span><span class="sc">${</span>today<span class="sc">}</span><span class="vs">)</span></span>
+<span id="cb556-20"><a href="shiny-custom-handler.html#cb556-20"></a><span class="vs">        &lt;/small&gt;</span></span>
+<span id="cb556-21"><a href="shiny-custom-handler.html#cb556-21"></a><span class="vs">        &lt;br&gt;</span></span>
+<span id="cb556-22"><a href="shiny-custom-handler.html#cb556-22"></a><span class="vs">      &lt;/div&gt;</span></span>
+<span id="cb556-23"><a href="shiny-custom-handler.html#cb556-23"></a><span class="vs">    `</span>)</span>
+<span id="cb556-24"><a href="shiny-custom-handler.html#cb556-24"></a><span class="op">}</span></span></code></pre></div>
 <p>Don’t forget to <strong>unbind</strong>, re-<strong>initialize</strong> and <strong>bind</strong> all inputs by successively calling <code>Shiny.unbindAll();</code>, <code>Shiny.initializeInputs();</code> and <code>Shiny.bindAll();</code>. If you ommit this part, the newly inserted input/output elements won’t work! The whole JS code may be found below:</p>
-<div class="sourceCode" id="cb556"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb556-1"><a href="shiny-custom-handler.html#cb556-1"></a><span class="co">// This code creates a custom handler for userMessages</span></span>
-<span id="cb556-2"><a href="shiny-custom-handler.html#cb556-2"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
-<span id="cb556-3"><a href="shiny-custom-handler.html#cb556-3"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
-<span id="cb556-4"><a href="shiny-custom-handler.html#cb556-4"></a>  <span class="kw">let</span> id <span class="op">=</span> <span class="va">message</span>.<span class="at">id</span><span class="op">,</span> </span>
-<span id="cb556-5"><a href="shiny-custom-handler.html#cb556-5"></a>    action <span class="op">=</span> <span class="va">message</span>.<span class="at">action</span><span class="op">,</span> </span>
-<span id="cb556-6"><a href="shiny-custom-handler.html#cb556-6"></a>    content <span class="op">=</span> <span class="va">message</span>.<span class="at">body</span><span class="op">,</span> </span>
-<span id="cb556-7"><a href="shiny-custom-handler.html#cb556-7"></a>    index <span class="op">=</span> <span class="va">message</span>.<span class="at">index</span><span class="op">;</span></span>
-<span id="cb556-8"><a href="shiny-custom-handler.html#cb556-8"></a>  </span>
-<span id="cb556-9"><a href="shiny-custom-handler.html#cb556-9"></a>  <span class="co">// message text</span></span>
-<span id="cb556-10"><a href="shiny-custom-handler.html#cb556-10"></a>  <span class="co">// We use Shiny.renderHtml to handle the case where </span></span>
-<span id="cb556-11"><a href="shiny-custom-handler.html#cb556-11"></a>  <span class="co">// the user pass input/outputs in the updated content </span></span>
-<span id="cb556-12"><a href="shiny-custom-handler.html#cb556-12"></a>  <span class="co">// that require a new dependency not available in the </span></span>
-<span id="cb556-13"><a href="shiny-custom-handler.html#cb556-13"></a>  <span class="co">// page at startup. </span></span>
-<span id="cb556-14"><a href="shiny-custom-handler.html#cb556-14"></a>  <span class="cf">if</span> (<span class="va">content</span>.<span class="at">hasOwnProperty</span>(<span class="st">"text"</span>)) <span class="op">{</span></span>
-<span id="cb556-15"><a href="shiny-custom-handler.html#cb556-15"></a>    <span class="kw">let</span> text<span class="op">;</span></span>
-<span id="cb556-16"><a href="shiny-custom-handler.html#cb556-16"></a>    <span class="cf">if</span> (<span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span> <span class="op">===</span> <span class="kw">undefined</span>) <span class="op">{</span></span>
-<span id="cb556-17"><a href="shiny-custom-handler.html#cb556-17"></a>      text <span class="op">=</span> <span class="va">content</span>.<span class="at">text</span><span class="op">;</span></span>
-<span id="cb556-18"><a href="shiny-custom-handler.html#cb556-18"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb556-19"><a href="shiny-custom-handler.html#cb556-19"></a>      text <span class="op">=</span> <span class="va">Shiny</span>.<span class="at">renderHtml</span>(</span>
-<span id="cb556-20"><a href="shiny-custom-handler.html#cb556-20"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span><span class="op">,</span> </span>
-<span id="cb556-21"><a href="shiny-custom-handler.html#cb556-21"></a>        <span class="at">$</span>([])<span class="op">,</span> </span>
-<span id="cb556-22"><a href="shiny-custom-handler.html#cb556-22"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">dependencies</span></span>
-<span id="cb556-23"><a href="shiny-custom-handler.html#cb556-23"></a>      ).<span class="at">html</span><span class="op">;</span></span>
-<span id="cb556-24"><a href="shiny-custom-handler.html#cb556-24"></a>    <span class="op">}</span> </span>
-<span id="cb556-25"><a href="shiny-custom-handler.html#cb556-25"></a>  <span class="op">}</span></span>
-<span id="cb556-26"><a href="shiny-custom-handler.html#cb556-26"></a>  </span>
-<span id="cb556-27"><a href="shiny-custom-handler.html#cb556-27"></a>  <span class="co">// unbind all</span></span>
-<span id="cb556-28"><a href="shiny-custom-handler.html#cb556-28"></a>  <span class="va">Shiny</span>.<span class="at">unbindAll</span>()<span class="op">;</span></span>
-<span id="cb556-29"><a href="shiny-custom-handler.html#cb556-29"></a>  </span>
-<span id="cb556-30"><a href="shiny-custom-handler.html#cb556-30"></a>  <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"remove"</span>) <span class="op">{</span></span>
-<span id="cb556-31"><a href="shiny-custom-handler.html#cb556-31"></a>    <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
-<span id="cb556-32"><a href="shiny-custom-handler.html#cb556-32"></a>      .<span class="at">find</span>(<span class="st">".direct-chat-msg"</span>)</span>
-<span id="cb556-33"><a href="shiny-custom-handler.html#cb556-33"></a>      .<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>)</span>
-<span id="cb556-34"><a href="shiny-custom-handler.html#cb556-34"></a>      .<span class="at">remove</span>()<span class="op">;</span></span>
-<span id="cb556-35"><a href="shiny-custom-handler.html#cb556-35"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"add"</span>) <span class="op">{</span></span>
-<span id="cb556-36"><a href="shiny-custom-handler.html#cb556-36"></a>    <span class="kw">let</span> author <span class="op">=</span> <span class="va">content</span>.<span class="at">author</span><span class="op">,</span> </span>
-<span id="cb556-37"><a href="shiny-custom-handler.html#cb556-37"></a>      date <span class="op">=</span> <span class="va">content</span>.<span class="at">date</span><span class="op">,</span> </span>
-<span id="cb556-38"><a href="shiny-custom-handler.html#cb556-38"></a>      image <span class="op">=</span> <span class="va">content</span>.<span class="at">image</span><span class="op">,</span> </span>
-<span id="cb556-39"><a href="shiny-custom-handler.html#cb556-39"></a>      type <span class="op">=</span> <span class="va">content</span>.<span class="at">type</span><span class="op">;</span></span>
-<span id="cb556-40"><a href="shiny-custom-handler.html#cb556-40"></a>    </span>
-<span id="cb556-41"><a href="shiny-custom-handler.html#cb556-41"></a>    <span class="co">// build the new message </span></span>
-<span id="cb556-42"><a href="shiny-custom-handler.html#cb556-42"></a>    <span class="kw">let</span> newMessage <span class="op">=</span> <span class="vs">`</span></span>
-<span id="cb556-43"><a href="shiny-custom-handler.html#cb556-43"></a><span class="vs">      &lt;div class="direct-chat-info clearfix"&gt;</span></span>
-<span id="cb556-44"><a href="shiny-custom-handler.html#cb556-44"></a><span class="vs">        &lt;span class="direct-chat-name"&gt; </span></span>
-<span id="cb556-45"><a href="shiny-custom-handler.html#cb556-45"></a><span class="vs">          </span><span class="sc">${</span>author<span class="sc">}</span></span>
-<span id="cb556-46"><a href="shiny-custom-handler.html#cb556-46"></a><span class="vs">        &lt;/span&gt;</span></span>
-<span id="cb556-47"><a href="shiny-custom-handler.html#cb556-47"></a><span class="vs">        &lt;span class="direct-chat-timestamp" </span></span>
-<span id="cb556-48"><a href="shiny-custom-handler.html#cb556-48"></a><span class="vs">          style="margin-left: 4px"&gt;</span></span>
-<span id="cb556-49"><a href="shiny-custom-handler.html#cb556-49"></a><span class="vs">          </span><span class="sc">${</span>date<span class="sc">}</span></span>
-<span id="cb556-50"><a href="shiny-custom-handler.html#cb556-50"></a><span class="vs">        &lt;/span&gt;</span></span>
-<span id="cb556-51"><a href="shiny-custom-handler.html#cb556-51"></a><span class="vs">      &lt;/div&gt;</span></span>
-<span id="cb556-52"><a href="shiny-custom-handler.html#cb556-52"></a><span class="vs">      &lt;img class="direct-chat-img" src="</span><span class="sc">${</span>image<span class="sc">}</span><span class="vs">"/&gt; </span></span>
-<span id="cb556-53"><a href="shiny-custom-handler.html#cb556-53"></a><span class="vs">      &lt;div class="direct-chat-text"&gt;</span><span class="sc">${</span>text<span class="sc">}</span><span class="vs">&lt;/div&gt;`</span><span class="op">;</span></span>
-<span id="cb556-54"><a href="shiny-custom-handler.html#cb556-54"></a>      </span>
-<span id="cb556-55"><a href="shiny-custom-handler.html#cb556-55"></a>    <span class="co">// build wrapper</span></span>
-<span id="cb556-56"><a href="shiny-custom-handler.html#cb556-56"></a>    <span class="kw">let</span> newMessageWrapper<span class="op">;</span></span>
-<span id="cb556-57"><a href="shiny-custom-handler.html#cb556-57"></a>    <span class="cf">if</span> (type <span class="op">===</span> <span class="st">"sent"</span>) <span class="op">{</span></span>
-<span id="cb556-58"><a href="shiny-custom-handler.html#cb556-58"></a>      newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
-<span id="cb556-59"><a href="shiny-custom-handler.html#cb556-59"></a><span class="vs">        &lt;div class="direct-chat-msg right"&gt;</span></span>
-<span id="cb556-60"><a href="shiny-custom-handler.html#cb556-60"></a><span class="vs">          </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
-<span id="cb556-61"><a href="shiny-custom-handler.html#cb556-61"></a><span class="vs">        &lt;/div&gt;`</span><span class="op">;</span></span>
-<span id="cb556-62"><a href="shiny-custom-handler.html#cb556-62"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb556-63"><a href="shiny-custom-handler.html#cb556-63"></a>      newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
-<span id="cb556-64"><a href="shiny-custom-handler.html#cb556-64"></a><span class="vs">        &lt;div class="direct-chat-msg"&gt;</span></span>
-<span id="cb556-65"><a href="shiny-custom-handler.html#cb556-65"></a><span class="vs">          </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
-<span id="cb556-66"><a href="shiny-custom-handler.html#cb556-66"></a><span class="vs">        &lt;/div&gt;`</span><span class="op">;</span></span>
-<span id="cb556-67"><a href="shiny-custom-handler.html#cb556-67"></a>    <span class="op">}</span></span>
-<span id="cb556-68"><a href="shiny-custom-handler.html#cb556-68"></a>    </span>
-<span id="cb556-69"><a href="shiny-custom-handler.html#cb556-69"></a>    <span class="co">// append message</span></span>
-<span id="cb556-70"><a href="shiny-custom-handler.html#cb556-70"></a>    <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
-<span id="cb556-71"><a href="shiny-custom-handler.html#cb556-71"></a>      .<span class="at">find</span>(<span class="st">".direct-chat-messages"</span>)</span>
-<span id="cb556-72"><a href="shiny-custom-handler.html#cb556-72"></a>      .<span class="at">append</span>(newMessageWrapper)<span class="op">;</span></span>
-<span id="cb556-73"><a href="shiny-custom-handler.html#cb556-73"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"update"</span>) <span class="op">{</span></span>
-<span id="cb556-74"><a href="shiny-custom-handler.html#cb556-74"></a>    </span>
-<span id="cb556-75"><a href="shiny-custom-handler.html#cb556-75"></a>    <span class="co">// today's date</span></span>
-<span id="cb556-76"><a href="shiny-custom-handler.html#cb556-76"></a>    <span class="kw">let</span> d <span class="op">=</span> <span class="kw">new</span> <span class="at">Date</span>()<span class="op">;</span></span>
-<span id="cb556-77"><a href="shiny-custom-handler.html#cb556-77"></a>    <span class="kw">let</span> month <span class="op">=</span> <span class="va">d</span>.<span class="at">getMonth</span>() <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb556-78"><a href="shiny-custom-handler.html#cb556-78"></a>    <span class="kw">let</span> day <span class="op">=</span> <span class="va">d</span>.<span class="at">getDate</span>()<span class="op">;</span></span>
-<span id="cb556-79"><a href="shiny-custom-handler.html#cb556-79"></a>    <span class="kw">let</span> today <span class="op">=</span> <span class="va">d</span>.<span class="at">getFullYear</span>() <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
-<span id="cb556-80"><a href="shiny-custom-handler.html#cb556-80"></a>      ((<span class="st">''</span><span class="op">+</span>month).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> month <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
-<span id="cb556-81"><a href="shiny-custom-handler.html#cb556-81"></a>      ((<span class="st">''</span><span class="op">+</span>day).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> day<span class="op">;</span></span>
-<span id="cb556-82"><a href="shiny-custom-handler.html#cb556-82"></a>      </span>
-<span id="cb556-83"><a href="shiny-custom-handler.html#cb556-83"></a>    <span class="co">// we assume only text may be updated. </span></span>
-<span id="cb556-84"><a href="shiny-custom-handler.html#cb556-84"></a>    <span class="co">// Does not make sense to modify author/date</span></span>
-<span id="cb556-85"><a href="shiny-custom-handler.html#cb556-85"></a>    </span>
-<span id="cb556-86"><a href="shiny-custom-handler.html#cb556-86"></a>    <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
-<span id="cb556-87"><a href="shiny-custom-handler.html#cb556-87"></a>      .<span class="at">find</span>(<span class="st">".direct-chat-text"</span>)</span>
-<span id="cb556-88"><a href="shiny-custom-handler.html#cb556-88"></a>      .<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>)</span>
-<span id="cb556-89"><a href="shiny-custom-handler.html#cb556-89"></a>      .<span class="at">replaceWith</span>(<span class="vs">`</span></span>
-<span id="cb556-90"><a href="shiny-custom-handler.html#cb556-90"></a><span class="vs">        &lt;div class="direct-chat-text"&gt;</span></span>
-<span id="cb556-91"><a href="shiny-custom-handler.html#cb556-91"></a><span class="vs">          &lt;small class="text-red"&gt;</span></span>
-<span id="cb556-92"><a href="shiny-custom-handler.html#cb556-92"></a><span class="vs">            (modified: </span><span class="sc">${</span>today<span class="sc">}</span><span class="vs">)</span></span>
-<span id="cb556-93"><a href="shiny-custom-handler.html#cb556-93"></a><span class="vs">          &lt;/small&gt;</span></span>
-<span id="cb556-94"><a href="shiny-custom-handler.html#cb556-94"></a><span class="vs">          &lt;br&gt;</span></span>
-<span id="cb556-95"><a href="shiny-custom-handler.html#cb556-95"></a><span class="vs">        &lt;/div&gt;</span></span>
-<span id="cb556-96"><a href="shiny-custom-handler.html#cb556-96"></a><span class="vs">      `</span>)</span>
-<span id="cb556-97"><a href="shiny-custom-handler.html#cb556-97"></a>  <span class="op">}</span></span>
-<span id="cb556-98"><a href="shiny-custom-handler.html#cb556-98"></a>  </span>
-<span id="cb556-99"><a href="shiny-custom-handler.html#cb556-99"></a>  <span class="co">// Calls .initialize() for all of the input </span></span>
-<span id="cb556-100"><a href="shiny-custom-handler.html#cb556-100"></a>  <span class="co">// objects in all input bindings,</span></span>
-<span id="cb556-101"><a href="shiny-custom-handler.html#cb556-101"></a>  <span class="co">// in the given scope (document)</span></span>
-<span id="cb556-102"><a href="shiny-custom-handler.html#cb556-102"></a>  <span class="va">Shiny</span>.<span class="at">initializeInputs</span>()<span class="op">;</span></span>
-<span id="cb556-103"><a href="shiny-custom-handler.html#cb556-103"></a>  <span class="va">Shiny</span>.<span class="at">bindAll</span>()<span class="op">;</span> <span class="co">// bind all inputs/outputs</span></span>
-<span id="cb556-104"><a href="shiny-custom-handler.html#cb556-104"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb557"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb557-1"><a href="shiny-custom-handler.html#cb557-1"></a><span class="co">// This code creates a custom handler for userMessages</span></span>
+<span id="cb557-2"><a href="shiny-custom-handler.html#cb557-2"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb557-3"><a href="shiny-custom-handler.html#cb557-3"></a>  <span class="st">"user-messages"</span><span class="op">,</span> <span class="kw">function</span>(message) <span class="op">{</span></span>
+<span id="cb557-4"><a href="shiny-custom-handler.html#cb557-4"></a>  <span class="kw">let</span> id <span class="op">=</span> <span class="va">message</span>.<span class="at">id</span><span class="op">,</span> </span>
+<span id="cb557-5"><a href="shiny-custom-handler.html#cb557-5"></a>    action <span class="op">=</span> <span class="va">message</span>.<span class="at">action</span><span class="op">,</span> </span>
+<span id="cb557-6"><a href="shiny-custom-handler.html#cb557-6"></a>    content <span class="op">=</span> <span class="va">message</span>.<span class="at">body</span><span class="op">,</span> </span>
+<span id="cb557-7"><a href="shiny-custom-handler.html#cb557-7"></a>    index <span class="op">=</span> <span class="va">message</span>.<span class="at">index</span><span class="op">;</span></span>
+<span id="cb557-8"><a href="shiny-custom-handler.html#cb557-8"></a>  </span>
+<span id="cb557-9"><a href="shiny-custom-handler.html#cb557-9"></a>  <span class="co">// message text</span></span>
+<span id="cb557-10"><a href="shiny-custom-handler.html#cb557-10"></a>  <span class="co">// We use Shiny.renderHtml to handle the case where </span></span>
+<span id="cb557-11"><a href="shiny-custom-handler.html#cb557-11"></a>  <span class="co">// the user pass input/outputs in the updated content </span></span>
+<span id="cb557-12"><a href="shiny-custom-handler.html#cb557-12"></a>  <span class="co">// that require a new dependency not available in the </span></span>
+<span id="cb557-13"><a href="shiny-custom-handler.html#cb557-13"></a>  <span class="co">// page at startup. </span></span>
+<span id="cb557-14"><a href="shiny-custom-handler.html#cb557-14"></a>  <span class="cf">if</span> (<span class="va">content</span>.<span class="at">hasOwnProperty</span>(<span class="st">"text"</span>)) <span class="op">{</span></span>
+<span id="cb557-15"><a href="shiny-custom-handler.html#cb557-15"></a>    <span class="kw">let</span> text<span class="op">;</span></span>
+<span id="cb557-16"><a href="shiny-custom-handler.html#cb557-16"></a>    <span class="cf">if</span> (<span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span> <span class="op">===</span> <span class="kw">undefined</span>) <span class="op">{</span></span>
+<span id="cb557-17"><a href="shiny-custom-handler.html#cb557-17"></a>      text <span class="op">=</span> <span class="va">content</span>.<span class="at">text</span><span class="op">;</span></span>
+<span id="cb557-18"><a href="shiny-custom-handler.html#cb557-18"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb557-19"><a href="shiny-custom-handler.html#cb557-19"></a>      text <span class="op">=</span> <span class="va">Shiny</span>.<span class="at">renderHtml</span>(</span>
+<span id="cb557-20"><a href="shiny-custom-handler.html#cb557-20"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">html</span><span class="op">,</span> </span>
+<span id="cb557-21"><a href="shiny-custom-handler.html#cb557-21"></a>        <span class="at">$</span>([])<span class="op">,</span> </span>
+<span id="cb557-22"><a href="shiny-custom-handler.html#cb557-22"></a>        <span class="va">content</span>.<span class="va">text</span>.<span class="at">dependencies</span></span>
+<span id="cb557-23"><a href="shiny-custom-handler.html#cb557-23"></a>      ).<span class="at">html</span><span class="op">;</span></span>
+<span id="cb557-24"><a href="shiny-custom-handler.html#cb557-24"></a>    <span class="op">}</span> </span>
+<span id="cb557-25"><a href="shiny-custom-handler.html#cb557-25"></a>  <span class="op">}</span></span>
+<span id="cb557-26"><a href="shiny-custom-handler.html#cb557-26"></a>  </span>
+<span id="cb557-27"><a href="shiny-custom-handler.html#cb557-27"></a>  <span class="co">// unbind all</span></span>
+<span id="cb557-28"><a href="shiny-custom-handler.html#cb557-28"></a>  <span class="va">Shiny</span>.<span class="at">unbindAll</span>()<span class="op">;</span></span>
+<span id="cb557-29"><a href="shiny-custom-handler.html#cb557-29"></a>  </span>
+<span id="cb557-30"><a href="shiny-custom-handler.html#cb557-30"></a>  <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"remove"</span>) <span class="op">{</span></span>
+<span id="cb557-31"><a href="shiny-custom-handler.html#cb557-31"></a>    <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
+<span id="cb557-32"><a href="shiny-custom-handler.html#cb557-32"></a>      .<span class="at">find</span>(<span class="st">".direct-chat-msg"</span>)</span>
+<span id="cb557-33"><a href="shiny-custom-handler.html#cb557-33"></a>      .<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb557-34"><a href="shiny-custom-handler.html#cb557-34"></a>      .<span class="at">remove</span>()<span class="op">;</span></span>
+<span id="cb557-35"><a href="shiny-custom-handler.html#cb557-35"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"add"</span>) <span class="op">{</span></span>
+<span id="cb557-36"><a href="shiny-custom-handler.html#cb557-36"></a>    <span class="kw">let</span> author <span class="op">=</span> <span class="va">content</span>.<span class="at">author</span><span class="op">,</span> </span>
+<span id="cb557-37"><a href="shiny-custom-handler.html#cb557-37"></a>      date <span class="op">=</span> <span class="va">content</span>.<span class="at">date</span><span class="op">,</span> </span>
+<span id="cb557-38"><a href="shiny-custom-handler.html#cb557-38"></a>      image <span class="op">=</span> <span class="va">content</span>.<span class="at">image</span><span class="op">,</span> </span>
+<span id="cb557-39"><a href="shiny-custom-handler.html#cb557-39"></a>      type <span class="op">=</span> <span class="va">content</span>.<span class="at">type</span><span class="op">;</span></span>
+<span id="cb557-40"><a href="shiny-custom-handler.html#cb557-40"></a>    </span>
+<span id="cb557-41"><a href="shiny-custom-handler.html#cb557-41"></a>    <span class="co">// build the new message </span></span>
+<span id="cb557-42"><a href="shiny-custom-handler.html#cb557-42"></a>    <span class="kw">let</span> newMessage <span class="op">=</span> <span class="vs">`</span></span>
+<span id="cb557-43"><a href="shiny-custom-handler.html#cb557-43"></a><span class="vs">      &lt;div class="direct-chat-info clearfix"&gt;</span></span>
+<span id="cb557-44"><a href="shiny-custom-handler.html#cb557-44"></a><span class="vs">        &lt;span class="direct-chat-name"&gt; </span></span>
+<span id="cb557-45"><a href="shiny-custom-handler.html#cb557-45"></a><span class="vs">          </span><span class="sc">${</span>author<span class="sc">}</span></span>
+<span id="cb557-46"><a href="shiny-custom-handler.html#cb557-46"></a><span class="vs">        &lt;/span&gt;</span></span>
+<span id="cb557-47"><a href="shiny-custom-handler.html#cb557-47"></a><span class="vs">        &lt;span class="direct-chat-timestamp" </span></span>
+<span id="cb557-48"><a href="shiny-custom-handler.html#cb557-48"></a><span class="vs">          style="margin-left: 4px"&gt;</span></span>
+<span id="cb557-49"><a href="shiny-custom-handler.html#cb557-49"></a><span class="vs">          </span><span class="sc">${</span>date<span class="sc">}</span></span>
+<span id="cb557-50"><a href="shiny-custom-handler.html#cb557-50"></a><span class="vs">        &lt;/span&gt;</span></span>
+<span id="cb557-51"><a href="shiny-custom-handler.html#cb557-51"></a><span class="vs">      &lt;/div&gt;</span></span>
+<span id="cb557-52"><a href="shiny-custom-handler.html#cb557-52"></a><span class="vs">      &lt;img class="direct-chat-img" src="</span><span class="sc">${</span>image<span class="sc">}</span><span class="vs">"/&gt; </span></span>
+<span id="cb557-53"><a href="shiny-custom-handler.html#cb557-53"></a><span class="vs">      &lt;div class="direct-chat-text"&gt;</span><span class="sc">${</span>text<span class="sc">}</span><span class="vs">&lt;/div&gt;`</span><span class="op">;</span></span>
+<span id="cb557-54"><a href="shiny-custom-handler.html#cb557-54"></a>      </span>
+<span id="cb557-55"><a href="shiny-custom-handler.html#cb557-55"></a>    <span class="co">// build wrapper</span></span>
+<span id="cb557-56"><a href="shiny-custom-handler.html#cb557-56"></a>    <span class="kw">let</span> newMessageWrapper<span class="op">;</span></span>
+<span id="cb557-57"><a href="shiny-custom-handler.html#cb557-57"></a>    <span class="cf">if</span> (type <span class="op">===</span> <span class="st">"sent"</span>) <span class="op">{</span></span>
+<span id="cb557-58"><a href="shiny-custom-handler.html#cb557-58"></a>      newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
+<span id="cb557-59"><a href="shiny-custom-handler.html#cb557-59"></a><span class="vs">        &lt;div class="direct-chat-msg right"&gt;</span></span>
+<span id="cb557-60"><a href="shiny-custom-handler.html#cb557-60"></a><span class="vs">          </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
+<span id="cb557-61"><a href="shiny-custom-handler.html#cb557-61"></a><span class="vs">        &lt;/div&gt;`</span><span class="op">;</span></span>
+<span id="cb557-62"><a href="shiny-custom-handler.html#cb557-62"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb557-63"><a href="shiny-custom-handler.html#cb557-63"></a>      newMessageWrapper <span class="op">=</span> <span class="vs">`</span></span>
+<span id="cb557-64"><a href="shiny-custom-handler.html#cb557-64"></a><span class="vs">        &lt;div class="direct-chat-msg"&gt;</span></span>
+<span id="cb557-65"><a href="shiny-custom-handler.html#cb557-65"></a><span class="vs">          </span><span class="sc">${</span>newMessage<span class="sc">}</span><span class="vs"> </span></span>
+<span id="cb557-66"><a href="shiny-custom-handler.html#cb557-66"></a><span class="vs">        &lt;/div&gt;`</span><span class="op">;</span></span>
+<span id="cb557-67"><a href="shiny-custom-handler.html#cb557-67"></a>    <span class="op">}</span></span>
+<span id="cb557-68"><a href="shiny-custom-handler.html#cb557-68"></a>    </span>
+<span id="cb557-69"><a href="shiny-custom-handler.html#cb557-69"></a>    <span class="co">// append message</span></span>
+<span id="cb557-70"><a href="shiny-custom-handler.html#cb557-70"></a>    <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
+<span id="cb557-71"><a href="shiny-custom-handler.html#cb557-71"></a>      .<span class="at">find</span>(<span class="st">".direct-chat-messages"</span>)</span>
+<span id="cb557-72"><a href="shiny-custom-handler.html#cb557-72"></a>      .<span class="at">append</span>(newMessageWrapper)<span class="op">;</span></span>
+<span id="cb557-73"><a href="shiny-custom-handler.html#cb557-73"></a>  <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> (action <span class="op">===</span> <span class="st">"update"</span>) <span class="op">{</span></span>
+<span id="cb557-74"><a href="shiny-custom-handler.html#cb557-74"></a>    </span>
+<span id="cb557-75"><a href="shiny-custom-handler.html#cb557-75"></a>    <span class="co">// today's date</span></span>
+<span id="cb557-76"><a href="shiny-custom-handler.html#cb557-76"></a>    <span class="kw">let</span> d <span class="op">=</span> <span class="kw">new</span> <span class="at">Date</span>()<span class="op">;</span></span>
+<span id="cb557-77"><a href="shiny-custom-handler.html#cb557-77"></a>    <span class="kw">let</span> month <span class="op">=</span> <span class="va">d</span>.<span class="at">getMonth</span>() <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb557-78"><a href="shiny-custom-handler.html#cb557-78"></a>    <span class="kw">let</span> day <span class="op">=</span> <span class="va">d</span>.<span class="at">getDate</span>()<span class="op">;</span></span>
+<span id="cb557-79"><a href="shiny-custom-handler.html#cb557-79"></a>    <span class="kw">let</span> today <span class="op">=</span> <span class="va">d</span>.<span class="at">getFullYear</span>() <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
+<span id="cb557-80"><a href="shiny-custom-handler.html#cb557-80"></a>      ((<span class="st">''</span><span class="op">+</span>month).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> month <span class="op">+</span> <span class="st">'/'</span> <span class="op">+</span></span>
+<span id="cb557-81"><a href="shiny-custom-handler.html#cb557-81"></a>      ((<span class="st">''</span><span class="op">+</span>day).<span class="at">length</span><span class="op">&lt;</span><span class="dv">2</span> <span class="op">?</span> <span class="st">'0'</span> : <span class="st">''</span>) <span class="op">+</span> day<span class="op">;</span></span>
+<span id="cb557-82"><a href="shiny-custom-handler.html#cb557-82"></a>      </span>
+<span id="cb557-83"><a href="shiny-custom-handler.html#cb557-83"></a>    <span class="co">// we assume only text may be updated. </span></span>
+<span id="cb557-84"><a href="shiny-custom-handler.html#cb557-84"></a>    <span class="co">// Does not make sense to modify author/date</span></span>
+<span id="cb557-85"><a href="shiny-custom-handler.html#cb557-85"></a>    </span>
+<span id="cb557-86"><a href="shiny-custom-handler.html#cb557-86"></a>    <span class="at">$</span>(<span class="st">"#"</span> <span class="op">+</span> id)</span>
+<span id="cb557-87"><a href="shiny-custom-handler.html#cb557-87"></a>      .<span class="at">find</span>(<span class="st">".direct-chat-text"</span>)</span>
+<span id="cb557-88"><a href="shiny-custom-handler.html#cb557-88"></a>      .<span class="at">eq</span>(index <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb557-89"><a href="shiny-custom-handler.html#cb557-89"></a>      .<span class="at">replaceWith</span>(<span class="vs">`</span></span>
+<span id="cb557-90"><a href="shiny-custom-handler.html#cb557-90"></a><span class="vs">        &lt;div class="direct-chat-text"&gt;</span></span>
+<span id="cb557-91"><a href="shiny-custom-handler.html#cb557-91"></a><span class="vs">          &lt;small class="text-red"&gt;</span></span>
+<span id="cb557-92"><a href="shiny-custom-handler.html#cb557-92"></a><span class="vs">            (modified: </span><span class="sc">${</span>today<span class="sc">}</span><span class="vs">)</span></span>
+<span id="cb557-93"><a href="shiny-custom-handler.html#cb557-93"></a><span class="vs">          &lt;/small&gt;</span></span>
+<span id="cb557-94"><a href="shiny-custom-handler.html#cb557-94"></a><span class="vs">          &lt;br&gt;</span></span>
+<span id="cb557-95"><a href="shiny-custom-handler.html#cb557-95"></a><span class="vs">        &lt;/div&gt;</span></span>
+<span id="cb557-96"><a href="shiny-custom-handler.html#cb557-96"></a><span class="vs">      `</span>)</span>
+<span id="cb557-97"><a href="shiny-custom-handler.html#cb557-97"></a>  <span class="op">}</span></span>
+<span id="cb557-98"><a href="shiny-custom-handler.html#cb557-98"></a>  </span>
+<span id="cb557-99"><a href="shiny-custom-handler.html#cb557-99"></a>  <span class="co">// Calls .initialize() for all of the input </span></span>
+<span id="cb557-100"><a href="shiny-custom-handler.html#cb557-100"></a>  <span class="co">// objects in all input bindings,</span></span>
+<span id="cb557-101"><a href="shiny-custom-handler.html#cb557-101"></a>  <span class="co">// in the given scope (document)</span></span>
+<span id="cb557-102"><a href="shiny-custom-handler.html#cb557-102"></a>  <span class="va">Shiny</span>.<span class="at">initializeInputs</span>()<span class="op">;</span></span>
+<span id="cb557-103"><a href="shiny-custom-handler.html#cb557-103"></a>  <span class="va">Shiny</span>.<span class="at">bindAll</span>()<span class="op">;</span> <span class="co">// bind all inputs/outputs</span></span>
+<span id="cb557-104"><a href="shiny-custom-handler.html#cb557-104"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>Output is shown on Figure <a href="shiny-custom-handler.html#fig:shinydashboardPlus-chat-api">15.5</a>. To reproduce that figure,
 you may click on add message, then click on update message leaving the numeric input to 1.</p>
 <div class="figure">
@@ -1030,7 +1030,7 @@ FIGURE 15.5: Chat user interface for {shinydashboardPlus}
 </p>
 </div>
 <p>as well as a demonstration:</p>
-<div class="sourceCode" id="cb557"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb558"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyAppDir</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html">system.file</a></span><span class="op">(</span>
   <span class="st">"vignettes-demos/userMessages"</span>, 
   package <span class="op">=</span> <span class="st">"shinydashboardPlus"</span>
@@ -1090,7 +1090,7 @@ It works well the first time since those element don’t exist for Shiny. If we 
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-08-20.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-08-24.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
