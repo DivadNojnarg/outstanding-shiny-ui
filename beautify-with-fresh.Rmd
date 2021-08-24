@@ -53,29 +53,14 @@ bs4dash_color(
   teal = NULL,
   olive = NULL,
   green = NULL,
-  lime = NULL,
-  orange = NULL,
-  yellow = NULL,
-  fuchsia = NULL,
-  purple = NULL,
-  maroon = NULL,
-  red = NULL,
-  black = NULL,
-  gray_x_light = NULL,
-  gray_600 = NULL,
-  gray_800 = NULL,
-  gray_900 = NULL,
-  white = NULL
+  # ...
 )
 ```
 
 By default, `primary` is blue but could become green with just one line of code. Do you recall about section \@ref(sass-customize-bs4Dash), where we customized `{bs4Dash}` colors with Sass? Let's try again with `{fresh}`. We first create the new theme, passing it the new colors and inject it inside the previously mentioned __freshTheme__ parameter:
 
-```{r, eval=FALSE}
-library(shiny)
-library(bs4Dash)
+```{r}
 library(fresh)
-
 custom_colors_theme <- create_theme(
   bs4dash_color(
     lightblue = "#136377",
@@ -86,48 +71,15 @@ custom_colors_theme <- create_theme(
     gray_x_light = "#d1c5c0"
   )
 )
-
-
-ui <- dashboardPage(
-  freshTheme = custom_colors_theme,
-  dashboardHeader(title = "Custom colors"),
-  dashboardSidebar(),
-  dashboardBody(
-    # Boxes need to be put in a row (or column)
-    fluidRow(
-      box(
-        solidHeader = TRUE,
-        plotOutput("plot1", height = 250), 
-        status = "olive"
-      ),
-      box(
-        solidHeader = TRUE,
-        status = "lightblue",
-        title = "Controls",
-        sliderInput(
-          "slider", 
-          "Number of observations:", 
-          1, 
-          100, 
-          50
-        )
-      )
-    )
-  )
-)
-
-server <- function(input, output) {
-  set.seed(122)
-  histdata <- rnorm(500)
-
-  output$plot1 <- renderPlot({
-    data <- histdata[seq_len(input$slider)]
-    hist(data)
-  })
-}
-
-shinyApp(ui, server)
 ```
+
+The corresponding example may be run with:
+
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("fresh/bs4Dash-custom", view_code = FALSE), "r")
+```
+
+To preview the code, use `OSUICode::get_example("fresh/bs4Dash-custom")`.
 
 ::: {.warningblock data-latex=""}
 Note that complex variable names like `gray-x-light` become `gray_x_light`!
@@ -138,7 +90,7 @@ Compared to the approach described in \@ref(sass-customize-bs4Dash), there a few
   - We don't have to specify the `AdminLTE.scss` location, as `{fresh}` hosts it [here](https://github.com/dreamRs/fresh/tree/master/inst/assets/AdminLTE-3.1.0).
   - We don't have to look for all colors names as they are described along the `bs4dash_color` function definition. We even have a description of the default values (as well as statuses in bold), depicted on Figure \@ref(fig:fresh-colors-defaults) below.
   
-```{r fresh-colors-defaults, echo=FALSE, fig.cap='Default colors provided by {bs4Dash}', out.width='100%'}
+```{r fresh-colors-defaults, echo=FALSE, fig.cap='Default colors provided by {bs4Dash}', out.width='50%'}
 knitr::include_graphics("images/beautify/fresh-colors-defaults.png")
 ```
 
@@ -163,7 +115,7 @@ As illustrated in the `{bs4Dash}` documentation, the `dashboardHeader()` has two
 
 Navbar variables may be found with `search_vars_bs4dash("navbar")`, for example:
 
-```{r}
+```{r, warning=FALSE}
 library(tibble)
 head(
   as_tibble(
@@ -179,7 +131,7 @@ We'll be using the `navbar_light_*` variables as follows:
 
 We also modified the `primary` status to be a shade of green:
 
-```{r}
+```{r, warning=FALSE}
 navbar_vars <- list(
   # navbar background
   bs4dash_status(light = "#005475", primary = "#00755c"), 
@@ -193,7 +145,7 @@ ocean_theme <- create_theme(layout_vars, navbar_vars)
 The card text element would not properly be styled without setting the `white` color to 
 the global ocean blue theme color, as they would render dark, which is a bad contrast option. Hence, we change the `white` and `gray_900` colors with `bs4dash_color()`. 
 
-```{r}
+```{r, warning=FALSE}
 inverted_colors <- bs4dash_color(
   gray_900 = "#fff", 
   white = "#005475"
@@ -208,7 +160,7 @@ ocean_theme <- create_theme(
 #### Color contrast
 `bs4dash_yiq()` fine tunes the [contrast](https://getbootstrap.com/docs/4.0/getting-started/theming/#color-contrast) between a given color and its background. It relies on the Bootstrap 4 `color-yiq` function, whose code may be found [below](https://github.com/dreamRs/fresh/blob/master/inst/assets/bootstrap-4.5.2/_functions.scss#L70). Interested readers will have a look at the following [article](https://en.wikipedia.org/wiki/Luma_(video)), that explain better where this calculation is derived from.
 
-```{css}
+```css
 @function color-yiq($color, $dark: $yiq-text-dark, 
                     $light: $yiq-text-light) {
   $r: red($color);
@@ -272,78 +224,11 @@ Wait a moment: `bs4dash_yiq()` does not expose any `color` parameter! Indeed, th
 
 As a last example, we design an app with a slider input controlling the contrast threshold and a radio input color picker to set the `box` current status color. We dynamically call `bs4dash_yiq()` and `create_theme`, with an initial threshold of 150 (Bootstrap default) and a dark and light values set to primary and white, respectively. The initial status is primary (blue), and as shown above, we expect the `yiq` value to be lower than the threshold since the blue color has a relatively light weight for the calculation, thereby fixing the background text color to white. As an exercise, you may try to reduce the threshold until the text becomes black. What is the threshold value. Then, replace the card status from `primary` to `warning`. What happens? Why? As yellow is made of green and red, which have the highest contributions in the yiq calculation, this result is not surprising!
 
-```{r, eval=FALSE}
-statuses <- c(
-  "primary" = "#0073b7",
-  "secondary" = "#6c757d",
-  "success" = "#28a745",
-  "info" = "#17a2b8",
-  "warning" = "#ffc107",
-  "danger" = "#dc3545"
-)
-
-ui <- dashboardPage(
-  dashboardHeader(title = "Card with custom contrast"),
-  dashboardSidebar(),
-  dashboardBody(
-    # Boxes need to be put in a row (or column)
-    uiOutput("sass"),
-    fluidRow(
-      sliderInput(
-          "threshold", 
-          "Threshold", 
-          min = 0, 
-          max = 255, 
-          value = 150
-        ),
-      shinyWidgets::colorSelectorInput(
-        inputId = "status",
-        label = "Card Status color",
-        choices = statuses
-      )
-    ),
-    fluidRow(
-      box(
-        id = "mybox",
-        solidHeader = TRUE,
-        title = "You can see me!",
-        status = "primary"
-      )
-    )
-  )
-)
-
-server <- function(input, output, session) {
-  
-  observeEvent(input$status, {
-    status_name <- names(which(statuses == input$status))
-    updateBox(
-      id = "mybox", 
-      action = "update", 
-      options = list(status = status_name)
-    )
-  })
-  
-  output$sass <- renderUI({
-    use_theme(css())
-  })
-  css <- reactive({
-    # Recover the hex code since bs4dash_yiq 
-    # does not accept names
-    
-    create_theme(
-      bs4dash_yiq(
-        contrasted_threshold = input$threshold, 
-        text_dark = "#111", 
-        text_light ="#fff"
-      )
-    )
-  })
-}
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("fresh/color-contrast", view_code = FALSE), "r")
 ```
 
-The output is shown Figure \@ref(fig:color-contrast-yiq)
+The output is shown Figure \@ref(fig:color-contrast-yiq).
 
 ```{r color-contrast-yiq, echo=FALSE, fig.cap='Color contrast function in action', out.width='100%'}
 knitr::include_graphics("images/beautify/color-contrast-yiq.png")
@@ -352,7 +237,7 @@ knitr::include_graphics("images/beautify/color-contrast-yiq.png")
 #### Sidebar 
 Like `dashboardHeader()`, `dashboardSidebar()` exposes two flavors, namely `light` and `dark`. Since we set the sidebar to be `light`, we leverage the `bs4Dash_sidebar_light()` helper. We set the main background (`bg` variable) to ocean blue and set the menu color (`color` variable) to white, so as to have a better contrast. Additionally, we invert the `text_dark` and `text_light` colors for an even better contrast with `bs4dash_yiq()`. In short, the higher the `contrasted_threshold` parameter the less sensitive is the change. 
 
-```{r}
+```{r, eval=FALSE}
 sidebar_vars <- list(
   bs4dash_yiq(
     contrasted_threshold = 10, 
@@ -375,11 +260,10 @@ ocean_theme <- create_theme(
 )
 ```
 
-As the `{fresh}` theme does not apply to static plots, since they are not HTML element and not part of the DOM, we leverage the [`{thematic}`](https://rstudio.github.io/thematic/) package, that in short, provides a sort of CSS interface for base R plots, ggplot and lattice. Specifically, in the Shiny context, we choose `thematic_shiny()`. By default, it sets the appropriate background, foreground and accent colors. The final product is shown Figure \@ref(fig:fresh-bs4Dash-final) and may be run with `customize_bs4Dash()` from the book side package: 
+As the `{fresh}` theme does not apply to static plots, since they are not HTML element and not part of the DOM, we leverage the [`{thematic}`](https://rstudio.github.io/thematic/) package, that in short, provides a sort of CSS interface for base R plots, ggplot and lattice. Specifically, in the Shiny context, we choose `thematic_shiny()`. By default, it sets the appropriate background, foreground and accent colors. The final product is shown Figure \@ref(fig:fresh-bs4Dash-final) and may be run as per below code:
 
-```{r, eval=FALSE}
-library(OSUICode)
-customize_bs4Dash(ocean_theme)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("fresh/bs4Dash-ocean-theme", view_code = FALSE), "r")
 ```
 
 You may notice the inappropriate `sliderInput()` style. This is because it is not a Bootstrap 4 element. In this case, you'll have to create custom CSS rules targeting the slider labels and scale. 
@@ -418,15 +302,17 @@ dark_theme <- create_theme(
   bs4dash_status(dark = "#272c30"),
   bs4dash_color(gray_900 = "#FFF", white = "#272c30")
 )
+```
 
-customize_bs4Dash(dark_theme)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("fresh/bs4Dash-dark-theme", view_code = FALSE), "r")
 ```
 
 ### Customize `{shinydashboard}` 
 
 Similarly, `{fresh}` supports `{shinydashboard}` powered apps. In few lines of code, you may definitely provide a cyberpunk look and feel to your favorite shiny dashboard (Figure \@ref(fig:shinydashboardPlus-fresh)). `{shinydashboardPlus}` ([v2](https://rinterface.github.io/shinydashboardPlus/articles/more-skins.html#fresh)) has a plug and play support for `{fresh}` where the theme has to be passed to the `dashboardPage` _freshTheme_ parameter (it would also seamlessly work with `{shinydashboard}`). We start by creating the theme with `adminlte_colors()`, `adminlte_sidebar()` and `adminlte_global()`:
 
-```{r}
+```{r, eval=FALSE}
 cyberpunk_theme <- create_theme(
   adminlte_color(
     green = "#3fff2d",
@@ -451,8 +337,9 @@ cyberpunk_theme <- create_theme(
 ```
 
 The demonstration may be run with, the result being shown on Figure \@ref(fig:shinydashboardPlus-fresh):
-```{r, eval=FALSE}
-customize_shinydashboard(cyberpunk_theme)
+
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("fresh/shinydashboardPlus-cyberpunk", view_code = FALSE), "r")
 ```
 
 
