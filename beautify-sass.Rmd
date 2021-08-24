@@ -1,6 +1,12 @@
 # Introduction to Sass {#beautify-sass}
 One of the main problem with __CSS__ is to handle the growing number of files and the __code repetition__. Nowadays, web developers mainly use __CSS pre processors__ like [Sass](https://sass-lang.com/guide), that stands for "Syntactically Awesome Style Sheets ", providing access to variables, mathematical operators, functions and loops, thereby reducing the code complexity and extending the possibilities. [RStudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package [@R-sass], which makes it possible to use __Sass__ in Shiny apps or Rmarkdown documents.
 
+```{r, echo=FALSE}
+# disable devmode.
+# For some reason it may turn on without notice.
+shiny::devmode(FALSE)
+```
+
 ## Getting started with Sass
 While we could use Sass from the terminal, we leverage the `{sass}` package features to work from R.
 To install `{sass}`, we run:
@@ -18,13 +24,19 @@ The main function is `sass()`, whose __input__ parameter accepts:
   - A file passed with `sass_file()`, imports with `sass_import()`.
   - More complex structures.
 
-```{r}
+```{r, eval=FALSE}
 library(sass)
 # with a string
 sass(input = ".element-class { color: pink;}")
 # with named list
 sass(list(color = "pink", ".element-class { color: $color;}"))
 ```
+
+```{r, echo=FALSE}
+library(sass)
+print(sass(list(color = "pink", ".element-class { color: $color;}")))
+```
+
 
 Note how the R code objects are seamlessly converted to Sass variable. For convenience, we will be using named lists in the remaining of the book.
 
@@ -59,13 +71,15 @@ $color: purple;
 we can quickly solve that problem. With `{sass}`, we define one variable holding the color as well as
 our two rules, so that we obtain:
 
-```{r}
+```{r, eval=FALSE}
 rule1 <- ".class-1{ color: $color; }"
 rule2 <- ".class-2{ background-color: $color; }"
 sass(input = list(color = "purple", rule1, rule2))
 ```
 
 ```{r, echo=FALSE}
+rule1 <- ".class-1{ color: $color; }"
+rule2 <- ".class-2{ background-color: $color; }"
 print(sass(input = list(color = "purple", rule1, rule2)))
 ```
 
@@ -87,11 +101,8 @@ Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/boots
 ```css
 /*!
  * Bootstrap v5.0.0-beta1 (https://getbootstrap.com/)
- * Copyright 2011-2021 The Bootstrap Authors
- * Copyright 2011-2021 Twitter, Inc.
- * Licensed under MIT
- * (https://github.com/twbs/bootstrap/blob/main/LICENSE)
- */
+ ...
+*/
 
 // scss-docs-start import-stack
 // Configuration
@@ -155,7 +166,7 @@ It is called with `@include <MIXIN_NAME(PARMS)>`, very similar to a function dec
 it must return a CSS rule.
 
 
-```{r}
+```{r, eval=FALSE}
 mixin <- "@mixin transform($property) {
   -webkit-transform: $property;
   -ms-transform: $property;
@@ -166,8 +177,13 @@ sass(input = list(prop = "rotate(90deg)", mixin, rule))
 ```
 
 ```{r, echo=FALSE}
-res <- sass(input = list(prop = "rotate(90deg)", mixin, rule))
-print(res)
+mixin <- "@mixin transform($property) {
+  -webkit-transform: $property;
+  -ms-transform: $property;
+  transform: $property;
+}"
+rule <- ".element1 { @include transform($prop); }"
+print(sass(input = list(prop = "rotate(90deg)", mixin, rule)))
 ```
 
 #### Functions
@@ -175,7 +191,7 @@ Sass offers many built-In [modules](https://sass-lang.com/documentation/modules)
 ready to use functions for colors, numbers, strings, lists, maps, ... Some functions like
 `rgb` are global, so that we don't have to import the corresponding module.
 
-```{r}
+```{r, eval=FALSE}
 sass(".pouet { color: rgb(0, 255, 0); }")
 ```
 
@@ -202,7 +218,7 @@ $test: 1;
 @debug test;
 ```
 
-```{r}
+```{r, eval=FALSE}
 sass(
   list(
     a = 2,
@@ -268,7 +284,7 @@ prefixed by the `%` symbol. It contains several rules and variables:
 
 Let's translate this into R:
 
-```{r}
+```{r, eval=FALSE}
 common <- "%alerts-common {
   position: relative;
   padding: $alert-padding-y $alert-padding-x;
@@ -295,6 +311,21 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+alert_red <- ".alert-red {
+  @extend %alerts-common;
+  color: red;
+}
+"
+alert_green <- ".alert-green {
+  @extend %alerts-common;
+  color: green;
+}
+"
 print(sass(input = list(
   "alert-padding-y" = "5px",
   "alert-padding-x" = "10px",
@@ -344,7 +375,7 @@ Below, we only want to conditionally control a shadow property, depending on the
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 add_shadow <- "@mixin add-shadow($color) {
   @if $color == red {
     box-shadow:
@@ -389,6 +420,38 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
+add_shadow <- "@mixin add-shadow($color) {
+  @if $color == red {
+    box-shadow:
+      0 4px 10px 0 rgb(255, 0, 0),
+      0 4px 20px 0 rgb(255, 0, 0);
+  } @else if $color == green {
+    box-shadow:
+      0 4px 10px 0 rgb(0, 255, 0),
+      0 4px 20px 0 rgb(0, 255, 0);
+  }
+}
+"
+
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+
+alert_red <- ".alert-red {
+  @extend %alerts-common;
+  color: red;
+  @include add-shadow($color: red);
+}
+"
+
+alert_green <- ".alert-green {
+  @extend %alerts-common;
+  color: green;
+  @include add-shadow($color: green);
+}
+"
 print(sass(input = list(
   "alert-padding-y" = "5px",
   "alert-padding-x" = "10px",
@@ -421,7 +484,7 @@ is called [interpolation](https://sass-lang.com/documentation/interpolation) and
 insert any Sass expression in a string. As another example, if we want to create a `background-image` property
 within a mixin, we could do `background-image: url("/some_path/#{$name}.svg")`, where `#{$name}` holds the file name.
 
-```{r}
+```{r, eval=FALSE}
 add_shadow <- "@mixin add-shadow($color) {
   @if $color == red {
     box-shadow:
@@ -461,6 +524,33 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
+add_shadow <- "@mixin add-shadow($color) {
+  @if $color == red {
+    box-shadow:
+      0 4px 10px 0 rgb(255, 0, 0),
+      0 4px 20px 0 rgb(255, 0, 0);
+  } @else if $color == green {
+    box-shadow:
+      0 4px 10px 0 rgb(0, 255, 0),
+      0 4px 20px 0 rgb(0, 255, 0);
+  }
+}
+"
+
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+
+alerts_rule <- "@each $color in $colors {
+  .alert-#{$color} {
+    @extend %alerts-common;
+    color: green;
+    @include add-shadow($color: $color);
+  }
+}
+"
 print(sass(input = list(
   colors = c("green", "red"),
   "alert-padding-y" = "5px",
@@ -558,7 +648,7 @@ print(sass(my_bundle))
 to generate the CSS file. Best practice consists in enabling __compression__ and __source maps__. We discuss
 this later in the book in Chapter \@ref(workflow-charpente). Overall those steps makes the code faster to load and easier to debug:
 
-```{r}
+```{r, eval=FALSE}
 sass(
   list(
    color = "pink",
@@ -569,6 +659,19 @@ sass(
     source_map_embed = TRUE
   )
 )
+```
+
+<!-- manual copy paste for pdf output formating -->
+
+```
+/* CSS */
+.a{color:pink}
+
+/*# sourceMappingURL=data:application/json;base64,ewoJInZlcn
+Npb24iOiAzLAoJImZpbGUiOiAic3RkaW4uY3NzIiwKCSJzb3VyY2VzIjogWwo
+JCSJzdGRpbiIKCV0sCgkibmFtZXMiOiBbXSwKCSJtYXBwaW5ncyI6ICJBQUNB
+LEFBQUEsRUFBRSxBQUFDLENBQUUsS0FBSyxDQURGLElBQUksQ0FDVSIK
+fQ== */
 ```
 
 
@@ -688,8 +791,6 @@ No worries, we'll come back on `{fresh}` in the next Chapter. For now, we rely o
 `system.file("sass/adminlte/adminlte.scss", package = "OSUICode")` (since `{fresh}` may change in the future, `{OSUICode}` will be frozen to make sure the code always work):
 
 ```{r, eval=FALSE}
-library(bs4Dash)
-
 css <- sass(
   sass_layer(
     defaults = list(
@@ -708,47 +809,13 @@ css <- sass(
     )
   )
 )
+# This CSS is injected inside the app head (see example)
+```
 
+The corresponding app may be tested below. If you want to see the whole code, run `OSUICode::get_example("sass/examples/bs4Dash-custom")`. 
 
-ui <- dashboardPage(
-  dashboardHeader(title = "Custom colors"),
-  dashboardSidebar(),
-  dashboardBody(
-    tags$head(tags$style(css)),
-    # Boxes need to be put in a row (or column)
-    fluidRow(
-      box(
-        solidHeader = TRUE,
-        plotOutput("plot1", height = 250),
-        status = "olive"
-        ),
-      box(
-        solidHeader = TRUE,
-        status = "lightblue",
-        title = "Controls",
-        sliderInput(
-          "slider",
-          "Number of observations:",
-          1,
-          100,
-          50
-        )
-      )
-    )
-  )
-)
-
-server <- function(input, output) {
-  set.seed(122)
-  histdata <- rnorm(500)
-
-  output$plot1 <- renderPlot({
-    data <- histdata[seq_len(input$slider)]
-    hist(data)
-  })
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("sass/examples/bs4Dash-custom", view_code = FALSE), "r")
 ```
 
 Output is shown on Figure \@ref(fig:sass-adminlte-colors).
@@ -809,51 +876,12 @@ css <- sass(
 )
 ```
 
-Finally, we try the new theme in the following app, shown on Figure \@ref(fig:sass-bulma-tiles):
+Finally, we try the new theme in the following app, shown on Figure \@ref(fig:sass-bulma-tiles). 
+If you want to see the whole code, run `OSUICode::get_example("sass/examples/shinybulma-custom")`. 
 
-```{r, eval=FALSE}
-#remotes::install_github("RinteRface/shinybulma")
-
-library(shinybulma)
-
-shinyApp(
-  ui = bulmaPage(
-    tags$head(tags$style(css)),
-    bulmaSection(
-      bulmaTileAncestor(
-        bulmaTileParent(
-          vertical = TRUE,
-          bulmaTileChild(
-            bulmaTitle("Tile 1"),
-            p("Put some data here"),
-            color = "link"
-          ),
-          bulmaTileChild(
-            bulmaTitle("Tile 2"),
-            "Hi Bulma!",
-            color = "danger"
-          )
-        ),
-        bulmaTileParent(
-          vertical = TRUE,
-          bulmaTileChild(
-            bulmaTitle("Tile 3"),
-            p("Put some data here"),
-            color = "warning"
-          ),
-          bulmaTileChild(
-            bulmaTitle("Tile 3"),
-            ("Put some data here"),
-            color = "info"
-          )
-        )
-      )
-    )
-  ),
-  server = function(input, output) {}
-)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("sass/examples/shinybulma-custom", view_code = FALSE), "r")
 ```
-
 
 ```{r sass-bulma-tiles, echo=FALSE, fig.cap='Custom bulma theme', out.width='100%'}
 knitr::include_graphics("images/beautify/sass-bulma-tiles.png")
