@@ -256,3 +256,37 @@ bs_accordion_item <- function(title, content, active = FALSE) {
   })
 }
 ```
+
+## R and JS {#from-R-to-JS-appendix}
+
+Below is the whole websocket code obtained after following \@ref(from-R-to-JS).
+
+```{r, eval=FALSE}
+ws_handler <- function(ws) {
+  # The ws object is a WebSocket object
+  cat("New connection opened.\n")
+  # Capture client messages
+  ws$onMessage(function(binary, message) {
+    # create plot
+    input_message <- jsonlite::fromJSON(message)
+    print(input_message)
+    cat("Number of bins:", input_message$value, "\n")
+    hist(rnorm(input_message$value))
+    
+    # update gauge widget
+    output_message <- jsonlite::toJSON(
+      list(
+        val = sample(0:100, 1),
+        message = "Thanks client! I updated the plot..."
+      ),
+      pretty = TRUE,
+      auto_unbox = TRUE
+    )
+    ws$send(output_message)
+    cat(output_message)
+  })
+  ws$onClose(function() {
+    cat("Server connection closed.\n")
+  })
+}
+```

@@ -3,10 +3,10 @@
 This rather technical chapter aims at untangling what are the main mechanisms behind a Shiny app, responsible for
 driving the R/JavaScript __communication__, which is quite frankly mind blowing. 
 
-This is a feature leveraging the [httpuv](https://github.com/rstudio/httpuv) package. The __HTTP__ protocol is not very convenient to chain numerous __requests__ since the connection is closed after each request. If you already built complex apps festooned with __inputs__ and __outputs__, you may imagine the amount of exchanges necessary between R and JS, thereby making HTTP definitely not suitable. What we would need instead is a permanent connection, allowing __bidirectional__ fluxes, that is, if R wants to inform JS about something or if JS wants to send information to R. 
+This is a feature leveraging the [httpuv](https://github.com/rstudio/httpuv) package. The __HTTP__ protocol is not very convenient to chain numerous __requests__ since the connection is closed after each request, as previously stated in section \@ref(web-applications-http). If you already built complex apps festooned with __inputs__ and __outputs__, you may imagine the amount of exchanges necessary between R and JS, thereby making HTTP definitely not suitable. What we would need instead is a permanent connection, allowing __bidirectional__ fluxes, that is, if R wants to inform JS about something or if JS wants to send information to R. 
 
 ## JSON: exhange data
-Since R and JS are very different languages, we can't just send R code to JS and conversely. We must find a __common language__ to exchange data. Guess what? We'll be using JSON! __JSON__ stands for JavaScript Object Notation. JSON has the great advantage that it is suitable for many languages, particularly R. It has the same structure as a JS object but can be serialized as a character string, for instance:
+Since R and JS are very different languages, we can't just send R code to JS and conversely. We must find a __common language__ to exchange data. Guess what? We'll be using JSON. __JSON__ stands for JavaScript Object Notation. JSON has the great advantage that it is suitable for many languages, particularly R. It has the same structure as a JS object but can be serialized as a character string, for instance:
 
 ```{r}
 my_json <- '
@@ -15,22 +15,17 @@ my_json <- '
   "color": "purple",
   "planet": "Mars",
   "animals": [
-     {
-       "name": "Euclide",
-       "type": "cat",
-       "age": 7
-     },
-     {
-       "name": "Sophocle",
-       "type": "dog",
-       "age": 2
-     }
+    {
+      "name": "Euclide",
+      "type": "cat",
+      "age": 7
+    }
   ]
 }
 '
 ```
 
-Now, let's see how we may interact with JSON.
+In the next section we'll see how we may interact with JSON.
 
 ### Process JSON from R
 There are two situations:
@@ -64,16 +59,31 @@ my_list <- list(
   planet = "Mars"
 )
 
+toJSON(my_list)
 toJSON(my_list, auto_unbox = TRUE, pretty = TRUE)
 ```
 
-Note the `auto_unbox` and `pretty` options that allow for a better rendering. 
-
-There are many more available options and we invit the reader to refer to the `{jsonlite}`
+Note the `auto_unbox` (unbox atomic vectors of length 1) and `pretty` (adds indentation) options that allow for a better rendering. There are many more available options and we invite the reader to refer to the `{jsonlite}`
 documentation. 
 
+Most of the time, you will pass more complex data structures like nested lists. For instance imagine you have to send a user profile information containing its unique id, name and organization, the latter being a nested list with fields like id, name, site, ...:
+
+```{r}
+my_list <- list(
+  id = "01522",
+  name = "David",
+  organization = list(
+    id = "AWER12",
+    name = "RinteRface",
+    site = "Switzerland"
+  )
+)
+
+toJSON(my_list, auto_unbox = TRUE, pretty = TRUE)
+```
+
 ### Process JSON from JS
-Like R, JS has 2 methods to process JSON, that are provided the `JSON` class.
+Like R, JS has two methods to process JSON, that are provided by the `JSON` class.
 We parse a JSON, that is converting it from character to JS object with:
 
 ```js
@@ -95,7 +105,7 @@ Now that we have seen a convenient way to exchange data between two different la
 explain how this communication is made possible. This involves web elements called __websockets__.
 
 ## What is a websocket?
-Before going further let's define what is a __websocket__. It is an advanced technology allowing __bidirectional communication__ between a (or multiple) client(s) and a server. For instance, a [chat](https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee) system may be built on top of a websocket [^chat-system]. The server is generally created using Node.js libraries like `ws` and the client with JavaScript. In the R Shiny context, the server part is created from `{httpuv}` [@R-httpuv] and the client either with `{websocket}` [@R-websocket] (see below) or directly from JavaScript, as described later:
+Before going further let's define what is a __websocket__. It is an advanced technology allowing __bidirectional communication__ between a (or multiple) client(s) and a server. For instance, a [chat](https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee) system may be built on top of a websocket [^chat-system]. The server is generally created using Node.js libraries like [ws](https://github.com/websockets/ws) and the client with JavaScript. In the R Shiny context, the server part is created from `{httpuv}` [@R-httpuv] and the client either with `{websocket}` [@R-websocket] (see below) or directly from JavaScript, as described later:
 
 ```{r, eval=FALSE}
 library(httpuv)
@@ -197,7 +207,7 @@ knitr::include_graphics("images/survival-kit/http-upgrade-to-ws.png")
 
 ### Example {#from-R-to-JS}
 In practice, Shiny does not use `{websocket}`. As mentioned earlier, the client is directly built from JS. To better 
-understand the whole process, we are going to design a simple web page containing an HTML range slider, pass its value from JS to R through the websocket, so that R can do a simple histogram. Moreover, R will also send a message to JS, thereby updating a gauge meter widget located in the HTML page. 
+understand the whole process, we are going to design a simple web page containing an HTML range slider, pass its value from JS to R through the websocket, so that R can produce a simple histogram. Moreover, R will also send a message to JS, thereby updating a gauge meter widget located in the HTML page. 
 
 To proceed, we need few elements:
 
@@ -206,42 +216,84 @@ To proceed, we need few elements:
   - An app composed of an `{httpuv}` powered HTTP server serving this HTML page as well as a websocket server to connect R and JS.
   
 #### Create the app
-As shown above, we use the `startServer` function, giving it a default port and host such that the url is `127.0.0.1:8080`. The most important elements
-is the app that consists in an HTTP response and a server websocket. The websocket call back may be defined
-as below:
+
+To start the server, we leverage the `startServer()` function that expects:
+
+  - A __host__, usually `127.0.0.1` if you work locally. 
+  - A __port__, like `8080` (app may be accessed on `<HOST>:<PORT>` in your web browser).
+  - A list of functions describing the __app__, particularly:
+  
+    - `call` expects the HTTP response.
+    - `onWSOpen` expects the websocket server.
+  
+In the following, we gradually explain how to design each part. 
+
+##### Handle the websocket server
+The most important elements is the app that consists in a server websocket (R) and an HTTP response (HTML, JS). The websocket call back may be defined as follows. We first raise a message upon client connection:
 
 ```{r, eval=FALSE}
 ws_handler <- function(ws) {
   # The ws object is a WebSocket object
   cat("New connection opened.\n")
-  # Capture client messages
-  ws$onMessage(function(binary, message) {
-    # create plot
-    input_message <- jsonlite::fromJSON(message)
-    print(input_message)
-    cat("Number of bins:", input_message$value, "\n")
-    hist(rnorm(input_message$value))
-    
-    # update gauge widget
-    output_message <- jsonlite::toJSON(
-      list(
-        val = sample(0:100, 1),
-        message = "Thanks client! I updated the plot..."
-      ),
-      pretty = TRUE,
-      auto_unbox = TRUE
-    )
-    ws$send(output_message)
-    cat(output_message)
-  })
-  ws$onClose(function() {
-    cat("Server connection closed.\n")
-  })
 }
 ```
 
-The critical part is the `onMessage` call back which has to process the client message. As we'll send a JSON (from the client), we leverage `fromJSON()` to properly treat the message. It is printed for debugging purposes and the value is injected inside a `hist(rnorm())` function. The second task is to send a message to JS in order to update the gauge value. See it like an `updateSlider()` function for instance. We utilize `toJSON()` to send a random value to JS as well as a polite message.
+The critical part is the `onMessage` call back which has to process the client message. 
 
+```{r, eval=FALSE}
+ws_handler <- function(ws) {
+  # The ws object is a WebSocket object
+  cat("New connection opened.\n")
+  
+  ws$onMessage(function(binary, message) {
+    # server logic
+  }
+}
+```
+
+As we'll send a JSON (from the client), we leverage `fromJSON()` to properly treat the message. It is printed for debugging purposes and the value is injected inside a `hist(rnorm())` function.
+
+```{r, eval=FALSE}
+# capture client message
+input_message <- jsonlite::fromJSON(message)
+
+# debug
+print(input_message)
+cat("Number of bins:", input_message$value, "\n")
+
+# create plot
+hist(rnorm(input_message$value))
+```
+
+The second task is to send a message to JS in order to update the gauge value. See it like an `updateSlider()` function for instance. We utilize `toJSON()` to send a random value to JS as well as a polite message:
+
+```{r, eval=FALSE}
+# Send random value to JS
+output_message <- jsonlite::toJSON(
+  list(
+    val = sample(0:100, 1),
+    message = "Thanks client! I updated the plot..."
+  ),
+  pretty = TRUE,
+  auto_unbox = TRUE
+)
+ws$send(output_message)
+
+# debug
+cat(output_message)
+```
+
+We finally add the `onClose` callback to handle client disconnection:
+
+```{r, eval=FALSE}
+ws$onClose(function() {
+  cat("Server connection closed.\n")
+})
+```
+
+The whole code may be found in appendix \@ref(from-R-to-JS-appendix).
+
+##### Handle the HTTP response
 The HTTP response is returned by the `call` function and is typically defined as follows:
 
 ```{r, eval=FALSE}
@@ -256,9 +308,14 @@ http_response <- function(req) {
 }
 ```
 
-It is a list composed of a status code, 200 being the OK HTTP [status](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status), some headers here indicating
-the content nature and the body which is what well be display when the client visits `127.0.0.1:8080`. 
-The app code is:
+It returns a list composed of:
+
+  - A __status__ code, 200 being the OK HTTP [status](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status).
+  - Some __headers__ here indicating the content nature.
+  - The __body__ which is what will be display upon client request. 
+  
+  
+To start the server, we leverage the `startServer()` function, giving it a default port `8080` and host such that the url is `127.0.0.1:8080`:
 
 ```{r, eval=FALSE}
 startServer(
@@ -302,28 +359,14 @@ document.addEventListener(
 ```
 
 We eventually insert it inside the `script` tag of our basic HTML boilerplate, which also contains the gauge
-skeleton. `min`, `max` and `value` set the range, while `low`, `high` and `optimum` are responsible for the color (red, yellow and green, respectively):
+skeleton, borrowed from the MDN [resources](https://developer.mozilla.org/fr/docs/Web/HTML/Element/Meter). `min`, `max` and `value` set the range, while `low`, `high` and `optimum` are responsible for the color (red, yellow and green, respectively):
 
 ```html
 <!DOCTYPE HTML>
 <html lang="en">
   <head>
     <script language="javascript">
-      document.addEventListener(
-        "DOMContentLoaded", function(event) {
-          // Capture gauge widget
-          let gauge = document.getElementById("mygauge");
-          // Initialize client socket connection
-          let mySocket = new WebSocket("ws://<HOST>:<PORT>");
-          mySocket.onopen = function (event) {
-            // do things
-          };
-          // Handle server message
-          mySocket.onmessage = function (event) {
-            let data = JSON.parse(event.data);
-            gauge.value = data.val;
-          };
-      });
+      // ADD EVENT LISTENER HERE
     </script>
     <title>Websocket Example</title>
   </head>
@@ -353,30 +396,12 @@ minimum and maximum value. The slider has to be inserted in the HTML boilerplate
 <html lang="en">
   <head>
     <script language="javascript">
-      document.addEventListener(
-        "DOMContentLoaded", function(event) {
-          // Capture gauge widget
-          let gauge = document.getElementById("mygauge");
-          // Initialize client socket connection
-          let mySocket = new WebSocket("ws://<HOST>:<PORT>");
-          mySocket.onopen = function (event) {
-            // do things
-          };
-          // Handle server message
-          mySocket.onmessage = function (event) {
-            let data = JSON.parse(event.data);
-            gauge.value = data.val;
-          };
-      });
+      // ADD EVENT LISTENER HERE
     </script>
     <title>Websocket Example</title>
   </head>
   <body>
-    <div>
-      <input type="range" id="slider" name="volume" min="0" 
-      max="100">
-      <label for="slider" id ="sliderLabel"></label>
-    </div>
+    <!-- INSERT SLIDER HERE -->
     <br/>
     <label for="mygauge">Gauge:</label>
     <meter id="mygauge" min="0" max="100" low="33" high="66" 
@@ -385,7 +410,7 @@ minimum and maximum value. The slider has to be inserted in the HTML boilerplate
 </html>
 ```
 
-The slider behavior is entirely controlled with JS. We recover its value with `document.getElementById` and
+The slider behavior is entirely controlled by JS. We recover its value with `document.getElementById` and
 add it to the label inner HTML so as to know the current value. We also add an event listener to update the slider value each time the range is updated, either by drag or by keyboard action with `oninput`. It is best practice to 
 convert the slider value to a number with [`parseInt`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/parseInt), as the returned value defaults to a string. Finally, we send the value through the websocket, converting it to JSON so that we may process it from R with `{jsonlite}` (or any other relevant package):
 
@@ -437,7 +462,7 @@ This is to simulate __concurrency__ that could occur between multiple client. To
 Once done, don't forget to close the server connection with `my_app$stop()`!
 :::
 
-In practice, Shiny's core is much more complex but hopefully, you should get a better understanding of the general idea! 
+In practice, Shiny's core is much more complex but hopefully, you should get a better understanding of the general idea. 
 The reader must understand that when Shiny inputs/outputs are modified on the client by an end user, there are a lot of exchanges between R and JS, through the websocket. In the following, we briefly describe how Shiny leverages this technology, on both server and client side.
 
 ## Shiny and websockets
@@ -448,63 +473,14 @@ In the previous section, we showed how R and JS can communicate through a `{http
 We won't be able to go anywhere without giving some reminders about the Shiny [session](https://shiny.rstudio.com/reference/shiny/1.6.0/session.html) object. Why do we say object? __session__ is actually an instance of the [`ShinySession`](https://github.com/rstudio/shiny/blob/master/R/shiny.R) __R6__ class.
 Importantly, the session is unique to a given user. It means that two different clients cannot share the same session. This is important since it contains all information about input, output and client data.
 
-Upon calling `ShinySession$new()`, the initialization method takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. The session object exposes two methods to communicate with from R with JavaScript:
+Upon calling `ShinySession$new()`, the initialization method takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. The session object exposes two methods to communicate with JavaScript from R:
 
-  - __sendCustomMessage__ sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, through the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.
+  - __sendCustomMessage__ sends messages from R to JS. It calls the private `sendMessage` method which itself calls `write`. The message is sent only when the session is opened, through the websocket `private$websocket$send(json)`. If the `shiny.trace` [option](https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html) is `TRUE`, a message showing the sent JSON is displayed, which is useful for debugging.
   - __sendInputMessage__ is used to update inputs from the server. The message is stored in a message queue and ultimately sent through the websocket `private$websocket$send(json)`. 
   
-The below code is extracted from the `shiny.R` [file](https://github.com/rstudio/shiny/blob/master/R/shiny.R).
+Curious readers will look at the `shiny.R` [file](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/shiny.R#L1264).
 
-```{r}
-sendCustomMessage = function(type, message) {
-  data <- list()
-  data[[type]] <- message
-  private$sendMessage(custom = data)
-}
-
-sendInputMessage = function(inputId, message) {
-  data <- list(id = inputId, message = message)
-  
-  # Add to input message queue
-  len <- length(private$inputMessageQueue)
-  private$inputMessageQueue[[len + 1]] <- data
-  # Needed so that Shiny knows to actually 
-  # flush the input message queue
-  self$requestFlush()
-}
-
-
-sendMessage = function(...) {
-  # This function is a wrapper for $write
-  msg <- list(...)
-  if (anyUnnamed(msg)) {
-    stop("All arguments to sendMessage must be named.")
-  }
-  private$write(toJSON(msg))
-}
-
-
-write = function(json) {
-  if (self$closed){
-    return()
-  }
-  traceOption <- getOption('shiny.trace', FALSE)
-  if (isTRUE(traceOption) || traceOption == "send")
-    message(
-      'SEND ',
-      gsub(
-        '(?m)base64,[a-zA-Z0-9+/=]+', 
-        '[base64 data]',
-        json,
-        perl=TRUE
-      )
-    )
-  private$websocket$send(json)
-}
-# ...
-```
-
-No worry if it is not clear at the moment. We will discuss `sendInputMessage` and `sendCustomMessage` in the following chapters, respectively \@ref(shiny-input-system) and \@ref(shiny-custom-handler).
+We will discuss `sendInputMessage` and `sendCustomMessage` in the following chapters, respectively \@ref(shiny-input-system) and \@ref(shiny-custom-handler).
 
 ### Server side 
 On the server, that is R, a websocket is initiated in the [startApp](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L534) function, leveraging the `{httpuv}` package. Websocket handlers are [defined](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L303) by `shiny:::createAppHandlers`:
@@ -544,7 +520,7 @@ private$sendMessage(
 ```
 
 The `workerId` is not always used. In practice, it is relevant only in the context of solutions able to
-load balance clients across multiple workers, that is shinyapps.io, RStudio Connect, and Shiny server pro.
+load balance clients across multiple workers, that is [shinyapps.io](https://www.shinyapps.io/), [RStudio Connect](https://www.rstudio.com/products/connect/), and [Shiny Server Pro](https://docs.rstudio.com/other/ssp/).
 
 `ws$onMessage` describes what should happen when the server receives an message from the client.
 It applies the `messageHandler` function that, in short:
@@ -673,6 +649,9 @@ Although complex, it is extremely useful to check whether the input / output com
 ```{r shiny-websocket, echo=FALSE, fig.cap='Shiny websocket', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-websocket.png")
 ```
+
+
+<!-- REMOVE AS PER BARRET SUGGESTION.  
 We see below that we can even bypass the UI element and update the input value directly via the websocket using `Shiny.shinyapp.$sendMsg` with the `update` method. This is captured on the server side which triggers the output recalculation. We'll discuss more about this in the next section \@ref(shiny-input-system).
 
 ```{r, eval=FALSE}
@@ -713,6 +692,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+-->
 
 ### Summary
 Below is a summary of the server and client websocket parts. The Shiny app shown in Figure \@ref(fig:websocket-intro) consists in an `actionButton()` and a `sliderInput()`. Clicking on the action button triggers an `observeEvent()` that fires `updateSlideInput()`. Under the hood, clicking on the action button sends a message from the client to the server. This message is processed and the corresponding input value is updated on the server, thereby invalidating any observer, reactive element. `updateSlideInput()` sends a message back to the client containing the id of the input to update. This message is received and processed by the `onMessage` event manager, which redirects the message to the related message handler, thereby updating the corresponding input element on the client. The underlying mechanisms are going to be detailed in the next part \@ref(shiny-input-system). You may imagine that when the slider is updated, it also sends a message to the server, triggering a __cascade__ of reactions.

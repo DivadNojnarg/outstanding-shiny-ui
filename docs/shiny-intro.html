@@ -85,12 +85,12 @@
 </h1>
 <p>This rather technical chapter aims at untangling what are the main mechanisms behind a Shiny app, responsible for
 driving the R/JavaScript <strong>communication</strong>, which is quite frankly mind blowing.</p>
-<p>This is a feature leveraging the <a href="https://github.com/rstudio/httpuv">httpuv</a> package. The <strong>HTTP</strong> protocol is not very convenient to chain numerous <strong>requests</strong> since the connection is closed after each request. If you already built complex apps festooned with <strong>inputs</strong> and <strong>outputs</strong>, you may imagine the amount of exchanges necessary between R and JS, thereby making HTTP definitely not suitable. What we would need instead is a permanent connection, allowing <strong>bidirectional</strong> fluxes, that is, if R wants to inform JS about something or if JS wants to send information to R.</p>
+<p>This is a feature leveraging the <a href="https://github.com/rstudio/httpuv">httpuv</a> package. The <strong>HTTP</strong> protocol is not very convenient to chain numerous <strong>requests</strong> since the connection is closed after each request, as previously stated in section <a href="web-applications.html#web-applications-http">5.2</a>. If you already built complex apps festooned with <strong>inputs</strong> and <strong>outputs</strong>, you may imagine the amount of exchanges necessary between R and JS, thereby making HTTP definitely not suitable. What we would need instead is a permanent connection, allowing <strong>bidirectional</strong> fluxes, that is, if R wants to inform JS about something or if JS wants to send information to R.</p>
 <div id="json-exhange-data" class="section level2">
 <h2>
 <span class="header-section-number">11.1</span> JSON: exhange data<a class="anchor" aria-label="anchor" href="#json-exhange-data"><i class="fas fa-link"></i></a>
 </h2>
-<p>Since R and JS are very different languages, we can’t just send R code to JS and conversely. We must find a <strong>common language</strong> to exchange data. Guess what? We’ll be using JSON! <strong>JSON</strong> stands for JavaScript Object Notation. JSON has the great advantage that it is suitable for many languages, particularly R. It has the same structure as a JS object but can be serialized as a character string, for instance:</p>
+<p>Since R and JS are very different languages, we can’t just send R code to JS and conversely. We must find a <strong>common language</strong> to exchange data. Guess what? We’ll be using JSON. <strong>JSON</strong> stands for JavaScript Object Notation. JSON has the great advantage that it is suitable for many languages, particularly R. It has the same structure as a JS object but can be serialized as a character string, for instance:</p>
 <div class="sourceCode" id="cb427"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_json</span> <span class="op">&lt;-</span> <span class="st">'
 {
@@ -98,20 +98,15 @@ driving the R/JavaScript <strong>communication</strong>, which is quite frankly 
   "color": "purple",
   "planet": "Mars",
   "animals": [
-     {
-       "name": "Euclide",
-       "type": "cat",
-       "age": 7
-     },
-     {
-       "name": "Sophocle",
-       "type": "dog",
-       "age": 2
-     }
+    {
+      "name": "Euclide",
+      "type": "cat",
+      "age": 7
+    }
   ]
 }
 '</span></code></pre></div>
-<p>Now, let’s see how we may interact with JSON.</p>
+<p>In the next section we’ll see how we may interact with JSON.</p>
 <div id="process-json-from-r" class="section level3">
 <h3>
 <span class="header-section-number">11.1.1</span> Process JSON from R<a class="anchor" aria-label="anchor" href="#process-json-from-r"><i class="fas fa-link"></i></a>
@@ -134,10 +129,10 @@ for instance JS.</li>
 #&gt;  $ name   : chr "David"
 #&gt;  $ color  : chr "purple"
 #&gt;  $ planet : chr "Mars"
-#&gt;  $ animals:'data.frame': 2 obs. of  3 variables:
-#&gt;   ..$ name: chr [1:2] "Euclide" "Sophocle"
-#&gt;   ..$ type: chr [1:2] "cat" "dog"
-#&gt;   ..$ age : int [1:2] 7 2</code></pre>
+#&gt;  $ animals:'data.frame': 1 obs. of  3 variables:
+#&gt;   ..$ name: chr "Euclide"
+#&gt;   ..$ type: chr "cat"
+#&gt;   ..$ age : int 7</code></pre>
 <p>By default, this gives us a list. Interestingly, the nested array is converted into a dataframe. If you don’t like
 this behavior, you may pass the <code>simplifyVector = FALSE</code> options, giving nested lists:</p>
 <div class="sourceCode" id="cb430"><pre class="downlit sourceCode r">
@@ -160,18 +155,7 @@ this behavior, you may pass the <code>simplifyVector = FALSE</code> options, giv
 #&gt; [1] "cat"
 #&gt; 
 #&gt; $animals[[1]]$age
-#&gt; [1] 7
-#&gt; 
-#&gt; 
-#&gt; $animals[[2]]
-#&gt; $animals[[2]]$name
-#&gt; [1] "Sophocle"
-#&gt; 
-#&gt; $animals[[2]]$type
-#&gt; [1] "dog"
-#&gt; 
-#&gt; $animals[[2]]$age
-#&gt; [1] 2</code></pre>
+#&gt; [1] 7</code></pre>
 <p>Inversely, assume we have a R <code><a href="https://rdrr.io/r/base/list.html">list()</a></code> that we want to transmit to JS. We apply <code>toJSON</code>:</p>
 <div class="sourceCode" id="cb432"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
@@ -180,30 +164,54 @@ this behavior, you may pass the <code>simplifyVector = FALSE</code> options, giv
   planet <span class="op">=</span> <span class="st">"Mars"</span>
 <span class="op">)</span>
 
-<span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span><span class="va">my_list</span>, auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>, pretty <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+<span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span><span class="va">my_list</span><span class="op">)</span></code></pre></div>
+<pre><code>#&gt; {"name":["David"],"color":["purple"],"planet":["Mars"]}</code></pre>
+<div class="sourceCode" id="cb434"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span><span class="va">my_list</span>, auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>, pretty <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
 <pre><code>#&gt; {
 #&gt;   "name": "David",
 #&gt;   "color": "purple",
 #&gt;   "planet": "Mars"
 #&gt; }</code></pre>
-<p>Note the <code>auto_unbox</code> and <code>pretty</code> options that allow for a better rendering.</p>
-<p>There are many more available options and we invit the reader to refer to the <a href="https://arxiv.org/abs/1403.2805">jsonlite</a>
+<p>Note the <code>auto_unbox</code> (unbox atomic vectors of length 1) and <code>pretty</code> (adds indentation) options that allow for a better rendering. There are many more available options and we invite the reader to refer to the <a href="https://arxiv.org/abs/1403.2805">jsonlite</a>
 documentation.</p>
+<p>Most of the time, you will pass more complex data structures like nested lists. For instance imagine you have to send a user profile information containing its unique id, name and organization, the latter being a nested list with fields like id, name, site, …:</p>
+<div class="sourceCode" id="cb436"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">my_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+  id <span class="op">=</span> <span class="st">"01522"</span>,
+  name <span class="op">=</span> <span class="st">"David"</span>,
+  organization <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+    id <span class="op">=</span> <span class="st">"AWER12"</span>,
+    name <span class="op">=</span> <span class="st">"RinteRface"</span>,
+    site <span class="op">=</span> <span class="st">"Switzerland"</span>
+  <span class="op">)</span>
+<span class="op">)</span>
+
+<span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span><span class="va">my_list</span>, auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>, pretty <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+<pre><code>#&gt; {
+#&gt;   "id": "01522",
+#&gt;   "name": "David",
+#&gt;   "organization": {
+#&gt;     "id": "AWER12",
+#&gt;     "name": "RinteRface",
+#&gt;     "site": "Switzerland"
+#&gt;   }
+#&gt; }</code></pre>
 </div>
 <div id="process-json-from-js" class="section level3">
 <h3>
 <span class="header-section-number">11.1.2</span> Process JSON from JS<a class="anchor" aria-label="anchor" href="#process-json-from-js"><i class="fas fa-link"></i></a>
 </h3>
-<p>Like R, JS has 2 methods to process JSON, that are provided the <code>JSON</code> class.
+<p>Like R, JS has two methods to process JSON, that are provided by the <code>JSON</code> class.
 We parse a JSON, that is converting it from character to JS object with:</p>
-<div class="sourceCode" id="cb434"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb434-1"><a href="shiny-intro.html#cb434-1"></a><span class="va">JSON</span>.<span class="at">parse</span>(my_json)</span></code></pre></div>
+<div class="sourceCode" id="cb438"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb438-1"><a href="shiny-intro.html#cb438-1"></a><span class="va">JSON</span>.<span class="at">parse</span>(my_json)</span></code></pre></div>
 <p>Conversely, we convert a JS object to JSON leveraging <code>JSON.stringify</code>:</p>
-<div class="sourceCode" id="cb435"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb435-1"><a href="shiny-intro.html#cb435-1"></a>myObject <span class="op">=</span> <span class="op">{</span></span>
-<span id="cb435-2"><a href="shiny-intro.html#cb435-2"></a>  <span class="st">"name"</span><span class="op">:</span> <span class="st">"David"</span><span class="op">,</span></span>
-<span id="cb435-3"><a href="shiny-intro.html#cb435-3"></a>  <span class="st">"color"</span><span class="op">:</span> <span class="st">"purple"</span><span class="op">,</span></span>
-<span id="cb435-4"><a href="shiny-intro.html#cb435-4"></a>  <span class="st">"planet"</span><span class="op">:</span> <span class="st">"Mars"</span><span class="op">,</span></span>
-<span id="cb435-5"><a href="shiny-intro.html#cb435-5"></a><span class="op">}</span></span>
-<span id="cb435-6"><a href="shiny-intro.html#cb435-6"></a><span class="va">JSON</span>.<span class="at">stringify</span>(my_object)</span></code></pre></div>
+<div class="sourceCode" id="cb439"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb439-1"><a href="shiny-intro.html#cb439-1"></a>myObject <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb439-2"><a href="shiny-intro.html#cb439-2"></a>  <span class="st">"name"</span><span class="op">:</span> <span class="st">"David"</span><span class="op">,</span></span>
+<span id="cb439-3"><a href="shiny-intro.html#cb439-3"></a>  <span class="st">"color"</span><span class="op">:</span> <span class="st">"purple"</span><span class="op">,</span></span>
+<span id="cb439-4"><a href="shiny-intro.html#cb439-4"></a>  <span class="st">"planet"</span><span class="op">:</span> <span class="st">"Mars"</span><span class="op">,</span></span>
+<span id="cb439-5"><a href="shiny-intro.html#cb439-5"></a><span class="op">}</span></span>
+<span id="cb439-6"><a href="shiny-intro.html#cb439-6"></a><span class="va">JSON</span>.<span class="at">stringify</span>(my_object)</span></code></pre></div>
 <p>Now that we have seen a convenient way to exchange data between two different languages, R and JS, we are going to
 explain how this communication is made possible. This involves web elements called <strong>websockets</strong>.</p>
 </div>
@@ -212,8 +220,8 @@ explain how this communication is made possible. This involves web elements call
 <h2>
 <span class="header-section-number">11.2</span> What is a websocket?<a class="anchor" aria-label="anchor" href="#what-is-a-websocket"><i class="fas fa-link"></i></a>
 </h2>
-<p>Before going further let’s define what is a <strong>websocket</strong>. It is an advanced technology allowing <strong>bidirectional communication</strong> between a (or multiple) client(s) and a server. For instance, a <a href="https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee">chat</a> system may be built on top of a websocket.<a class="footnote-ref" tabindex="0" data-toggle="popover" data-content='&lt;p&gt;By default, each time a client connects to the server, a new connection is opened, thereby preventing this client from capturing others connections messages, also called single cast. For a chat, we use a &lt;a href="https://medium.com/the-quarter-espresso/multicast-websocket-nodejs-ff1f400ba2f7"&gt;multi cast&lt;/a&gt; strategy, that is forwarding one client’s message to (all) other connected clients. &lt;code&gt;{httpuv}&lt;/code&gt; does not provide such a feature since this would not make sense and would be harmful in the context of shiny!&lt;/p&gt;'><sup>3</sup></a> The server is generally created using Node.js libraries like <code>ws</code> and the client with JavaScript. In the R Shiny context, the server part is created from <a href="https://github.com/rstudio/httpuv">httpuv</a> <span class="citation">(Cheng and Chang <a href="references.html#ref-R-httpuv" role="doc-biblioref">2021</a>)</span> and the client either with <code>{websocket}</code> <span class="citation">(Chang et al. <a href="references.html#ref-R-websocket" role="doc-biblioref">2020</a>)</span> (see below) or directly from JavaScript, as described later:</p>
-<div class="sourceCode" id="cb436"><pre class="downlit sourceCode r">
+<p>Before going further let’s define what is a <strong>websocket</strong>. It is an advanced technology allowing <strong>bidirectional communication</strong> between a (or multiple) client(s) and a server. For instance, a <a href="https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee">chat</a> system may be built on top of a websocket.<a class="footnote-ref" tabindex="0" data-toggle="popover" data-content='&lt;p&gt;By default, each time a client connects to the server, a new connection is opened, thereby preventing this client from capturing others connections messages, also called single cast. For a chat, we use a &lt;a href="https://medium.com/the-quarter-espresso/multicast-websocket-nodejs-ff1f400ba2f7"&gt;multi cast&lt;/a&gt; strategy, that is forwarding one client’s message to (all) other connected clients. &lt;code&gt;{httpuv}&lt;/code&gt; does not provide such a feature since this would not make sense and would be harmful in the context of shiny!&lt;/p&gt;'><sup>3</sup></a> The server is generally created using Node.js libraries like <a href="https://github.com/websockets/ws">ws</a> and the client with JavaScript. In the R Shiny context, the server part is created from <a href="https://github.com/rstudio/httpuv">httpuv</a> <span class="citation">(Cheng and Chang <a href="references.html#ref-R-httpuv" role="doc-biblioref">2021</a>)</span> and the client either with <code>{websocket}</code> <span class="citation">(Chang et al. <a href="references.html#ref-R-websocket" role="doc-biblioref">2020</a>)</span> (see below) or directly from JavaScript, as described later:</p>
+<div class="sourceCode" id="cb440"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/httpuv">httpuv</a></span><span class="op">)</span>
 <span class="co"># set the server</span>
 <span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer</a></span><span class="op">(</span><span class="st">"127.0.0.1"</span>, <span class="fl">8080</span>,
@@ -242,7 +250,7 @@ explain how this communication is made possible. This involves web elements call
 <strong>send</strong> sends a message from the server (to the client).</li>
 </ul>
 <p>On the client, we may use the <code>{websocket}</code> <code>WebSocket</code> class provided by the <a href="https://github.com/rstudio/websocket">websocket</a> package:</p>
-<div class="sourceCode" id="cb437"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb441"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">websocket</span><span class="op">)</span>
 <span class="co"># set the client</span>
 <span class="va">ws</span> <span class="op">&lt;-</span> <span class="fu">websocket</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/websocket/man/WebSocket.html">WebSocket</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="st">"ws://127.0.0.1:8080/"</span><span class="op">)</span>
@@ -271,7 +279,7 @@ FIGURE 11.1: Typical websocket flow between client and server.
 </div>
 <p>Interestingly, multiple clients can connect to the same server.
 You may give it a try with the <code>{OSUICode}</code> side package:</p>
-<div class="sourceCode" id="cb438"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb442"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 <span class="va">server</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/websocket.html">websocket_server</a></span><span class="op">(</span><span class="op">)</span>
 <span class="va">client_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/websocket.html">websocket_client</a></span><span class="op">(</span><span class="op">)</span>
@@ -308,7 +316,7 @@ FIGURE 11.2: HTTP upgrade to WS in a shiny app example.
 <span class="header-section-number">11.2.1</span> Example<a class="anchor" aria-label="anchor" href="#from-R-to-JS"><i class="fas fa-link"></i></a>
 </h3>
 <p>In practice, Shiny does not use <code>{websocket}</code>. As mentioned earlier, the client is directly built from JS. To better
-understand the whole process, we are going to design a simple web page containing an HTML range slider, pass its value from JS to R through the websocket, so that R can do a simple histogram. Moreover, R will also send a message to JS, thereby updating a gauge meter widget located in the HTML page.</p>
+understand the whole process, we are going to design a simple web page containing an HTML range slider, pass its value from JS to R through the websocket, so that R can produce a simple histogram. Moreover, R will also send a message to JS, thereby updating a gauge meter widget located in the HTML page.</p>
 <p>To proceed, we need few elements:</p>
 <ul>
 <li>The HTML page containing the slider, gauge and the JS logic to create the client websocket connection, process
@@ -319,40 +327,79 @@ the slider value and update the gauge value.</li>
 <h4>
 <span class="header-section-number">11.2.1.1</span> Create the app<a class="anchor" aria-label="anchor" href="#create-the-app"><i class="fas fa-link"></i></a>
 </h4>
-<p>As shown above, we use the <code>startServer</code> function, giving it a default port and host such that the url is <code>127.0.0.1:8080</code>. The most important elements
-is the app that consists in an HTTP response and a server websocket. The websocket call back may be defined
-as below:</p>
-<div class="sourceCode" id="cb440"><pre class="downlit sourceCode r">
+<p>To start the server, we leverage the <code><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer()</a></code> function that expects:</p>
+<ul>
+<li><p>A <strong>host</strong>, usually <code>127.0.0.1</code> if you work locally.</p></li>
+<li><p>A <strong>port</strong>, like <code>8080</code> (app may be accessed on <code>&lt;HOST&gt;:&lt;PORT&gt;</code> in your web browser).</p></li>
+<li>
+<p>A list of functions describing the <strong>app</strong>, particularly:</p>
+<ul>
+<li>
+<code>call</code> expects the HTTP response.</li>
+<li>
+<code>onWSOpen</code> expects the websocket server.</li>
+</ul>
+</li>
+</ul>
+<p>In the following, we gradually explain how to design each part.</p>
+<div id="handle-the-websocket-server" class="section level5">
+<h5>
+<span class="header-section-number">11.2.1.1.1</span> Handle the websocket server<a class="anchor" aria-label="anchor" href="#handle-the-websocket-server"><i class="fas fa-link"></i></a>
+</h5>
+<p>The most important elements is the app that consists in a server websocket (R) and an HTTP response (HTML, JS). The websocket call back may be defined as follows. We first raise a message upon client connection:</p>
+<div class="sourceCode" id="cb444"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ws_handler</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ws</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># The ws object is a WebSocket object</span>
   <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"New connection opened.\n"</span><span class="op">)</span>
-  <span class="co"># Capture client messages</span>
-  <span class="va">ws</span><span class="op">$</span><span class="fu">onMessage</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">binary</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
-    <span class="co"># create plot</span>
-    <span class="va">input_message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON</a></span><span class="op">(</span><span class="va">message</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">input_message</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Number of bins:"</span>, <span class="va">input_message</span><span class="op">$</span><span class="va">value</span>, <span class="st">"\n"</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="va">input_message</span><span class="op">$</span><span class="va">value</span><span class="op">)</span><span class="op">)</span>
-    
-    <span class="co"># update gauge widget</span>
-    <span class="va">output_message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span>
-      <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-        val <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">100</span>, <span class="fl">1</span><span class="op">)</span>,
-        message <span class="op">=</span> <span class="st">"Thanks client! I updated the plot..."</span>
-      <span class="op">)</span>,
-      pretty <span class="op">=</span> <span class="cn">TRUE</span>,
-      auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>
-    <span class="op">)</span>
-    <span class="va">ws</span><span class="op">$</span><span class="fu">send</span><span class="op">(</span><span class="va">output_message</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="va">output_message</span><span class="op">)</span>
-  <span class="op">}</span><span class="op">)</span>
-  <span class="va">ws</span><span class="op">$</span><span class="fu">onClose</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Server connection closed.\n"</span><span class="op">)</span>
-  <span class="op">}</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>The critical part is the <code>onMessage</code> call back which has to process the client message. As we’ll send a JSON (from the client), we leverage <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON()</a></code> to properly treat the message. It is printed for debugging purposes and the value is injected inside a <code><a href="https://rdrr.io/r/graphics/hist.html">hist(rnorm())</a></code> function. The second task is to send a message to JS in order to update the gauge value. See it like an <code>updateSlider()</code> function for instance. We utilize <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> to send a random value to JS as well as a polite message.</p>
+<p>The critical part is the <code>onMessage</code> call back which has to process the client message.</p>
+<div class="sourceCode" id="cb445"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb445-1"><a href="shiny-intro.html#cb445-1"></a>ws_handler &lt;-<span class="st"> </span><span class="cf">function</span>(ws) {</span>
+<span id="cb445-2"><a href="shiny-intro.html#cb445-2"></a>  <span class="co"># The ws object is a WebSocket object</span></span>
+<span id="cb445-3"><a href="shiny-intro.html#cb445-3"></a>  <span class="kw">cat</span>(<span class="st">"New connection opened.</span><span class="ch">\n</span><span class="st">"</span>)</span>
+<span id="cb445-4"><a href="shiny-intro.html#cb445-4"></a>  </span>
+<span id="cb445-5"><a href="shiny-intro.html#cb445-5"></a>  ws<span class="op">$</span><span class="kw">onMessage</span>(<span class="cf">function</span>(binary, message) {</span>
+<span id="cb445-6"><a href="shiny-intro.html#cb445-6"></a>    <span class="co"># server logic</span></span>
+<span id="cb445-7"><a href="shiny-intro.html#cb445-7"></a>  }</span>
+<span id="cb445-8"><a href="shiny-intro.html#cb445-8"></a><span class="er">}</span></span></code></pre></div>
+<p>As we’ll send a JSON (from the client), we leverage <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON()</a></code> to properly treat the message. It is printed for debugging purposes and the value is injected inside a <code><a href="https://rdrr.io/r/graphics/hist.html">hist(rnorm())</a></code> function.</p>
+<div class="sourceCode" id="cb446"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># capture client message</span>
+<span class="va">input_message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON</a></span><span class="op">(</span><span class="va">message</span><span class="op">)</span>
+
+<span class="co"># debug</span>
+<span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">input_message</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Number of bins:"</span>, <span class="va">input_message</span><span class="op">$</span><span class="va">value</span>, <span class="st">"\n"</span><span class="op">)</span>
+
+<span class="co"># create plot</span>
+<span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="va">input_message</span><span class="op">$</span><span class="va">value</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<p>The second task is to send a message to JS in order to update the gauge value. See it like an <code>updateSlider()</code> function for instance. We utilize <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> to send a random value to JS as well as a polite message:</p>
+<div class="sourceCode" id="cb447"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Send random value to JS</span>
+<span class="va">output_message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+    val <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html">sample</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">100</span>, <span class="fl">1</span><span class="op">)</span>,
+    message <span class="op">=</span> <span class="st">"Thanks client! I updated the plot..."</span>
+  <span class="op">)</span>,
+  pretty <span class="op">=</span> <span class="cn">TRUE</span>,
+  auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>
+<span class="op">)</span>
+<span class="va">ws</span><span class="op">$</span><span class="fu">send</span><span class="op">(</span><span class="va">output_message</span><span class="op">)</span>
+
+<span class="co"># debug</span>
+<span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="va">output_message</span><span class="op">)</span></code></pre></div>
+<p>We finally add the <code>onClose</code> callback to handle client disconnection:</p>
+<div class="sourceCode" id="cb448"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">ws</span><span class="op">$</span><span class="fu">onClose</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Server connection closed.\n"</span><span class="op">)</span>
+<span class="op">}</span><span class="op">)</span></code></pre></div>
+<p>The whole code may be found in appendix <a href="code-outputs.html#from-R-to-JS-appendix">A.3</a>.</p>
+</div>
+<div id="handle-the-http-response" class="section level5">
+<h5>
+<span class="header-section-number">11.2.1.1.2</span> Handle the HTTP response<a class="anchor" aria-label="anchor" href="#handle-the-http-response"><i class="fas fa-link"></i></a>
+</h5>
 <p>The HTTP response is returned by the <code>call</code> function and is typically defined as follows:</p>
-<div class="sourceCode" id="cb441"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb449"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">http_response</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
     status <span class="op">=</span> <span class="fl">200L</span>,
@@ -362,10 +409,14 @@ as below:</p>
     body <span class="op">=</span> <span class="st">"Hello world!"</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>It is a list composed of a status code, 200 being the OK HTTP <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">status</a>, some headers here indicating
-the content nature and the body which is what well be display when the client visits <code>127.0.0.1:8080</code>.
-The app code is:</p>
-<div class="sourceCode" id="cb442"><pre class="downlit sourceCode r">
+<p>It returns a list composed of:</p>
+<ul>
+<li>A <strong>status</strong> code, 200 being the OK HTTP <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">status</a>.</li>
+<li>Some <strong>headers</strong> here indicating the content nature.</li>
+<li>The <strong>body</strong> which is what will be display upon client request.</li>
+</ul>
+<p>To start the server, we leverage the <code><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer()</a></code> function, giving it a default port <code>8080</code> and host such that the url is <code>127.0.0.1:8080</code>:</p>
+<div class="sourceCode" id="cb450"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer</a></span><span class="op">(</span>
   <span class="st">"127.0.0.1"</span>,
   <span class="fl">8080</span>,
@@ -373,6 +424,7 @@ The app code is:</p>
 <span class="op">)</span></code></pre></div>
 <p>The next step is to replace the <code>http_reponse$body</code> by a real HTML page containing the client websocket handler,
 as well as the slider and gauge widgets.</p>
+</div>
 </div>
 <div id="design-the-page-content" class="section level4">
 <h4>
@@ -387,110 +439,78 @@ that the <strong>host</strong> and <strong>port</strong> match the parameters pr
 <div class="importantblock">
 <p>Importantly, we must wait for all elements to be available in the DOM before starting any action. Therefore, we wrap the whole thing inside a <code>document.addEventListener("DOMContentLoaded", ...)</code>.</p>
 </div>
-<div class="sourceCode" id="cb443"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb443-1"><a href="shiny-intro.html#cb443-1"></a><span class="va">document</span>.<span class="at">addEventListener</span>(</span>
-<span id="cb443-2"><a href="shiny-intro.html#cb443-2"></a>  <span class="st">"DOMContentLoaded"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb443-3"><a href="shiny-intro.html#cb443-3"></a>    <span class="co">// Capture gauge widget</span></span>
-<span id="cb443-4"><a href="shiny-intro.html#cb443-4"></a>    <span class="kw">let</span> gauge <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"mygauge"</span>)<span class="op">;</span></span>
-<span id="cb443-5"><a href="shiny-intro.html#cb443-5"></a>    <span class="co">// Initialize client socket connection</span></span>
-<span id="cb443-6"><a href="shiny-intro.html#cb443-6"></a>    <span class="kw">let</span> mySocket <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(<span class="st">"ws://&lt;HOST&gt;:&lt;PORT&gt;"</span>)<span class="op">;</span></span>
-<span id="cb443-7"><a href="shiny-intro.html#cb443-7"></a>    <span class="va">mySocket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb443-8"><a href="shiny-intro.html#cb443-8"></a>      <span class="co">// do things</span></span>
-<span id="cb443-9"><a href="shiny-intro.html#cb443-9"></a>    <span class="op">};</span></span>
-<span id="cb443-10"><a href="shiny-intro.html#cb443-10"></a>    <span class="co">// Handle server message</span></span>
-<span id="cb443-11"><a href="shiny-intro.html#cb443-11"></a>    <span class="va">mySocket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb443-12"><a href="shiny-intro.html#cb443-12"></a>      <span class="kw">let</span> data <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">event</span>.<span class="at">data</span>)<span class="op">;</span></span>
-<span id="cb443-13"><a href="shiny-intro.html#cb443-13"></a>      <span class="va">gauge</span>.<span class="at">value</span> <span class="op">=</span> <span class="va">data</span>.<span class="at">val</span><span class="op">;</span></span>
-<span id="cb443-14"><a href="shiny-intro.html#cb443-14"></a>    <span class="op">};</span></span>
-<span id="cb443-15"><a href="shiny-intro.html#cb443-15"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb451"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb451-1"><a href="shiny-intro.html#cb451-1"></a><span class="va">document</span>.<span class="at">addEventListener</span>(</span>
+<span id="cb451-2"><a href="shiny-intro.html#cb451-2"></a>  <span class="st">"DOMContentLoaded"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
+<span id="cb451-3"><a href="shiny-intro.html#cb451-3"></a>    <span class="co">// Capture gauge widget</span></span>
+<span id="cb451-4"><a href="shiny-intro.html#cb451-4"></a>    <span class="kw">let</span> gauge <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"mygauge"</span>)<span class="op">;</span></span>
+<span id="cb451-5"><a href="shiny-intro.html#cb451-5"></a>    <span class="co">// Initialize client socket connection</span></span>
+<span id="cb451-6"><a href="shiny-intro.html#cb451-6"></a>    <span class="kw">let</span> mySocket <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(<span class="st">"ws://&lt;HOST&gt;:&lt;PORT&gt;"</span>)<span class="op">;</span></span>
+<span id="cb451-7"><a href="shiny-intro.html#cb451-7"></a>    <span class="va">mySocket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
+<span id="cb451-8"><a href="shiny-intro.html#cb451-8"></a>      <span class="co">// do things</span></span>
+<span id="cb451-9"><a href="shiny-intro.html#cb451-9"></a>    <span class="op">};</span></span>
+<span id="cb451-10"><a href="shiny-intro.html#cb451-10"></a>    <span class="co">// Handle server message</span></span>
+<span id="cb451-11"><a href="shiny-intro.html#cb451-11"></a>    <span class="va">mySocket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
+<span id="cb451-12"><a href="shiny-intro.html#cb451-12"></a>      <span class="kw">let</span> data <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">event</span>.<span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb451-13"><a href="shiny-intro.html#cb451-13"></a>      <span class="va">gauge</span>.<span class="at">value</span> <span class="op">=</span> <span class="va">data</span>.<span class="at">val</span><span class="op">;</span></span>
+<span id="cb451-14"><a href="shiny-intro.html#cb451-14"></a>    <span class="op">};</span></span>
+<span id="cb451-15"><a href="shiny-intro.html#cb451-15"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
 <p>We eventually insert it inside the <code>script</code> tag of our basic HTML boilerplate, which also contains the gauge
-skeleton. <code>min</code>, <code>max</code> and <code>value</code> set the range, while <code>low</code>, <code>high</code> and <code>optimum</code> are responsible for the color (red, yellow and green, respectively):</p>
-<div class="sourceCode" id="cb444"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb444-1"><a href="shiny-intro.html#cb444-1"></a><span class="dt">&lt;!DOCTYPE </span>HTML<span class="dt">&gt;</span></span>
-<span id="cb444-2"><a href="shiny-intro.html#cb444-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
-<span id="cb444-3"><a href="shiny-intro.html#cb444-3"></a>  <span class="kw">&lt;head&gt;</span></span>
-<span id="cb444-4"><a href="shiny-intro.html#cb444-4"></a>    <span class="kw">&lt;script</span><span class="ot"> language=</span><span class="st">"javascript"</span><span class="kw">&gt;</span></span>
-<span id="cb444-5"><a href="shiny-intro.html#cb444-5"></a>      <span class="va">document</span>.<span class="at">addEventListener</span>(</span>
-<span id="cb444-6"><a href="shiny-intro.html#cb444-6"></a>        <span class="st">"DOMContentLoaded"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb444-7"><a href="shiny-intro.html#cb444-7"></a>          <span class="co">// Capture gauge widget</span></span>
-<span id="cb444-8"><a href="shiny-intro.html#cb444-8"></a>          <span class="kw">let</span> gauge <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"mygauge"</span>)<span class="op">;</span></span>
-<span id="cb444-9"><a href="shiny-intro.html#cb444-9"></a>          <span class="co">// Initialize client socket connection</span></span>
-<span id="cb444-10"><a href="shiny-intro.html#cb444-10"></a>          <span class="kw">let</span> mySocket <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(<span class="st">"ws://&lt;HOST&gt;:&lt;PORT&gt;"</span>)<span class="op">;</span></span>
-<span id="cb444-11"><a href="shiny-intro.html#cb444-11"></a>          <span class="va">mySocket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb444-12"><a href="shiny-intro.html#cb444-12"></a>            <span class="co">// do things</span></span>
-<span id="cb444-13"><a href="shiny-intro.html#cb444-13"></a>          <span class="op">};</span></span>
-<span id="cb444-14"><a href="shiny-intro.html#cb444-14"></a>          <span class="co">// Handle server message</span></span>
-<span id="cb444-15"><a href="shiny-intro.html#cb444-15"></a>          <span class="va">mySocket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb444-16"><a href="shiny-intro.html#cb444-16"></a>            <span class="kw">let</span> data <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">event</span>.<span class="at">data</span>)<span class="op">;</span></span>
-<span id="cb444-17"><a href="shiny-intro.html#cb444-17"></a>            <span class="va">gauge</span>.<span class="at">value</span> <span class="op">=</span> <span class="va">data</span>.<span class="at">val</span><span class="op">;</span></span>
-<span id="cb444-18"><a href="shiny-intro.html#cb444-18"></a>          <span class="op">};</span></span>
-<span id="cb444-19"><a href="shiny-intro.html#cb444-19"></a>      <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb444-20"><a href="shiny-intro.html#cb444-20"></a>    <span class="kw">&lt;/script&gt;</span></span>
-<span id="cb444-21"><a href="shiny-intro.html#cb444-21"></a>    <span class="kw">&lt;title&gt;</span>Websocket Example<span class="kw">&lt;/title&gt;</span></span>
-<span id="cb444-22"><a href="shiny-intro.html#cb444-22"></a>  <span class="kw">&lt;/head&gt;</span></span>
-<span id="cb444-23"><a href="shiny-intro.html#cb444-23"></a>  <span class="kw">&lt;body&gt;</span></span>
-<span id="cb444-24"><a href="shiny-intro.html#cb444-24"></a>    <span class="kw">&lt;label</span><span class="ot"> for=</span><span class="st">"mygauge"</span><span class="kw">&gt;</span>Gauge:<span class="kw">&lt;/label&gt;</span></span>
-<span id="cb444-25"><a href="shiny-intro.html#cb444-25"></a>    <span class="kw">&lt;meter</span><span class="ot"> id=</span><span class="st">"mygauge"</span><span class="ot"> min=</span><span class="st">"0"</span><span class="ot"> max=</span><span class="st">"100"</span><span class="ot"> low=</span><span class="st">"33"</span><span class="ot"> high=</span><span class="st">"66"</span> </span>
-<span id="cb444-26"><a href="shiny-intro.html#cb444-26"></a><span class="ot">    optimum=</span><span class="st">"80"</span><span class="ot"> value=</span><span class="st">"50"</span><span class="kw">&gt;&lt;/meter&gt;</span></span>
-<span id="cb444-27"><a href="shiny-intro.html#cb444-27"></a>  <span class="kw">&lt;/body&gt;</span></span>
-<span id="cb444-28"><a href="shiny-intro.html#cb444-28"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
+skeleton, borrowed from the MDN <a href="https://developer.mozilla.org/fr/docs/Web/HTML/Element/Meter">resources</a>. <code>min</code>, <code>max</code> and <code>value</code> set the range, while <code>low</code>, <code>high</code> and <code>optimum</code> are responsible for the color (red, yellow and green, respectively):</p>
+<div class="sourceCode" id="cb452"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb452-1"><a href="shiny-intro.html#cb452-1"></a><span class="dt">&lt;!DOCTYPE </span>HTML<span class="dt">&gt;</span></span>
+<span id="cb452-2"><a href="shiny-intro.html#cb452-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
+<span id="cb452-3"><a href="shiny-intro.html#cb452-3"></a>  <span class="kw">&lt;head&gt;</span></span>
+<span id="cb452-4"><a href="shiny-intro.html#cb452-4"></a>    <span class="kw">&lt;script</span><span class="ot"> language=</span><span class="st">"javascript"</span><span class="kw">&gt;</span></span>
+<span id="cb452-5"><a href="shiny-intro.html#cb452-5"></a>      <span class="co">// ADD EVENT LISTENER HERE</span></span>
+<span id="cb452-6"><a href="shiny-intro.html#cb452-6"></a>    <span class="kw">&lt;/script&gt;</span></span>
+<span id="cb452-7"><a href="shiny-intro.html#cb452-7"></a>    <span class="kw">&lt;title&gt;</span>Websocket Example<span class="kw">&lt;/title&gt;</span></span>
+<span id="cb452-8"><a href="shiny-intro.html#cb452-8"></a>  <span class="kw">&lt;/head&gt;</span></span>
+<span id="cb452-9"><a href="shiny-intro.html#cb452-9"></a>  <span class="kw">&lt;body&gt;</span></span>
+<span id="cb452-10"><a href="shiny-intro.html#cb452-10"></a>    <span class="kw">&lt;label</span><span class="ot"> for=</span><span class="st">"mygauge"</span><span class="kw">&gt;</span>Gauge:<span class="kw">&lt;/label&gt;</span></span>
+<span id="cb452-11"><a href="shiny-intro.html#cb452-11"></a>    <span class="kw">&lt;meter</span><span class="ot"> id=</span><span class="st">"mygauge"</span><span class="ot"> min=</span><span class="st">"0"</span><span class="ot"> max=</span><span class="st">"100"</span><span class="ot"> low=</span><span class="st">"33"</span><span class="ot"> high=</span><span class="st">"66"</span> </span>
+<span id="cb452-12"><a href="shiny-intro.html#cb452-12"></a><span class="ot">    optimum=</span><span class="st">"80"</span><span class="ot"> value=</span><span class="st">"50"</span><span class="kw">&gt;&lt;/meter&gt;</span></span>
+<span id="cb452-13"><a href="shiny-intro.html#cb452-13"></a>  <span class="kw">&lt;/body&gt;</span></span>
+<span id="cb452-14"><a href="shiny-intro.html#cb452-14"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
 <p>Once done, we have to take care of the range slider whose code is taken from the MDN <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input/range">resources</a>:</p>
-<div class="sourceCode" id="cb445"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb445-1"><a href="shiny-intro.html#cb445-1"></a><span class="kw">&lt;div&gt;</span></span>
-<span id="cb445-2"><a href="shiny-intro.html#cb445-2"></a>  <span class="kw">&lt;input</span><span class="ot"> type=</span><span class="st">"range"</span><span class="ot"> id=</span><span class="st">"slider"</span><span class="ot"> name=</span><span class="st">"volume"</span> </span>
-<span id="cb445-3"><a href="shiny-intro.html#cb445-3"></a><span class="ot">  min=</span><span class="st">"0"</span><span class="ot"> max=</span><span class="st">"100"</span><span class="kw">&gt;</span></span>
-<span id="cb445-4"><a href="shiny-intro.html#cb445-4"></a>  <span class="kw">&lt;label</span><span class="ot"> for=</span><span class="st">"slider"</span><span class="ot"> id</span> <span class="ot">=</span><span class="st">"sliderLabel"</span><span class="kw">&gt;</span>Value:<span class="kw">&lt;/label&gt;</span></span>
-<span id="cb445-5"><a href="shiny-intro.html#cb445-5"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb453"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb453-1"><a href="shiny-intro.html#cb453-1"></a><span class="kw">&lt;div&gt;</span></span>
+<span id="cb453-2"><a href="shiny-intro.html#cb453-2"></a>  <span class="kw">&lt;input</span><span class="ot"> type=</span><span class="st">"range"</span><span class="ot"> id=</span><span class="st">"slider"</span><span class="ot"> name=</span><span class="st">"volume"</span> </span>
+<span id="cb453-3"><a href="shiny-intro.html#cb453-3"></a><span class="ot">  min=</span><span class="st">"0"</span><span class="ot"> max=</span><span class="st">"100"</span><span class="kw">&gt;</span></span>
+<span id="cb453-4"><a href="shiny-intro.html#cb453-4"></a>  <span class="kw">&lt;label</span><span class="ot"> for=</span><span class="st">"slider"</span><span class="ot"> id</span> <span class="ot">=</span><span class="st">"sliderLabel"</span><span class="kw">&gt;</span>Value:<span class="kw">&lt;/label&gt;</span></span>
+<span id="cb453-5"><a href="shiny-intro.html#cb453-5"></a><span class="kw">&lt;/div&gt;</span></span></code></pre></div>
 <p>It is a simple div containing an input tag as well as a label. The input tag has some attributes, notably the
 minimum and maximum value. The slider has to be inserted in the HTML boilerplate shown below:</p>
-<div class="sourceCode" id="cb446"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb446-1"><a href="shiny-intro.html#cb446-1"></a><span class="dt">&lt;!DOCTYPE </span>HTML<span class="dt">&gt;</span></span>
-<span id="cb446-2"><a href="shiny-intro.html#cb446-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
-<span id="cb446-3"><a href="shiny-intro.html#cb446-3"></a>  <span class="kw">&lt;head&gt;</span></span>
-<span id="cb446-4"><a href="shiny-intro.html#cb446-4"></a>    <span class="kw">&lt;script</span><span class="ot"> language=</span><span class="st">"javascript"</span><span class="kw">&gt;</span></span>
-<span id="cb446-5"><a href="shiny-intro.html#cb446-5"></a>      <span class="va">document</span>.<span class="at">addEventListener</span>(</span>
-<span id="cb446-6"><a href="shiny-intro.html#cb446-6"></a>        <span class="st">"DOMContentLoaded"</span><span class="op">,</span> <span class="kw">function</span>(event) <span class="op">{</span></span>
-<span id="cb446-7"><a href="shiny-intro.html#cb446-7"></a>          <span class="co">// Capture gauge widget</span></span>
-<span id="cb446-8"><a href="shiny-intro.html#cb446-8"></a>          <span class="kw">let</span> gauge <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"mygauge"</span>)<span class="op">;</span></span>
-<span id="cb446-9"><a href="shiny-intro.html#cb446-9"></a>          <span class="co">// Initialize client socket connection</span></span>
-<span id="cb446-10"><a href="shiny-intro.html#cb446-10"></a>          <span class="kw">let</span> mySocket <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(<span class="st">"ws://&lt;HOST&gt;:&lt;PORT&gt;"</span>)<span class="op">;</span></span>
-<span id="cb446-11"><a href="shiny-intro.html#cb446-11"></a>          <span class="va">mySocket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb446-12"><a href="shiny-intro.html#cb446-12"></a>            <span class="co">// do things</span></span>
-<span id="cb446-13"><a href="shiny-intro.html#cb446-13"></a>          <span class="op">};</span></span>
-<span id="cb446-14"><a href="shiny-intro.html#cb446-14"></a>          <span class="co">// Handle server message</span></span>
-<span id="cb446-15"><a href="shiny-intro.html#cb446-15"></a>          <span class="va">mySocket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span> (event) <span class="op">{</span></span>
-<span id="cb446-16"><a href="shiny-intro.html#cb446-16"></a>            <span class="kw">let</span> data <span class="op">=</span> <span class="va">JSON</span>.<span class="at">parse</span>(<span class="va">event</span>.<span class="at">data</span>)<span class="op">;</span></span>
-<span id="cb446-17"><a href="shiny-intro.html#cb446-17"></a>            <span class="va">gauge</span>.<span class="at">value</span> <span class="op">=</span> <span class="va">data</span>.<span class="at">val</span><span class="op">;</span></span>
-<span id="cb446-18"><a href="shiny-intro.html#cb446-18"></a>          <span class="op">};</span></span>
-<span id="cb446-19"><a href="shiny-intro.html#cb446-19"></a>      <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb446-20"><a href="shiny-intro.html#cb446-20"></a>    <span class="kw">&lt;/script&gt;</span></span>
-<span id="cb446-21"><a href="shiny-intro.html#cb446-21"></a>    <span class="kw">&lt;title&gt;</span>Websocket Example<span class="kw">&lt;/title&gt;</span></span>
-<span id="cb446-22"><a href="shiny-intro.html#cb446-22"></a>  <span class="kw">&lt;/head&gt;</span></span>
-<span id="cb446-23"><a href="shiny-intro.html#cb446-23"></a>  <span class="kw">&lt;body&gt;</span></span>
-<span id="cb446-24"><a href="shiny-intro.html#cb446-24"></a>    <span class="kw">&lt;div&gt;</span></span>
-<span id="cb446-25"><a href="shiny-intro.html#cb446-25"></a>      <span class="kw">&lt;input</span><span class="ot"> type=</span><span class="st">"range"</span><span class="ot"> id=</span><span class="st">"slider"</span><span class="ot"> name=</span><span class="st">"volume"</span><span class="ot"> min=</span><span class="st">"0"</span> </span>
-<span id="cb446-26"><a href="shiny-intro.html#cb446-26"></a><span class="ot">      max=</span><span class="st">"100"</span><span class="kw">&gt;</span></span>
-<span id="cb446-27"><a href="shiny-intro.html#cb446-27"></a>      <span class="kw">&lt;label</span><span class="ot"> for=</span><span class="st">"slider"</span><span class="ot"> id</span> <span class="ot">=</span><span class="st">"sliderLabel"</span><span class="kw">&gt;&lt;/label&gt;</span></span>
-<span id="cb446-28"><a href="shiny-intro.html#cb446-28"></a>    <span class="kw">&lt;/div&gt;</span></span>
-<span id="cb446-29"><a href="shiny-intro.html#cb446-29"></a>    <span class="kw">&lt;br/&gt;</span></span>
-<span id="cb446-30"><a href="shiny-intro.html#cb446-30"></a>    <span class="kw">&lt;label</span><span class="ot"> for=</span><span class="st">"mygauge"</span><span class="kw">&gt;</span>Gauge:<span class="kw">&lt;/label&gt;</span></span>
-<span id="cb446-31"><a href="shiny-intro.html#cb446-31"></a>    <span class="kw">&lt;meter</span><span class="ot"> id=</span><span class="st">"mygauge"</span><span class="ot"> min=</span><span class="st">"0"</span><span class="ot"> max=</span><span class="st">"100"</span><span class="ot"> low=</span><span class="st">"33"</span><span class="ot"> high=</span><span class="st">"66"</span> </span>
-<span id="cb446-32"><a href="shiny-intro.html#cb446-32"></a><span class="ot">    optimum=</span><span class="st">"80"</span><span class="ot"> value=</span><span class="st">"50"</span><span class="kw">&gt;&lt;/meter&gt;</span></span>
-<span id="cb446-33"><a href="shiny-intro.html#cb446-33"></a>  <span class="kw">&lt;/body&gt;</span></span>
-<span id="cb446-34"><a href="shiny-intro.html#cb446-34"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
-<p>The slider behavior is entirely controlled with JS. We recover its value with <code>document.getElementById</code> and
+<div class="sourceCode" id="cb454"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb454-1"><a href="shiny-intro.html#cb454-1"></a><span class="dt">&lt;!DOCTYPE </span>HTML<span class="dt">&gt;</span></span>
+<span id="cb454-2"><a href="shiny-intro.html#cb454-2"></a><span class="kw">&lt;html</span><span class="ot"> lang=</span><span class="st">"en"</span><span class="kw">&gt;</span></span>
+<span id="cb454-3"><a href="shiny-intro.html#cb454-3"></a>  <span class="kw">&lt;head&gt;</span></span>
+<span id="cb454-4"><a href="shiny-intro.html#cb454-4"></a>    <span class="kw">&lt;script</span><span class="ot"> language=</span><span class="st">"javascript"</span><span class="kw">&gt;</span></span>
+<span id="cb454-5"><a href="shiny-intro.html#cb454-5"></a>      <span class="co">// ADD EVENT LISTENER HERE</span></span>
+<span id="cb454-6"><a href="shiny-intro.html#cb454-6"></a>    <span class="kw">&lt;/script&gt;</span></span>
+<span id="cb454-7"><a href="shiny-intro.html#cb454-7"></a>    <span class="kw">&lt;title&gt;</span>Websocket Example<span class="kw">&lt;/title&gt;</span></span>
+<span id="cb454-8"><a href="shiny-intro.html#cb454-8"></a>  <span class="kw">&lt;/head&gt;</span></span>
+<span id="cb454-9"><a href="shiny-intro.html#cb454-9"></a>  <span class="kw">&lt;body&gt;</span></span>
+<span id="cb454-10"><a href="shiny-intro.html#cb454-10"></a>    <span class="co">&lt;!-- INSERT SLIDER HERE --&gt;</span></span>
+<span id="cb454-11"><a href="shiny-intro.html#cb454-11"></a>    <span class="kw">&lt;br/&gt;</span></span>
+<span id="cb454-12"><a href="shiny-intro.html#cb454-12"></a>    <span class="kw">&lt;label</span><span class="ot"> for=</span><span class="st">"mygauge"</span><span class="kw">&gt;</span>Gauge:<span class="kw">&lt;/label&gt;</span></span>
+<span id="cb454-13"><a href="shiny-intro.html#cb454-13"></a>    <span class="kw">&lt;meter</span><span class="ot"> id=</span><span class="st">"mygauge"</span><span class="ot"> min=</span><span class="st">"0"</span><span class="ot"> max=</span><span class="st">"100"</span><span class="ot"> low=</span><span class="st">"33"</span><span class="ot"> high=</span><span class="st">"66"</span> </span>
+<span id="cb454-14"><a href="shiny-intro.html#cb454-14"></a><span class="ot">    optimum=</span><span class="st">"80"</span><span class="ot"> value=</span><span class="st">"50"</span><span class="kw">&gt;&lt;/meter&gt;</span></span>
+<span id="cb454-15"><a href="shiny-intro.html#cb454-15"></a>  <span class="kw">&lt;/body&gt;</span></span>
+<span id="cb454-16"><a href="shiny-intro.html#cb454-16"></a><span class="kw">&lt;/html&gt;</span></span></code></pre></div>
+<p>The slider behavior is entirely controlled by JS. We recover its value with <code>document.getElementById</code> and
 add it to the label inner HTML so as to know the current value. We also add an event listener to update the slider value each time the range is updated, either by drag or by keyboard action with <code>oninput</code>. It is best practice to
 convert the slider value to a number with <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/parseInt"><code>parseInt</code></a>, as the returned value defaults to a string. Finally, we send the value through the websocket, converting it to JSON so that we may process it from R with <a href="https://arxiv.org/abs/1403.2805">jsonlite</a> (or any other relevant package):</p>
-<div class="sourceCode" id="cb447"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb447-1"><a href="shiny-intro.html#cb447-1"></a><span class="kw">let</span> sliderWidget <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"slider"</span>)<span class="op">;</span></span>
-<span id="cb447-2"><a href="shiny-intro.html#cb447-2"></a><span class="kw">let</span> label <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"sliderLabel"</span>)<span class="op">;</span></span>
-<span id="cb447-3"><a href="shiny-intro.html#cb447-3"></a><span class="va">label</span>.<span class="at">innerHTML</span> <span class="op">=</span> <span class="st">"Value:"</span> <span class="op">+</span> <span class="va">slider</span>.<span class="at">value</span><span class="op">;</span> <span class="co">// init</span></span>
-<span id="cb447-4"><a href="shiny-intro.html#cb447-4"></a><span class="co">// on change</span></span>
-<span id="cb447-5"><a href="shiny-intro.html#cb447-5"></a><span class="va">sliderWidget</span>.<span class="at">oninput</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb447-6"><a href="shiny-intro.html#cb447-6"></a>  <span class="kw">let</span> val <span class="op">=</span> <span class="at">parseInt</span>(<span class="kw">this</span>.<span class="at">value</span><span class="op">,</span> <span class="dv">10</span>)<span class="op">;</span></span>
-<span id="cb447-7"><a href="shiny-intro.html#cb447-7"></a>  <span class="va">mySocket</span>.<span class="at">send</span>(</span>
-<span id="cb447-8"><a href="shiny-intro.html#cb447-8"></a>    <span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
-<span id="cb447-9"><a href="shiny-intro.html#cb447-9"></a>      <span class="dt">value</span><span class="op">:</span> val<span class="op">,</span></span>
-<span id="cb447-10"><a href="shiny-intro.html#cb447-10"></a>      <span class="dt">message</span><span class="op">:</span> <span class="st">"New value for you server!"</span></span>
-<span id="cb447-11"><a href="shiny-intro.html#cb447-11"></a>    <span class="op">}</span>)</span>
-<span id="cb447-12"><a href="shiny-intro.html#cb447-12"></a>  )<span class="op">;</span></span>
-<span id="cb447-13"><a href="shiny-intro.html#cb447-13"></a>  <span class="va">label</span>.<span class="at">innerHTML</span> <span class="op">=</span> <span class="st">"Value:"</span> <span class="op">+</span> val<span class="op">;</span></span>
-<span id="cb447-14"><a href="shiny-intro.html#cb447-14"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb455"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb455-1"><a href="shiny-intro.html#cb455-1"></a><span class="kw">let</span> sliderWidget <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"slider"</span>)<span class="op">;</span></span>
+<span id="cb455-2"><a href="shiny-intro.html#cb455-2"></a><span class="kw">let</span> label <span class="op">=</span> <span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">"sliderLabel"</span>)<span class="op">;</span></span>
+<span id="cb455-3"><a href="shiny-intro.html#cb455-3"></a><span class="va">label</span>.<span class="at">innerHTML</span> <span class="op">=</span> <span class="st">"Value:"</span> <span class="op">+</span> <span class="va">slider</span>.<span class="at">value</span><span class="op">;</span> <span class="co">// init</span></span>
+<span id="cb455-4"><a href="shiny-intro.html#cb455-4"></a><span class="co">// on change</span></span>
+<span id="cb455-5"><a href="shiny-intro.html#cb455-5"></a><span class="va">sliderWidget</span>.<span class="at">oninput</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb455-6"><a href="shiny-intro.html#cb455-6"></a>  <span class="kw">let</span> val <span class="op">=</span> <span class="at">parseInt</span>(<span class="kw">this</span>.<span class="at">value</span><span class="op">,</span> <span class="dv">10</span>)<span class="op">;</span></span>
+<span id="cb455-7"><a href="shiny-intro.html#cb455-7"></a>  <span class="va">mySocket</span>.<span class="at">send</span>(</span>
+<span id="cb455-8"><a href="shiny-intro.html#cb455-8"></a>    <span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
+<span id="cb455-9"><a href="shiny-intro.html#cb455-9"></a>      <span class="dt">value</span><span class="op">:</span> val<span class="op">,</span></span>
+<span id="cb455-10"><a href="shiny-intro.html#cb455-10"></a>      <span class="dt">message</span><span class="op">:</span> <span class="st">"New value for you server!"</span></span>
+<span id="cb455-11"><a href="shiny-intro.html#cb455-11"></a>    <span class="op">}</span>)</span>
+<span id="cb455-12"><a href="shiny-intro.html#cb455-12"></a>  )<span class="op">;</span></span>
+<span id="cb455-13"><a href="shiny-intro.html#cb455-13"></a>  <span class="va">label</span>.<span class="at">innerHTML</span> <span class="op">=</span> <span class="st">"Value:"</span> <span class="op">+</span> val<span class="op">;</span></span>
+<span id="cb455-14"><a href="shiny-intro.html#cb455-14"></a><span class="op">};</span></span></code></pre></div>
 </div>
 </div>
 <div id="test-it" class="section level3">
@@ -515,7 +535,7 @@ FIGURE 11.3: Server client communication through websocket
 <span class="header-section-number">11.3</span> Clients concurrency<a class="anchor" aria-label="anchor" href="#clients-concurrency"><i class="fas fa-link"></i></a>
 </h2>
 <p>Not shown in the above sections, <code><a href="https://rdrr.io/pkg/OSUICode/man/httpuv_app.html">httpuv_app()</a></code> exposes a delay parameter that simulates a computationally intense task on the server:</p>
-<div class="sourceCode" id="cb448"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb456"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ws</span><span class="op">$</span><span class="fu">onMessage</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">binary</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON</a></span><span class="op">(</span><span class="va">message</span><span class="op">)</span>
   <span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">message</span><span class="op">)</span>
@@ -528,7 +548,7 @@ FIGURE 11.3: Server client communication through websocket
 <div class="importantblock">
 <p>Once done, don’t forget to close the server connection with <code>my_app$stop()</code>!</p>
 </div>
-<p>In practice, Shiny’s core is much more complex but hopefully, you should get a better understanding of the general idea!
+<p>In practice, Shiny’s core is much more complex but hopefully, you should get a better understanding of the general idea.
 The reader must understand that when Shiny inputs/outputs are modified on the client by an end user, there are a lot of exchanges between R and JS, through the websocket. In the following, we briefly describe how Shiny leverages this technology, on both server and client side.</p>
 </div>
 <div id="shiny-and-websockets" class="section level2">
@@ -542,69 +562,22 @@ The reader must understand that when Shiny inputs/outputs are modified on the cl
 </h3>
 <p>We won’t be able to go anywhere without giving some reminders about the Shiny <a href="https://shiny.rstudio.com/reference/shiny/1.6.0/session.html">session</a> object. Why do we say object? <strong>session</strong> is actually an instance of the <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R"><code>ShinySession</code></a> <strong>R6</strong> class.
 Importantly, the session is unique to a given user. It means that two different clients cannot share the same session. This is important since it contains all information about input, output and client data.</p>
-<p>Upon calling <code>ShinySession$new()</code>, the initialization method takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. The session object exposes two methods to communicate with from R with JavaScript:</p>
+<p>Upon calling <code>ShinySession$new()</code>, the initialization method takes one parameter, namely the websocket. As shown in the last section, the websocket allows bidirectional exchanges between R and JS. The session object exposes two methods to communicate with JavaScript from R:</p>
 <ul>
 <li>
-<strong>sendCustomMessage</strong> sends messages from R to JS. It calls the private <code>sendMessage</code> method which itself calls <code>write</code>. The message is sent only when the session is opened, through the websocket <code>private$websocket$send(json)</code>. If the <code>shiny.trace</code> <a href="https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html">option</a> is TRUE, a message showing the sent JSON is displayed, which is useful for debugging.</li>
+<strong>sendCustomMessage</strong> sends messages from R to JS. It calls the private <code>sendMessage</code> method which itself calls <code>write</code>. The message is sent only when the session is opened, through the websocket <code>private$websocket$send(json)</code>. If the <code>shiny.trace</code> <a href="https://shiny.rstudio.com/reference/shiny/0.14/shiny-options.html">option</a> is <code>TRUE</code>, a message showing the sent JSON is displayed, which is useful for debugging.</li>
 <li>
 <strong>sendInputMessage</strong> is used to update inputs from the server. The message is stored in a message queue and ultimately sent through the websocket <code>private$websocket$send(json)</code>.</li>
 </ul>
-<p>The below code is extracted from the <code>shiny.R</code> <a href="https://github.com/rstudio/shiny/blob/master/R/shiny.R">file</a>.</p>
-<div class="sourceCode" id="cb449"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">sendCustomMessage</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">type</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span>
-  <span class="va">data</span><span class="op">[[</span><span class="va">type</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">message</span>
-  <span class="va">private</span><span class="op">$</span><span class="fu">sendMessage</span><span class="op">(</span>custom <span class="op">=</span> <span class="va">data</span><span class="op">)</span>
-<span class="op">}</span>
-
-<span class="va">sendInputMessage</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">inputId</span>, message <span class="op">=</span> <span class="va">message</span><span class="op">)</span>
-  
-  <span class="co"># Add to input message queue</span>
-  <span class="va">len</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">private</span><span class="op">$</span><span class="va">inputMessageQueue</span><span class="op">)</span>
-  <span class="va">private</span><span class="op">$</span><span class="va">inputMessageQueue</span><span class="op">[[</span><span class="va">len</span> <span class="op">+</span> <span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">data</span>
-  <span class="co"># Needed so that Shiny knows to actually </span>
-  <span class="co"># flush the input message queue</span>
-  <span class="va">self</span><span class="op">$</span><span class="fu">requestFlush</span><span class="op">(</span><span class="op">)</span>
-<span class="op">}</span>
-
-
-<span class="va">sendMessage</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span>
-  <span class="co"># This function is a wrapper for $write</span>
-  <span class="va">msg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span>
-  <span class="kw">if</span> <span class="op">(</span><span class="fu">anyUnnamed</span><span class="op">(</span><span class="va">msg</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span><span class="st">"All arguments to sendMessage must be named."</span><span class="op">)</span>
-  <span class="op">}</span>
-  <span class="va">private</span><span class="op">$</span><span class="fu">write</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span><span class="va">msg</span><span class="op">)</span><span class="op">)</span>
-<span class="op">}</span>
-
-
-<span class="va">write</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">json</span><span class="op">)</span> <span class="op">{</span>
-  <span class="kw">if</span> <span class="op">(</span><span class="va">self</span><span class="op">$</span><span class="va">closed</span><span class="op">)</span><span class="op">{</span>
-    <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="op">)</span>
-  <span class="op">}</span>
-  <span class="va">traceOption</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html">getOption</a></span><span class="op">(</span><span class="st">'shiny.trace'</span>, <span class="cn">FALSE</span><span class="op">)</span>
-  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html">isTRUE</a></span><span class="op">(</span><span class="va">traceOption</span><span class="op">)</span> <span class="op">||</span> <span class="va">traceOption</span> <span class="op">==</span> <span class="st">"send"</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/message.html">message</a></span><span class="op">(</span>
-      <span class="st">'SEND '</span>,
-      <span class="fu"><a href="https://rdrr.io/r/base/grep.html">gsub</a></span><span class="op">(</span>
-        <span class="st">'(?m)base64,[a-zA-Z0-9+/=]+'</span>, 
-        <span class="st">'[base64 data]'</span>,
-        <span class="va">json</span>,
-        perl<span class="op">=</span><span class="cn">TRUE</span>
-      <span class="op">)</span>
-    <span class="op">)</span>
-  <span class="va">private</span><span class="op">$</span><span class="va">websocket</span><span class="op">$</span><span class="fu">send</span><span class="op">(</span><span class="va">json</span><span class="op">)</span>
-<span class="op">}</span>
-<span class="co"># ...</span></code></pre></div>
-<p>No worry if it is not clear at the moment. We will discuss <code>sendInputMessage</code> and <code>sendCustomMessage</code> in the following chapters, respectively <a href="shiny-input-system.html#shiny-input-system">12</a> and <a href="shiny-custom-handler.html#shiny-custom-handler">15</a>.</p>
+<p>Curious readers will look at the <code>shiny.R</code> <a href="https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/shiny.R#L1264">file</a>.</p>
+<p>We will discuss <code>sendInputMessage</code> and <code>sendCustomMessage</code> in the following chapters, respectively <a href="shiny-input-system.html#shiny-input-system">12</a> and <a href="shiny-custom-handler.html#shiny-custom-handler">15</a>.</p>
 </div>
 <div id="server-side" class="section level3">
 <h3>
 <span class="header-section-number">11.4.2</span> Server side<a class="anchor" aria-label="anchor" href="#server-side"><i class="fas fa-link"></i></a>
 </h3>
 <p>On the server, that is R, a websocket is initiated in the <a href="https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L534">startApp</a> function, leveraging the <a href="https://github.com/rstudio/httpuv">httpuv</a> package. Websocket handlers are <a href="https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L303">defined</a> by <code>shiny:::createAppHandlers</code>:</p>
-<div class="sourceCode" id="cb450"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb457"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ws</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">ws</span><span class="op">)</span> <span class="op">{</span>
   
   <span class="co"># ....; Extra code removed</span>
@@ -625,7 +598,7 @@ Importantly, the session is unique to a given user. It means that two different 
   <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Overall, handlers drive the server websocket behavior. When the Shiny session is initialized, a message is sent through the WS, providing the <code>sessionId</code>, <code>workerId</code>, and <code>user</code> to the client (see <code>Shiny.shinyapp.config</code> and section <a href="survival-kit-javascript.html#shiny-js-object">10.6.3</a>):</p>
-<div class="sourceCode" id="cb451"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb458"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">private</span><span class="op">$</span><span class="fu">sendMessage</span><span class="op">(</span>
   config <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
     workerId <span class="op">=</span> <span class="fu">workerId</span><span class="op">(</span><span class="op">)</span>,
@@ -634,7 +607,7 @@ Importantly, the session is unique to a given user. It means that two different 
   <span class="op">)</span>
 <span class="op">)</span></code></pre></div>
 <p>The <code>workerId</code> is not always used. In practice, it is relevant only in the context of solutions able to
-load balance clients across multiple workers, that is shinyapps.io, RStudio Connect, and Shiny server pro.</p>
+load balance clients across multiple workers, that is <a href="https://www.shinyapps.io/">shinyapps.io</a>, <a href="https://www.rstudio.com/products/connect/">RStudio Connect</a>, and <a href="https://docs.rstudio.com/other/ssp/">Shiny Server Pro</a>.</p>
 <p><code>ws$onMessage</code> describes what should happen when the server receives an message from the client.
 It applies the <code>messageHandler</code> function that, in short:</p>
 <ul>
@@ -666,50 +639,50 @@ addWSHandler = function(wsHandler, key, tail = FALSE) {
 <span class="header-section-number">11.4.3</span> Client side<a class="anchor" aria-label="anchor" href="#client-side"><i class="fas fa-link"></i></a>
 </h3>
 <p>On the JS side, the socket creation occurs in the <code>shinyapps.js</code> <a href="https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L58">file</a>:</p>
-<div class="sourceCode" id="cb452"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb452-1"><a href="shiny-intro.html#cb452-1"></a><span class="kw">var</span> ws <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(protocol <span class="op">+</span> <span class="st">'//'</span> <span class="op">+</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">host</span> <span class="op">+</span> defaultPath)<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb459"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb459-1"><a href="shiny-intro.html#cb459-1"></a><span class="kw">var</span> ws <span class="op">=</span> <span class="kw">new</span> <span class="at">WebSocket</span>(protocol <span class="op">+</span> <span class="st">'//'</span> <span class="op">+</span> <span class="va">window</span>.<span class="va">location</span>.<span class="at">host</span> <span class="op">+</span> defaultPath)<span class="op">;</span></span></code></pre></div>
 <p>through the <code>WebSocket</code> object. <code>protocol</code> is the chosen protocol, either <code>ws</code> or <code>wss</code> (if using <code>https</code>). <code>window.location.host</code> contains the host name and its <a href="https://developer.mozilla.org/fr/docs/Web/API/window/location">port</a>.
 Once the connection is opened, events are handled with the <code>onopen</code> event registry:</p>
-<div class="sourceCode" id="cb453"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb453-1"><a href="shiny-intro.html#cb453-1"></a><span class="va">socket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb453-2"><a href="shiny-intro.html#cb453-2"></a>  hasOpened <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
-<span id="cb453-3"><a href="shiny-intro.html#cb453-3"></a></span>
-<span id="cb453-4"><a href="shiny-intro.html#cb453-4"></a>  <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
-<span id="cb453-5"><a href="shiny-intro.html#cb453-5"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:connected'</span><span class="op">,</span></span>
-<span id="cb453-6"><a href="shiny-intro.html#cb453-6"></a>    <span class="dt">socket</span><span class="op">:</span> socket</span>
-<span id="cb453-7"><a href="shiny-intro.html#cb453-7"></a>  <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb453-8"><a href="shiny-intro.html#cb453-8"></a></span>
-<span id="cb453-9"><a href="shiny-intro.html#cb453-9"></a>  <span class="va">self</span>.<span class="at">onConnected</span>()<span class="op">;</span> <span class="co">// remove overlay</span></span>
-<span id="cb453-10"><a href="shiny-intro.html#cb453-10"></a></span>
-<span id="cb453-11"><a href="shiny-intro.html#cb453-11"></a>  <span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
-<span id="cb453-12"><a href="shiny-intro.html#cb453-12"></a>    <span class="dt">method</span><span class="op">:</span> <span class="st">'init'</span><span class="op">,</span></span>
-<span id="cb453-13"><a href="shiny-intro.html#cb453-13"></a>    <span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></span>
-<span id="cb453-14"><a href="shiny-intro.html#cb453-14"></a>  <span class="op">}</span>))<span class="op">;</span></span>
-<span id="cb453-15"><a href="shiny-intro.html#cb453-15"></a></span>
-<span id="cb453-16"><a href="shiny-intro.html#cb453-16"></a>  <span class="cf">while</span> (<span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">length</span>) <span class="op">{</span></span>
-<span id="cb453-17"><a href="shiny-intro.html#cb453-17"></a>    <span class="kw">var</span> msg <span class="op">=</span> <span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">shift</span>()<span class="op">;</span></span>
-<span id="cb453-18"><a href="shiny-intro.html#cb453-18"></a>    <span class="va">socket</span>.<span class="at">send</span>(msg)<span class="op">;</span></span>
-<span id="cb453-19"><a href="shiny-intro.html#cb453-19"></a>  <span class="op">}</span></span>
-<span id="cb453-20"><a href="shiny-intro.html#cb453-20"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb460"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb460-1"><a href="shiny-intro.html#cb460-1"></a><span class="va">socket</span>.<span class="at">onopen</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb460-2"><a href="shiny-intro.html#cb460-2"></a>  hasOpened <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb460-3"><a href="shiny-intro.html#cb460-3"></a></span>
+<span id="cb460-4"><a href="shiny-intro.html#cb460-4"></a>  <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
+<span id="cb460-5"><a href="shiny-intro.html#cb460-5"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:connected'</span><span class="op">,</span></span>
+<span id="cb460-6"><a href="shiny-intro.html#cb460-6"></a>    <span class="dt">socket</span><span class="op">:</span> socket</span>
+<span id="cb460-7"><a href="shiny-intro.html#cb460-7"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb460-8"><a href="shiny-intro.html#cb460-8"></a></span>
+<span id="cb460-9"><a href="shiny-intro.html#cb460-9"></a>  <span class="va">self</span>.<span class="at">onConnected</span>()<span class="op">;</span> <span class="co">// remove overlay</span></span>
+<span id="cb460-10"><a href="shiny-intro.html#cb460-10"></a></span>
+<span id="cb460-11"><a href="shiny-intro.html#cb460-11"></a>  <span class="va">socket</span>.<span class="at">send</span>(<span class="va">JSON</span>.<span class="at">stringify</span>(<span class="op">{</span></span>
+<span id="cb460-12"><a href="shiny-intro.html#cb460-12"></a>    <span class="dt">method</span><span class="op">:</span> <span class="st">'init'</span><span class="op">,</span></span>
+<span id="cb460-13"><a href="shiny-intro.html#cb460-13"></a>    <span class="dt">data</span><span class="op">:</span> <span class="va">self</span>.<span class="at">$initialInput</span></span>
+<span id="cb460-14"><a href="shiny-intro.html#cb460-14"></a>  <span class="op">}</span>))<span class="op">;</span></span>
+<span id="cb460-15"><a href="shiny-intro.html#cb460-15"></a></span>
+<span id="cb460-16"><a href="shiny-intro.html#cb460-16"></a>  <span class="cf">while</span> (<span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">length</span>) <span class="op">{</span></span>
+<span id="cb460-17"><a href="shiny-intro.html#cb460-17"></a>    <span class="kw">var</span> msg <span class="op">=</span> <span class="va">self</span>.<span class="va">$pendingMessages</span>.<span class="at">shift</span>()<span class="op">;</span></span>
+<span id="cb460-18"><a href="shiny-intro.html#cb460-18"></a>    <span class="va">socket</span>.<span class="at">send</span>(msg)<span class="op">;</span></span>
+<span id="cb460-19"><a href="shiny-intro.html#cb460-19"></a>  <span class="op">}</span></span>
+<span id="cb460-20"><a href="shiny-intro.html#cb460-20"></a><span class="op">}</span></span></code></pre></div>
 <p>The <code>shiny:connected</code> event is triggered, any disconnected overlay (the <em>famous</em> grayed out screen) is then removed from the DOM. Initial input values are sent to the server via the <code>send</code> method. The <code>onmessage</code> registry aims at handling messages received from the server:</p>
-<div class="sourceCode" id="cb454"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb454-1"><a href="shiny-intro.html#cb454-1"></a><span class="va">socket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
-<span id="cb454-2"><a href="shiny-intro.html#cb454-2"></a>  <span class="va">self</span>.<span class="at">dispatchMessage</span>(<span class="va">e</span>.<span class="at">data</span>)<span class="op">;</span></span>
-<span id="cb454-3"><a href="shiny-intro.html#cb454-3"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb461"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb461-1"><a href="shiny-intro.html#cb461-1"></a><span class="va">socket</span>.<span class="at">onmessage</span> <span class="op">=</span> <span class="kw">function</span>(e) <span class="op">{</span></span>
+<span id="cb461-2"><a href="shiny-intro.html#cb461-2"></a>  <span class="va">self</span>.<span class="at">dispatchMessage</span>(<span class="va">e</span>.<span class="at">data</span>)<span class="op">;</span></span>
+<span id="cb461-3"><a href="shiny-intro.html#cb461-3"></a><span class="op">};</span></span></code></pre></div>
 <p>It subsequently invokes the <code>dispatchMessage</code> method that sends message to all handlers, triggering the <code>shiny:message</code> event. Shiny has internal and custom provided handlers (read user-defined) stored in separate arrays. Each time, a message type matches a given handler, it is treated. For instance, there is a dedicated internal handler for input messages, that bridges the gap between a given input and the corresponding input binding. This handler eventually triggers the <code>inputBinding.receiveMessage</code> method so that the input value is updated on the client. We discuss this in detail in the following section <a href="shiny-input-lifecycle.html#update-input-lifecycle">13.2</a>.</p>
 <p>Finally the <code>onclose</code> method is called when the websocket connection is closed.</p>
-<div class="sourceCode" id="cb455"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb455-1"><a href="shiny-intro.html#cb455-1"></a><span class="va">socket</span>.<span class="at">onclose</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
-<span id="cb455-2"><a href="shiny-intro.html#cb455-2"></a>  <span class="co">// These things are needed only if we've successfully opened the</span></span>
-<span id="cb455-3"><a href="shiny-intro.html#cb455-3"></a>  <span class="co">// websocket.</span></span>
-<span id="cb455-4"><a href="shiny-intro.html#cb455-4"></a>  <span class="cf">if</span> (hasOpened) <span class="op">{</span></span>
-<span id="cb455-5"><a href="shiny-intro.html#cb455-5"></a>    <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
-<span id="cb455-6"><a href="shiny-intro.html#cb455-6"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:disconnected'</span><span class="op">,</span></span>
-<span id="cb455-7"><a href="shiny-intro.html#cb455-7"></a>      <span class="dt">socket</span><span class="op">:</span> socket</span>
-<span id="cb455-8"><a href="shiny-intro.html#cb455-8"></a>    <span class="op">}</span>)<span class="op">;</span></span>
-<span id="cb455-9"><a href="shiny-intro.html#cb455-9"></a></span>
-<span id="cb455-10"><a href="shiny-intro.html#cb455-10"></a>    <span class="va">self</span>.<span class="at">$notifyDisconnected</span>()<span class="op">;</span></span>
-<span id="cb455-11"><a href="shiny-intro.html#cb455-11"></a>  <span class="op">}</span></span>
-<span id="cb455-12"><a href="shiny-intro.html#cb455-12"></a></span>
-<span id="cb455-13"><a href="shiny-intro.html#cb455-13"></a>  <span class="va">self</span>.<span class="at">onDisconnected</span>()<span class="op">;</span> <span class="co">// Must be run before self.$removeSocket()</span></span>
-<span id="cb455-14"><a href="shiny-intro.html#cb455-14"></a>  <span class="va">self</span>.<span class="at">$removeSocket</span>()<span class="op">;</span></span>
-<span id="cb455-15"><a href="shiny-intro.html#cb455-15"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb462"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb462-1"><a href="shiny-intro.html#cb462-1"></a><span class="va">socket</span>.<span class="at">onclose</span> <span class="op">=</span> <span class="kw">function</span>() <span class="op">{</span></span>
+<span id="cb462-2"><a href="shiny-intro.html#cb462-2"></a>  <span class="co">// These things are needed only if we've successfully opened the</span></span>
+<span id="cb462-3"><a href="shiny-intro.html#cb462-3"></a>  <span class="co">// websocket.</span></span>
+<span id="cb462-4"><a href="shiny-intro.html#cb462-4"></a>  <span class="cf">if</span> (hasOpened) <span class="op">{</span></span>
+<span id="cb462-5"><a href="shiny-intro.html#cb462-5"></a>    <span class="at">$</span>(document).<span class="at">trigger</span>(<span class="op">{</span></span>
+<span id="cb462-6"><a href="shiny-intro.html#cb462-6"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">'shiny:disconnected'</span><span class="op">,</span></span>
+<span id="cb462-7"><a href="shiny-intro.html#cb462-7"></a>      <span class="dt">socket</span><span class="op">:</span> socket</span>
+<span id="cb462-8"><a href="shiny-intro.html#cb462-8"></a>    <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb462-9"><a href="shiny-intro.html#cb462-9"></a></span>
+<span id="cb462-10"><a href="shiny-intro.html#cb462-10"></a>    <span class="va">self</span>.<span class="at">$notifyDisconnected</span>()<span class="op">;</span></span>
+<span id="cb462-11"><a href="shiny-intro.html#cb462-11"></a>  <span class="op">}</span></span>
+<span id="cb462-12"><a href="shiny-intro.html#cb462-12"></a></span>
+<span id="cb462-13"><a href="shiny-intro.html#cb462-13"></a>  <span class="va">self</span>.<span class="at">onDisconnected</span>()<span class="op">;</span> <span class="co">// Must be run before self.$removeSocket()</span></span>
+<span id="cb462-14"><a href="shiny-intro.html#cb462-14"></a>  <span class="va">self</span>.<span class="at">$removeSocket</span>()<span class="op">;</span></span>
+<span id="cb462-15"><a href="shiny-intro.html#cb462-15"></a><span class="op">}</span></span></code></pre></div>
 <p>If the connection was opened, the <code>shiny:disconnected</code> event is triggered. Then, the disconnect overlay is added to the DOM (grayed out screen) and the socket is removed.</p>
 <p>Should any error occurs in the R code, the server sends the error through the websocket, which is captured by the client and displayed.</p>
 </div>
@@ -718,7 +691,7 @@ Once the connection is opened, events are handled with the <code>onopen</code> e
 <span class="header-section-number">11.4.4</span> Debug websocket with Shiny<a class="anchor" aria-label="anchor" href="#debug-websocket-with-shiny"><i class="fas fa-link"></i></a>
 </h3>
 <p>Let’s run the following app (see <a href="shiny-intro.html#fig:shiny-websocket">11.4</a>, left panel):</p>
-<div class="sourceCode" id="cb456"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb463"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.rstudio.com/">shiny</a></span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span>
   ui <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
@@ -746,43 +719,49 @@ Once the connection is opened, events are handled with the <code>onopen</code> e
 FIGURE 11.4: Shiny websocket
 </p>
 </div>
-<p>We see below that we can even bypass the UI element and update the input value directly via the websocket using <code>Shiny.shinyapp.$sendMsg</code> with the <code>update</code> method. This is captured on the server side which triggers the output recalculation. We’ll discuss more about this in the next section <a href="shiny-input-system.html#shiny-input-system">12</a>.</p>
-<div class="sourceCode" id="cb457"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">updateObsVal</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">value</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html">sprintf</a></span><span class="op">(</span>
-    <span class="st">"Shiny.shinyapp.$sendMsg(JSON.stringify({
+<!-- REMOVE AS PER BARRET SUGGESTION.  
+We see below that we can even bypass the UI element and update the input value directly via the websocket using `Shiny.shinyapp.$sendMsg` with the `update` method. This is captured on the server side which triggers the output recalculation. We'll discuss more about this in the next section \@ref(shiny-input-system).
+
+
+```r
+updateObsVal <- function(value) {
+  sprintf(
+    "Shiny.shinyapp.$sendMsg(JSON.stringify({
       method: 'update',
       data: {obs: %s}
-    }));"</span>,
-    <span class="va">value</span>
-  <span class="op">)</span>
-<span class="op">}</span>
+    }));",
+    value
+  )
+}
 
-<span class="co"># below we shunt the slider input by sending message</span>
-<span class="co"># directly through the websocket</span>
+# below we shunt the slider input by sending message
+# directly through the websocket
 
-<span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
-  <span class="va">tags</span><span class="op">$</span><span class="fu">button</span><span class="op">(</span>
-    <span class="st">"Update obs value"</span>,
-    onclick <span class="op">=</span> <span class="fu">updateObsVal</span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>
-  <span class="op">)</span>,
-  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput</a></span><span class="op">(</span>
-    <span class="st">"obs"</span>, 
-    <span class="st">"Number of observations:"</span>,
-    min <span class="op">=</span> <span class="fl">0</span>, 
-    max <span class="op">=</span> <span class="fl">1000</span>, 
-    value <span class="op">=</span> <span class="fl">500</span>
-  <span class="op">)</span>,
-  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/plotOutput.html">plotOutput</a></span><span class="op">(</span><span class="st">"distPlot"</span><span class="op">)</span>
-<span class="op">)</span>
+ui <- fluidPage(
+  tags$button(
+    "Update obs value",
+    onclick = updateObsVal(4)
+  ),
+  sliderInput(
+    "obs", 
+    "Number of observations:",
+    min = 0, 
+    max = 1000, 
+    value = 500
+  ),
+  plotOutput("distPlot")
+)
 
-<span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">output</span><span class="op">$</span><span class="va">distPlot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPlot.html">renderPlot</a></span><span class="op">(</span><span class="op">{</span>
-    <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">obs</span><span class="op">)</span><span class="op">)</span>
-  <span class="op">}</span><span class="op">)</span>
-<span class="op">}</span>
+server <- function(input, output, session) {
+  output$distPlot <- renderPlot({
+    hist(rnorm(input$obs))
+  })
+}
 
-<span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+shinyApp(ui, server)
+```
+
+-->
 </div>
 <div id="summary-2" class="section level3">
 <h3>
