@@ -393,3 +393,84 @@ $(function() {
   $.AdminLTE.boxWidget.animationSpeed = 10;
 });
 ```
+
+### Going further {#boxes-on-steroids-more-appendix}
+Final code from section \@ref(boxes-on-steroids) is given below.
+
+```js
+let boxBindingEnchanced = new Shiny.InputBinding();
+$.extend(boxBindingEnchanced, {
+  // Other methods from boxBinding.js: find, getValue, ...
+  //...
+  
+  // user defined binding: extract config script
+  _getConfigScript: function(el) {
+    return(
+      $(el)
+        .parent()
+        .find("script[data-for='" + el.id + "']")
+    )
+  },
+  // user defined binding: process config script
+  _processConfig: function(el) {
+    return(
+      JSON.parse(
+        this
+        ._getConfigScript(el)
+        .html()
+      )
+    )
+  },
+  // user defined binding: update box width
+  _updateWidth: function(el, o, n) {
+    // removes old class
+    $(el).parent().toggleClass("col-sm-" + o);
+    $(el).parent().addClass("col-sm-" + n); 
+    // trigger resize so that output resize
+    $(el).trigger('resize');
+  },
+  // Input binding default method 
+  setValue: function(el, value) {
+    let config = this._processConfig(el);
+    
+    // JS logic
+    if (value.action === "update") {
+      if (value.options.hasOwnProperty("width")) {
+        if (value.options.width !== config.width) {
+          this._updateWidth(
+            el, 
+            config.width, 
+            value.options.width
+          )
+          config.width = value.options.width;
+        }
+      }
+      // other items to update
+      
+      // replace the old JSON config by the new one 
+      // to update the input value 
+      this
+        ._getConfigScript(el)
+        .replaceWith(
+          '<script type="application/json" data-for="' + 
+          el.id + 
+          '">' + 
+          JSON.stringify(config) + 
+          '</script>'
+        );
+      
+    } else if (action === "toggle") {
+      $(el).toggleBox();
+    }
+    
+  }
+});
+
+Shiny.inputBindings.register(boxBindingEnchanced, 'box-input-enhanced');
+
+$(function() {
+  // overwrite box animation speed. 
+  // Putting 500 ms add unnecessary delay for Shiny.
+  $.AdminLTE.boxWidget.animationSpeed = 10;
+});
+```

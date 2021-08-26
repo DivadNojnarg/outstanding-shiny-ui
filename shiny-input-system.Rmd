@@ -40,7 +40,7 @@ In HTML, an input element is given by the `<input>` tag as well as several attri
   an input binding to target a class (and all associated elements) rather than an id which corresponds to one element by definition. It is also used by CSS to apply styles.
   - __value__ holds the input value.
 
-### Binding Shiny inputs
+### Binding Shiny inputs {#input-binding-steps}
 An __input binding__ allows Shiny to identify each __instance__ of a given input and what you may do with this input. For instance, a slider input must update whenever the range is dragged or when the left and right arrows of the keyboard are pressed. It relies on a class defined in the `input_binding.js` [file](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/input_binding.js). 
 
 Let's describe each method chronologically. For better convenience, the book side package contains step by step demonstrations which may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/inputs.R). Each example is called by the `customTextInputExample()`, which takes the input binding step as only parameter. For instance `customTextInputExample(1)` will invoke the first step, while `customTextInputExample(4)` will include all steps from 1 to 4.
@@ -596,11 +596,11 @@ By convention, we'll not use `inputId` but `id` for secondary inputs, which is t
 :::
 
 ### {shinydashboard} boxes on steroids {#boxes-on-steroids}
-You may know the `{shinydashboard}` `box` function. Boxes are containers with a title, body, footer, as well as optional elements. Those box may also be collapsed. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `id` parameter to the box function. You may inspect the code [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/box2.R). 
-As we may collapse and uncollapse the box, we create the `updateBox2()` function, which will toggle it. In this example, it does not send any specific message since we'll rely on internal AdminLTE JS methods to do the work.
+You may know the `{shinydashboard}` `box` function. Boxes are containers with a title, body, footer, as well as optional elements. Those box may also be collapsed. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `id` parameter to the box function. You may inspect the code [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/boxes.R). 
+As we may collapse and uncollapse the box, we create the `updateBox()` function, which will toggle it. In this example, it does not send any specific message since we'll rely on internal AdminLTE JS methods to do the work.
 
 ```{r}
-updateBox2 <- function(
+updateBox <- function(
   id, 
   session = getDefaultReactiveDomain()
 ) {
@@ -700,7 +700,7 @@ $(function() {
 });
 ```
 
-We don't need an extra listener for the `updateBox2()` function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener. The whole code may be found in appendix \@ref(boxes-on-steroids-appendix). 
+We don't need an extra listener for the `updateBox()` function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener. The whole code may be found in appendix \@ref(boxes-on-steroids-appendix). 
 
 Let's try our new toy in a simple app. The output is depicted on Figure \@ref(fig:toggle-shinydashboard-box).
 
@@ -727,16 +727,29 @@ knitr::include_graphics("images/survival-kit/update-shinydashboard-box-1.png")
 
 The whole piece of UI is re-rendered each time, while only the box class should be modified. As shown above, this does have substantial impact for a very complex app festooned with inputs/outputs, thereby altering the overall user experience.
 
-Let's provide some optimization and get rid of the `renderUI()`. We proceed in two steps. The first part consists in customizing the `box()` function to gather as many parameter as possible in a list of options. For instance, we choose to extract background, width and title. width and background are expected to be numeric and character, respectively, while title might be any HTML tag, justifying the use of `as.character()` (we can't use `toJSON()` on a shiny tag):
+Let's provide some optimization and get rid of the `renderUI()`. We proceed in two steps. The first part consists in customizing the `box()` function to gather as many parameters as possible in a list of options. For instance, we choose to extract `background`, `width` and `title`. 
+
+`width` and `background` are expected to be numeric and character, respectively, while `title` might be any HTML tag, a list of HTML tags, justifying the use of slightly more sofisticated code (we can't use `toJSON()` on a shiny tag ... not yet). So that we don't shoot ourselves in the foot, we create a specific object for the processed `title`, that is `processed_title`. A common mistake would be to reinject the processed title later in the HTML box tag, which would cause an error. It's purpose is solely to be part of the configuration script required by JS. 
 
 ```{r, eval=FALSE}
 box2 <- function(..., id = NULL, title = NULL, footer = NULL,
                  background = NULL, width = 6, height = NULL,
                  collapsible = FALSE, collapsed = FALSE) {
   
+  if (!is.null(title)) {
+    processed_title <- if (
+      inherits(title, "shiny.tag.list") ||
+      inherits(title, "shiny.tag")
+    ) {
+      as.character(title)
+    } else {
+      title
+    }
+  }
+  
   props <- dropNulls(
     list(
-      title = as.character(title),
+      title = processed_title,
       background = background,
       width = width
     )
@@ -746,8 +759,7 @@ box2 <- function(..., id = NULL, title = NULL, footer = NULL,
 }
 ```
 
-This properties list has to be treated on the JS side. Before, we must make it accessible within the `box2`
-HTML tag. We choose the following approach, where we convert our properties to a JSON with `toJSON()` and embed them in a script tag. Note the `data-for` attribute with the unique id parameter. This will guarantee the uniqueness of our configuration script:
+This properties list has to be treated on the JS side, the reason why we remove `NULL` elements with `dropNulls`, since we don't want to send empty arrays. We choose the following approach, where we convert our properties to a JSON with `toJSON()` and embed them in a script tag. Note the `data-for` attribute with the unique `id` parameter. This will guarantee the uniqueness of our configuration script:
 
 ```{r}
 box2 <- function(..., id = NULL, title = NULL, footer = NULL,
@@ -756,44 +768,43 @@ box2 <- function(..., id = NULL, title = NULL, footer = NULL,
   
   # ....; Extra code removed
   
-  boxTag <- shiny::tags$div(
-    class = if (!is.null(width)) paste0("col-sm-", width), 
-    shiny::tags$div(
-      id = id,
-      class = boxClass, 
-      headerTag, 
-      shiny::tags$div(
-        class = "box-body", 
-        style = style,
-        ...,
-        sidebar[c(1, 3)],
-      ), 
-      if (!is.null(footer)) shiny::tags$div(
-        class = if (isTRUE(footerPadding)) {
-          "box-footer"
-        } else {
-          "box-footer no-padding"
-        }, footer)
-    ),
-    
-    # this will make our props accessible from JS
-    shiny::tags$script(
-      type = "application/json",
-      `data-for` = id,
-      jsonlite::toJSON(
-        x = props,
-        auto_unbox = TRUE,
-        json_verbatim = TRUE
-      )
+  configTag <- tags$script(
+    type = "application/json",
+    `data-for` = id,
+    jsonlite::toJSON(
+      x = props,
+      auto_unbox = TRUE,
+      json_verbatim = TRUE
     )
   )
-  
-  boxTag
   
 }
 ```
 
-Then, we have to update the `updateBox2` such that it handles both toggle and update possibilities. `options` contains all updatable properties like background, title and width.
+To create the box tag, we leverage the `box()` function. The next step is to add it the configuration tag, which is achieved with the new `{htmltools}` `tagQuery()` API, studied in \@ref(htmltools-modern). We finally attach the not yet designed JS dependencies with `tagList()`.
+
+```{r, eval=FALSE}
+box2 <- function(..., id = NULL, title = NULL, footer = NULL,
+                 background = NULL, width = 6, height = NULL,
+                 collapsible = FALSE, collapsed = FALSE) {
+  
+  # ....; Extra code removed
+  
+  boxTag <- tagQuery(
+    box(
+      ..., id = id, title = title, footer = footer,
+      background = background, width = width, height = height,
+      collapsible = collapsible, collapsed = collapsed
+    )
+  )$
+    append(configTag)$
+    allTags()
+
+  tagList(box2Deps(), boxTag)
+}
+```
+
+Then, we have to update the `updateBox()` function such that it handles both toggle and update possibilities. `options` contains all updatable properties like `background`, `title` and `width`.
 We don't describe the toggle case since it is quite similar to the previous implementations. When the action is `update`, we enter the `if` statement and options must be processed. If the option element is a shiny tag or a list of shiny tags (`tagList()`), we convert it to character. The returned message is a vector containing the action as well as the option list: 
 
 ```{r, eval = FALSE}
@@ -814,33 +825,53 @@ updateBox2 <- function(
       }
       o
     })
-    message <- dropNulls(c(action = action, options = options))
+    message <- dropNulls(c(action = action, options = list(options)))
     session$sendInputMessage(id, message)
-  } else {
-    session$sendInputMessage(id, message = action)
+  } else if (message == "toggle") {
+    session$sendInputMessage(id, message = match.arg(action))
   }
 }
 ```
 
-On the JS side, we modify the `setValue` method to import our newly defined properties. The `boxTag` has two children, the box and the configuration script. `$(el)` refers to the box, therefore we have to look one level up to be able to use the `find` method (find always goes deeper in the DOM), namely `$(el).parent()`. From there, we only have to target the script tag `$(el).parent().find("script[data-for='" + el.id + "']")`. Once captured in a variable, we parse the corresponding element to convert it to an objects that we can manipulate: for instance `config.width` returns the initial width:
+On the JS side, we modify the `setValue` method to import our newly defined properties. The `boxTag` has two children, the box and the configuration script. `$(el)` refers to the box, therefore we have to look one level up to be able to use the `find` method (find always goes deeper in the DOM), namely `$(el).parent()`. From there, we only have to target the script tag `$(el).parent().find("script[data-for='" + el.id + "']")`. In practice, you may reuse this piece of code in multiple places, for instance in the `getValue` method. To avoid duplication, we create an internal function, `_getConfig`. Note the `_` prefix, which makes the difference between the default input binding methods (available for all bindings) and the user defined methods, local to a specific binding. This function just returns the config script:
 
 ```js
-setValue: function(el, value) {
-  let config = $(el)
-    .parent()
-    .find("script[data-for='" + el.id + "']");
-  config = JSON.parse(config.html());
+_getConfigScript: function(el) {
+  return(
+    $(el)
+      .parent()
+      .find("script[data-for='" + el.id + "']")
+  )
 }
 ```
 
-`value.options.width` will contain the new width value provided in the `updateBox2` message output. Good practice is to check whether `value.options.width` exists with `value.options.hasOwnProperty("width")`. If yes we ensure whether its value and `config.width` are different. We always choose `===` which compares the type and the value (`==` only compares the value such that `"1" == 1` is `true`):
+We also extract the `_processConfig` method that calls `_getConfigScript` and converts the script content to a JS object that we can manipulate. Notice the `this` keyword: it represents the input binding instance as explained above in \@ref(input-binding-steps).
+
+```js
+_processConfig: function(el) {
+  return(
+    JSON.parse(
+      this
+      ._getConfigScript(el)
+      .html()
+    )
+  )
+}
+```
+
+Then, we call `_processConfig` inside `setValue`:
 
 ```js
 setValue: function(el, value) {
-  let config = $(el)
-    .parent()
-    .find("script[data-for='" + el.id + "']");
-  config = JSON.parse(config.html());
+  let config = this._processConfig(el);
+}
+```
+
+From the above code, `config.width` returns the initial width, while `value.options.width` contains the new width value provided in the `updateBox2` message output. As a security, we don't want to change `config` if the action provided in `updateBox2` is not `update` (see if statement). Assuming `value.action === "update"`, we can continue to develop our JS logic. Good practice is to check whether `value.options.width` exists with `value.options.hasOwnProperty("width")`. If yes, we ensure whether its value and `config.width` are different. We always choose `===` which compares the type and the value (`==` only compares the value such that `"1" == 1` is `true`):
+
+```js
+setValue: function(el, value) {
+  let config = this._processConfig(el);
   
   if (value.action === "update") {
     if (value.options.hasOwnProperty("width")) {
@@ -875,9 +906,8 @@ We must trigger a `resize` event so that output correctly scale. The internal me
 ```js
 // replace the old JSON config by the 
 // new one to update the input value 
-$(el)
-  .parent()
-  .find("script[data-for='" + el.id + "']")
+this
+  ._getConfigScript(el)
   .replaceWith(
     '<script type="application/json" data-for="' + 
     el.id + 
@@ -887,50 +917,13 @@ $(el)
   );
 ```
 
-The whole JS code may be found below:
+The whole JS code may be found in appendix \@ref(boxes-on-steroids-more-appendix). 
 
-```js
-setValue: function(el, value) {
-  var config = $(el)
-    .parent()
-    .find("script[data-for='" + el.id + "']");
-  config = JSON.parse(config.html());
-  
-  // JS logic
-  if (value.action === "update") {
-    if (value.options.hasOwnProperty("width")) {
-      if (value.options.width !== config.width) {
-        this._updateWidth(
-          el, 
-          config.width, 
-          value.options.width
-        )
-        config.width = value.options.width;
-      }
-    }
-    // other items to update
-    
-    // replace the old JSON config by the new one 
-    // to update the input value 
-    $(el)
-      .parent()
-      .find("script[data-for='" + el.id + "']")
-      .replaceWith(
-        '<script type="application/json" data-for="' + 
-        el.id + 
-        '">' + 
-        JSON.stringify(config) + 
-        '</script>'
-      );
-    
-  } else {
-    // other tasks
-  }
-  
-}
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("input-system/box-on-steroids-2"), "r")
 ```
 
-If it represents a significant amount of work, it is also guarantees to lower the load on the server side, thereby offering a faster end-user experience. A working prototype has been implemented in `{shinydashboardPlus}` and `{bs4Dash}`. Below is the reworked version of the previously updated box without `renderUI`. When app starts, something is displayed, which is better for the end user experience. 
+If it represents a significant amount of work, it is also guarantees to lower the load on the server side, thereby offering a faster end-user experience. A full working prototype has been implemented in `{shinydashboardPlus}` and `{bs4Dash}` (including all box parameters). Below is the reworked version of the previously updated box without `renderUI`. When app starts, something is displayed, which is better for the end user experience. 
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("input-system/update-box-optimized", view_code = FALSE), "r")
