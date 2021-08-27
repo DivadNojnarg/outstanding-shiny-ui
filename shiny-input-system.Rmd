@@ -595,8 +595,47 @@ The Shiny input binding system is too convenient to be only used for __primary__
 By convention, we'll not use `inputId` but `id` for secondary inputs, which is the case in all the new versions of RinteRface packages like `{bs4Dash}`.
 :::
 
-### {shinydashboard} boxes on steroids {#boxes-on-steroids}
-You may know the `{shinydashboard}` `box` function. Boxes are containers with a title, body, footer, as well as optional elements. Those box may also be collapsed. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `id` parameter to the box function. You may inspect the code [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/boxes.R). 
+### Boxes on steroids {#boxes-on-steroids}
+You may know the `{shinydashboard}` `box` function. Boxes are containers with a title, body, footer, as well as optional elements. Those box may also be collapsed. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `id` parameter to the box function. Below is what we had to modify compared to the `shinydashboard::box()` function. 
+
+
+```{r, eval=FALSE}
+box <- function(.., id = NULL, title = NULL, footer = NULL,
+                 background = NULL, width = 6, height = NULL,
+                 collapsible = FALSE, collapsed = FALSE) {
+  
+  # ....; Extra code removed
+  
+  tagList(
+    boxDeps(), # required to attach the binding
+    div(
+      class = if (!is.null(width)) paste0("col-sm-", width),
+      div(
+        id = id, # required to target the unique box
+        class = boxClass, # required to target all boxes
+        # ....; Extra code removed (box header, body, footer)
+      )
+    )
+  )
+}
+```
+
+`boxDeps()` contains the JS dependencies to handle the box behavior. 
+
+```{r, eval=FALSE}
+boxDeps <- function() {
+  htmlDependency(
+    name = "boxBinding",
+    version = "1.0.0",
+    src = c(file = system.file(
+      "input-system/input-bindings", 
+      package = "OSUICode"
+    )),
+    script = "boxBinding.js"
+  )
+}
+```
+ 
 As we may collapse and uncollapse the box, we create the `updateBox()` function, which will toggle it. In this example, it does not send any specific message since we'll rely on internal AdminLTE JS methods to do the work.
 
 ```{r}
@@ -615,13 +654,12 @@ If you play with this [example](https://adminlte.io/themes/AdminLTE/index2.html)
 knitr::include_graphics("images/survival-kit/inspect-adminlte-box.png")
 ```
 
+This is time to design the JS dependency, that is `boxBinding.js`. Like all input bindings, it start by instantiating a new object with `Shiny.InputBinding()`. At the end of the code, we register the binding so that Shiny knows it exists.
+
 ```js
 let boxBinding = new Shiny.InputBinding();
 $.extend(boxBinding, {
   // Methods go here
-  unsubscribe: function(el) {
-    $(el).off('.boxBinding');
-  }
 });
 
 Shiny.inputBindings.register(boxBinding, 'box-input');
@@ -714,22 +752,23 @@ code_chunk(OSUICode::get_example("input-system/boxes-on-steroids", view_code = F
 
 The `{bs4Dash}` box function follows the same principle, with extra features showed [here](https://github.com/RinteRface/bs4Dash/blob/6fb8f8175e3672bbb65236d76285c6310197f10c/srcjs/bs4Dash-2.0.0/cards.js#L2). We leave the reader to explore the code as an exercise. 
 
-### Going further {#boxes-on-steroids-more}
-We may imagine leveraging the input binding system to update any box property and get rid of the classic `renderUI()` approach. Indeed, until now, there would be only one way to update a box from the server (Figure \@ref(fig:update-shinydashboard-box-1)). In the below code, we intentionally added a dummy task causing a five seconds delay in the card rendering. You'll notice that nothing happens, which is weird for the end user.  
+### Further optimize boxes {#boxes-on-steroids-more}
+We may imagine leveraging the input binding system to update any box property and get rid of the classic `renderUI()` approach. Indeed, until now, there would be only one way to update a box from the server. In the below code, we intentionally added a dummy task causing a five seconds delay in the card rendering. You'll notice that nothing happens for some time, which is weird for the end user and might let it think about a possible app crash (Figure \@ref(fig:update-shinydashboard-box), left side).
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("input-system/update-box-renderUI"), "r")
 ```
 
-```{r update-shinydashboard-box-1, echo=FALSE, fig.cap='{shinydashboard} box updated with shiny::renderUI', out.width='100%'}
+```{r update-shinydashboard-box, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap='Left: what the user sees when app starts. Right: what the users sees after five seconds.'}
 knitr::include_graphics("images/survival-kit/update-shinydashboard-box-1.png")
+knitr::include_graphics("images/survival-kit/update-shinydashboard-box-2.png")
 ```
 
 The whole piece of UI is re-rendered each time, while only the box class should be modified. As shown above, this does have substantial impact for a very complex app festooned with inputs/outputs, thereby altering the overall user experience.
 
-Let's provide some optimization and get rid of the `renderUI()`. We proceed in two steps. The first part consists in customizing the `box()` function to gather as many parameters as possible in a list of options. For instance, we choose to extract `background`, `width` and `title`. 
+Let's provide some optimization and get rid of the `renderUI()`. We proceed in two steps. The first part consists in customizing the previously designed `box()` function from \@ref(boxes-on-steroids) to gather as many parameters as possible in a list of options. For instance, we choose to extract `width` and `title`. 
 
-`width` and `background` are expected to be numeric and character, respectively, while `title` might be any HTML tag, a list of HTML tags, justifying the use of slightly more sofisticated code (we can't use `toJSON()` on a shiny tag ... not yet). So that we don't shoot ourselves in the foot, we create a specific object for the processed `title`, that is `processed_title`. A common mistake would be to reinject the processed title later in the HTML box tag, which would cause an error. It's purpose is solely to be part of the configuration script required by JS. 
+`width` is expected to be numeric, while `title` might be any HTML tag, a list of HTML tags, justifying the use of slightly more sophisticated code (we can't use `toJSON()` on a shiny tag ... not yet). So that we don't shoot ourselves in the foot, we create a specific object for the processed `title`, that is `processed_title`. Indeed, a common mistake would be to re-inject the processed title later in the HTML box tag, which would cause an error. It's purpose is solely to be part of the configuration script required by JS. 
 
 ```{r, eval=FALSE}
 box2 <- function(..., id = NULL, title = NULL, footer = NULL,
@@ -759,7 +798,7 @@ box2 <- function(..., id = NULL, title = NULL, footer = NULL,
 }
 ```
 
-This properties list has to be treated on the JS side, the reason why we remove `NULL` elements with `dropNulls`, since we don't want to send empty arrays. We choose the following approach, where we convert our properties to a JSON with `toJSON()` and embed them in a script tag. Note the `data-for` attribute with the unique `id` parameter. This will guarantee the uniqueness of our configuration script:
+This properties list has to be treated on the JS side, the reason why we remove `NULL` elements with `dropNulls`, since we don't want to send empty arrays. We choose the following approach, where we convert our properties to a JSON with `toJSON()` and embed them in a script tag. Note the `data-for` attribute pointing to the unique `id` parameter. This will guarantee the uniqueness of our configuration script.
 
 ```{r}
 box2 <- function(..., id = NULL, title = NULL, footer = NULL,
@@ -781,7 +820,7 @@ box2 <- function(..., id = NULL, title = NULL, footer = NULL,
 }
 ```
 
-To create the box tag, we leverage the `box()` function. The next step is to add it the configuration tag, which is achieved with the new `{htmltools}` `tagQuery()` API, studied in \@ref(htmltools-modern). We finally attach the not yet designed JS dependencies with `tagList()`.
+To create the box HTML tag, we leverage the `box()` function. The next step is to add it the configuration tag, which is achieved with the new `{htmltools}` `tagQuery()` API, extensively studied in \@ref(htmltools-modern). We finally attach the not yet designed JS dependencies with `tagList()`.
 
 ```{r, eval=FALSE}
 box2 <- function(..., id = NULL, title = NULL, footer = NULL,
@@ -804,8 +843,24 @@ box2 <- function(..., id = NULL, title = NULL, footer = NULL,
 }
 ```
 
-Then, we have to update the `updateBox()` function such that it handles both toggle and update possibilities. `options` contains all updatable properties like `background`, `title` and `width`.
-We don't describe the toggle case since it is quite similar to the previous implementations. When the action is `update`, we enter the `if` statement and options must be processed. If the option element is a shiny tag or a list of shiny tags (`tagList()`), we convert it to character. The returned message is a vector containing the action as well as the option list: 
+Like in \@ref(boxes-on-steroids), we define the new dependencies, namely `box2Deps()`, referencing the `boxBindingEnhance.js` script, which we are going to design in few minutes.
+
+```{r, eval=FALSE}
+box2Deps <- function() {
+  htmlDependency(
+    name = "boxBinding",
+    version = "1.0.0",
+    src = c(file = system.file(
+      "input-system/input-bindings", 
+      package = "OSUICode"
+    )),
+    script = "boxBindingEnhanced.js"
+  )
+}
+```
+
+Then, we have to modify the `updateBox()` function such that it handles both toggle and update possibilities. `options` contains all changeable properties like `title` and `width`.
+We don't describe the toggle case since it is quite similar to the previous implementations. When the action is `update`, we enter the `if` statement and options must be processed. If the option element is a shiny tag or a list of shiny tags (`tagList()`), we convert it to character with `as.character()`. The returned message is a vector containing the action as well as the option list: 
 
 ```{r, eval = FALSE}
 updateBox2 <- function(
@@ -833,7 +888,7 @@ updateBox2 <- function(
 }
 ```
 
-On the JS side, we modify the `setValue` method to import our newly defined properties. The `boxTag` has two children, the box and the configuration script. `$(el)` refers to the box, therefore we have to look one level up to be able to use the `find` method (find always goes deeper in the DOM), namely `$(el).parent()`. From there, we only have to target the script tag `$(el).parent().find("script[data-for='" + el.id + "']")`. In practice, you may reuse this piece of code in multiple places, for instance in the `getValue` method. To avoid duplication, we create an internal function, `_getConfig`. Note the `_` prefix, which makes the difference between the default input binding methods (available for all bindings) and the user defined methods, local to a specific binding. This function just returns the config script:
+Let's define the new JS binding required by `box2Deps()`. We start from the previously defined binding in `boxBindings.js` and modify the `setValue` method to import our newly defined properties. The `boxTag` has two children, the box and the configuration script. `$(el)` refers to the box, therefore we have to look one level up to be able to use the `find` method (find always goes deeper in the DOM), namely `$(el).parent()`. From there, we only have to target the script tag `$(el).parent().find("script[data-for='" + el.id + "']")`. In practice, you may reuse this piece of code in multiple places, for instance in the `getValue` method. To avoid duplication, we create an internal function, `_getConfig`. Note the `_` prefix, which makes the difference between the default input binding methods (available for all bindings) and the user defined methods, local to a specific binding. This function just returns the config script:
 
 ```js
 _getConfigScript: function(el) {
@@ -901,7 +956,7 @@ _updateWidth: function(el, o, n) {
 }
 ```
 
-We must trigger a `resize` event so that output correctly scale. The internal method is identified by an underscore since it is not an inherited `Shiny.InputBinding` method. We finally update the config value by the newly set value and repeat the process for any other property. Don't forget to update the config script attached to the card tag at the end of the update condition, otherwise the input value won't be modified:
+We must trigger a `resize` event so that output correctly scales. The internal method is identified by an underscore since it is not an inherited `Shiny.InputBinding` method. We finally update the config value by the newly set value and repeat the process for any other property. Don't forget to update the config script attached to the card tag at the end of the update condition, otherwise the input value won't be modified:
 
 ```js
 // replace the old JSON config by the 
@@ -917,17 +972,113 @@ this
   );
 ```
 
-The whole JS code may be found in appendix \@ref(boxes-on-steroids-more-appendix). 
+The whole JS code may be found in appendix \@ref(boxes-on-steroids-more-appendix). Below is the reworked version of the previously updated box without `renderUI()`. When app starts, the box is displayed as shown on Figure \@ref(fig:update-shinydashboard-box-optimized), which is better for the end user experience.
 
 ```{r, echo=FALSE, results='asis'}
-code_chunk(OSUICode::get_example("input-system/box-on-steroids-2"), "r")
+code_chunk(OSUICode::get_example("input-system/boxes-on-steroids-2"), "r")
 ```
 
-If it represents a significant amount of work, it is also guarantees to lower the load on the server side, thereby offering a faster end-user experience. A full working prototype has been implemented in `{shinydashboardPlus}` and `{bs4Dash}` (including all box parameters). Below is the reworked version of the previously updated box without `renderUI`. When app starts, something is displayed, which is better for the end user experience. 
-
-```{r, echo=FALSE, results='asis'}
-code_chunk(OSUICode::get_example("input-system/update-box-optimized", view_code = FALSE), "r")
+```{r update-shinydashboard-box-optimized, echo=FALSE, fig.show = "hold", out.width = "50%", fig.align = "default", fig.cap='Left: what the user sees when app starts. Right: what the users sees after five seconds.'}
+knitr::include_graphics("images/survival-kit/update-shinydashboard-box-optimized-1.png")
+knitr::include_graphics("images/survival-kit/update-shinydashboard-box-optimized-2.png")
 ```
+
+### Exercise
+In the above example, the title is also updated. In order to reproduce this behavior, you'll have to update the `boxBindingEnhanced.js` to include the corresponding JS logic. 
+
+1. Inside `boxBindingEnhanced.js`, right after the update `width` logic,
+add an `if` statement to check if `title` belongs to the update properties, sent through `updateBox2()`.
+Fill in the blank.
+
+```js
+if (value.options.hasOwnProperty(...)) {
+
+}
+```
+
+2. Add a nested `if` statement to check whether the new title is different of the old one (needless to update if
+both titles are the same).
+
+```js
+if (value.options.hasOwnProperty(...)) {
+  if (... !== ...) {
+  
+  }
+}
+```
+
+3. On the R side, the new title will be provided as below:
+
+```{r, eval=FALSE}
+updateBox2(
+  "mybox",
+  action = "update",
+  options = list(
+    title = tagList(
+      shinydashboardPlus::dashboardBadge("New", color = "red"),
+      "New title"
+    )
+  )
+)
+```
+
+However, a valid AdminLTE box title has the following HTML structure:
+
+```html
+<h3 class="box-title">
+  <!-- TITLE CONTENT -->
+</h3>
+```
+
+Modify the below code to wrap the provided title in a `h3` tag with the `box-title` class.
+
+```js
+if (value.options.hasOwnProperty(...)) {
+  if (... !== ...) {
+    let newTitle;
+    newTitle = `<h3 class="box-title">${...}</h3>`
+    newTitle = $.parseHTML(...);
+  }
+}
+```
+
+4. Locate the old title in the DOM and use replace it by the new one.
+
+```js
+if (value.options.hasOwnProperty(...)) {
+  if (... !== ...) {
+    let newTitle;
+    newTitle = `<h3 class="box-title">${...}</h3>`
+    newTitle = $.parseHTML(...);
+    
+    $(el)
+      .find(...)
+      .replaceWith($(...));
+  }
+}
+```
+
+5. Update the current config `title` value with the new one. 
+
+```js
+if (value.options.hasOwnProperty(...)) {
+  if (... !== ...) {
+    let newTitle;
+    newTitle = `<h3 class="box-title">${...}</h3>`
+    newTitle = $.parseHTML(...);
+    
+    $(el)
+      .find(...)
+      .replaceWith($(...));
+
+    config.title = ...;
+  }
+}
+```
+
+Answers are found in [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/a7a398c47a9f0ac5cd286da639514bbfcb4c0033/inst/input-system/input-bindings/boxBindingEnhanced.js#L53).
+
+If it represents a significant amount of work, it is also guarantees to lower the load on the server side, thereby offering a faster end-user experience. A full working prototype has been implemented in `{shinydashboardPlus}` and `{bs4Dash}` (including all box parameters). 
 
 ## Utilities to quickly define new inputs {#quick-inputs}
 
@@ -941,67 +1092,33 @@ exports.setInputValue = function(name, value, opts) {
 };
 ```
 
-We recommend using `Shiny.setInputValue` over `Shiny.onInputChange`, the first one being slightly misleading.
-Briefly, this function avoids the creation an input binding and is faster to code but there is a price to pay: losing the ability to easily update the new input through R. Indeed, without an input binding, there is no R side `updateInput` function! By default, `Shiny.setInputValue` is able to cache the last set value from that input, so that if is is identical, no value is being assigned. If this behavior does not meet your needs and you need to set the input even when the value did not change, be aware that you may specifify a __priority__ option like:
+We recommend using `Shiny.setInputValue` over `Shiny.onInputChange`, the latter being slightly misleading.
+Briefly, this function avoids the creation an input binding and is faster to code but there is a price to pay: losing the ability to easily update the new input through R. Indeed, without an input binding, there is no R side `updateInput` function! By default, `Shiny.setInputValue` is able to cache the last set value from that input, so that if is is identical, no value is being assigned. If this behavior does not meet your expectations and you need to set the input even when the value did not change, be aware that you may specifify a __priority__ option like:
 
 ```js
 Shiny.setInputValue("myinput", value, {priority: "event"});
 ```
 
 ### Examples
-`Shiny.setInputValue` becomes powerful when combined to the numerous Shiny JavaScript events listed [here](https://shiny.rstudio.com/articles/js-events.html). This is what
-we use in the [shinyMobile](https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html) package to store the current device information in a shiny input.
-Briefly, Framework7 (on top of which is built shinyMobile) has a method `Framework7.device`, which gives many [details](https://framework7.io/docs/device.html) related to the user device.
+`Shiny.setInputValue` becomes powerful when combined to the numerous Shiny JavaScript events listed [here](https://shiny.rstudio.com/articles/js-events.html). To get access to the `Shiny` JS object, we have to wait for the `shiny:connected` event. In the following we create a custom input that stores whether the user has MacOS. On the R side, we'll access it with `input$isMac`.
 
 ```js
 $(document).on('shiny:connected', function(event) {
-  Shiny.setInputValue('deviceInfo', Framework7.device);
+  Shiny.setInputValue(
+    'isMac', 
+    (navigator.appVersion.indexOf('Mac') != -1)
+  );
 });
 ```
 
 This allows to conditionally display elements and deeply customize the interface.
-In the example below, the card will not show on mobile devices. 
+In the following example, the card will show a different title if the user is browsing with MacOS. 
 
-```{r, eval= FALSE}
-library(shinyMobile)
-shinyApp(
-  ui = f7Page(
-    title = "My app",
-    f7SingleLayout(
-      navbar = f7Navbar(
-        title = "shinyMobile info",
-        hairline = FALSE,
-        shadow = TRUE
-      ),
-      # main content
-      uiOutput("card"),
-      verbatimTextOutput("info"),
-    )
-  ),
-  server = function(input, output, session) {
-    
-    output$info <- renderPrint(input$shinyInfo)
-
-    # generate a card only for desktop
-    output$card <- renderUI({
-      if (!isTRUE(input$deviceInfo$desktop)) {
-        f7Card(
-          "This is a simple card with plain text,
-          but cards can also contain their own header,
-          footer, list view, image, or any other element."
-        )
-      } else {
-        f7Toast(
-          "You are on desktop! The card will not display", 
-          position = "center",
-          session = session
-        )
-        NULL
-      }
-    })
-  }
-)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("input-system/set-input-value"), "r")
 ```
+
+This is what we leverage in the [shinyMobile](https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html) package to store the current device information in a shiny input. Briefly, Framework7 (on top of which is built shinyMobile) has a method `Framework7.device`, which gives many [details](https://framework7.io/docs/device.html) related to the user device.
 
 ## Custom data format {#custom-data-format}
 In some cases, the automatic Shiny R to JS data management may not meet our needs. 
@@ -1010,54 +1127,13 @@ We introduce __input handlers__, a tool to fine tune the deserialization of data
 ### The dirty way
 For instance, assume we create a date in JS with `new Date()` and store it in a shiny input with `Shiny.setInputValue`. On the R side, we will not obtain a date but a character, which is not convenient. This is where __input handlers__ are useful since they allow to manipulate data generated on the JS side before injecting them in R. Such handlers are created with __registerInputHandler__ that takes two parameters:
 
-  - __type__ allows to connect the handler to `Shiny.setInputValue`. Note that the id is followed by the handler type, for instance `Shiny.setInputValue('test:handler', ...)` is connected to `shiny::registerInputHandler('handler', ...)`. As recommended by the Shiny documentation, if the input handler is part of a package, it is best practice to name it like `packageName.widgetName`.
+  - __type__ allows to connect the handler to `Shiny.setInputValue`. Note that the id is followed by the __handler type__, for instance `Shiny.setInputValue('test:handler', ...)` is connected to `shiny::registerInputHandler('handler', ...)`. As recommended by the Shiny documentation, if the input handler is part of a package, it is best practice to name it like `packageName.handlerName`.
   - a __function__ to transform data, having data as main parameter.
   
-Below we directly include JS code directly in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result:
+Below we directly include JS code in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result thanks to the defined handler:
 
-```{r, eval=FALSE}
-registerInputHandler("OSUICode.textDate", function(data, ...) {
-  if (is.null(data)) {
-    NULL
-  } else {
-    res <- try(as.Date(unlist(data)), silent = TRUE)
-    if ("try-error" %in% class(res)) {
-      warning("Failed to parse dates!")
-      data
-    } else {
-      res
-    }
-  }
-}, force = TRUE)
-
-ui <- fluidPage(
-  tags$script(HTML(
-    "$(function(){
-      $(document).on('shiny:connected', function() {
-        var currentTime = new Date();
-        Shiny.setInputValue('time1', currentTime);
-        Shiny.setInputValue(
-          'time2:OSUICode.textDate', 
-          currentTime
-        );
-      });
-    });
-    "
-  )),
-  verbatimTextOutput("res1"),
-  verbatimTextOutput("res2")
-)
-
-server <- function(input, output, session) {
-  output$res1 <- renderPrint({
-    list(class(input$time1), input$time1)
-  })
-  output$res2 <- renderPrint({
-    list(class(input$time2), input$time2)
-  })
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("input-system/dummy-input-handler"), "r")
 ```
 
 ### The clean way: leverage `getType`
@@ -1123,8 +1199,8 @@ getType: function getType(el) {
 
 To use the shiny built-in handler we could return `"shiny.date"` instead. We then run:
 
-```{r, eval=FALSE}
-customTextInputHandlerExample(7)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("input-system/input-handler-1"), "r")
 ```
 
 which sets the value as text by default. After opening the HTML inspector and setting a break point in the `getType` method (Figure \@ref(fig:binding-getType-1)), we check that the data type is not defined. Therefore the input handler will not apply. 
@@ -1135,8 +1211,8 @@ knitr::include_graphics("images/survival-kit/binding-getType-1.png")
 
 For the second example, we give a date value to the function:
 
-```{r, eval=FALSE}
-customTextInputHandlerExample(7, Sys.Date())
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("input-system/input-handler-2"), "r")
 ```
 
 As illustrated Figure \@ref(fig:binding-getType-2), the date is properly processed. Moreover, if you type any other valid date in the text field like `2020-11-12`, it will be recognized as a date, while entering a text will return a character element. This is a way to obtain a slightly more clever text input widget.
@@ -1147,7 +1223,7 @@ knitr::include_graphics("images/survival-kit/binding-getType-2.png")
 
 Importantly, since the `data-type` is set at app startup by checking the class of the value, it will never change later. For instance, if you start the app with the text input value to be a simple text, setting it to a date through the app does not convert it into a date since `$(el).data("data-type")` always return `undefined`! Therefore, if you want to be able to use both text and dates, be sure to wisely set the initial value. 
 
-To finish, we could seamlessly make our text input even more clever, by handling numbers. Even though shiny has a `shiny.number` input [handler](https://github.com/rstudio/shiny/blob/master/R/server-input-handlers.R#L144), it simply makes sure that whenever the input is missing a value, NA is returned instead of "".
+To finish, we could seamlessly make our text input even more clever, by handling numbers. Even though shiny has a `shiny.number` input [handler](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/R/server-input-handlers.R#L144), it simply makes sure that whenever the input is missing a value, NA is returned instead of "".
 (Figure \@ref(fig:shiny-getType-number)).
 
 ```{r shiny-getType-number, echo=FALSE, fig.cap='shiny.number input handler ensures that an empty numericInput returns NA instead of ""', out.width='100%'}
@@ -1160,7 +1236,7 @@ What we want is an handler that recognizes the string `"1"` and convert it to a 
 as.numeric("test")
 ```
 
-Therefore, if we obtain `NA`, we return original data so that the input gives the correct type. Right after our previous handler, we can write:
+Therefore, if we obtain `NA`, we return original data so that the input gives the correct type. In the `zzz.R` script, right after our previous handler, we can write:
 
 ```{r, eval=FALSE}
 registerInputHandler(
@@ -1190,7 +1266,7 @@ getType: function getType(el) {
 }
 ```
 
-On the R side, don't forget to add an extra `else if` statement to the `customTextInput()` function:
+On the R side, don't forget to add an extra `else if` statement to the `customTextInput()` [function](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/1b626e97738fd627097b57e21359b603e03d33eb/R/inputs.R#L35):
 
 ```{r, eval=FALSE}
 type <- if (inherits(value, "Date")) {
@@ -1204,8 +1280,8 @@ type <- if (inherits(value, "Date")) {
 
 If we run:
 
-```{r, eval=FALSE}
-customTextInputHandlerExample(7, 1)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("input-system/input-handler-3"), "r")
 ```
 
 we obtain the desired behavior shown Figure \@ref(fig:binding-getType-3).
