@@ -41,33 +41,28 @@ In chapter \@ref(shiny-intro), we briefly described the `Shiny` JavaScript objec
 ```js
 var ShinyApp = function() {
   this.$socket = null;
-  
   // Cached input values
   this.$inputValues = {};
-  
   // Input values at initialization (and reconnect)
   this.$initialInput = {};
-  
   // Output bindings
   this.$bindings = {};
-  
   // Cached values/errors
   this.$values = {};
   this.$errors = {};
-  
   // Conditional bindings 
   // (show/hide element based on expression)
   this.$conditionals = {};
-  
   this.$pendingMessages = [];
   this.$activeRequests = {};
   this.$nextRequestId = 0;
-  
   this.$allowReconnect = false;
 };
 ```
 
 It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization):
+
+<!-- NOT deploy: not informative just for test -->
 
 ```{r, eval=FALSE}
 ui <- fluidPage(
@@ -152,28 +147,8 @@ function valueChangeCallback(binding, el, allowDeferred) {
 
 `valueChangeCallback` ultimately calls `inputs.setInput(id, value, opts)`. The latter involves a rather complex chain of [reactions](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/input_rate.js) (which is not described here). It is important to understand that the client does not send input values one by one, but by batch:
 
-```{r, eval=FALSE}
-library(shiny)
-
-ui <- fluidPage(
-  tags$script(
-    "$(document).on('shiny:message', function(event) {
-      console.log(event.message);
-    });"
-  ), 
-  actionButton("go", "update"),
-  textInput("test", "Test1"),  
-  textInput("test2", "Test2")
-)
-
-server <- function(input, output, session) {
-  observeEvent(input$go, ignoreInit = TRUE, {
-    updateTextInput(session, "test", value = "111")
-    updateTextInput(session, "test2", value = "222")
-  })
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("inputs-lifecycle/event-message"), "r")
 ```
 
 Overall, the result is stored in a queue, namely `pendingData` and sent to the server with `shinyapp.sendInput`:
