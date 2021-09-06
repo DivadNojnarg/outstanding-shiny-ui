@@ -54,60 +54,41 @@ First of all, let's compare the tabler HTML button to the Shiny action button.
 ```
 
 We convert it to R code. The button API contains more style and we leave the reader to add extra elements 
-as an exercise:
+as an exercise.
 
 ```{r}
 tabler_button <- function(inputId, label, status = NULL, 
                           icon = NULL, width = NULL, ...) {
-  
-  btn_cl <- paste0(
-    "btn action-button",
-    if (is.null(status)) {
-      " btn-primary"
-    } else {
-      paste0(" btn-", status)
-    }
-  )
-  
-  value <- restoreInput(id = inputId, default = NULL)
-  
-  # custom right margin
-  if (!is.null(icon)) icon$attribs$class <- paste0(
-    icon$attribs$class, " mr-1"
-  )
-  
-  tags$button(
-    id = inputId, 
-    style = if (!is.null(width)) {
-      paste0("width: ", validateCssUnit(width), ";")
-    }, 
-    type = "button", 
-    class = btn_cl, 
-    `data-val` = value, 
-    list(icon, label), ...
-  )
-}
+  # SEE BELOW
+  }
 ```
 
-In Tabler, the button __status__ is mandatory, which is the reason why it is a function parameter. Moreover, we add an horizontal right margin to the icon, if provided so that the label renders well (`mr-1`, where m stands for margin, r is the right direction and 1 is the margin value). We assume that by default, the button have a blue color, that is given by `btn-primary`:
+In Tabler, the button __status__ is mandatory, which is the reason why it is a function parameter. We assume that by default, the button have a blue color, that is given by `btn-primary`:
 
 ```{r, eval=FALSE}
-ui <- tabler_page(
-  tabler_body(
-    tabler_button(
-      "btn", 
-      HTML(paste("Value", textOutput("val"), sep = ":")), 
-      icon = icon("thumbs-up"), 
-      width = "25%"
-    )
-  )
+btn_cl <- paste0(
+  "btn action-button",
+  if (is.null(status)) {
+    " btn-primary"
+  } else {
+    paste0(" btn-", status)
+  }
 )
+```
 
-server <- function(input, output, session) {
-  output$val <- renderText(input$btn)
-}
+Moreover, we add an horizontal right margin to the icon, if provided so that the label renders well (`mr-1`, where m stands for margin, r is the right direction and 1 is the margin value). 
 
-shinyApp(ui, server)
+```{r, eval=FALSE}
+# custom right margin
+if (!is.null(icon)) icon$attribs$class <- paste0(
+  icon$attribs$class, " mr-1"
+)
+```
+
+The button tag is identical to that of Shiny, reason why we don't show it here. The whole code may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b040a24e576f5d190825be0433edac288bbfbc26/R/tabler.R#L622).
+
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("tabler/tabler-button"), "r")
 ```
 
 We easily check that clicking on the button increments the related input. Thus, one may see how easy it is to implement a Tabler input button, built on top of the Shiny action button. The output is shown in Figure \@ref(fig:tabler-button).
@@ -136,45 +117,75 @@ Notice that the tabler switch has the checkbox type, which is very similar to th
 checkboxInput("test", "Test", TRUE)
 ```
 
-Therefore, we should again be able to build on top of an existing input [binding](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding_checkbox.js). We create the `tabler_switch()` function:
+Therefore, we should again be able to build on top of an existing input [binding](https://github.com/rstudio/shiny/blob/master/srcjs/input_binding_checkbox.js). We create the `tabler_switch()` function.
 
 ```{r}
 tabler_switch <- function(inputId, label, value = FALSE, 
                           width = NULL) {
-  
-  value <- restoreInput(id = inputId, default = value)
-  input_tag <- tags$input(
-    id = inputId, 
-    type = "checkbox",
-    class = "form-check-input"
-  )
-  
-  if (!is.null(value) && value) {
-    input_tag <- input_tag %>% 
-      tagAppendAttributes(checked = "checked")
+  # SEE BELOW
   }
-  
-  input_wrapper <- tags$label(
-    class = "form-check form-switch", 
-    style = if (!is.null(width)) {
-      paste0("width: ", validateCssUnit(width), ";")
-    }
-  )
-  
-  input_wrapper %>% tagAppendChildren(
-    input_tag,
-    span(class = "form-check-label", label)
+```
+
+We start to recover any possible bookmarked value with `restoreInput()`:
+
+```{r, eval=FALSE}
+value <- restoreInput(id = inputId, default = value)
+```
+
+Then, in line with the above HTML structure, we design the input tag. If we want to reuse the `shiny::checkboxInput()` binding, we must not forget the `type = checkbox`:
+
+```js
+$.extend(checkboxInputBinding, {
+  find: function(scope) {
+    return $(scope).find('input[type="checkbox"]');
+  }
+  // other methods
+});
+```
+
+```{r, eval=FALSE}
+input_tag <- tags$input(
+  id = inputId, 
+  type = "checkbox",
+  class = "form-check-input"
+)
+```
+
+We conditionally add a `checked` attribute depending on the current `value` parameter:
+
+```{r, eval=FALSE}
+if (!is.null(value) && value) {
+  input_tag <- tagAppendAttributes(
+    input_tag, 
+    checked = "checked"
   )
 }
 ```
 
-Besides, we may also create an `update_tabler_switch()` function similar to the `updateCheckboxInput()`. We leverage `shiny:::dropNulls`, a function that removes all `NULL` elements from a list. If you remember, the `session$sendInputMessage` from R is received by the `receiveMessage` method on the JavaScript side:
+We proceed to the main wrapper creation that has is a `label` tag having the `form-check form-switch` class as well as an optional `width` parameter:
 
-```{r}
-dropNulls <- function (x) {
-  x[!vapply(x, is.null, FUN.VALUE = logical(1))]
-}
+```{r, eval=FALSE}
+input_wrapper <- tags$label(
+  class = "form-check form-switch", 
+  style = if (!is.null(width)) {
+    paste0("width: ", validateCssUnit(width), ";")
+  }
+)
+```
 
+We finally put everything together with `tagAppendChildren()`, the whole code being accessible [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b040a24e576f5d190825be0433edac288bbfbc26/R/tabler.R#L661):
+
+```{r, eval=FALSE}
+  tagAppendChildren(
+    input_wrapper,
+    input_tag,
+    span(class = "form-check-label", label)
+  )
+```
+
+Besides, we may also create an `update_tabler_switch()` function similar to the `updateCheckboxInput()`. We leverage `OSUICode::dropNulls()`, a function that removes all `NULL` elements from a list. If you remember, the `session$sendInputMessage` from R is received by the `receiveMessage` method on the JavaScript side:
+
+```{r, eval=FALSE}
 update_tabler_switch <- function (session, inputId, 
                                   label = NULL, 
                                   value = NULL) {
@@ -185,38 +196,8 @@ update_tabler_switch <- function (session, inputId,
 
 In the following example, the action button toggles the switch input value when clicked, as shown in Figure \@ref(fig:tabler-toggle).
 
-```{r, eval=FALSE}
-ui <- tabler_page(
-  tabler_body(
-    fluidRow(
-      tabler_button(
-        "update", 
-        "Go!", 
-        width = "25%", 
-        class = "mr-2"
-      ),
-      tabler_switch(
-        "toggle", 
-        "Switch", 
-        value = TRUE, 
-        width = "25%"
-      )
-    )
-  )
-)
-
-server <- function(input, output, session) {
-  observe(print(input$toggle))
-  observeEvent(input$update, {
-    update_tabler_switch(
-      session, 
-      "toggle", 
-      value = !input$toggle
-    )
-  })
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("tabler/tabler-switch"), "r")
 ```
 
 ```{r tabler-toggle, echo=FALSE, fig.cap='Tabler action button updating a toggle input', out.width='100%'}
@@ -272,7 +253,7 @@ initialize: function(el) {
 The role of `getValue` is to return the currently selected tab. 
 As a reminder, here is the `tabler_navbar_menu_item()` function:
 
-```{r}
+```{r, eval=FALSE}
 tabler_navbar_menu_item <- function(text, tabName, 
                                     icon = NULL, 
                                     selected = FALSE) {
@@ -283,15 +264,8 @@ tabler_navbar_menu_item <- function(text, tabName,
     class = "nav-item",
     a(
       class = item_cl,
-      `data-target` = paste0("#", tabName),
-      `data-toggle` = "pill", 
       `data-value` = tabName,
-      role = "tab",
-      span(
-        class = "nav-link-icon d-md-none d-lg-inline-block", 
-        icon
-      ),
-      span(class = "nav-link-title", text)
+      # Commented since not relevant
     )
   )
 }
@@ -343,7 +317,7 @@ in the whole app. We may listen to multiple events, keeping in mind that events 
   - `hidden.bs.tab` (on the previous active tab, the same one as for the hide.bs.tab event).
   - `shown.bs.tab` (on the newly-active just-shown tab, the same one as for the show.bs.tab event).
   
-Hence, it makes more sense to listen to `shown.bs.tab` (wait the current tab to be shown):
+Hence, it makes more sense to listen to `shown.bs.tab`, that is wait the current tab to be shown:
 
 ```js
 subscribe: function(el, callback) {
@@ -358,56 +332,7 @@ unsubscribe: function(el) {
 }
 ```
 
-Below is a recap of the binding with the creation and registration included:
-
-```js
-$(function() {
-  // Input binding
-  let navbarMenuBinding = new Shiny.InputBinding()
-  $.extend(navbarMenuBinding, {
-    find: function(scope) {
-      return $(scope).find('.navbar-nav');
-    },
-    initialize: function(el) {
-      let menuId = '#' + $(el).attr('id');
-      let activeTab = $(`${menuId} .nav-link.active`);
-      // if multiple items are found
-      if (activeTab.length > 0) {
-        let tabId = $(activeTab).attr('data-value');
-        $(activeTab).tab('show');
-        $(`#${tabId}`).addClass('show active');
-      } else {
-        $(`${menuId} .nav-link`)
-          .first()
-          .tab('show');
-      }
-    },
-    // Given the DOM element for the input, return the value
-    getValue: function(el) {
-      let activeTab = $(el).find('a').filter('.nav-link.active');
-      return $(activeTab).attr('data-value');
-    },
-    setValue: function(el, value) {
-      let hrefVal = '#' + value;
-      let menuId = $(el).attr('id');
-      $(`#${menuId} a[href="${hrefVal}"]`).tab('show');
-    },
-    receiveMessage: function(el, data) {
-      this.setValue(el, data);
-    },
-    subscribe: function(el, callback) {
-      $(el).on('shown.bs.tab.navbarMenuBinding', function(event) {
-        callback();
-      });
-    },
-    unsubscribe: function(el) {
-      $(el).off('.navbarMenuBinding');
-    }
-  });
-  
-  Shiny.inputBindings.register(navbarMenuBinding, 'navbar-menu');
-});
-```
+The whole binding code is located [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/db99b034b06a1ab26ef27bf864b2c853626ebc19/inst/tabler/tabler-update-navbar/navbarMenuBinding.js).
 
 How do we include this custom input binding in our package? In `{OSUICode}`, we created the following HTML __dependency__:
 
@@ -433,82 +358,11 @@ add_tabler_deps <- function(tag) {
 
 We test the new `navbar_menu()` binding below.
 
-```{r, eval=FALSE}
-ui <- tabler_page(
-  tabler_navbar(
-    brand_url = "https://preview-dev.tabler.io", 
-    brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
-    nav_menu = tabler_navbar_menu(
-      id = "current_tab",
-      tabler_navbar_menu_item(
-        text = "Tab 1",
-        icon = NULL,
-        tabName = "tab1",
-        selected = TRUE
-      ),
-      tabler_navbar_menu_item(
-        text = "Tab 2",
-        icon = NULL,
-        tabName = "tab2"
-      )
-    ),
-    tabler_button(
-      "update", 
-      "Change tab", 
-      icon = icon("exchange-alt")
-    )
-  ),
-  tabler_body(
-    tabler_tab_items(
-      tabler_tab_item(
-        tabName = "tab1",
-        sliderInput(
-          "obs", 
-          "Number of observations:",
-          min = 0,
-          max = 1000, 
-          value = 500
-        ),
-        plotOutput("distPlot")
-      ),
-      tabler_tab_item(
-        tabName = "tab2",
-        p("Second Tab")
-      )
-    ),
-    footer = tabler_footer(
-      left = "Rstats, 2020", 
-      right = a(href = "https://www.google.com")
-    )
-  )
-)
-server <- function(input, output, session) {
-  output$distPlot <- renderPlot({
-    hist(rnorm(input$obs))
-  })
-  
-  observeEvent(input$current_tab, {
-    showNotification(
-      paste("Hello", input$current_tab), 
-      type = "message",
-      duration = 1
-    )
-  })
-  
-  observeEvent(input$update, {
-    newTab <- if (input$current_tab == "tab1") {
-      "tab2"
-    } else {
-      "tab1"
-    }
-    update_tabler_tab_item("current_tab", newTab)
-  })
-}
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("tabler/tabler-update-navbar", view_code = FALSE), "r")
 ```
 
 Here we are! 
-
 
 ## Exercises
 1. Have a look at the Tabler documentation about [buttons](https://preview-dev.tabler.io/docs/buttons.html) and extend the `tabler_button` function accordingly.
