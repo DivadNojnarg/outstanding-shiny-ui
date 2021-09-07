@@ -12,70 +12,16 @@ ui <- fluidPage(
   useShinydashboard(),
   tags$script(
     "$(function() {
-      let boxBinding = new Shiny.InputBinding();
-      $.extend(boxBinding, {
-        initialize: function(el) {
-          $(el).activateBox();
-        },
-        find: function(scope) {
-          return $(scope).find('.box');
-        },
-        getValue: function(el) {
-          let isCollapsed = $(el).hasClass('collapsed-box');
-          return {collapsed: isCollapsed}; // this will be a list in R
-        },
-        setValue: function(el, value) {
-          $(el).toggleBox();
-        }, 
-        receiveMessage: function(el, data) {
-          this.setValue(el, data);
-          $(el).trigger('change');
-        },
-        subscribe: function(el, callback) {
-          $(el).on('click', '[data-widget=\"collapse\"]', function(event) {
-            setTimeout(function() {
-              callback();
-            }, 550);
-          }); 
-          $(el).on('change', function(event) {
-            setTimeout(function() {
-              callback();
-            }, 550);
-          });
-        },
-        unsubscribe: function(el) {
-          $(el).off('.boxBinding');
-        }
-      });
-      Shiny.inputBindings.register(boxBinding, 'box-input');
+      // JS logic
     });
     "
   ),
-  
-  box2(
-    title = textOutput("box_state"),
-    "Box body",
-    inputId = "mybox",
-    collapsible = TRUE,
-    plotOutput("plot")
-  ),
-  actionButton("toggle_box", "Toggle Box")
+  # R UI elements
 )
 
 server <- function(input, output, session) {
-  output$plot <- renderPlot({
-      req(!input$mybox$collapsed)
-      plot(rnorm(200))
-    })
     
-    output$box_state <- renderText({
-      state <- if (input$mybox$collapsed) "collapsed" else "uncollapsed"
-      paste("My box is", state)
-    })
-    
-    observeEvent(input$toggle_box, {
-      updateBox2("mybox")
-    })
+  # R server logic
 }
 
 shinyApp(ui, server)
@@ -83,21 +29,21 @@ shinyApp(ui, server)
 
 Imagine if we had to repeat the process for more than twenty components. The R package structure provides many advantages like:
 
-  - Develop a comprehensive documentation of the underlying API
-  - Design unit tests to guaranty code robustness and improve long term plan
-  - Relevant file organization
+  - Develop a comprehensive __documentation__ of the underlying API.
+  - Design __unit tests__ to guaranty code robustness and improve long term plan.
+  - Relevant file organization, easing collaboration. 
   
 
 ## General idea
 [{charpente}](https://github.com/RinteRface/charpente) is a game changer for custom template creation and has been widely used to help developing RinteRface packages.
 `{charpente}` [@R-charpente] drastically:
 
-  - Eases the import of external dependencies.
-  - Speeds up the HTML to R conversion, which is quite frankly a rather boring process,
+  - Eases the __import__ of external dependencies.
+  - Speeds up the HTML to R __conversion__, which is quite frankly a rather boring process,
   allowing to focus on the features rather than the syntax. This feature builds on top of the `{html2R}` shiny app by Alan Dipert, already mentioned in Chapter \@ref(htmltools-overview).
-  - Eases JS code management, leveraging [esbuild](https://esbuild.github.io/).
+  - Eases __JS code management__, leveraging [esbuild](https://esbuild.github.io/).
   
-Let's try below with `html_2_R`:
+Let's try below with `html_2_R()`:
 
 ```{r}
 library(charpente)
@@ -111,22 +57,17 @@ TRUE by default which prevents errors with non exported Shiny tags like `nav`.
 The second main benefit of `{charpente}` is the dependency management system.
 
 ## A case study: `{shinybulma}`
-In the following, we'll illustrate `{charpente}`'s workflow, through the R in Pharma workshop [exercises](https://github.com/RinteRface/Unleash-Shiny-Exercise-1) focused on `{shinybulma}`.
+In the following, we'll illustrate `{charpente}`'s workflow, through a case [study](https://github.com/RinteRface/Unleash-Shiny-Exercise-1) involving [bulma](https://bulma.io/), a more and more popular open source CSS framework for the web. Importantly, there **isn't** any JavaScript in the bulma core code. 
+We'll see later that the recent [bulma JS](https://bulmajs.tomerbe.co.uk/) provides such an implementation. For now, we only focus on HTML and CSS.
 
-[bulma](https://bulma.io/) is a more and more popular open source CSS framework for the web. 
-Importantly, there **isn't** any JavaScript in the bulma core code. 
-We'll see later that the recent [bulma JS](https://bulmajs.tomerbe.co.uk/) provides such an implementation. 
-For now, we only focus on HTML and CSS.
-
-To initialize a `{charpente}` package, run:
+To initialize a `{charpente}` package, we run:
 
 ```{r, eval = FALSE}
 path <- file.path(tempdir(), "mypkg")
 create_charpente(path, license = "mit")
 ```
 
-This sets up a minimal viable package with git and optionally GitHub remote setup, 
-Figure \@ref(fig:workflow-charpente-pkg). 
+This sets up a minimal viable package under version control (__git__) and optionally GitHub remote setup, Figure \@ref(fig:workflow-charpente-pkg). 
 
 ```{r workflow-charpente-pkg, echo=FALSE, fig.cap='Package structure for {charpente}', fig.align = 'center', out.width='100%'}
 knitr::include_graphics("images/workflow/charpente-pkg.png")
@@ -138,8 +79,8 @@ be invasive.
 
 In the `./R` folder, `{charpente}` creates a `mypkg-utils.R` script containing:
 
-  - Tools to facilitate HTML dependency management like `add_dependencies` (see corresponding section below).
-  - Some validation functions mentioned in Chapter \@ref(custom-templates-testing).
+  - Tools to facilitate __HTML dependency__ management like `add_dependencies` (see corresponding section below).
+  - Some __validation__ functions mentioned in Chapter \@ref(custom-templates-testing).
   
 Finally, you may see some exotic folders and files like `srcjs`, `package.json`, `package-lock.json` and `node_modules`. Fear not, we describe them later in \@ref(organize-your-js). Overall, they are here to support to JS code management.
 
@@ -147,10 +88,10 @@ Finally, you may see some exotic folders and files like `srcjs`, `package.json`,
 The interested reader may have a look at the **Getting started [guide](https://bulma.io/documentation/overview/start/)**,
 so as to know more how to get bulma. To install bulma dependencies, there are several ways: 
 
-  - The CDN method (content delivery network) which consists in getting dependencies from a dedicated server. 
+  - The __content delivery network__ method (CDN) which consists in getting dependencies from a dedicated server. 
   Files are not stored locally which may be a problem if one does not have internet.
   - The local method consists in downloading the production files (minified CSS).
-  - Using npm that installs bulma sources as well as production files. It means one can modify
+  - Using [npm](https://www.npmjs.com/) (JS package repository but far less controlled than CRAN) that installs bulma sources as well as production files. It means one can modify
   sources at anytime, which is not recommended since it would be hard to 
   maintain. 
   
@@ -174,7 +115,7 @@ add_bulma_deps <- function(tag) {
 ```
 
 but this already takes too much time. This is where `{charpente}` comes into play. 
-Specifically, the `create_dependency` function automatically downloads/points to the specified dependency by just providing its name. This means you have to know what you are looking for. Best practice is to look at the [jsdelivr](https://www.jsdelivr.com/) website (`{charpente}` is built on top of jsdelivr) and find the correct repository, as shown Figure \@ref(fig:workflow-jsdelivr-bulma). `create_dependency` will also create the `add_<DEP_NAME>_deps` function in a `<DEP_NAME>--dependencies.R` script and open it.
+Specifically, the `create_dependency()` function automatically points to the specified dependency by just providing its name. This means you have to know what you are looking for. Best practice is to look at the [jsdelivr](https://www.jsdelivr.com/) website (`{charpente}` is built on top of jsdelivr) and find the correct repository, as shown Figure \@ref(fig:workflow-jsdelivr-bulma). `create_dependency()` will also create the `add_<DEP_NAME>_deps` function in a `<DEP_NAME>--dependencies.R` script and open it.
 
 `charpente_options(local = FALSE)` allows you to fine tune the behavior. If local is FALSE,
 `{charpente}` points to the CDN without downloading any files. However, your end users will require 
@@ -192,15 +133,21 @@ version if __tag__ is used:
 
 ```{r, eval=FALSE}
 # CDN method 
-create_dependency("bulma", options = charpente_options(local = FALSE))
-create_dependency("bulma", tag = "0.7.0", options = charpente_options(local = FALSE))
+create_dependency(
+  "bulma", 
+  options = charpente_options(local = FALSE)
+)
+create_dependency(
+  "bulma", 
+  tag = "0.7.0", 
+  options = charpente_options(local = FALSE)
+)
 
 # local method (default)
 create_dependency("bulma")
-
 ```
 
-Moreover, `create_dependency` is able to filter all files, through the `charpente_options`:
+Moreover, `create_dependency()` is able to filter all files, through the `charpente_options()`:
 
   - __minified__ targets all files with `.min`, if TRUE.
   - __bundle__ targets all files containing `.bundle`, if TRUE.
@@ -208,7 +155,7 @@ Moreover, `create_dependency` is able to filter all files, through the `charpent
   - __rtl__ target all files with `.rtl`, if TRUE. rtl design stands for right to left
   and is common in some countries for instance. 
   
-You may imagine that `charpente_options` targets `.min` files by default. If you don't find
+You may imagine that `charpente_options()` targets `.min` files by default. If you don't find
 any script, you probably have to change options. For instance, some templates
 like Bootstrap and Framework7 have `bundle.min` files (`charpente_options(bunlde = TRUE)`), whereas bulma doesn't.
 
@@ -246,9 +193,9 @@ add_bulma_deps <- function(tag) {
  )
  tagList(tag, bulma_deps)
 }
+```
 
-# -----------------------------------------------
-
+```{r, eval=FALSE}
 # CDN dependencies
 
 #' bulma dependencies utils
@@ -270,8 +217,7 @@ add_bulma_deps <- function(tag) {
 }
 ```
 
-`{charpente}` sets the roxygen skeleton so that you don't have to worry about function
-imports. 
+`{charpente}` sets the roxygen skeleton so that you don't have to worry about function imports. 
 
 
 ### Set up the minimal page template
@@ -283,7 +229,8 @@ According to the bulma [documentation](https://bulma.io/documentation/overview/s
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hello Bulma!</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/
+    /bulma.min.css">
   </head>
   <body>
     <section class="section">
@@ -300,16 +247,15 @@ According to the bulma [documentation](https://bulma.io/documentation/overview/s
 </html>
 ```
 
-Adding some `{charpente}` magic with `html_2_R`, we set the path parameter to `/html` to get the entire template. We, replace `...` with the appropriate content (see above). Since the copied HTML contains double quotations marks like `<p class="subtitle"></p>`, we put the string in single quotation marks.
+Adding some `{charpente}` magic with `html_2_R()`, we set the path parameter to `/html` to get the entire template. We, replace `...` with the appropriate content (see above). Since the copied HTML contains double quotations marks like `<p class="subtitle"></p>`, we put the string in single quotation marks.
 
-```{r}
-html_2_R('
+```{r, echo=FALSE}
+bulma_html_skeleton <- '
 <html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hello Bulma!</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
   </head>
   <body>
     <section class="section">
@@ -323,22 +269,24 @@ html_2_R('
       </div>
     </section>
   </body>
-</html>
-  ',
-  path = "/html"
-)
+</html>'
+```
+
+```{r}
+# bulma_html_skeleton is the above HTML code
+html_2_R(bulma_html_skeleton, path = "/html")
 ```
 
 ::: {.noteblock data-latex=""}
 At run time, shiny adds `html` around the UI, thereby making it not necessary to include. 
 We also don't need the `link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css")` 
-since `add_bulma_deps` does already attach the dependencies to the page.
+since `add_bulma_deps` does already attach the dependencies to the page. We removed `tags$section` content as it may correspond to another bulma component, like `bulma_section()`. 
 :::
 
 The `prefix` parameter defaults to TRUE, so that we don't have to worry about whether tags functions are exported
 by shiny (see Chapter \@ref(htmltools-overview)).
 
-The `bulma_page` function is defined below, that we save in the `R` package folder:
+The `bulma_page()` function is defined below, considering a simplified version of the above HTML to R translation, that we save in the `./R` package folder:
 
 ```{r}
 bulma_page <- function(..., title = NULL) {
@@ -357,15 +305,13 @@ bulma_page <- function(..., title = NULL) {
 ```
 
 With some practice, going from step one to the bulma page templates literally takes three minutes,
-while it would have taken more than 30 minutes by hand. At any time, you may replace
-the dependency with another version. Be careful, since `{charpente}` does not make snapshots
-of old versions. 
+while it would have taken much more time by hand. At any time, you may replace
+the dependency with another version. Be careful, since `{charpente}` does not make snapshots of old versions. 
 
 
 ### Exercise: add bulmaJS
-As stated in the above, bulma only contains CSS code! It means we need
-to either develop custom JS code to add interactivity or rely on any third party existing API. 
-[bulma JS](https://bulmajs.tomerbe.co.uk/) is one of these!
+As stated in the above, bulma only contains CSS code. It means we need
+to either develop custom JS code to add interactivity or rely on any third party existing API. [bulma JS](https://bulmajs.tomerbe.co.uk/) is one of these.
 
 ::: {.importantblock data-latex=""}
 This example has been written and tested with [bulmaJS](https://www.jsdelivr.com/package/npm/@vizuaalog/bulmajs?version=0.12.1) `0.12.1`.
@@ -389,9 +335,9 @@ Notice how many files are added to the dependency. Below, we only work with **no
   - Only keep `notification.js` and remove all the unnecessary files
   - Only keep `bulma.js` that gather all plugins in 1 script. 
   
-The best practice is usually to **keep only what we need** since some scripts may be **heavy to load**!
+The best practice is usually to **keep only what we need** since some scripts may be **heavy to load**.
 
-2. Run `devtools::load_all()`. Modify the below code to test the newly created dependency. Hint: toggle the HTML inspector to check all appropriate dependencies are there!
+2. Run `devtools::load_all()`. Modify the below code to test the newly created dependency. Hint: toggle the HTML inspector to check all appropriate dependencies are there.
 ```{r bulmajs-deps-test, eval=FALSE}
 # Where should the html dependency be added?
 ui <- bulma_page()
@@ -418,7 +364,7 @@ Bulma('body').notification({
 ```
   
 In the following we design the R interface and JavaScript handler (which is no more than an event listener). 
-`{charpente}` has a function that creates both pieces, namely `create_custom_handler`:
+`{charpente}` has a function that creates both pieces, namely `create_custom_handler()`:
 
 ```{r, eval=FALSE}
 create_custom_handler("notification")
@@ -451,25 +397,22 @@ $(function() {
 });
 ```
 
-By default, the JS file is created in the `srcjs` directory. This is a special directory
-where we store all JavaScript files that depend on the package author. For instance, 
-bulmaJS is an external dependency and is very unlikely to be edited by the package author. For that reason, 
-it remains in the `inst` folder like all other external dependencies.
+By default, the JS file is created in the `./srcjs` directory. This is a special directory where we store all JavaScript files that depend on the package author. For instance, bulmaJS is an external dependency and is very unlikely to be edited by the package author. For that reason, it remains in the `./inst` folder like all other external dependencies.
 
 ### Add custom input/output bindings
 In part \@ref(secondary-inputs), we created better `{shinydashboard}` boxes that one
 may programmatically collapse, close, and restore. Until now, there was no way to 
 setup an input binding skeleton and one had to copy and paste each time the same
-code. `{charpente}` has a `create_input_binding` and `create_output_binding` (functions that
+code. `{charpente}` has a `create_input_binding()` and `create_output_binding()` (functions that
 you can also find in the development version of `{golem}`). Contrary to the custom handler case,
-`create_input_binding` only generates the JavaScript piece since the R part is highly variable from
+`create_input_binding()` only generates the JavaScript piece since the R part is highly variable from
 one input to another. To get a plug-and-play box input binding, we call:
 
 ```{r, eval=FALSE}
 create_input_binding("boxBinding")
 ```
 
-which gives the `input-boxBinding.js` script in the `srcjs` folder:
+which gives the `input-boxBinding.js` script in the `./srcjs` folder:
 
 ```js
 var boxBinding = new Shiny.InputBinding();
@@ -509,8 +452,8 @@ This function has multiple options:
   a `click` event without any rate policy. To add extra events we do 
   `list(name = c("click", "whatever"), rate_policy = c(FALSE, TRUE))`. 
   
-Similarly, the `create_output_binding` function creates a ready to use output binding JS script, 
-in the `srcjs` folder (`create_output_binding("menuOutput")`):
+Similarly, the `create_output_binding()` function creates a ready to use output binding JS script, 
+in the `./srcjs` folder (`create_output_binding("menuOutput")`):
 
 ```js
 var menuOutput = new Shiny.OutputBinding();
@@ -528,25 +471,25 @@ Shiny.outputBindings.register(menuOutput, 'shiny.whatever');
 ### Organize your JS code {#organize-your-js}
 This naturally leads us to this part which is about JS code organization. Shiny developers
 may have a lot of custom JS scripts, and it is generally a bad idea to put them all
-under `inst`. Instead, we store them in `srcjs`. `{charpente}` has a function providing
+under `./inst`. Instead, we store them in `./srcjs`, as already stated above. `{charpente}` has a function providing
 a tool to bundle the JS code for production or development, that is `build_js()`: 
 
   - It compresses, mangles all JS files and concatenate them in one minified file called `mypkg.min.js`. If __mode__ is `dev`, the files are not minified.
   - In production mode (__mode__ is `prod`, by default), it additionally generates source maps.
   
 ::: {.noteblock data-latex=""}
-esbuild concatenates file by the order provided in the `./srcjs/main.js` entry point, automatically generated by `create_charpente()`. The configuration is provided by `{charpente}` in the `package.json` file. 
+esbuild concatenates files by the order provided in the `./srcjs/main.js` entry point, automatically generated by `create_charpente()`. The configuration is provided by `{charpente}` in the `package.json` file. 
 :::
   
 The script `mypkg.min.js` is not human readable but the generated source map
-allows to reconstruct the original code, which location is under the web browser `srcjs` folder, like all Shiny JS files. From there, we can access any mapped script and start the debugging process like setting break points.
+allows to reconstruct the original code, which location is under the web browser `./srcjs` folder, like all Shiny JS files. From there, we can access any mapped script and start the debugging process like setting break points.
 
 ::: {.noteblock data-latex=""}
 In production, the variable names, functions, are mangled. For instance, a variable
-`config` could be called `t` in the minified file, which may lead to confusion. 
+`config` could be called `t` in the minified file. 
 :::
 
-Additionally, `build_js` creates the `mypkg-dependencies.R` file containing the HTML 
+Additionally, `build_js()` creates the `mypkg-dependencies.R` file containing the HTML 
 dependency pointing to the newly generated JS file (below for production):
 
 ```{r, eval=FALSE}
@@ -582,64 +525,21 @@ import './widgets.js'
 import './test.js'
 ```
 
+A real life example will be shown in the next part \@ref(mobile-modularizeJ) and the result showcased [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/tree/fd0ba28881869c5c605dd0e5b9f7a8f420bbedb4/srcjs).
+
 __export__ and __import__ must be called from the top level of a script. For instance,
 they cannot live inside the `$( document ).ready(function(...)});`, as this would trigger a build error. 
 
 `{charpente}` currently does not provide a similar process for CSS, as this is still work in progress. Other tools exist like [`{packer}`](https://github.com/JohnCoene/packer) by [John Coene](https://john-coene.com/), which leverages [webpack](https://webpack.js.org/) to handle JS code.
 
 ### Combine multiple dependencies
-`add_dependencies` allows to select any dependency available in the `./R` folder, 
+`add_dependencies()` allows to select any dependency available in the `./R` folder, 
 provided that they follow the convention `<depName>_dependencies.R` 
-(which is always the case if you use `{charpente}`):
-
-```{r, eval=FALSE}
-#' Attach all created dependencies in the ./R directory to the provided tag
-#'
-#' This function only works if there are existing dependencies. Otherwise,
-#' an error is raised.
-#'
-#' @param tag Tag to attach the dependencies.
-#' @param deps Dependencies to add. Expect a vector of names. If NULL, all dependencies
-#' are added.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#'  library(htmltools)
-#'  findDependencies(add_dependencies(div()))
-#'  findDependencies(add_dependencies(div(), deps = "bulma"))
-#' }
-add_dependencies <- function(tag, deps = NULL) {
-  if (is.null(deps)) {
-    temp_names <- list.files("./R", pattern = "dependencies.R$")
-    deps <- unlist(
-      lapply(temp_names, strsplit, split = "-dependencies.R")
-    )
-  }
-
-  if (length(deps) == 0) stop("No dependencies found.")
-
-  deps <- lapply(deps, function(x) {
-    dep <- eval(
-      parse(
-        text = sprintf(
-          "htmltools::findDependencies(add_%s_deps(htmltools::div()))", 
-          x
-        )
-      )
-    )
-    dep
-  })
-  # flatten list by one level
-  deps <- unlist(deps, recursive = FALSE)
-
-  htmltools::tagList(tag, deps)
-}
-```
+(which is always the case if you use `{charpente}`).
 
 For instance `add_dependencies(div(), deps = c("bulma", "bulmajs"))` adds bulma (first) and 
 bulmajs dependencies to a `div` tag. You may change the order as you see fit, as most 
-of the time, the order matters. We update `bulma_page` to benefit from the new dependencies:
+of the time, the order matters. We update `bulma_page()` to benefit from the new dependencies:
 
 ```{r, eval=FALSE}
 bulma_page <- function(..., title = NULL) {
@@ -660,12 +560,12 @@ bulma_page <- function(..., title = NULL) {
 }
 ```
 
-As mentioned above, `add_dependencies` belongs to the `mypkg-utils.R` script
+As mentioned above, `add_dependencies()` belongs to the `mypkg-utils.R` script
 so that you don't have to import `{charpente}` in the `DESCRIPTION` `Imports` field.
 
 ### Other `{charpente}` helpers
 Let's finish this section by listing other useful `{charpente}` tools. 
-We know `create_dependency` to install an external dependency. 
+We know `create_dependency()` to install an external dependency. 
 As shown earlier, this code installs bulma dependencies:
 
 ```{r, eval=FALSE}
@@ -673,7 +573,7 @@ create_dependency("bulma")
 ```
 
 However, we don't necessarily know all package versions and may need
-`bulma 0.9.3` or `bulma 0.7.0`. `get_dependency_versions` allows to look for
+`bulma 0.9.3` or `bulma 0.7.0`. `get_dependency_versions()` allows to look for
 all existing versions:
 
 ```{r}
@@ -684,24 +584,24 @@ get_dependency_versions("bulma", latest = TRUE)
 Specifying `latest = TRUE` ensures to recover the very last __stable__ version 
 (it excludes alpha/beta versions).
 
-You may explore also the dependency files with `get_dependency_assets`, even for 
+You may explore also the dependency files with `get_dependency_assets()`, even for 
 a specific version with __tag__:
 
 ```{r}
 get_dependency_assets("bulma")
 ```
 
-This is helpful to further fine tune `charpente_options`, as stated previously. It is indeed possible
-that you don't want bundles, minified, lite or rtl versions of scripts. Internally, `create_dependency`
-relies on `get_dependency_assets`. 
+This is helpful to further fine tune `charpente_options()`, as stated previously. It is indeed possible
+that you don't want bundles, minified, lite or rtl versions of scripts. Internally, `create_dependency()`
+relies on `get_dependency_assets()`. 
 
-`get_installed_dependency` allows to inspect which dependencies are installed. It only works
+`get_installed_dependency()` allows to __inspect__ which dependencies are installed. It only works
 if the dependencies were created locally, that is `charpente_options(local = TRUE)`.
 
-Finally, one may ask how to update a given dependency. `update_dependency` does this, provided that
+Finally, one may ask how to __update__ a given dependency. `update_dependency()` does this, provided that
 the dependency is installed locally. By default, it installs the latest version of the targeted dependency. 
 It gives a diagnosis comparing the current installed version
-with the latest available version. The are 3 possible cases: dependencies are up to date
+with the latest available version, yielding three possible cases. Dependencies are __up to date__
 and `update_dependency("bulma")` yields:
 
 ```
@@ -711,7 +611,7 @@ and `update_dependency("bulma")` yields:
 Error in update_dependency("bulma") : Versions are identical
 ```
 
-The installed dependencies are outdated (we have 0.7.0 with `create_dependency("bulma", tag = "0.7.0", options = charpente_options(local = TRUE))`), the function shows the targeted version as well as
+The installed dependencies are __outdated__ (we have 0.7.0 with `create_dependency("bulma", tag = "0.7.0", options = charpente_options(local = TRUE))`), the function shows the targeted version as well as
 the last one:
 
 ```
@@ -726,7 +626,7 @@ latest version: 0.9.3
 ! Remove existing file R/bulma-dependencies.R
 ```
 
-The last use case is a downgrade, which may be possible if the package maintainer realizes
+The last use case is a __downgrade__, which may be possible if the package maintainer realizes
 that the dependency version is too unstable. In the following, we have `bulma-0.9.3` installed 
 and downgrade to 0.7.0 with `update_dependency("bulma", version_target = "0.7.0")`:
 
@@ -746,9 +646,9 @@ latest version: 0.9.3
 
 ## Other tips
 ### Validate JavaScript
-We could not finish this chapter without mentioning tools to validate JavaScript code. [JSHint](https://jshint.com), which comes with [{jstools}](https://github.com/dreamRs/jstools). Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
+We could not finish this chapter without mentioning tools to __validate__ JavaScript code. [JSHint](https://jshint.com), which comes with [{jstools}](https://github.com/dreamRs/jstools). Below is an example of how to check all the [shinyMobile](https://github.com/RinteRface/shinyMobile) JavaScript input bindings at once:
 
-```{r}
+```{r, eval=FALSE}
 shinyMobileJS <- system.file(
   sprintf(
     "shinyMobile-%s/js/shinyMobile.js", 
@@ -769,10 +669,19 @@ invisible(capture.output(
 ))
 
 head(tibble::as_tibble(temp$errors[, c("line", "reason")]))
+#> A tibble: 51 x 2
+#>    line reason                                                                              
+#>   <int> <chr>
+#>  1    33 'template literal syntax' is only available in ES6. 
+#>  2    37 'template literal syntax' is only available in ES6.
+#>  3    41 'template literal syntax' is only available in ES6. 
+#>  4    42 'template literal syntax' is only available in ES6. 
+#>  5    52 'arrow function syntax (=>)' is only available in ES6. 
+#>  6    64 'arrow function syntax (=>)' is only available in ES6.
 ```
 
 You may fine tune the `jshint_file` behavior with the [`jshint_options`](https://jshint.com/docs/options/). One is often tempted to call `eval` in JS code, which will result in a JSHint error. An option called `evil` exists to disable the corresponding test. However, we recommend to play the game, accept those error and try to fix them instead of cheating with options! An important remark about validation is that it does not check whether your code
-does what it should do. It just focus on checking whether the code could probably execute! To test
+does what it should do. It just focus on checking whether the code could probably execute. To test
 the JavaScript logic, please refer to Chapter \@ref(custom-templates-testing-js). 
 Be extremely careful: if we consider the example mentioned in section \@ref(broken-shiny-app-debug), the
 following code is valid JavaScript:
@@ -812,19 +721,8 @@ jshint(
 
 Yet the code won't work since `Shiny.notification` does not exist.
 
-### Beautify JS code
-If you work with the RStudio IDE, your JS code maybe sometimes messy with bad indentation.
-`{jstools}` also provides a function and addin to fix the problem. `prettier_js(code)` and 
-`prettier_file(input = "path/to/file.js", output = "path/to/reformated.js")` does this. 
-I often use the `Prettier` addin which is way faster than typing the function call (Figure \@ref(fig:workflow-pretty-js)). 
-
-```{r workflow-pretty-js, echo=FALSE, fig.cap='Better JS formatting', fig.align = 'center', out.width='50%'}
-knitr::include_graphics("images/workflow/pretty-js.png")
-```
-
-
 ### Test JS code
-`{charpente}` provides a starting point to test the JS code with `test_js()`, by leveraging the [mocha](https://mochajs.org/) library. All tests are assumed to be contained within the `srcjs/test` folder. Inside, we find `test_basic.js`, which was created upon package initialization, as a boilerplate:
+`{charpente}` provides a starting point to __test__ the JS code with `test_js()`, by leveraging the [mocha](https://mochajs.org/) library. All tests are assumed to be contained within the `srcjs/test` folder. Inside, we find `test_basic.js`, which was created upon package initialization, as a boilerplate:
 
 ```js
 describe('Basic test', () => {
@@ -835,3 +733,14 @@ describe('Basic test', () => {
 ```
 
 This test starts with a `describe` function, similar to the `{testthat}` `context()` function, where you provide the general idea behind the test. `it` is equivalent to `test_that()`, where we describe what specific feature is being tested. Inside, we write a series of instructions, some of them failing, others passing. Naturally, `mocha` works better with other assertions libraries like [expect.js](https://github.com/Automattic/expect.js) or [should.js](http://shouldjs.github.io/), whose details are out of the scope of this book. 
+
+
+### Beautify JS code
+If you work with the RStudio IDE, your JS code maybe sometimes messy with bad indentation.
+`{jstools}` also provides a function and addin to fix the problem. `prettier_js(code)` and 
+`prettier_file(input = "path/to/file.js", output = "path/to/reformated.js")` does this. 
+I often use the `Prettier` addin which is way faster than typing the function call (Figure \@ref(fig:workflow-pretty-js)). 
+
+```{r workflow-pretty-js, echo=FALSE, fig.cap='Better JS formatting', fig.align = 'center', out.width='50%'}
+knitr::include_graphics("images/workflow/pretty-js.png")
+```
