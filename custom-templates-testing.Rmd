@@ -25,20 +25,9 @@ tabler_card <- function(..., title = NULL, status = NULL, width = 6,
     div(class = paste0("card-status-top bg-", status))
   }
 
-  body_tag <- div(
-    class = "card-body",
-    # we could have a smaller title like h4 or h5...
-    if (!is.null(title)) {
-      h3(class = "card-title", title)
-    },
-    ...
-  )
-
   main_wrapper <- div(class = paste0("col-md-", width))
-  card_wrapper <- div(class = card_cl)
-
-  card_wrapper <- card_wrapper %>% tagAppendChildren(status_tag, body_tag)
-  main_wrapper %>% tagAppendChild(card_wrapper)
+  
+  # ...Code commented for space reasons
 }
 ```
 
@@ -59,7 +48,7 @@ validate_width <- function(width) {
       stop(
         "width must belong to [1, 12], as per 
         Bootstrap 4 grid documentation. 
-        See more at https://getbootstrap.com/docs/4.0/layout/grid/"
+        See https://getbootstrap.com/docs/4.0/layout/grid/"
       )
     }
   } else {
@@ -68,9 +57,9 @@ validate_width <- function(width) {
 }
 
 validate_width(4)
-try(validate_width(-1)) # will fail
-try(validate_width(13)) # will fail
-try(validate_width("string")) # will fail
+try(validate_width(-1)) 
+try(validate_width(13)) 
+try(validate_width("string")) 
 ```
 
 To check the status parameter, we save the valid statuses in a vector and take the `validStatuses` function from `{shinydashboard}` [utils](https://github.com/rstudio/shinydashboard/blob/master/R/utils.R). It also make sense to create a function since this parameter is widely used among other template components. 
@@ -131,37 +120,15 @@ tabler_card <- function(..., title = NULL, status = NULL,
   validate_width(width)
   validate_padding(padding)
   
-  card_cl <- paste0(
-    "card",
-    if (stacked) " card-stacked",
-    if (!is.null(padding)) paste0(" card-", padding)
-  )
-
-  status_tag <- if (!is.null(status)) {
-    div(class = paste0("card-status-top bg-", status))
-  }
-
-  body_tag <- div(
-    class = "card-body",
-    # we could have a smaller title like h4 or h5...
-    if (!is.null(title)) {
-      h3(class = "card-title", title)
-    },
-    ...
-  )
-
-  main_wrapper <- div(class = paste0("col-md-", width))
-  card_wrapper <- div(class = card_cl)
-
-  card_wrapper <- card_wrapper %>% tagAppendChildren(status_tag, body_tag)
-  main_wrapper %>% tagAppendChild(card_wrapper)
+  # ... remaining code
 }
 ```
 
 As of R 4.0.0, the `stopifnot()` function may be a good alternative to `stop()`. 
 
 ::: {.noteblock data-latex=""}
-We recommend to be __reasonable__ and not to validate every single parameter, as it might be not that productive.
+We recommend to be __reasonable__ and not to validate every single parameter, as it might be not that productive and could cause frustration for the 
+end users. 
 :::
 
 ### Existing utils functions
@@ -174,7 +141,7 @@ library(OSUICode)
 myTag <- div(class = "bg-blue")
 
 tagAssert(myTag, type = "div")
-try(tagAssert(myTag, type = "li")) # will fail
+try(tagAssert(myTag, type = "li"))
 tagAssert(myTag, class = "bg-blue")
 ```
 
@@ -188,64 +155,32 @@ tagMatches(myTag, class = "bg-blue")
 #### Validating CSS units
 The `validateCssUnit()` function belongs to the Shiny exported function. It is useful to quickly check any parameter involving a CSS unit like `width` and `height`.
 
+```{r}
+library(shiny)
+validateCssUnit("5px")
+try(validateCssUnit("plop"))
+validateCssUnit("5rem")
+validateCssUnit("100%")
+```
+
 ### Example: refine navbar menu items
 
 #### Avoid wrong jQuery selectors
-In Chapter \@ref(custom-templates-skeleton), we developed the `tabler_navbar_menu_item()` function. The tabName parameter is critical since it is responsible for driving the navigation. We must ensure that the value provided by the user is compatible with jQuery __selectors__ [conventions](https://api.jquery.com/category/selectors/). To illustrate the problem, we consider the example below, where the second tab name is `hello%%&1`:
+In Chapter \@ref(custom-templates-skeleton), we developed the `tabler_navbar_menu_item()` function. The `tabName` parameter is critical since it is responsible for driving the navigation. We must ensure that the value provided by the user is compatible with jQuery __selectors__ [conventions](https://api.jquery.com/category/selectors/). To illustrate the problem, we consider the example below, where the second tab name is `hello%%&1`:
 
 ```{r, eval=FALSE}
-ui <- tabler_page(
-  tabler_navbar(
-    brand_url = "https://preview-dev.tabler.io", 
-    brand_image = "https://preview-dev.tabler.io/static/logo.svg", 
-    nav_menu = tabler_navbar_menu(
-      inputId = "mymenu",
-      tabler_navbar_menu_item(
-        text = "Tab 1",
-        icon = NULL,
-        tabName = "tab1",
-        selected = TRUE
-      ),
-      tabler_navbar_menu_item(
-        text = "Tab 2",
-        icon = NULL,
-        tabName = "hello%%&1"
-      )
-    )
-  ),
-  tabler_body(
-    tabler_tab_items(
-      tabler_tab_item(
-        tabName = "tab1",
-        sliderInput(
-          "obs", 
-          "Number of observations:",
-          min = 0,
-          max = 1000, 
-          value = 500
-        ),
-        plotOutput("distPlot")
-      ),
-      tabler_tab_item(
-        tabName = "hello%%&1",
-        p("Second Tab")
-      )
-    ),
-    footer = tabler_footer(
-      left = "Rstats, 2020", 
-      right = a(href = "https://www.google.com", "More")
-    )
-  )
+tabler_navbar_menu_item(
+  text = "Tab 2",
+  icon = NULL,
+  tabName = "hello%%&1"
 )
-server <- function(input, output) {
-  output$distPlot <- renderPlot({
-    hist(rnorm(input$obs))
-  })
-}
-shinyApp(ui, server)
 ```
 
-Notice that we cannot see the second tab content. Below is a proposal for the `validate_tab()` function. We first detect any punctuation in the provided input with `[[:punct:]]`. The trick is not to capture the `_` that is valid in jQuery. We use a negative look-ahead assertion `(?!_)`. 
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("tabler/wrong-tab", view_code = FALSE), "r")
+```
+
+Notice that we cannot see the second tab content. This issue is quite vicious since we don't even see any error message on the JS side. Below is a proposal for the `validate_tab()` function. We first detect any punctuation in the provided input with `[[:punct:]]`. The trick is not to capture the `_` that is valid in jQuery. We use a negative look-ahead assertion `(?!_)`. 
 We finally raise an error if any punctuation is found:
 
 ```{r}
@@ -276,7 +211,7 @@ tabler_navbar_menu <- function(...) {
 }
 ```
 
-A classic method to inspect items provided to `tabler_navbar_menu()` is to capture them in a list. We extract the children of those items via ``lapply(list(...), `[[`, "children")``. As a reminder, a shiny tag is a structure containing the tag name, a named list of attributes, and the children (See chapter \@ref(htmltools-overview)). For each children we apply the `{shinydashboard}` internal function `findAttribute()`, that allows to search for a specific attribute value in a given tag. We use the `vapply()` to return an atomic vector (like `c(1, 2`), lists are vectors but recursive!) and compute the sum of the vector. Each `TRUE` occurrence is counted as 1 and `FALSE` 0. Therefore, if the latter is higher than 1, it means that the user provided more than 1 selected tab, which should subsequently raise an error:
+A classic method to inspect items provided to `tabler_navbar_menu()` is to capture them in a list. We extract the children of those items via ``lapply(list(...), `[[`, "children")``. As a reminder, a shiny tag is a structure containing the tag name, a named list of attributes, and the children (See chapter \@ref(htmltools-overview)). For each children we apply the `{shinydashboard}` internal function `findAttribute()`, that allows to search for a specific attribute value in a given tag. We use the `vapply()` to return an atomic vector (like `c(1, 2`), lists are vectors but recursive) and compute the sum of the vector. Each `TRUE` occurrence is counted as 1 and `FALSE` 0. Therefore, if the latter is higher than 1, it means that the user provided more than 1 selected tab, which should subsequently raise an error:
 
 ```{r}
 tabler_navbar_menu <- function(...) {
@@ -300,29 +235,28 @@ tabler_navbar_menu <- function(...) {
   
   tags$ul(class = "nav nav-pills navbar-nav", ...)
 }
+```
 
-# will fail
+```{r, eval=FALSE}
 try({
-  menu <- tabler_navbar_menu(
+  tabler_navbar_menu(
     tabler_navbar_menu_item(
       text = "Tab 1",
-      icon = NULL,
       tabName = "tab1",
       selected = TRUE
     ),
     tabler_navbar_menu_item(
       text = "Tab 2",
-      icon = NULL,
       tabName = "tab2",
-      selected = FALSE
+      selected = TRUE
     )
   )
 })
+#> Cannot have multiple selected items at start!
 ```
 
-
 ## Testing templates elements
-Imagine if one day, someone or yourself accidentally remove the width validation function, after a significant refactoring. Later, you receive a new message from GitHub, stating that someone opened a new issue. According to the report, the card is not properly displayed although no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes and so did your end user, which is even worse. 
+Imagine if one day, someone or yourself accidentally remove the width validation function, after a significant code refactoring. Later, you receive a new message from GitHub, stating that someone opened a new issue. According to the report, the card is not properly displayed although no error is thrown. Among the 400 lines of code provided, you hardly notice that the width parameter is set to 13, which is not in line with the Bootstrap 4 documentation, as it should remain between 1 and 12. You lost 10 minutes and so did your end user, which is even worse. 
 
 With a proper testing pipeline, this problem could have been avoided. Ironically, writing the corresponding test takes only two minutes.
 
@@ -351,7 +285,21 @@ test_that("validate padding works", {
 
 So far so good. In few lines of code, we substantially increased the __robustness__ of our function without increasing its __complexity__. Now, let's try to remove the `validate_width()` step from the `tabler_card()`.
 
-```{r}
+```{r, eval=FALSE}
+tabler_card <- function(..., title = NULL, status = NULL, 
+                        width = 6, stacked = FALSE, 
+                        padding = NULL) {
+  
+  # validation
+  # validate_width(width)
+  validate_status(status)
+  validate_padding(padding)
+  
+  # ... Code commented
+}
+```
+
+```{r, echo=FALSE}
 tabler_card <- function(..., title = NULL, status = NULL, 
                         width = 6, stacked = FALSE, 
                         padding = NULL) {
@@ -386,8 +334,9 @@ tabler_card <- function(..., title = NULL, status = NULL,
   )
   
 }
+```
 
-
+```{r}
 test_that("validate width works", {
   expect_error(tabler_card(width = -1))
   expect_error(tabler_card(width = 13))
@@ -397,11 +346,8 @@ test_that("validate width works", {
 
 Notice how the three above tests elegantly fail. The provided context ("validate width works") immediately indicates the culprit, which is a game changer for debugging.
 
-
 ### Testing template behavior
-Testing the JavaScript behavior is one of the biggest challenge to validate a template. If the 
-R component has been carefully validated, it does not mean that its JavaScript effects
-are! For instance, let's consider the `tabler_progress()`  that may be updated with `update_tabler_progress()`. How do we check whether the progress value is correctly set?
+Testing the JavaScript behavior is one of the biggest challenge to validate a template. If the R component has been carefully validated, it does not mean that its JavaScript effects are. For instance, let's consider the `tabler_progress()`  that may be updated with `update_tabler_progress()`. How do we check whether the progress value is correctly set?
   
 #### R side
 Testing the R side is quite easy. Let's recall the `update_tabler_progress()` function:
@@ -526,7 +472,7 @@ p <- processx::process$new(
   c(
     "-e",  
     "options('shiny.port'= 3515);
-     OSUICode::update_tabler_progress_example()"
+     OSUICode::run_example('tabler/update-progress')"
   )
 )
 
@@ -548,8 +494,9 @@ test <- CrrryOnPage$new(
   url = "http://localhost:3515/",
   headless = TRUE
 )
-#> Running '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --no-first-run --headless \
-#>   '--user-data-dir=/Users/david/Library/Application Support/r-crrri/chrome-data-dir-qvxnsycg' \
+#> Running '/Applications/Google Chrome.app/...' 
+#>   '--no-first-run --headless' \
+#>   '--user-data-dir=/Users/david/Library/...' \
 #>   '--remote-debugging-port=31683'
 ```
 
@@ -562,7 +509,7 @@ test$wait_for_shiny_ready()
 ```
 
 Note the output of `--remote-debugging-port=31683` that gives the link to the Chrome devtools link
-to inspect the current app, as shown Figure \@ref(fig:tabler-crrry-debug). 
+to inspect the current app, as shown Figure \@ref(fig:tabler-crrry-debug). In practice, open a web browser window and type `localhost:<REMOTE-DEBUGGING-PORT>`. Follow the instructions and select the `Console` tab within the developer tools. 
 
 
 ```{r tabler-crrry-debug, echo=FALSE, fig.cap='Tabler progress bar debug tools', out.width='100%'}
@@ -579,7 +526,7 @@ var slider = document.getElementById('progress_value');
 slider.noUiSlider.set(50);
 ```
 
-We use `call_js()` to update the slider value within our testing pipeline:
+We use `call_js()` to update the slider value within our testing pipeline (R side):
 
 ```{r, eval=FALSE}
 test$call_js(
@@ -615,6 +562,12 @@ val <- test$call_js(
 #> ✔ Shiny is still running
 expect_equal(val$result$value, 50)
 
+# Will fail 
+expect_equal(val$result$value, 30)
+#> Error: val$result$value not equal to 30.
+#> 1/1 mismatches
+#> [1] 50 - 30 == 20
+
 # stop the test whenever satisfied
 test$stop()
 ```
@@ -625,9 +578,7 @@ Yet, `{crrry}` also support setting input values with `shiny_set_input(id, value
 
 
 ### Test input bindings
-We decide to add more complexity and show how to test a home made __input binding__. We are going to
-test the tabler navbar JavaScript logic developed in Chapter \@ref(custom-templates-inputs-navbar). 
-Before starting to test, we define the expectations:
+We decide to add more complexity and show how to test a home made __input binding__. We are going to test the tabler navbar JavaScript logic developed in Chapter \@ref(custom-templates-inputs-navbar). Before starting to test, we define the expectations:
 
   - If no `tabler_navbar_menu_item()` is selected by default, at start, the first item is selected.
   It must have the `active` class on it. Hence, we have to check whether the first `<a class="nav-link">` 
@@ -650,7 +601,7 @@ p <- processx::process$new(
   c(
     "-e",  
     "options('shiny.port'= 3515); 
-    OSUICode::update_tabler_navbar_example()" 
+    OSUICode::run_example('tabler/update-navbar')" 
   )
 )
 
@@ -665,13 +616,20 @@ test <- CrrryOnPage$new(
   url = "http://localhost:3515/",
   headless = TRUE
 )
-#> Running '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --no-first-run --headless \
-#>   '--user-data-dir=/Users/david/Library/Application Support/r-crrri/chrome-data-dir-gwzcnjjd' \
+#> Running '/Applications/Google Chrome.app/...' 
+#>   '--no-first-run --headless' \
+#>   '--user-data-dir=/Users/david/Library/...' \
 #>   '--remote-debugging-port=11028'
 
 test$wait_for_shiny_ready()
 #> Shiny is computing
 #> ✔ Shiny is still running
+```
+
+After running the above code, browse to `localhost:<REMOTE-DEBUGGING-PORT>` and you should get what is shown on Figure \@ref(fig:tabler-crrry-debug-3).
+
+```{r tabler-crrry-debug-3, echo=FALSE, fig.cap='Tabler navbar example with debug tools', out.width='100%'}
+knitr::include_graphics("images/practice/tabler-crrry-debug-3.png")
 ```
 
 At start, no link was selected, meaning we expect the first link to be active and shown. The navbar
