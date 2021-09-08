@@ -7,8 +7,7 @@ knitr::include_graphics("images/mobile/mobile-widget-fab.png")
 knitr::include_graphics("images/mobile/mobile-widget-gauges.png")
 ```
 
-Looking at the [documentation](https://v5.framework7.io/docs/), the API is most of the time
-always the same that is, we create the widget:
+Looking at the [documentation](https://v5.framework7.io/docs/), the API is most of the time always the same that is, we create the widget:
 
 ```js
 app.widget.create(parameters);
@@ -24,8 +23,7 @@ app.widget.close();
 
 I must admit, there are few deviations like the navbar (`app.navbar.show()`) or the modal [dialog](https://v5.framework7.io/docs/dialog.html#dialog-shortcuts) but we have enough common points to design a main wrapper that creates any widget and update/open/close it.
 
-What we do below significantly simplifies the R/JS API by providing a general method to 
-initialize and update some of those widgets.
+What we do below significantly simplifies the R/JS API by providing a general method to initialize and update some of those widgets.
 
 ::: {.warningblock data-latex=""}
 As a reminder, the code examples shown throughout this chapter are gathered in the `{OSUICode}` package accessible [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code), specifically [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/master/R/shinyMobile.R#L122) for widgets. 
@@ -41,9 +39,7 @@ On the UI side, we expect to have:
 <div class="gauge"></div>
 ```
 
-Upon widget instantiation, Framework7 populates this container with the relevant tags.
-The `f7_gauge()` function creates a `div` tag with the `gauge` class as well as a configuration
-tag:
+Upon widget instantiation, Framework7 populates this container with the relevant tags and attributes. The `f7_gauge()` function creates a `div` tag with the `gauge` class as well as a configuration tag:
 
 ```{r, eval=FALSE}
 f7_gauge <- function(id, value, options = NULL) {
@@ -79,12 +75,10 @@ matched with `valueTextColor`, leading to unexpected behavior.
 
 
 ## Widgets without preexisting UI
-There are few widgets like __toasts__ and __notifications__ that don't have any predefined UI
-element when the app starts. In this case, we simply send the configuration to JS, through
-the __session__:
+There are few widgets like __toasts__ and __notifications__ that don't have any predefined UI element when the app starts. In this case, we simply send the configuration to JS, through the __session__:
 
 ```{r, eval=FALSE}
-sendCustomMessage <- function(type, message, session) {
+send_custom_message <- function(type, message, session) {
   session$sendCustomMessage(
     type,
     jsonlite::toJSON(
@@ -108,7 +102,7 @@ f7_notif <- function(
 
   message <- c(dropNulls(list(id = id, text = text)), options)
   # see my-app.js function
-  sendCustomMessage("notification", message, session)
+  send_custom_message("notification", message, session)
 
 }
 ```
@@ -117,7 +111,7 @@ Pay attention to the `options$icon` element. As we can't convert shiny tags to _
 must be converted to character first. If multiple parameters should contain tags,
 you must treat them accordingly!
 
-## Initialize the widget
+## Initialize the widget {#mobile-widgets-initialize}
 On the JS side, we create a new script, `widgets.js`: 
 
 ```{r, eval=FALSE}
@@ -135,15 +129,24 @@ const widgets = uiWidgets.concat(serverWidgets);
 ```
 
 Notice that as we are going to use the `app` object, we import them from the `init.js` script, located
-in the same `/srcjs` folder.
+in the same `./srcjs` folder.
 
 We then define the `activateWidget` function, only considering UI widgets. 
+
+```js
+const activateWidget = (widget) => {
+ // function logic
+};
+```
+
 Since we have two widgets categories, this function first checks whether the widget is part of the `uiWidgets` array with `indexOf`:
 
 ```js
-if (uiWidgets.indexOf(widget) > -1) {
-  // Init widget
-}
+const activateWidget = (widget) => {
+  if (uiWidgets.indexOf(widget) > -1) {
+    // Init widget
+  }
+};
 ```
 
 As there may be multiple widgets of the same type, we must loop through all
@@ -152,11 +155,13 @@ For instance, the gauge has the `gauge` class and the methods are always `app.ga
 How do we loop through multiple widgets? We use the jQuery `each` method:
 
 ```js
-if (uiWidgets.indexOf(widget) > -1) {
-  $("." + widget).each(function() {
-    // Init widget
+const activateWidget = (widget) => {
+  if (uiWidgets.indexOf(widget) > -1) {
+    $("." + widget).each(function() {
+      // Init widget
+    }
   }
-}
+};
 ```
 
 We see that `$("." + widget)` gives `$(".gauge")` when the widget is a gauge, which
@@ -169,17 +174,13 @@ attributes which simply contains the CSS selector of the current element,
 in other words its unique id `'#' + $el.attr("id")`:
 
 ```js
-if (uiWidgets.indexOf(widget) > -1) {
-  $("." + widget).each(function() {
-    let $el = $(this);
-    let config = $(document).find(
-      "script[data-for='" + $el.attr("id") + "']"
-    );
-    config = JSON.parse(config.html());
-    // add the id
-    config.el = '#' + $el.attr("id");
-  }
-}
+let $el = $(this);
+let config = $(document).find(
+  "script[data-for='" + $el.attr("id") + "']"
+);
+config = JSON.parse(config.html());
+// add the id
+config.el = '#' + $el.attr("id");
 ```
 
 The final step consists in initializing the widget, which is quite straightforward if we notice that
@@ -191,10 +192,11 @@ app[widget].create(config);
 
 For the server widgets, it is even simpler. We recover the message with a `Shiny.addCustomMessageHandler("type", callback)` and
 initialize it. The only possible source of problem is the custom message `type` that must be the same 
-as the one specified in the R function with `session$sendCustomMessage("type", message)`. We create
-an `else` statement following the `if` condition and put the below code inside:
+as the one specified in the R function with `session$sendCustomMessage("type", message)`. As shown in the below code, we can chain methods and immediately open the widget, right after its creation. Moreover, it is always good practice to let Shiny know about the widget state, that is whether it is currently opened. This is the reason why we added an `on` property to the message. All widgets trigger [events](https://v5.framework7.io/docs/notification.html#dom-events), 
+for instance notifications have the `notification:opened` and `notification:closed`. For each event, we set an input value on the fly, with `Shiny.setInputValue` as explained in Chapter \@ref(quick-inputs). This way, our future users can know exactly when the widget is closed or opened, thereby being able to trigger any subsequent action. This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
 
 ```js
+// Server widget logic
 Shiny.addCustomMessageHandler(widget, function(message) {
   if (message.id !== undefined) {
     message.on = {
@@ -203,7 +205,6 @@ Shiny.addCustomMessageHandler(widget, function(message) {
       },
       closed: function() {
         Shiny.setInputValue(message.id, false);
-        app.data[widget][message.id].destroy();
       }
     }; 
   }
@@ -212,50 +213,20 @@ Shiny.addCustomMessageHandler(widget, function(message) {
 });
 ```
 
-As shown in the above code, we can chain methods and immediately open the widget, right after its creation. Moreover, it is always good practice to let Shiny know about the widget state, that is whether it is currently opened. This is the reason why we added an `on` property to the message. All widgets trigger [events](https://v5.framework7.io/docs/notification.html#dom-events), 
-for instance notifications have the `notification:opened` and `notification:closed`. For each event, 
-we set an input value on the fly, with `Shiny.setInputValue` as explained in Chapter \@ref(quick-inputs). This way, our future users can know exactly when the widget is closed or opened, thereby being able to trigger any subsequent action. This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
+We create an `else` statement following the `if` condition (handling the UI widgets) and put the server widget logic inside:
 
-The full JavaScript code may be found here:
 
 ```js
-// Instantiate a widget
-activateWidget = function(widget) {
-  // Handle ui side widgets
+const activateWidget = (widget) => {
   if (uiWidgets.indexOf(widget) > -1) {
-    $("." + widget).each(function() {
-      let $el = $(this);
-      let config = $(document).find(
-        "script[data-for='" + $el.attr("id") + "']"
-      );
-      config = JSON.parse(config.html());
-      // add the id
-      config.el = '#' + $el.attr("id");
-
-      // feed the create method
-      app[widget].create(config);
-    });
+    // UI widget logic
   } else {
-    // This concerns toasts, notifications, photoBrowser, ...
-    // that don't have any UI element in the DOM before creating
-    // the widget instance.
-    Shiny.addCustomMessageHandler(widget, function(message) {
-      if (message.id !== undefined) {
-        message.on = {
-          opened: function() {
-            Shiny.setInputValue(message.id, true);
-          },
-          closed: function() {
-            Shiny.setInputValue(message.id, false);
-            app.data[widget][message.id].destroy();
-          }
-        }; 
-      }
-      app[widget].create(message).open();
-    });
+    // Server widget logic
   }
 };
 ```
+
+The full JavaScript code may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/5bc49eab9496696a06da3f62d6aaf8ef468cdad4/srcjs/widgets.js#L7).
 
 The final step aims at activating all widgets. We proceed with a `forEach` loop:
 
@@ -266,59 +237,20 @@ widgets.forEach(function(w) {
 });
 ```
 
-Let's try below with a notification example, where we capture the state of the notification
-in an input element:
+Let's try below with a notification example, where we capture the state of the notification in an input element. This allows to trigger another notification on the server side, in another `observeEvent()`. 
 
-```{r, eval=FALSE}
-library(shiny)
-ui <- f7_page(
-  navbar = f7_navbar("Title"),
-  toolbar = f7_toolbar(),
-  title = "shinyMobile",
-  options = list(
-    theme = "ios",
-    version = "1.0.0",
-    taphold = TRUE,
-    color = "#42f5a1",
-    filled = TRUE,
-    dark = TRUE
-  )
-)
-
-server <- function(input, output, session) {
-  observe({
-    f7_notif(
-      id = "welcome", 
-      "Helloooooo", 
-      options = list(closeTimeout = 2000)
-    )
-  })
-  
-  observeEvent(input$welcome, {
-    shiny::showNotification(
-      sprintf("Notification is %s", input$welcome)
-    )
-  })
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("shinyMobile/notification"), "r")
 ```
 
-Alternatively you may run in the R console:
-
-```{r, eval=FALSE}
-shinyAppDir(system.file(
-  "shinyMobile/notification", 
-  package = "OSUICode"
-))
+```{r mobile-shinyMobile-notification, echo=FALSE, fig.cap='Notification widget', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-shinymobile-notification.png")
 ```
 
-## Update widgets
-We would like to develop a similar generalized interface to update any element in the DOM.
-Instead of having `update_f7_gauge()` or `update_f7_swiper()`, we want an `update_f7_instance()` function. 
+## Update widgets {#mobile-widgets-update}
+We would like to develop a similar generalized interface to update any element in the DOM. Instead of having a collection of function like `update_f7_gauge()` or `update_f7_swiper()`, we want a single `update_f7_instance()` function, which will be easier to maintain.  
 
-We leverage the `app.data` element that stores all instances by widget type. In Chapter \@ref(mobile-global-data),
-we already created a cache for tooltips, so let's do it for gauges:
+We leverage the `app.data` element (see Chapter \@ref(mobile-global-data)) to store all instances by widget type. Inside `helper_config.js`, we add a empty gauge array to `config.data`:
 
 ```js
 config.data = function() {
@@ -330,8 +262,7 @@ config.data = function() {
 ```
 
 The array name must be the same as the app method. For instance,
-we have `app.gauge`, which means that we should create `config.data.gauge` and not `config.data.gauges`,
-as it would lead to errors later.
+we have `app.gauge`, which means that we should create `config.data.gauge` and not `config.data.gauges`, as it would lead to errors later.
 
 Once the cache is available, we have to modify the JavaScript that creates the widget instance,
 to store the new instance in the cache, as shown Figure \@ref(fig:mobile-widget-store). We add the following code, where `w` refers to the widget instance:
@@ -350,17 +281,11 @@ The `activateWidget` function should be:
 
 ```js
 // Instantiate a widget
-activateWidget = function(widget) {
+const activateWidget = (widget) => {
   // Handle ui side widgets
   if (uiWidgets.indexOf(widget) > -1) {
     $("." + widget).each(function() {
-      let $el = $(this);
-      let config = $(document).find(
-        "script[data-for='" + $el.attr("id") + "']"
-      );
-      config = JSON.parse(config.html());
-      // add the id
-      config.el = '#' + $el.attr("id");
+      // unchanged
 
       // feed the create method
       let w = app[widget].create(config);
@@ -368,23 +293,8 @@ activateWidget = function(widget) {
       app.data[widget][$el.attr("id")] = w;
     });
   } else {
-    // This concerns toasts, notifications, photoBrowser, ...
-    // that don't have any UI element in the DOM before creating
-    // the widget instance.
-    Shiny.addCustomMessageHandler(widget, function(message) {
-      if (message.id !== undefined) {
-        message.on = {
-          opened: function() {
-            Shiny.setInputValue(message.id, true);
-          },
-          closed: function() {
-            Shiny.setInputValue(message.id, false);
-            app.data[widget][message.id].destroy();
-          }
-        }; 
-      }
-      app[widget].create(message).open();
-    });
+    // Server widgets logic
+    // Unchanged
   }
 };
 ```
@@ -395,8 +305,7 @@ the current session containing:
   - The __id__ of the element to update.
   - The new __configuration__.
   
-Since we send a __JSON__, the hardest part is to correctly process shiny tags. How do we
-track shiny tags? As a reminder, let's run the code below:
+Since we send a __JSON__, the hardest part is to correctly process shiny tags. How do we track shiny tags? As a reminder, let's run the code below:
 
 ```{r}
 class(shiny::div())
@@ -447,7 +356,7 @@ update_f7_instance <- function(
   options <- listRenderTags(options)
 
   message <- list(id = id, options = options)
-  sendCustomMessage("update-instance", message, session)
+  send_custom_message("update-instance", message, session)
 }
 ```
 
@@ -502,100 +411,30 @@ let newInstance = app[instanceFamily].create(newConfig);
 app.data[instanceFamily][message.id] = newInstance;
 ```
 
-The whole code can be found below:
-
-```js
-Shiny.addCustomMessageHandler(
-  'update-instance', function(message) {
-  // Recover in which array is stored the given instance.
-  // Uniqueness is ensured since HTML id are supposed to be unique.
-  let instanceFamily;
-  for (const property in app.data) {
-    for (const e in app.data[property]) {
-      if (e === message.id) {
-        instanceFamily = property;
-      }
-    }
-  }
-
-  let oldInstance = app.data[instanceFamily][message.id];
-  let oldConfig = oldInstance.params;
-  let newConfig = app.utils.extend(oldConfig,  message.options);
-
-  // Destroy old instance
-  oldInstance.destroy();
-  // Create new config
-  let newInstance = app[instanceFamily].create(newConfig);
-  // Update app data
-  app.data[instanceFamily][message.id] = newInstance;
-});
-```
-
+The whole code can be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/5bc49eab9496696a06da3f62d6aaf8ef468cdad4/srcjs/widgets.js#L55).
 The update concept is illustrated Figure \@ref(fig:mobile-widget-store).
 
 ```{r mobile-widget-store, echo=FALSE, fig.cap='Initializing and updating widgets in the app.data store', fig.align = 'center', out.width='100%'}
 knitr::include_graphics("images/mobile/mobile-widget-store.png")
 ```
 
-The code below is an example showing how to update a gauge from the server. As you may notice, this
+The code below is an example showing how to update a gauge from the server (Figure \@ref(fig:mobile-widget-update-gauge)). As you may notice, this
 approach is not perfect as the user has to explicitly update the `valueText` field so that
 it reflects the new value. Similarly, you may ask why the gauge value has to be between 0 and 1,
-instead of 0 and 100. The reason comes from the Framework7 API. One might be tempted to convert the value inside `f7_gauge` (so that the user only provides number between 0 and 100), but
-this would also mean to manually convert the value in the `update_f7_instance` function later. As stated in previous chapters, there is always a compromise between a simple API that is easy for the developer to maintain and the user's experience. This issue may/should be solved with comprehensive documentation.
+instead of 0 and 100. The reason comes from the Framework7 API. One might be tempted to convert the value inside `f7_gauge()` (so that the user only provides number between 0 and 100), but
+this would also mean to manually convert the value in the `update_f7_instance()` function later. As stated in previous chapters, there is always a compromise between a simple API that is easy for the developer to maintain and the user's experience. This issue may/should be solved with comprehensive documentation.
 
-```{r, eval=FALSE}
-ui <- f7_page(
-  f7_gauge(
-    "mygauge", 
-    value = 0.1,
-    options = list(
-      type  = "semicircle",
-      borderColor = "#2196f3",
-      borderWidth = 10,
-      valueFontSize = 41,
-      valueTextColor = "#2196f3",
-      labelText = "amount of something"
-    )
-  ),
-  navbar = f7_navbar("Title"),
-  toolbar = f7_toolbar(),
-  title = "shinyMobile",
-  options = list(
-    theme = "ios",
-    version = "1.0.0",
-    taphold = TRUE,
-    color = "#42f5a1",
-    filled = TRUE,
-    dark = TRUE
-  )
-)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("shinyMobile/update-gauge"), "r")
+```
 
-server <- function(input, output, session) {
-  observe({
-    Sys.sleep(2)
-    update_f7_instance(
-      "mygauge", 
-      options = list(
-        value = 0.75, 
-        valueText = "75 %", 
-        labelText = "New label!"
-      )
-    )
-  })
-}
-
-shinyApp(ui, server)
+```{r mobile-widget-update-gauge, echo=FALSE, fig.cap='Update gauge on the server side. We inspect app.data.gauge within the JS console.', fig.align = 'center', out.width='100%'}
+knitr::include_graphics("images/mobile/mobile-widget-update-gauge.png")
 ```
 
 ::: {.noteblock data-latex=""}
-If you are missing the `Install` button, copy over the `www` folder from your PWA app.
+If you don't see the `Install` button, copy over the `www` folder from your PWA app.
 :::
-
-Alternatively you may run in the R console:
-
-```{r, eval=FALSE}
-shinyAppDir(system.file("shinyMobile/pwa", package = "OSUICode"))
-```
 
 ## More complex elements
 We consider the `tooltip` [example](https://v5.framework7.io/docs/tooltip.html). A tooltip is a help text generally displayed on hover (or click) over a specific element. They are commonly used to improve user experience in all websites. Framework7 provides two tooltips APIs:
@@ -603,78 +442,44 @@ We consider the `tooltip` [example](https://v5.framework7.io/docs/tooltip.html).
   - A purely UI side API where the tooltip is attached to a tag.
   - A server side API where the tooltip is dynamically injected in the page content.
   
-While the first approach is obviously not interesting for us since it does not involve a
-single line of JS, the second approach heavily relies on the `app.data` object. This is the one we choose to explain, through the `{shinyMobile}` package. On the R side, we consider two functions:
+While the first approach is obviously not interesting for us since it does not involve a single line of JS, the second approach heavily relies on the `app.data` object. This is the one we choose to study. 
 
-  - `addF7Tooltip()` that sends a custom message to JS called `add_tooltip()`. This
-  message is composed of the tooltip options (content, ...), as well as the selector
-  on which to apply the tooltip (__id__ or __selector__ for custom CSS selector).
-  - `updateF7Tooltip()` that sends a custom message to JS, `update_tooltip()` to change
-   the tooltip state (active/inactive) and its content.
-   
-Their code is defined below:
+### Add a tooltip
+In the following, we design the `add_f7_tooltip()` function that may be added right after the existing gauge and notification widgets. Since a tooltip is attached to a DOM element, `add_f7_tooltip()` must provide parameters to identify its target, that is either __id__ or CSS __selector__, but not both. Therefore, we create a helper function, `validate_selector()`, that checks if the end user provides `id` or `selector`. 
 
-```{r}
-validateSelector <- function(id, selector) {
+```{r, eval=FALSE}
+validate_selector <- function(id, selector) {
   if (!is.null(id) && !is.null(selector)) {
     stop("Please choose either target or selector!")
   }
 }
+```
+   
+`%OR%` ensures that we return `a` if not `NULL` otherwise `b`.
 
-
-sendCustomMessage <- function(type, message, session) {
-  session$sendCustomMessage(
-    type,
-    jsonlite::toJSON(
-      message,
-      auto_unbox = TRUE,
-      json_verbatim = TRUE
-    )
-  )
-}
-
+```{r, eval=FALSE}
 "%OR%" <- function(a, b) if (!is.null(a)) a else b
+```
 
-addF7Tooltip <- function(
+`add_f7_tooltip()` sends the tooltip target as well a list of options to JS with the `add_tooltip` identifier.
+
+```{r, eval=FALSE}
+add_f7_tooltip <- function(
   id = NULL, 
-  selector = NULL, options,
+  selector = NULL, 
+  options,
   session = shiny::getDefaultReactiveDomain()
 ) {
   # We use already defined popover functions
-  validateSelector(id, selector)
+  validate_selector(id, selector)
   if (!is.null(id)) id <- paste0("#", session$ns(id))
   options$targetEl <- id %OR% selector
-  sendCustomMessage("add_tooltip", options, session)
-}
-
-
-updateF7Tooltip <- function(
-  id = NULL, 
-  selector = NULL,
-  action = c("toggle", "update"), 
-  text = NULL,
-  session = shiny::getDefaultReactiveDomain()
-) {
-  validateSelector(id, selector)
-  if (!is.null(id)) id <- paste0("#", session$ns(id))
-  targetEl <- id %OR% selector
-  message <- dropNulls(
-    list(
-      targetEl = targetEl, 
-      action = action, 
-      text = text
-    )
-  )
-  sendCustomMessage("update_tooltip", message, session)
+  send_custom_message("add_tooltip", options, session)
 }
 ```
-   
-Framework7 does not provide any native `enable/disable` method, which means that once the
-tooltip is activated on a given element, it is visible forever, unless destroyed.
-The main purpose of `updateF7Tooltip()` is to avoid this, by temporarily disabling any tooltip and
-reactivating it later. 
 
-The JS part to activate the tooltip could be put in `tooltips.js` (created via `init_js("tooltips")`):
+On the JS side within `widgets.js`, we recover the message by building a custom message handler with `Shiny.addCustomMessageHandler` pointing to `add_tooltip`. Again, if there is a mismatch between R and JS __type__, the API won't work. Like all Framework7 widgets,
+creating a tooltip is rather straightforward:
 
 ```js
 Shiny.addCustomMessageHandler('add_tooltip', function(message) {
@@ -682,25 +487,22 @@ Shiny.addCustomMessageHandler('add_tooltip', function(message) {
 });
 ```
 
-As mentioned earlier, this is fine since `message` is a JSON element. We can also chain methods
-like `app.tooltip.create(message).show();`. There is however a problem: `add_tooltip` is fired
+As mentioned earlier, this syntax is fine since `message` is a JSON element and we can also chain methods. There is however a problem: `add_tooltip` is fired
 each time the user triggers a specific element on the R side. It means the tooltip __instance__ is 
-created each time, which is not optimal. To fix this issue, we set a tooltips cache in the `app.data`
-object and accordingly modify `init.js`:
+created each time, which is not optimal. To fix this issue, we set a tooltips cache in the `app.data` object and accordingly modify `helpers_config.js`:
 
 ```js
 config.data = function() {
   return {
+    gauge: [], 
     tooltips: []
   };
 };
 ```
 
-Importantly, `app.data` must be a function returning one or multiple elements. We first
-return an empty `tooltips` array and update the `tooltips.js` file so that we:
+We update the previous custom handler so that we:
 
-  - Check if the tooltip instance is already in the cached `app.data` before creating an instance.
-  If is is already there, nothing has to be done.
+  - Check if the tooltip instance is already in the cached `app.data` before creating an instance. If is is already there, nothing has to be done.
   - Each time we create a new instance, we save it in the `app.data` cache to retrieve it later.
   
 ```js
@@ -719,13 +521,45 @@ Shiny.addCustomMessageHandler('add_tooltip', function(message) {
 ```
 
 Notice how we store the current instance: `app.data.tooltips[message.targetEl] = t;`.
-The __reference__ is given by `message.targetEl` that is the target to apply the tooltip on.
-When multiple tooltips are created, we may search for them by target name, which is 
-a reasonable choice. For instance `app.data.tooltips["#mybutton"]` points to the
-tooltip associated to the element having `#mybutton` as id. So far so good!
+The __reference__ is given by `message.targetEl` that is the target to apply the tooltip on. When multiple tooltips are created, we may search for them by target name, which is a reasonable choice. For instance `app.data.tooltips["#mybutton"]` points to the tooltip associated to the element having `#mybutton` as id. So far so good!
 
-How do we enable/disable tooltip then? This is the `updateF7Tooltip()`
-R function role. The corresponding JS handler:
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("shinyMobile/add-tooltip"), "r")
+```
+
+```{r mobile-widget-add-tooltip, echo=FALSE, fig.cap='Create a tooltip on the server and attach it on a DOM element.', fig.align = 'center', out.width='50%'}
+knitr::include_graphics("images/mobile/mobile-widget-add-tooltip.png")
+```
+
+### Update a tooltip
+Framework7 does not provide any native `enable/disable` method, which means that once the tooltip is activated on a given element, it is visible forever (Figure \@ref(fig:mobile-widget-add-tooltip)), unless destroyed.
+The main purpose of `update_f7_tooltip()` is to avoid this, by temporarily disabling any tooltip and reactivating it later. Like for `add_f7_tooltip()`, we may target either by `id` or provide a more complex CSS selector. We support two actions: toggle the tooltip (enable/disable) and update, that is change data like the displayed text.
+
+```{r, eval=FALSE}
+update_f7_tooltip <- function(
+  id = NULL, 
+  selector = NULL,
+  action = c("toggle", "update"), 
+  text = NULL,
+  session = shiny::getDefaultReactiveDomain()
+) {
+  validate_selector(id, selector)
+  if (!is.null(id)) id <- paste0("#", session$ns(id))
+  targetEl <- id %OR% selector
+  message <- dropNulls(
+    list(
+      targetEl = targetEl, 
+      action = action, 
+      text = text
+    )
+  )
+  send_custom_message("update_tooltip", message, session)
+}
+```
+
+`update_f_tooltip()` sends three elements to JS, namely the tooltip target element `message.targetEl`, the optional new text, that is `message.text` and the action to perform `message.action` (either update or toggle state).
+   
+The corresponding JS handler:
 
   - Checks if the specified tooltip instance exists and only update if it is the case.
   - Handles two situations: update the tooltip content or toggle the tooltip visibility.
@@ -733,7 +567,7 @@ R function role. The corresponding JS handler:
   on hover so applying hide on a visible tooltip will only have effect until the user
   hovers again over the same tooltip, which is useless.
   
-`updateF7Tooltip()` sends three elements to JS, namely the tooltip target element `message.targetEl`, the optional new text, that is `message.text` and the action to perform `message.action` (either update or toggle state). Let's first update the tooltip element. In `tooltip.js`, we add:
+In `widgets.js`, right after the `add_tooltip` handler, we add the `update` logic, that consists in changing the text:
 
 ```js
 Shiny.addCustomMessageHandler(
@@ -749,12 +583,9 @@ Shiny.addCustomMessageHandler(
 ```
 
 The corresponding tooltip instance is accessed in `app.data` with `app.data.tooltips[message.targetEl]`
-and stored in a local variable, `t`. We apply `setText` only if the user action corresponds to `update`.
+and stored in a local variable, `t`. We apply the Framework7 tooltip [method](https://v5.framework7.io/docs/tooltip.html#tooltip-app-methods) `setText` only if the user action corresponds to `update`.
 
-We handle the `toggle` case. The first thing to check is whether the current instance is active.
-We do it with the `app.tooltip.get` method targeted on `message.targetEl`. If the instance is
-alive, we get an object, while we obtain undefined if it does not exist. We then call the `app.tooltip.destroy` method
-on the current instance:
+The next step is to handle the `toggle` case. We check whether the current instance is active applying the `app.tooltip.get` method on `message.targetEl`. If the instance is alive, we get an object, while we obtain undefined if it does not exist. We then call the `app.tooltip.destroy` method on the current instance:
 
 ```js
 Shiny.addCustomMessageHandler(
@@ -819,28 +650,27 @@ The final JS code is:
 Shiny.addCustomMessageHandler(
   'update_tooltip', function(message) {
   if (app.data.tooltips[message.targetEl] !== undefined) {
-    // Try to get the instance
-    let t = app.tooltip.get(message.targetEl);
+    // Unchanged
     if (message.action === "update") {
-      if (t) {
-        t.setText(message.text);
-      }
+      // Unchanged
     } else if (message.action === "toggle") {
       if (t) {
-        // create copy that won't be modified if t is destroyed!
-        let cachedTooltip = Object.assign({}, t);
-        // save copy to replace the deleted one in the app data
-        app.data.tooltips[message.targetEl] = cachedTooltip;
-        // destroy current instance
-        t.destroy();
+        // Unchanged
       } else {
-        // Parameters
+        // Capture parameters
         let pars = app.data.tooltips[message.targetEl].params;
-        // recreate the tooltip based on the copy configuration
+        // Recreate the tooltip based on the copy configuration
         t = app.tooltip.create(pars);
+        // Replace the app data instance
         app.data.tooltips[message.targetEl] = t;
       }
     }
   }
 });
+```
+
+You may find an example below.
+
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("shinyMobile/update-tooltip"), "r")
 ```
