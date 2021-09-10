@@ -3,7 +3,13 @@
 It has been developed by [Facebook](https://github.com/facebook/react) and the community (more than 1500 contributors) and made public in May 29 2013. It is currently used worldwide and has around 163k stars on the GitHub ranking and widely impacts the mobile market, through the [React Native](https://reactnative.dev/) library. __React__ is also really convenient to develop attractive documentations with [docusaurus](https://v2.docusaurus.io/).
 If you ever have built user interfaces with pure JS, you might like React! 
 
-Below, we give a short introduction to the React ecosystem and see how we can benefit from it from the R Shiny side. 
+Below, we give a short introduction to the React ecosystem and see how we can benefit from it from the R Shiny side. By the end of this chapter, you'll be able to develop R interfaces to some nice React libraries like the Argon design [system](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/), shown Figure \@ref(fig:argon-design-react).
+
+```{r argon-design-react, echo=FALSE, fig.cap='Argon design template with React', out.width='100%'}
+knitr::include_graphics("images/going-further/argon-design-react.png")
+```
+
+As another example, `{reactable}` is an HTML widget developed on top of the [`react-table`](https://github.com/tannerlinsley/react-table) library. 
 
 ## Quick introduction to React
 To understand React there are few prerequisites notably basic HTML/CSS/JS knowledge, especially JS modules (see section \@ref(about-js-modules)). However, if you managed to reach this chapter, you should not worry too much! 
@@ -286,19 +292,12 @@ function ActionButton() {
 That's all folks! Now that you get a better understanding of how React works, 
 let's see how to use it with Shiny. 
 
-## Introduction to `{reactR}`
+## Introduction to `{reactR}` 
 
 ::: {.importantblock data-latex=""}
 This section has been written and tested with `{reactR}` `0.4.4`.
 Some feature may change in future releases. 
 :::
-
-The React ecosystem is rich and provides many plug and play boilerplate. For instance,
-`{reactable}` is an HTML widget developed on top of the [`react-table`](https://github.com/tannerlinsley/react-table) library. What about the modern React Argon design [system](https://demos.creative-tim.com/argon-design-system-react/?_ga=2.179634850.760978196.1612189904-282783983.1612189904#/), shown Figure \@ref(fig:argon-design-react)?
-
-```{r argon-design-react, echo=FALSE, fig.cap='Argon design template with React', out.width='100%'}
-knitr::include_graphics("images/going-further/argon-design-react.png")
-```
 
 In this part, we see how to leverage `{reactR}` [@R-reactR] to bring few component from the `reactstrap` [library](https://reactstrap.github.io/) to Shiny.
 
@@ -396,9 +395,12 @@ Overall, this function calls `reactR::createReactShinyInput()` that:
 We also have the corresponding update input function, which we renamed to `update_action_button()` for consistency:
 
 ```{r, eval=FALSE}
-update_action_button <- function(session, inputId, value, configuration = NULL) {
+update_action_button <- function(session, inputId, value, 
+                                 configuration = NULL) {
   message <- list(value = value)
-  if (!is.null(configuration)) message$configuration <- configuration
+  if (!is.null(configuration)) {
+    message$configuration <- configuration
+  }
   session$sendInputMessage(inputId, message);
 }
 ```
@@ -414,15 +416,7 @@ action_button <- function(
   status = "primary"
 ) {
   reactR::createReactShinyInput(
-    inputId,
-    "action_button",
-    htmltools::htmlDependency(
-      name = "action_button-input",
-      version = "1.0.0",
-      src = "www/reactstrapTest",
-      package = "reactstrapTest",
-      script = "action_button.js"
-    ),
+    # ... unchanged ...
     default = 0,
     configuration = list(
       label = label,
@@ -467,19 +461,8 @@ devtools::load_all()
 
 In the `./app.R` script, we have to tell Shiny we want to use Bootstrap 4 instead of Bootstrap 3, through the `bslib::bs_theme` function. Erase the existing code and replace it by the following:
 
-```{r, eval=FALSE}
-library(reactstrapTest)
-
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  action_button("plop", "Click me!")
-)
-
-server <- function(input, output, session) {
-  observe(print(input$plop))
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("demo-button", package = "reactstrapTest"))
 ```
 
 As you can see Figure \@ref(fig:react-action-button-basic), the button label is not displayed nor its value. 
@@ -511,29 +494,8 @@ How do we set handle the value change upon click? Well, this is pretty straightf
 
 In the below example, we update a button from the server side with `update_action_button()`:
 
-```{r, eval=FALSE}
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  fluidRow(
-    action_button("plop", "Click me!"),
-    action_button("update", "Update button 1")
-  )
-)
-
-server <- function(input, output, session) {
-  observe(print(input$plop))
-  observeEvent(input$update, {
-    update_action_button(
-      session, "plop", 
-      configuration = list(
-        label = "New text", 
-        status = "success"
-      )
-    )
-  }, ignoreInit = TRUE)
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("demo-update-button", package = "reactstrapTest"))
 ```
 
 Clicking on the first button should increment its value in the R console. You may play around
@@ -576,7 +538,7 @@ setInputConfiguration(el, configuration) {
   - The second tag is a script containing the __value__ passed as __JSON__. 
   - The second tag is a script containing the __configuration__, also passed as JSON.
   
-```{r}
+```{r, eval=FALSE}
 library(shiny)
 reactR::createReactShinyInput(
   inputId = "plop", 
@@ -586,6 +548,16 @@ reactR::createReactShinyInput(
   configuration = list(a = 1, b = "test"), 
   container = div
 )
+```
+<!-- Manually formatted for pdf output -->
+
+```
+#> <div id="plop" class="myinput"></div>
+#> <script id="plop_value" type="application/json">0</script>
+#> <script 
+#>  id="plop_configuration" 
+#>  type="application/json">{"a":1,"b":"test"}
+#> </script>
 ```
   
 The configuration and values are processed in the __initialize__ method since it is called before the input is bound:
@@ -617,91 +589,11 @@ render(el) {
 The `render` method is called once inside `subscribe` and also each time the element is updated
 with `receiveMessage`.
 
-### Exercise 2
+### Exercise 2 {#reactR-exercise-2}
 1. Add an`icon` (from fontawesome) parameter to the `ActionButton` component.
 Hint: You might find helpful to capture its HTML dependency with `htmltools::findDependencies(iconTag)` so as to properly render it. In HTML `icon("bicycle")` produces `<i class="fa fa-bicycle" role="presentation" aria-label="bicycle icon"></i>`. However, in React we want `<i className="fa fa-bicycle />`. Therefore, you will have to extract the icon class and send it to JS in the configuration list.
-2. Implement the logic on the JS side. Hint: you may use the below code:
-
-```jsx
-import { reactShinyInput } from 'reactR';
-// reactstrap components
-import { Button } from "reactstrap";
-
-function ActionButton({configuration, value, setValue}) {
-  let iconTag, btnCl, innerTag;
-  if (...) {
-    btnCl = "btn-icon";
-    innerTag = <>
-      <span className="btn-inner--icon">
-        <i className=... />
-      </span>
-      <span className="btn-inner--text">...</span>
-    </>;
-  } else {
-    innerTag = configuration.label;
-  }
-
-  let outlined;
-  if (...) {
-    outlined = true;
-  }
-
-  return (
-    <Button
-      color={configuration.status}
-      className=...
-      outline=...
-      size=...
-      onClick={() => setValue(value + 1)}>
-      {innerTag}
-    </Button>
-  );
-}
-
-reactShinyInput(
-  '.action_button', 
-  'reactstrapTest.action_button', 
-  ActionButton
-);
-```
-3. Try your code with:
-
-```{r, eval=FALSE}
-library(shiny)
-library(mypkg)
-
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  fluidRow(
-    action_button(
-      "plop", 
-      "Click me!", 
-      size = "lg", 
-      outline = TRUE
-    ),
-    action_button(
-      "update", 
-      "Update button 1", 
-      icon = icon("bicycle")
-    )
-  )
-)
-
-server <- function(input, output, session) {
-  observe(print(input$plop))
-  observeEvent(input$update, {
-    update_action_button(
-      session, "plop", 
-      configuration = list(
-        label = "New text", 
-        status = "success"
-      )
-    )
-  }, ignoreInit = TRUE)
-}
-
-shinyApp(ui, server)
-```
+2. Implement the logic on the JS side. Hint: you may use the code in appendix \@ref(reactR-exercise-2-appendix).
+3. Try your code inside a Shiny app.
 
 ### Add another input
 
@@ -747,17 +639,27 @@ button_group <- function(
 }
 ```
 
-The expected `reactstrap` button HTML structure is rather simple including a title, the list of button tags and the selected item in a paragraph:
+The expected `reactstrap` button group HTML structure is rather simple including a title, the list of button tags and the selected item in a paragraph:
 
 ```jsx
 <div>
   <h5>Radio Buttons</h5>
   <ButtonGroup>
-    <Button color="primary" onClick={() => setRSelected(1)} active={rSelected === 1}>One</Button>
-    <Button color="primary" onClick={() => setRSelected(2)} active={rSelected === 2}>Two</Button>
-    <Button color="primary" onClick={() => setRSelected(3)} active={rSelected === 3}>Three</Button>
+    <Button 
+      color="primary" 
+      onClick={...} 
+      active={value === 1}>
+      One
+    </Button>
+    <Button 
+      color="primary" 
+      onClick={...} 
+      active={value === 2}>
+      Two
+    </Button>
+    // ... other buttons ...
   </ButtonGroup>
-  <p>Selected: {rSelected}</p>
+  <p>Selected: {value}</p>
 </div>
 ```
 
@@ -793,16 +695,8 @@ import { reactShinyInput } from 'reactR';
 import { Button, ButtonGroup } from 'reactstrap';
 
 function ButtonGroupUI({ configuration, value, setValue }) {
-  const choices = configuration.choices
-  const buttons = choices.map(
-    (choice) => <Button
-      key={choice}
-      color={configuration.status}
-      onClick={() => setValue(choice)}
-      active={value === choice}>
-        {choice}
-      </Button>
-  )
+  
+  // ... create buttons ... //
 
   return (
     <>
@@ -818,17 +712,8 @@ function ButtonGroupUI({ configuration, value, setValue }) {
 
 Now, we may test the newly created element in a Shiny app:
 
-```{r, eval=FALSE}
-ui <- fluidPage(
-  theme = bslib::bs_theme(version = "4"),
-  button_group("plop", "A group of buttons", choices = names(mtcars))
-)
-
-server <- function(input, output, session) {
-  observe(print(input$plop))
-}
-
-shinyApp(ui, server)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("demo-button-group", package = "reactstrapTest"))
 ```
 
 According to Figure \@ref(fig:react-button-group), there are rooms for improvements but it is a good start!
@@ -842,7 +727,7 @@ knitr::include_graphics("images/going-further/react-button-group.png")
 
 Imagine if we had to repeat this for ten different elements. As we start to accumulate components, it is good practice to start modularizing our code. Inside the `./srcjs/action_button.jsx`, we wrap the `reactShinyInput` call into an `export` statement:
 
-```
+```jsx
 // To add in ./srcjs/action_button.jsx
 export default function initActionButton(){
   reactShinyInput(
