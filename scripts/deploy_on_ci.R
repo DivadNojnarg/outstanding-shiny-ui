@@ -51,7 +51,7 @@ for (rmd in dir(pkg_root, pattern = "\\.Rmd$")) {
     package_names[has_package] <- sub('^.*OSUICode::get_example\\(.*package\\s*=\\s*"([^"]+)".*$', "\\1", example_lines[has_package])
 
     plyr::m_ply(
-      parallel = TRUE,
+      .parallel = TRUE,
       data.frame(
         app_name = app_names,
         package_name = package_names
