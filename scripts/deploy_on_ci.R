@@ -2,7 +2,8 @@
 server <- "shinyapps.io"
 account <- Sys.getenv("SHINYAPPS_NAME", "unleash-shiny")
 
-if (isTRUE(Sys.getenv("CI"))) {
+# Logic from `testthat::on_ci()`
+if (isTRUE(as.logical(Sys.getenv("CI")))) {
   rsconnect::setAccountInfo(
     name   = account,
     token  = Sys.getenv("SHINYAPPS_TOKEN"),
