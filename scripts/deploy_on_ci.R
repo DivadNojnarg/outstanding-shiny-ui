@@ -53,7 +53,7 @@ for (rmd in dir(pkg_root, pattern = "\\.Rmd$")) {
     plyr::m_ply(
       data.frame(
         app_name = app_names,
-        package_name = package_names,
+        package_name = package_names
       ),
       function(app_name, package_name) {
         app_dir <- file.path(tempdir(), tempfile("OSUICode-app-"))
