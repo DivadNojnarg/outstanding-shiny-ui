@@ -15,11 +15,10 @@ if (isTRUE(as.logical(Sys.getenv("CI")))) {
 deploy_app <- function(
   app_dir,
   name,
-  package,
   ...
 ) {
   cat("\n\n\n")
-  message("Deploying: ", name, " from package: ", package, "\n")
+  message("Deploying: ", readLines(file.path(app_dir, "app.R"))[1])
 
   rsconnect::deployApp(
     appDir = app_dir,
@@ -73,7 +72,7 @@ plyr::m_ply(
     cat(
       sep = "",
       file = file.path(app_dir, "app.R"),
-      "\nOSUICode::run_example(\"", app_name, "\", package = \"", package_name, "\")\n"
+      "OSUICode::run_example(\"", app_name, "\", package = \"", package_name, "\")\n"
     )
 
     # Copy in DESCRIPTION to find package deps
@@ -85,8 +84,7 @@ plyr::m_ply(
     # Deploy!
     deploy_app(
       app_dir = app_dir,
-      name = gsub("/", "_", app_name, fixed = TRUE),
-      package = package_name
+      name = gsub("/", "_", app_name, fixed = TRUE)
     )
   }
 )
