@@ -18,7 +18,7 @@ deploy_app <- function(
   ...
 ) {
   cat("\n\n\n")
-  message("Deploying: ", readLines(file.path(app_dir, "app.R"))[1])
+  message("Deploying: ", paste0(readLines(file.path(app_dir, "app.R")), collapse = "\n"))
 
   rsconnect::deployApp(
     appDir = app_dir,
@@ -56,12 +56,14 @@ apps <- do.call(rbind, app_list)
 message("Applications:")
 print(apps)
 
+apps$i <- seq_len(nrow(apps))
+
 # Deploy in parallel
 doParallel::registerDoParallel(cores = 3)
 plyr::m_ply(
   .parallel = TRUE,
   apps,
-  function(app_name, package_name) {
+  function(app_name, package_name, i) {
     app_dir <- file.path(tempdir(), tempfile("OSUICode-app-"))
     dir.create(app_dir, recursive = TRUE, showWarnings = FALSE)
     on.exit({
@@ -71,7 +73,12 @@ plyr::m_ply(
     # Make app.R
     cat(
       file = file.path(app_dir, "app.R"),
-      paste0("OSUICode::run_example(\"", as.character(app_name), "\", package = \"", as.character(package_name), "\")\n")
+      paste0(
+      "# ", i, "/", nrow(apps), "\n",
+      "OSUICode::run_example(",
+        "\"", as.character(app_name), "\", ",
+        "package = \"", as.character(package_name), "\"",
+      ")\n")
     )
 
     # Copy in DESCRIPTION to find package deps
