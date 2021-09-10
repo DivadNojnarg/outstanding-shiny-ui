@@ -48,7 +48,8 @@ for (rmd in dir(pkg_root, pattern = "\\.Rmd$")) {
     has_package <- grepl("package\\s*=", example_lines)
     package_names[has_package] <- sub('^.*OSUICode::get_example\\(.*package\\s*=\\s*"([^"]+)".*$', "\\1", example_lines[has_package])
 
-    Map(
+    parallel::mcMap(
+      mc.cores = 2,
       app_name = app_names,
       package_name = package_names,
       f = function(app_name, package_name) {
