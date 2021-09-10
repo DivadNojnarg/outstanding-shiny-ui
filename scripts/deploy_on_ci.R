@@ -70,9 +70,8 @@ plyr::m_ply(
 
     # Make app.R
     cat(
-      sep = "",
       file = file.path(app_dir, "app.R"),
-      "OSUICode::run_example(\"", app_name, "\", package = \"", package_name, "\")\n"
+      paste0("OSUICode::run_example(\"", as.character(app_name), "\", package = \"", as.character(package_name), "\")\n")
     )
 
     # Copy in DESCRIPTION to find package deps
