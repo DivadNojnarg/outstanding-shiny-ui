@@ -78,17 +78,6 @@ matched with `valueTextColor`, leading to unexpected behavior.
 There are few widgets like __toasts__ and __notifications__ that don't have any predefined UI element when the app starts. In this case, we simply send the configuration to JS, through the __session__:
 
 ```{r, eval=FALSE}
-send_custom_message <- function(type, message, session) {
-  session$sendCustomMessage(
-    type,
-    jsonlite::toJSON(
-      message,
-      auto_unbox = TRUE,
-      json_verbatim = TRUE
-    )
-  )
-}
-
 f7_notif <- function(
   id = NULL, 
   text, 
@@ -100,9 +89,12 @@ f7_notif <- function(
     options$icon <- as.character(options$icon)
   }
 
-  message <- c(dropNulls(list(id = id, text = text)), options)
+  message <- c(
+    dropNulls(list(id = session$ns(id), text = text)), 
+    options
+  )
   # see my-app.js function
-  send_custom_message("notification", message, session)
+  session$sendCustomMessage("notification", message)
 
 }
 ```
@@ -355,8 +347,8 @@ update_f7_instance <- function(
   }
   options <- listRenderTags(options)
 
-  message <- list(id = id, options = options)
-  send_custom_message("update-instance", message, session)
+  message <- list(id = session$ns(id), options = options)
+  session$sendCustomMessage("update-instance", message)
 }
 ```
 
@@ -474,7 +466,7 @@ add_f7_tooltip <- function(
   validate_selector(id, selector)
   if (!is.null(id)) id <- paste0("#", session$ns(id))
   options$targetEl <- id %OR% selector
-  send_custom_message("add_tooltip", options, session)
+  session$sendCustomMessage("add_tooltip", options)
 }
 ```
 
@@ -553,7 +545,7 @@ update_f7_tooltip <- function(
       text = text
     )
   )
-  send_custom_message("update_tooltip", message, session)
+  session$sendCustomMessage("update_tooltip", message)
 }
 ```
 
