@@ -35,6 +35,8 @@ deploy_app <- function(
 
 # code_chunk(OSUICode::get_example("tabler/button"), "r")
 
+doParallel::registerDoParallel(cores = 3)
+
 pkg_root <-  rprojroot::find_package_root_file("")
 for (rmd in dir(pkg_root, pattern = "\\.Rmd$")) {
   rmd_lines <- readLines(rmd, warn = FALSE)
@@ -48,11 +50,12 @@ for (rmd in dir(pkg_root, pattern = "\\.Rmd$")) {
     has_package <- grepl("package\\s*=", example_lines)
     package_names[has_package] <- sub('^.*OSUICode::get_example\\(.*package\\s*=\\s*"([^"]+)".*$', "\\1", example_lines[has_package])
 
-    parallel::mcMap(
-      mc.cores = 2,
-      app_name = app_names,
-      package_name = package_names,
-      f = function(app_name, package_name) {
+    plyr::m_ply(
+      data.frame(
+        app_name = app_names,
+        package_name = package_names,
+      ),
+      function(app_name, package_name) {
         app_dir <- file.path(tempdir(), tempfile("OSUICode-app-"))
         dir.create(app_dir, recursive = TRUE, showWarnings = FALSE)
         on.exit({
