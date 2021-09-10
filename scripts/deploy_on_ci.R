@@ -19,6 +19,7 @@ deploy_app <- function(
 ) {
   cat("\n\n\n")
   message("Deploying: ", name, " from package: ", package)
+  return()
   cat("\n")
 
   rsconnect::deployApp(
