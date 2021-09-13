@@ -52,7 +52,8 @@ app_list <- lapply(dir(pkg_root, pattern = "\\.Rmd$"), function(rmd) {
   )
 })
 
-apps <- do.call(rbind, app_list)
+# Find all unique combinations of apps and packages
+apps <- unique(do.call(rbind, app_list))
 message("Applications:")
 print(apps)
 
