@@ -61,40 +61,51 @@ apps$i <- seq_len(nrow(apps))
 
 # Deploy in parallel
 doParallel::registerDoParallel(cores = 3)
-plyr::m_ply(
-  .parallel = TRUE,
-  apps,
-  function(app_name, package_name, i) {
-    app_dir <- file.path(tempdir(), tempfile("OSUICode-app-"))
-    dir.create(app_dir, recursive = TRUE, showWarnings = FALSE)
-    on.exit({
-      unlink(app_dir, recursive = TRUE)
-    }, add = TRUE)
 
-    # Make app.R
-    cat(
-      file = file.path(app_dir, "app.R"),
-      paste0(
-      "# ", i, "/", nrow(apps), "\n",
-      "OSUICode::run_example(",
-        "\"", as.character(app_name), "\", ",
-        "package = \"", as.character(package_name), "\"",
-      ")\n")
-    )
+for (i in 1:3) {
+  deploy_worked <- plyr::m_ply(
+    .parallel = TRUE,
+    apps,
+    function(app_name, package_name, i) {
+      app_dir <- file.path(tempdir(), tempfile("OSUICode-app-"))
+      dir.create(app_dir, recursive = TRUE, showWarnings = FALSE)
+      on.exit({
+        unlink(app_dir, recursive = TRUE)
+      }, add = TRUE)
 
-    # Copy in DESCRIPTION to find package deps
-    file.copy(
-      file.path(pkg_root, "DESCRIPTION"),
-      file.path(app_dir, "DESCRIPTION")
-    )
+      # Make app.R
+      cat(
+        file = file.path(app_dir, "app.R"),
+        paste0(
+        "# ", i, "/", nrow(apps), "\n",
+        "OSUICode::run_example(",
+          "\"", as.character(app_name), "\", ",
+          "package = \"", as.character(package_name), "\"",
+        ")\n")
+      )
 
-    # Deploy!
-    deploy_app(
-      app_dir = app_dir,
-      name = gsub("/", "_", app_name, fixed = TRUE)
-    )
-  }
-)
+      # Copy in DESCRIPTION to find package deps
+      file.copy(
+        file.path(pkg_root, "DESCRIPTION"),
+        file.path(app_dir, "DESCRIPTION")
+      )
+
+      # Deploy!
+      tryCatch({
+        deploy_app(
+          app_dir = app_dir,
+          name = gsub("/", "_", app_name, fixed = TRUE)
+        )
+        TRUE
+      }, error = function(e) {
+        FALSE
+      })
+    }
+  )
+  if (all(deploy_worked)) break
+  # Subset apps to only those that failed and try again
+  apps <- apps[!deploy_worked, , drop = FALSE]
+}
 
 
-message("done")
+message("done!")
