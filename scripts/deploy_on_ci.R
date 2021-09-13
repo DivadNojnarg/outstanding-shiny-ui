@@ -98,6 +98,7 @@ for (i in 1:3) {
         )
         TRUE
       }, error = function(e) {
+        message("Error deploying ", app_name, ":\n", e)
         FALSE
       })
     }
