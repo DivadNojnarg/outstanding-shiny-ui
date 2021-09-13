@@ -18,7 +18,7 @@ deploy_app <- function(
   ...
 ) {
   cat("\n\n\n")
-  message("Deploying: ", paste0(readLines(file.path(app_dir, "app.R")), collapse = "\n"))
+  message("Deploying: ", paste0(tail(readLines(file.path(app_dir, "app.R")), 2), collapse = "\n"))
 
   rsconnect::deployApp(
     appDir = app_dir,
@@ -87,14 +87,15 @@ for (i in 1:3) {
       cat(
         file = file.path(app_dir, "app.R"),
         paste0(
-        "# ", i, "/", nrow(apps), "\n",
-        "# Copy in impossible-to-reach library calls to populate the manifest file\n",
-        library_code, "\n",
-        "\n",
-        "OSUICode::run_example(",
-          "\"", as.character(app_name), "\", ",
-          "package = \"", as.character(package_name), "\"",
-        ")\n")
+          "# ", i, "/", nrow(apps), "\n",
+          "# Copy in impossible-to-reach library calls to populate the manifest file\n",
+          library_code, "\n",
+          "\n",
+          "OSUICode::run_example(",
+            "\"", as.character(app_name), "\", ",
+            "package = \"", as.character(package_name), "\"",
+          ")\n"
+        )
       )
 
       # Deploy!
