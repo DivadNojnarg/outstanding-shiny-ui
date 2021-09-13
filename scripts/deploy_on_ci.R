@@ -71,10 +71,11 @@ apps$i <- seq_len(nrow(apps))
 
 # Deploy in parallel
 doParallel::registerDoParallel(cores = 3)
+runInParallel <- TRUE
 
 for (i in 1:3) {
   deploy_worked <- plyr::m_ply(
-    .parallel = TRUE,
+    .parallel = runInParallel,
     apps,
     function(app_name, package_name, i) {
       app_dir <- file.path(tempdir(), tempfile("OSUICode-app-"))
@@ -114,6 +115,7 @@ for (i in 1:3) {
   if (all(deploy_worked)) break
   # Subset apps to only those that failed and try again
   apps <- apps[!deploy_worked, , drop = FALSE]
+  runInParallel <- FALSE
 }
 
 
