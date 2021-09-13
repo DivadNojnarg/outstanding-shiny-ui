@@ -57,6 +57,16 @@ apps <- unique(do.call(rbind, app_list))
 message("Applications:")
 print(apps)
 
+library_deps <- desc::desc(file.path(pkg_root, "DESCRIPTION"))$get_deps()
+library_code <- paste0(
+  "# Insert code to trick `manifest.json` creation\n",
+  "if (FALSE) {",
+    "\n",
+    paste0("  library(", library_deps$package, ")", collapse = "\n"),
+    "\n",
+  "}"
+)
+
 apps$i <- seq_len(nrow(apps))
 
 # Deploy in parallel
@@ -78,16 +88,13 @@ for (i in 1:3) {
         file = file.path(app_dir, "app.R"),
         paste0(
         "# ", i, "/", nrow(apps), "\n",
+        "# Copy in impossible-to-reach library calls to populate the manifest file\n",
+        library_code, "\n",
+        "\n",
         "OSUICode::run_example(",
           "\"", as.character(app_name), "\", ",
           "package = \"", as.character(package_name), "\"",
         ")\n")
-      )
-
-      # Copy in DESCRIPTION to find package deps
-      file.copy(
-        file.path(pkg_root, "DESCRIPTION"),
-        file.path(app_dir, "DESCRIPTION")
       )
 
       # Deploy!
