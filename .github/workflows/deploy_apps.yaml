@@ -1,0 +1,68 @@
+## Trigger workflow:
+# httr::POST(
+#   "https://api.github.com/repos/DivadNojnarg/outstanding-shiny-ui/dispatches",
+#   httr::content_type_json(),
+#   body = list(
+#     event_type = "deploy",
+#     client_payload = list()
+#   ),
+#   encode = "json",
+#   httr::add_headers(
+#     Authorization = paste0("token ", Sys.getenv("GITHUB_PAT")),
+#     Accept = "application/vnd.github.v3+json, application/vnd.github.everest-preview+json"
+#   )
+# )
+
+
+on:
+  push:
+    branches: [main, master, deploy**]
+  repository_dispatch:
+    types: [all, deploy]
+
+name: Deploy Apps
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04
+
+    name: "unleash-shiny"
+
+    env:
+      R_KEEP_PKG_SOURCE: yes
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Cancel previous deployments
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+
+      - uses: actions/checkout@v2
+
+      - uses: r-lib/actions/setup-pandoc@v1
+      - uses: r-lib/actions/setup-r@v1
+        with:
+          r-version: "3.6"
+          use-public-rspm: true
+
+      # - uses: r-lib/actions/setup-renv@v1
+      #   with:
+      #     cache-version: 2
+      - uses: r-lib/actions/setup-r-dependencies@v1
+        with:
+          cache-version: 1
+          extra-packages: |
+            rsconnect
+            rprojroot
+            desc
+            doParallel
+            plyr
+
+      - name: Deploy apps
+        env:
+          SHINYAPPS_NAME: "unleash-shiny"
+          SHINYAPPS_TOKEN: ${{ secrets.SHINYAPPS_TOKEN }}
+          SHINYAPPS_SECRET: ${{ secrets.SHINYAPPS_SECRET }}
+        run: >
+          Rscript 'scripts/deploy_on_ci.R'
