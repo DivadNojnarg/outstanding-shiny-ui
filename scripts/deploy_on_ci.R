@@ -114,7 +114,7 @@ for (i in 1:3) {
   )
   if (all(deploy_worked)) break
   # Subset apps to only those that failed and try again
-  apps <- apps[!deploy_worked, , drop = FALSE]
+  apps <- apps[!deploy_worked, ]
   runInParallel <- FALSE
 }
 
