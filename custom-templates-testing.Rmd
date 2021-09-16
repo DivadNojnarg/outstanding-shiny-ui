@@ -346,6 +346,47 @@ test_that("validate width works", {
 
 Notice how the three above tests elegantly fail. The provided context ("validate width works") immediately indicates the culprit, which is a game changer for debugging.
 
+### Caveats
+As stated above, there might be situations where tests should be carefully written and not rely too much on upstream package structure. I propose to consider a real life example involving the `{shinyMobile}` CRAN package, depending on `{shiny}` and `{htmltools}`. It has a function, namely `preview_mobile()` allowing one to preview an app on a mobile device iframe. This function has an internal [test](https://github.com/schloerke/shinyMobile/blob/5e0344ad083217d0bd3be82aff446e63fbb1d000/tests/testthat/test-preview_mobile.R#L18) to check if HTML dependencies are properly applied. However, the test may fail if Shiny dependencies are updated, which is independent of `{shinyMobile}` but would eventually prevent `{shiny}` from being released on [CRAN](https://github.com/RinteRface/shinyMobile/pull/211). Below is what is obtained with `{shiny}` 1.6.0.
+
+```
+[[1]]
+List of 10
+ $ name      : chr "marvel-devices-css"
+ $ version   : chr "1.0.0"
+ ...
+
+[[2]]
+List of 10
+ $ name      : chr "bootstrap"
+ $ version   : chr "3.4.1"
+ ...
+```
+
+Then doing `expect_length(deps, 2)` is [fine](https://github.com/schloerke/shinyMobile/commit/5e0344ad083217d0bd3be82aff446e63fbb1d000#diff-d206e3d4eeee0729f4975a2a8e8414182a6603d10aca57be2c3eb97b5fe7e160L25). However, with `{shiny}` 1.7.0 (it could also come from another `{htmltools}` version), the result is significantly different: 
+
+```
+[[1]]
+List of 10
+ $ name      : chr "jquery"
+ $ version   : chr "3.6.0"
+ ...
+
+[[2]]
+List of 10
+ $ name      : chr "marvel-devices-css"
+ $ version   : chr "1.0.0"
+ ...
+
+[[3]]
+List of 10
+ $ name      : chr "bootstrap"
+ $ version   : chr "3.4.1"
+ ...
+```
+
+The returned list contains one extra dependency, thereby breaking the underlying test. This subsequently requires to change the test. 
+
 ### Testing template behavior
 Testing the JavaScript behavior is one of the biggest challenge to validate a template. If the R component has been carefully validated, it does not mean that its JavaScript effects are. For instance, let's consider the `tabler_progress()`  that may be updated with `update_tabler_progress()`. How do we check whether the progress value is correctly set?
   

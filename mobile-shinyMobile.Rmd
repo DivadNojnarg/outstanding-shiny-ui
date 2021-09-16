@@ -7,7 +7,7 @@ However, fear not! The process follows the same general principles.
 :::
 
 ::: {.warningblock data-latex=""}
-As a reminder, the code examples shown throughout this chapter are gathered in the `{OSUICode}` package accessible [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code). 
+As a reminder, the code examples shown throughout this chapter are gathered in the `{OSUICode}` package accessible [here](https://github.com/DivadNojnarg/OSUICode/tree/1d42aa7531705954d3c21921c8bbb10623b20d12). 
 :::
 
 ## Introduction to Framework7
@@ -675,7 +675,7 @@ Since Framework7 6.0.0, `app.data` has been removed in favor of a more flexible 
 :::
 
 
-### Other elements
+### Other elements {#mobile-shinyMobile-other}
 Framework7 provides mobile specific modules like [`touch`](), which is a long press event (here 750 ms). This is something you can usually do on many mobile apps. The touch module parameters are defined as follows:
 
 ```js
@@ -795,7 +795,7 @@ as it also target tabs navigation, which eventually fails! Therefore, it is best
 practice to add the `external` class to all the necessary links like `a(href = "https://www.google.com/", "Click me", class = "external")`
 :::
 
-## Theming and colors
+## Theming and colors {#mobile-shinyMobile-theming}
 Framework7 offers 15 color [themes](https://framework7.io/docs/color-themes.html?theme=light&bars=empty&color=%09+%23673ab7) with a dark/light global appearance. To apply them, we add `color-theme-COLOR` to the
 parent element. Best practice is to target the `body` since it is the parent of all the page
 content, thereby ensuring global consistency. The dark theme is triggered by adding the
@@ -1026,10 +1026,92 @@ $( document ).ready(function() {
 });
 ```
 
-We can bundle our code with `build_js()`. We invite the reader to modularize the other features mentioned above, the final product being available [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/fd0ba28881869c5c605dd0e5b9f7a8f420bbedb4/srcjs/helpers_config.js). 
+We finally bundle our code with `build_js()`.
 
 ::: {.warningblock data-latex=""}
 If the function has a side effect, for instance modify a variable located in another scope, it must return the transformed variable output, so that it can be tracked at the upper level. 
 :::
 
 We have now set all foundations. In the next chapter, we see how to convert a `{shinyMobile}` app (and any vanilla shiny app) into a __progressive web app__ (PWA). 
+
+## Exercise
+Continue to improve the JS code by adding an extra helper consisting of all related theme and layout features.
+
+1. Run `create_js("helpers_theme", add_reference = FALSE)`.
+2. Add it a `setTouchStyle` function (copy and paste code from \@ref(mobile-shinyMobile-other)):
+
+```js
+const setTouchStyle = (config) => {
+  if (config.hasOwnProperty("touch")) {
+    if (config.touch.tapHold) {
+      // touch logic
+    }
+  }
+};
+```
+
+3. Add it a `setColorTheme` function (copy and paste code from \@ref(mobile-shinyMobile-theming)):
+
+```js
+const setColorTheme = (config, app) => {
+  if (config.hasOwnProperty('color')) {
+    // logic 
+  }
+};
+```
+
+4. Add it a `setFilledTheme` function (copy and paste code from \@ref(mobile-shinyMobile-theming)):
+
+```js
+const setFilledTheme = (config) => {
+  if (!config.hasOwnProperty('filled')) config.filled = false;
+  if (config.filled) {
+    // logic 
+  }
+};
+```
+
+5. Add it the `setDarkMode` function:
+
+```js
+const setDarkMode = (config, app) => {
+  if (!config.hasOwnProperty('dark')) config.dark = false;
+  if (config.dark) {
+    app.methods.toggleDarkTheme();
+  }
+};
+```
+
+6. Finish by exporting the `initTheme` function, that calls all previously defined helpers:
+
+```js
+export const initTheme = (config, app) => {
+  setTouchStyle(config);
+  setColorTheme(config, app);
+  setFilledTheme(config);
+  setDarkMode(config, app);
+};
+```
+
+7. Move to the `init.js` script and import the `helpers_theme.js`.
+
+```js
+import { initTheme } from './helpers_theme.js'
+```
+
+8. `initTheme` has to be called after app instantiation. You should obtain something like below. Once done, rebuild the JS code with `build_js()` and test with an app example. 
+
+```js
+import { setConfig } from './helpers_config.js';
+import { initTheme } from './helpers_theme.js'
+
+$( document ).ready(function() {
+  let config = setConfig();
+  // create app instance
+  app = new Framework7(config);
+  
+  // Set theme: dark mode, touch, filled, color, taphold css
+  initTheme(config, app);
+  // ...
+});
+```
