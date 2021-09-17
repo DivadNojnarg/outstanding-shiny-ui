@@ -8,7 +8,7 @@
 <meta name="author" content="David Granjon">
 <!-- JS --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.2"></script><script src="https://kit.fontawesome.com/6ecbd6c532.js" crossorigin="anonymous"></script><script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="libs/bootstrap-4.6.0/bootstrap.min.css" rel="stylesheet">
-<script src="libs/bootstrap-4.6.0/bootstrap.bundle.min.js"></script><script src="libs/bs3compat-0.3.0.9000/transition.js"></script><script src="libs/bs3compat-0.3.0.9000/tabs.js"></script><script src="libs/bs3compat-0.3.0.9000/bs3compat.js"></script><link href="libs/bs4_book-1.0.0/bs4_book.css" rel="stylesheet">
+<script src="libs/bootstrap-4.6.0/bootstrap.bundle.min.js"></script><script src="libs/bs3compat-0.3.0/transition.js"></script><script src="libs/bs3compat-0.3.0/tabs.js"></script><script src="libs/bs3compat-0.3.0/bs3compat.js"></script><link href="libs/bs4_book-1.0.0/bs4_book.css" rel="stylesheet">
 <script src="libs/bs4_book-1.0.0/bs4_book.js"></script><script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script><script src="https://cdn.jsdelivr.net/autocomplete.js/0/autocomplete.jquery.min.js"></script><script src="https://cdn.jsdelivr.net/npm/mark.js@8.11.1/dist/mark.min.js"></script><!-- CSS --><link rel="stylesheet" href="css/style.css">
 </head>
 <body data-spy="scroll" data-target="#toc">
@@ -935,7 +935,9 @@ FIGURE 12.18: Left: what the user sees when app starts. Right: what the users se
 </p>
 </div>
 <p>The whole piece of UI is re-rendered each time, while only the box class should be modified. As shown above, this does have substantial impact for a very complex app festooned with inputs/outputs, thereby altering the overall user experience.</p>
-<p>Let’s provide some optimization and get rid of the <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code>. We proceed in two steps. The first part consists in customizing the previously designed <code><a href="https://rdrr.io/pkg/OSUICode/man/box.html">box()</a></code> function from <a href="shiny-input-system.html#boxes-on-steroids">12.2.1</a> to gather as many parameters as possible in a list of options. For instance, we choose to extract <code>width</code> and <code>title</code>.</p>
+<p>Let’s provide some optimization and get rid of the <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code>.
+Figure <a href="shiny-input-system.html#fig:box-on-steroids-summary">12.19</a> summarizes the main idea and you may use it as a mind map to follow the remaining of this section.
+We proceed in two steps. The first part consists in customizing the previously designed <code><a href="https://rdrr.io/pkg/OSUICode/man/box.html">box()</a></code> function from <a href="shiny-input-system.html#boxes-on-steroids">12.2.1</a> to gather as many parameters as possible in a list of options. For instance, we choose to extract <code>width</code> and <code>title</code>.</p>
 <p><code>width</code> is expected to be numeric, while <code>title</code> might be any HTML tag, a list of HTML tags, justifying the use of slightly more sophisticated code (we can’t use <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> on a shiny tag … not yet). So that we don’t shoot ourselves in the foot, we create a specific object for the processed <code>title</code>, that is <code>processed_title</code>. Indeed, a common mistake would be to re-inject the processed title later in the HTML box tag, which would cause an error. It’s purpose is solely to be part of the configuration script required by JS.</p>
 <div class="sourceCode" id="cb507"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
@@ -963,7 +965,7 @@ FIGURE 12.18: Left: what the user sees when app starts. Right: what the users se
   
   <span class="co"># ....; Extra code removed</span>
 <span class="op">}</span></code></pre></div>
-<p>This properties list has to be treated on the JS side, the reason why we remove <code>NULL</code> elements with <code>dropNulls</code>, since we don’t want to send empty arrays. We choose the following approach, where we convert our properties to a JSON with <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> and embed them in a script tag. Note the <code>data-for</code> attribute pointing to the unique <code>id</code> parameter. This will guarantee the uniqueness of our configuration script.</p>
+<p>This properties list has to be treated on the JS side, the reason why we remove <code>NULL</code> elements with <code><a href="https://rdrr.io/pkg/OSUICode/man/dropNulls.html">dropNulls()</a></code>, since we don’t want to send empty arrays. We choose the following approach, where we convert our properties to a JSON with <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> and embed them in a script tag. Note the <code>data-for</code> attribute pointing to the unique <code>id</code> parameter. This will guarantee the uniqueness of our configuration script.</p>
 <div class="sourceCode" id="cb508"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">background</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span>,
@@ -1106,7 +1108,13 @@ We don’t describe the toggle case since it is quite similar to the previous im
 <span id="cb517-9"><a href="shiny-input-system.html#cb517-9"></a>    <span class="va">JSON</span>.<span class="at">stringify</span>(config) <span class="op">+</span> </span>
 <span id="cb517-10"><a href="shiny-input-system.html#cb517-10"></a>    <span class="st">'&lt;/script&gt;'</span></span>
 <span id="cb517-11"><a href="shiny-input-system.html#cb517-11"></a>  )<span class="op">;</span></span></code></pre></div>
-<p>The whole JS code may be found <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b95f656bce9de7600c05b5045a4e005f70c4f83d/inst/input-system/input-bindings/boxBindingEnhanced.js#L1">here</a>. Below is the reworked version of the previously updated box without <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code>. When app starts, the box is displayed as shown on Figure <a href="shiny-input-system.html#fig:update-shinydashboard-box-optimized">12.19</a>, which is better for the end user experience.</p>
+<div class="figure">
+<span id="fig:box-on-steroids-summary"></span>
+<img src="images/survival-kit/box-on-steroids.png" alt="Box config tag concept and application" width="100%"><p class="caption">
+FIGURE 12.19: Box config tag concept and application
+</p>
+</div>
+<p>The whole JS code may be found <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b95f656bce9de7600c05b5045a4e005f70c4f83d/inst/input-system/input-bindings/boxBindingEnhanced.js#L1">here</a>. Below is the reworked version of the previously updated box without <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code>. When app starts, the box is displayed as shown on Figure <a href="shiny-input-system.html#fig:update-shinydashboard-box-optimized">12.20</a>, which is better for the end user experience.</p>
 <div class="sourceCode" id="cb518"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -1163,7 +1171,7 @@ We don’t describe the toggle case since it is quite similar to the previous im
 <div class="figure">
 <span id="fig:update-shinydashboard-box-optimized"></span>
 <img src="images/survival-kit/update-shinydashboard-box-optimized-1.png" alt="Left: what the user sees when app starts. Right: what the users sees after five seconds." width="50%"><img src="images/survival-kit/update-shinydashboard-box-optimized-2.png" alt="Left: what the user sees when app starts. Right: what the users sees after five seconds." width="50%"><p class="caption">
-FIGURE 12.19: Left: what the user sees when app starts. Right: what the users sees after five seconds.
+FIGURE 12.20: Left: what the user sees when app starts. Right: what the users sees after five seconds.
 </p>
 </div>
 </div>
@@ -1463,11 +1471,11 @@ The current handler was only designed to explain the underlying processes!</p>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputHandlerExample.html">customTextInputHandlerExample</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></code></pre></div>
-<p>which sets the value as text by default. After opening the HTML inspector and setting a break point in the <code>getType</code> method (Figure <a href="shiny-input-system.html#fig:binding-getType-1">12.20</a>), we check that the data type is not defined. Therefore the input handler will not apply.</p>
+<p>which sets the value as text by default. After opening the HTML inspector and setting a break point in the <code>getType</code> method (Figure <a href="shiny-input-system.html#fig:binding-getType-1">12.21</a>), we check that the data type is not defined. Therefore the input handler will not apply.</p>
 <div class="figure">
 <span id="fig:binding-getType-1"></span>
 <img src="images/survival-kit/binding-getType-1.png" alt="Example where getType does not call the input handler" width="100%"><p class="caption">
-FIGURE 12.20: Example where getType does not call the input handler
+FIGURE 12.21: Example where getType does not call the input handler
 </p>
 </div>
 <p>For the second example, we give a date value to the function:</p>
@@ -1482,20 +1490,20 @@ FIGURE 12.20: Example where getType does not call the input handler
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputHandlerExample.html">customTextInputHandlerExample</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<p>As illustrated Figure <a href="shiny-input-system.html#fig:binding-getType-2">12.21</a>, the date is properly processed. Moreover, if you type any other valid date in the text field like <code>2020-11-12</code>, it will be recognized as a date, while entering a text will return a character element. This is a way to obtain a slightly more clever text input widget.</p>
+<p>As illustrated Figure <a href="shiny-input-system.html#fig:binding-getType-2">12.22</a>, the date is properly processed. Moreover, if you type any other valid date in the text field like <code>2020-11-12</code>, it will be recognized as a date, while entering a text will return a character element. This is a way to obtain a slightly more clever text input widget.</p>
 <div class="figure">
 <span id="fig:binding-getType-2"></span>
 <img src="images/survival-kit/binding-getType-2.png" alt="Passing a date to a text input correctly processes it" width="100%"><p class="caption">
-FIGURE 12.21: Passing a date to a text input correctly processes it
+FIGURE 12.22: Passing a date to a text input correctly processes it
 </p>
 </div>
 <p>Importantly, since the <code>data-type</code> is set at app startup by checking the class of the value, it will never change later. For instance, if you start the app with the text input value to be a simple text, setting it to a date through the app does not convert it into a date since <code>$(el).data("data-type")</code> always return <code>undefined</code>! Therefore, if you want to be able to use both text and dates, be sure to wisely set the initial value.</p>
 <p>To finish, we could seamlessly make our text input even more clever, by handling numbers. Even though shiny has a <code>shiny.number</code> input <a href="https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/R/server-input-handlers.R#L144">handler</a>, it simply makes sure that whenever the input is missing a value, NA is returned instead of "".
-(Figure <a href="shiny-input-system.html#fig:shiny-getType-number">12.22</a>).</p>
+(Figure <a href="shiny-input-system.html#fig:shiny-getType-number">12.23</a>).</p>
 <div class="figure">
 <span id="fig:shiny-getType-number"></span>
 <img src="images/survival-kit/shiny-getType-number.png" alt='shiny.number input handler ensures that an empty numericInput returns NA instead of ""' width="100%"><p class="caption">
-FIGURE 12.22: shiny.number input handler ensures that an empty numericInput returns NA instead of ""
+FIGURE 12.23: shiny.number input handler ensures that an empty numericInput returns NA instead of ""
 </p>
 </div>
 <p>What we want is an handler that recognizes the string <code>"1"</code> and convert it to a number. In R, converting a string to a number gives <code>NA</code>:</p>
@@ -1546,11 +1554,11 @@ FIGURE 12.22: shiny.number input handler ensures that an empty numericInput retu
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputHandlerExample.html">customTextInputHandlerExample</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">1</span><span class="op">)</span></code></pre></div>
-<p>we obtain the desired behavior shown Figure <a href="shiny-input-system.html#fig:binding-getType-3">12.23</a>.</p>
+<p>we obtain the desired behavior shown Figure <a href="shiny-input-system.html#fig:binding-getType-3">12.24</a>.</p>
 <div class="figure">
 <span id="fig:binding-getType-3"></span>
 <img src="images/survival-kit/binding-getType-3.png" alt="Passing a number to a text input correctly processes it" width="100%"><p class="caption">
-FIGURE 12.23: Passing a number to a text input correctly processes it
+FIGURE 12.24: Passing a number to a text input correctly processes it
 </p>
 </div>
 
@@ -1608,7 +1616,7 @@ FIGURE 12.23: Passing a number to a text input correctly processes it
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-09-16.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-09-17.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
