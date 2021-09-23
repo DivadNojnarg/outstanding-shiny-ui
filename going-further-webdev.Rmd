@@ -206,15 +206,165 @@ This is where the front-end developers comes to play and believe me, there is qu
 
 #### Setup dev JS dependencies
 The first thing is to continue with the package setup to add development libraries necessary for building the JS code. 
+For now, those dependencies are listed in `./package.json` and only cover `webpack`:
 
+```js
+"devDependencies": {
+  "webpack": "^5.53.0",
+  "webpack-cli": "^4.8.0",
+  "webpack-merge": "^5.8.0"
+}
+```
+
+We have to install __Babel__ that will compile our code to a JS code that all web browsers can understand. 
+
+```{r, eval=FALSE}
+packer::npm_install(c("babel", "babel-loader", "@babel/core", "@babel/preset-env"), scope = "dev")
+```
+
+We will be importing CSS directly inside the JS code, so we also need a CSS and style loaders:
+
+```{r, eval=FALSE}
+packer::npm_install(c("style-loader", "css-loader"), scope = "dev")
+```
+
+As we use Framework7 and echartsjs, we install them as production dependencies (needed by the app):
+
+```{r, eval=FALSE}
+packer::npm_install(c("framework7", "echarts", "echarts-gl"), scope = "prod")
+```
+
+You should obtain this JSON:
+
+```js
+"devDependencies": {
+  "@babel/core": "^7.15.5",
+  "@babel/preset-env": "^7.15.6",
+  "babel": "^6.23.0",
+  "babel-loader": "^8.2.2",
+  "css-loader": "^6.3.0",
+  "style-loader": "^3.3.0",
+  "webpack": "^5.53.0",
+  "webpack-cli": "^4.8.0",
+  "webpack-merge": "^5.8.0"
+},
+"dependencies": {
+  "echarts": "^5.2.1",
+  "echarts-gl": "^2.0.8",
+  "framework7": "^6.3.4"
+}
+```
+
+Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra [loader](https://www.npmjs.com/package/framework7-loader) as well as a babel react component:
+
+```{r, eval=FALSE}
+packer::npm_install(c("framework7-loader", "@babel/preset-react"), scope = "dev")
+```
+
+Alternatively, one can copy the `./package.json` from [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f) to get exactly the same package versions I used when I initialized this project and call `packer::npm_install()` to pull the dependencies and install them for the project.  
+
+We have to create a `./.babel.rc` script that will add some configuration for Babel to handle JSX:
+
+```
+touch .babelrc
+> code to copy
+{
+  "presets": [
+    "@babel/preset-env",
+    "@babel/preset-react"
+  ]
+}
+```
+
+We modify the `./srcjs/config/loader.json` to add the required loaders for `js`, `jsx` and `css` files.
+
+```js
+[
+  {
+    "test": "\\.(f7).(html|js|jsx)$",
+    "use": [
+      "babel-loader",
+      "framework7-loader"
+    ]
+  },
+  {
+    "test": "\\.css$",
+    "use": [
+      "style-loader",
+      "css-loader"
+    ]
+  }
+]
+```
+
+We can ultimately bundle our JS code and check the app works:
+
+```{r, eval=FALSE}
+packer::bundle()
+devtools::load_all()
+run_app()
+```
+
+```{r vdpMod-basic-app, echo=FALSE, fig.cap='vdpMod basic app', out.width='100%'}
+knitr::include_graphics("images/going-further/vdpMod-basic-app.png")
+```
 
 #### Basic UI skeleton
-Open `./R/app_ui.R`...
+The package configuration is successful but we still have to modify the `./R/app_ui.R` to be consistent with the Framework7 expectations. According to what is required in the [documentation](https://framework7.io/docs/app-layout.html), the `body` must contain a tag with the `app` id (actually whatever id but give it an id...), followed by the `index.js` JS code (obtained after compilation with `{packer}`). The order is important as not following it will break the app:
+
+```{r, eval=FALSE}
+app_ui <- function(request, title = NULL) {
+  tagList(
+    # Leave this function for adding external resources
+    golem_add_external_resources(title),
+    # Your application UI logic
+    tags$body(
+      div(id = "app"),
+      tags$script(src = "www/index.js")
+    )
+  )
+}
+```
+
+Note that we also have to consider meta tags in the header to handle the viewport, mobile platforms... This is done inside `golem_add_external_resources()`. Note that we had to comment out the 
+`bundle_resources()` call since it would have added the dependencies in the head, before the app tag, which is not consistent with the Framework7 requirements:
+
+```{r, eval=FALSE}
+golem_add_external_resources <- function(title){
+
+  add_resource_path(
+    'www', app_sys('app/www')
+  )
+
+  tags$head(
+    favicon(),
+    tags$meta(charset = "utf-8"),
+    tags$meta(
+      name = "viewport",
+      content = "width=device-width, initial-scale=1,
+      maximum-scale=1, minimum-scale=1, user-scalable=no,
+      viewport-fit=cover"
+    ),
+    tags$meta(
+      name = "apple-mobile-web-app-capable",
+      content = "yes"
+    ),
+    tags$meta(name = "theme-color", content = "#2196f3"),
+    tags$title(title)
+    # removed code
+  )
+}
+```
+
+This is all what we need on the R UI side since most of the code will be written in JSX. 
+
+### Create the app layout in JS
+
+TO DO
 
 
-To go even further, part of the app logic may be delegated to a Plumber API, which the web developer can query to fetch data from. This is however out of the scope of this book. 
 
 ## Final product
 Final code project may be found [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f). 
 
--->
+To go even further, part of the app logic may be delegated to a Plumber API, which the web developer can query to fetch data from. This is however out of the scope of this book. 
