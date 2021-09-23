@@ -359,9 +359,70 @@ golem_add_external_resources <- function(title){
 This is all what we need on the R UI side since most of the code will be written in JSX. 
 
 ### Create the app layout in JS
+We have the R logic, the R/UI skeleton but few steps remain such as initializing the app as discussed in \@ref(mobile-initialization).
+Everything happens in the `./srcjs/index.js` script. For now it should be like below:
 
-TO DO
+```js
+import { message } from './modules/message.js';
+import 'shiny';
 
+// In shiny server use:
+// session$sendCustomMessage('show-packer', 'hello packer!')
+Shiny.addCustomMessageHandler('show-packer', (msg) => {
+  message(msg);
+});
+```
+
+which is a placeholder provided by `{packer}`. While we don't need it,
+note how we may seamlessly import functions from one script to another with just an `import` statement followed by the function name and the script path. We'll use this syntax all over the place. What do we need now? We have to call `new Framework7({...})` for the initialization step so we need `Framework7`. 
+
+```js
+import 'shiny';
+// Import Framework7
+import Framework7 from 'framework7';
+```
+
+We also have to load the css. To get a better idea of where to find them, I propose to browse to `./node_modules/framework7` and inspect the asset structure, as shown Figure \@ref(fig:vdpMod-framework7-resources). Since we want to capture all CSS, we'll point to `framework7/framework7-bundle.min.css` (bundle stating for all components):
+
+```js
+import 'shiny';
+// Import Framework7
+import Framework7 from 'framework7';
+// Import Framework7 Styles
+import 'framework7/framework7-bundle.min.css';
+```
+
+```{r vdpMod-framework7-resources, echo=FALSE, fig.cap='Framework7 assets in node modules', out.width='100%'}
+knitr::include_graphics("images/going-further/vdpMod-framework7-resources.png")
+```
+
+If you remember correctly, we'll be using a slider to update the model parameter value. Moreover, it's always nice to notify the user when the new results are available. Let's do it with a toast. The way we imported Framework7 does not provide any other component, we have to import them one by one, the rule being we only import what is required, to lighten the JS code. According to Figure \@ref(fig:vdpMod-framework7-resources), Framework7 components are located in `framework7/esm/components/<COMPONENT_NAME>/<SCRIPT.js>`:
+
+```js
+// ... Other imports ...
+
+// Install F7 Components using .use() method on class:
+import Range from 'framework7/esm/components/range/range.js';
+import Toast from 'framework7/esm/components/toast/toast.js';
+Framework7.use([Range, Toast]);
+```
+
+For the layout, we use the main App component template, documented [here](https://framework7.io/docs/router-component.html#main-app-component), which is required to instantiate the application:
+
+```js
+// ... Other imports ...
+
+import App from './components/app.f7.jsx';
+let app = new Framework7({
+  el: '#app',
+  theme: 'ios',
+  // specify main app component
+  component: App
+});
+```
+
+Note that `el` targets the app tag `id` defined in `./R/app_ui.R`. If you ever have to change it, don't forget to replace it in both places.
+The `component` slot hosts the `App` which has to be defined. We assumed it is created in a `./components/app.f7.jsx`, `.` being the root of the `srcjs` folder. 
 
 
 ## Final product
