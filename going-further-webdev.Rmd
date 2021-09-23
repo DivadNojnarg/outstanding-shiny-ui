@@ -1,5 +1,5 @@
 # Divide and Conquere {#going-further-webdev}
-<!--
+
 ## Motivations
 Adapting an external HTML template to R requires time, efforts and competent people. 
 What if, instead, we decided to:
@@ -9,9 +9,9 @@ What if, instead, we decided to:
   - Communicate between R and JS with the websocket to exchange information. 
   
 Theoretically, any front-end web developer could take care of the first task. 
-The second task could be handled by any R programmer. The third task involves both developers, the R guy will leverage `session$sendCustomMessage` and the UI guy will use `Shiny.setInputvalue`. 
+The second task could be handled by any R programmer. The third task involves both developers, the R guy will leverage `session$sendCustomMessage` and the UI guy will use `Shiny.setInputvalue` wherever required. 
 
-Eventually, this would allow the R guy, that is most of the time not a UI design expert, to focus on the business logic and extract function out of `reactive` to avoid sub optimal apps. On the other hands, the web developer could focus on building the user interface and prepare the link with the R part, without necessarily have a deep knowledge of R.
+Eventually, this would allow the R guy, that is most of the time not a UI design expert, to focus on the business logic and extract function out of `reactive` to improve code base quality. On the other hands, the web developer could focus on building the user interface and prepare the link with the R part, without necessarily have a deep knowledge of R.
 
 
 ## Start of the art
@@ -21,11 +21,84 @@ Let's make a list of all requirements for such a project. Since we are working w
 An excellent introduction exposing how to maintain robust JavaScript code inside a Shiny project, featuring Webpack and NPM, may be found in [JavaScript for R](https://book.javascript-for-r.com/webpack-intro.html) by John Coene. 
 :::
 
+## About the project
 
-To go even further, part of the app logic may be delegated to a Plumber API, which the web
-developer can query to fetch data from. 
+### Topic
+We are going to develop a ordinary differential equation solver for the Van Der Pol oscillator, whose equations may be found below:
+
+$$
+\begin{equation}
+  \left\{\begin{array}{@{}l@{}}
+    \dot{x}=y,\\
+    \dot{y}=\mu (1-x^2)y-x.
+  \end{array}\right.\
+\end{equation}
+$$
+
+Importantly, we don't really focus on the scientific content and the app will be very simple regarding its features. As shown above, there is only one parameter namely $\mu$, which we will vary to see how it changes the whole system. 
+
+### UI design
+The UI contains a slider input to change $\mu$ as well as two plots, one for the time series and another for the phase plan analysis including the vector field and a simple trajectory from a chosen initial condition. 
+
+We selected the [Framework7](https://framework7.io/) template, already mentioned in part \@ref(mobile-shiny-intro) since we want this app to be optimized for mobile platforms. This will also allow us to fully exploit the Framework7 API (`{shinyMobile}` does not implement all its features yet). The graphic output part is handled by [echartsjs](https://echarts.apache.org/en/index.html) since it offers quite amazing vector field outputs, as depicted [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark). 
+
+### R logic
+Before designing the app and dive into the reactivity, let's first think about the business logic. On the server side, we want to store the model equations, create a function to solve it, compute the vector field... We create the `model.R` script. The first step is to store the equations. As it is a 2D ODE system, we can use a simple vector:
+
+```{r}
+vdp_equations <- c(
+  "Y",
+  "p['mu'] * (1 - X^2) * Y - X"
+)
+```
+
+To solve the equations, we selected the `{deSolve}` package [@R-deSolve], whose performances are enough for this example (For more complex examples, one may switch to compiled code with Fortran, C or C++. `{deSolve}` provides interface for compiled code).
+
+```{r}
+solve_model <- function(Y0, t, model, parms) {
+  deSolve::ode(y = Y0, times = t, model, parms)
+}
+```
+
+`Y0` refers to the initial condition, `t` is the time for which we integrate, model contains the equations and `parms` is a vector of parameters. Importantly, `{deSolve}` requires the model to be written as follows (`t` being the time, `y` a 2D vector and `p` a parameter vector), returning the value of `x` and `y` in a list:
+
+
+```{r}
+vdp <- function(t, y, p) {
+  with(as.list(y), {
+    dX <- eval(parse(text = vdp_equations[1]))
+    dY <- eval(parse(text = vdp_equations[2]))
+    list(c(X=dX, Y=dY))
+  })
+}
+```
+
+From there, calling `solve_model()` will return a vector containing our solutions:
+
+```{r}
+solve_model(
+  Y0 = c(X=1, Y=1),
+  t = seq(0, 100, .1),
+  vdp,
+  1
+)
+```
+
+```{r, eval=FALSE}
+build_phase_data <- function(xgrid, ygrid, p) {
+  vectors <- expand.grid(x = xgrid, y = ygrid)
+  X <- vectors$x
+  Y <- vectors$y
+  vectors$dx <- eval(parse(text = vdp_equations[1]))
+  vectors$dy <- eval(parse(text = vdp_equations[2]))
+  vectors$mag <- sqrt(vectors$dx * vectors$dx + vectors$dy * vectors$dy)
+  vectors
+}
+```
+
+To go even further, part of the app logic may be delegated to a Plumber API, which the web developer can query to fetch data from. This is however out of the scope of this book. 
 
 ## Final product
-Final code project may be found [here](https://github.com/RinteRface/shinyComponent/tree/caa07bb9e845f827ddc54679586cc54b6338039d). 
+Final code project may be found [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f). 
 
 -->
