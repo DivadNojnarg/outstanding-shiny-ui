@@ -37,13 +37,35 @@ $$
 
 Importantly, we don't really focus on the scientific content and the app will be very simple regarding its features. As shown above, there is only one parameter namely $\mu$, which we will vary to see how it changes the whole system. 
 
+
+### Initialize the project
+We assume that the R developer is the first to setup the project, even though in theory, both can do. 
+
+```{r, eval=FALSE}
+golem::create_golem("vdpMod")
+```
+
+We then call the specific `{packer}` function to setup a `{golem}` compatible structure:
+
+```{r, eval=FALSE}
+packer::scaffold_golem()
+```
+
+You should end up with the file structure depicted on Figure \@ref(fig:vdpMod-init).
+
+```{r vdpMod-init, echo=FALSE, fig.cap='vdpMod project initialization with {golem} and {packer}', out.width='100%'}
+knitr::include_graphics("images/going-further/vdpMod-init.png")
+```
+
+The structure is basically the same provided by `{golem}` with addition of extra files for JS code management by `{packer}`. This is the same principle shown in chapters \@ref(workflow-charpente) and \@ref(going-further-reactR). Let's pause here for the setup and continue later in this chapter.
+
 ### UI design
 The UI contains a slider input to change $\mu$ as well as two plots, one for the time series and another for the phase plan analysis including the vector field and a simple trajectory from a chosen initial condition. 
 
 We selected the [Framework7](https://framework7.io/) template, already mentioned in part \@ref(mobile-shiny-intro) since we want this app to be optimized for mobile platforms. This will also allow us to fully exploit the Framework7 API (`{shinyMobile}` does not implement all its features yet). The graphic output part is handled by [echartsjs](https://echarts.apache.org/en/index.html) since it offers quite amazing vector field outputs, as depicted [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark). 
 
-### R logic
-Before designing the app and dive into the reactivity, let's first think about the business logic. On the server side, we want to store the model equations, create a function to solve it, compute the vector field... We create the `model.R` script. The first step is to store the equations. As it is a 2D ODE system, we can use a simple vector:
+### R Business logic
+Before designing the app and dive into the reactivity, let's first think about the business logic. On the server side, we want to store the model equations, create a function to solve it, compute the vector field... We create the `.R/model.R` script. The first step is to store the equations. As it is a 2D ODE system, we can use a simple vector:
 
 ```{r}
 vdp_equations <- c(
@@ -73,28 +95,122 @@ vdp <- function(t, y, p) {
 }
 ```
 
-From there, calling `solve_model()` will return a vector containing our solutions:
+From there, calling `solve_model()` will return a vector containing our solutions at each time step:
 
 ```{r}
 solve_model(
-  Y0 = c(X=1, Y=1),
-  t = seq(0, 100, .1),
+  Y0 = c(X = 1, Y = 1),
+  t = seq(0, 1, .1),
   vdp,
-  1
+  c(mu = 0.1)
 )
 ```
 
-```{r, eval=FALSE}
+It is therefore, straightforward to plot time series. However, this output does not tell use anything about the vector field. Below is the code used to generate it (`mag` will be used to setup appropriate color code so as to show the speed along trajectories). 
+
+```{r}
 build_phase_data <- function(xgrid, ygrid, p) {
   vectors <- expand.grid(x = xgrid, y = ygrid)
   X <- vectors$x
   Y <- vectors$y
   vectors$dx <- eval(parse(text = vdp_equations[1]))
   vectors$dy <- eval(parse(text = vdp_equations[2]))
-  vectors$mag <- sqrt(vectors$dx * vectors$dx + vectors$dy * vectors$dy)
+  vectors$mag <- sqrt(
+    vectors$dx * vectors$dx + 
+    vectors$dy * vectors$dy
+  )
   vectors
 }
 ```
+
+```{r}
+grid <- seq(-10, 10)
+phase_plan <- build_phase_data(grid, grid, c(mu = 1))
+# Original is 441 rows, we provide a subset
+phase_plan[1:5, ]
+```
+
+We obtain a matrix indicating for each (X,Y) in the grid what is the corresponding movement direction (dX, dY) as well as the speed (`mag`, arrow size), thereby allowing to draw the [phase plan](https://en.wikipedia.org/wiki/Phase_plane). 
+
+The last step is to create a main wrapper that will call `solve_model()` and `build_phase_data()` at once. Remember that on the UI side, we generate two outputs, the time series and the phase portrait. The first one requires data obtained from `solve_model()`. The second one requires a subset of `solve_model()` output and `build_phase_data()`. Since `solve_model()` returns a matrix, we convert it to a `data.frame`, easier to handle on the JS side:
+
+```{r}
+generate_model_data <- function(model, pars, grid) {
+  model_output <- solve_model(
+    Y0 = c(X = 1, Y = 1),
+    t = seq(0, 100, .1),
+    model,
+    pars
+  )
+  
+  # time series (x = f(t), y = f(t))
+  data <- data.frame(model_output)
+  modelData <- list(t = data$time, X = data$X, Y = data$Y)
+  
+  # phase plan
+  trajectoryData <- data[, c("X", "Y")]
+  names(trajectoryData) <- NULL
+  
+  phaseData <- build_phase_data(grid, grid, pars)
+  names(phaseData) <- NULL
+  
+  # return data
+  list(
+    lineData = modelData,
+    phaseData = jsonlite::toJSON(phaseData, pretty = TRUE),
+    trajectoryData = jsonlite::toJSON(trajectoryData, pretty = TRUE)
+  )
+}
+```
+
+This is basically all we need! I highly encourage you not to dive into
+reactivity first, as this is significantly harder to debug. This way, you can
+setup unit test for these functions without having to handle the Shiny machinery. 
+
+### Add Shiny
+Now that the business logic is safe, we describe what we must do on the server side. Remember that the original idea is to have a slider which we can move to see what impact has $\mu$ on the whole system. 
+
+In the main `.R/app_server.R` script, we first create a reactive containing the vector of parameters (here we only have one but you may imagine to add more later):
+
+```{r, eval=FALSE}
+pars <- reactive({
+  req(input$mu)
+  c(mu = input$mu)
+})
+```
+
+Then, we design an `observeEvent()` listening to any change in `pars()`, triggered as a result of a UI action (slider input move). Inside, we generate the model data with `generate_model_data()` and send them to JS:
+
+```{r, eval=FALSE}
+observeEvent(pars(), {
+  session$sendCustomMessage(
+    "model-data",
+    generate_model_data(vdp, pars(), seq(-10, 10))
+  )
+})
+```
+
+That's all folks! I hope you start to realize the benefits of extracting the business logic out of Shiny. For more complex apps, we recommend to start developing modules and not put the whole code inside `.R/app_server.R`. 
+
+This is all what the R developer would have to do:
+
+  - Write the business logic.
+  - Add reactivity and send data to JS.
+  - Talks to the JS guy about what inputs should be on the UI side ...
+
+
+Now let's see what happens on the Front-end side.
+
+### Create the interface
+This is where the front-end developers comes to play and believe me, there is quite some work for him. 
+
+#### Setup dev JS dependencies
+The first thing is to continue with the package setup to add development libraries necessary for building the JS code. 
+
+
+#### Basic UI skeleton
+Open `./R/app_ui.R`...
+
 
 To go even further, part of the app logic may be delegated to a Plumber API, which the web developer can query to fetch data from. This is however out of the scope of this book. 
 
