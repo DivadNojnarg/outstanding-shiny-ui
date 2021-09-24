@@ -6,15 +6,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Chapter 28 Divide and Conquere | Outstanding User Interfaces with Shiny</title>
 <meta name="author" content="David Granjon">
-<meta name="description" content="A book about deeply customizing Shiny app for production.">
+<meta name="description" content="28.1 Motivations Adapting an external HTML template to R requires time, efforts and competent people. What if, instead, we decided to: Handle the UI part with HTML, JS and CSS. Handle the server...">
 <meta name="generator" content="bookdown 0.24 with bs4_book()">
 <meta property="og:title" content="Chapter 28 Divide and Conquere | Outstanding User Interfaces with Shiny">
 <meta property="og:type" content="book">
 <meta property="og:image" content="https://raw.githubusercontent.com/DivadNojnarg/outstanding-shiny-ui/master/images/intro/crc-press-cover.svg">
-<meta property="og:description" content="A book about deeply customizing Shiny app for production.">
+<meta property="og:description" content="28.1 Motivations Adapting an external HTML template to R requires time, efforts and competent people. What if, instead, we decided to: Handle the UI part with HTML, JS and CSS. Handle the server...">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Chapter 28 Divide and Conquere | Outstanding User Interfaces with Shiny">
-<meta name="twitter:description" content="A book about deeply customizing Shiny app for production.">
+<meta name="twitter:description" content="28.1 Motivations Adapting an external HTML template to R requires time, efforts and competent people. What if, instead, we decided to: Handle the UI part with HTML, JS and CSS. Handle the server...">
 <meta name="twitter:image" content="https://raw.githubusercontent.com/DivadNojnarg/outstanding-shiny-ui/master/images/intro/crc-press-cover.svg">
 <!-- JS --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://kit.fontawesome.com/6ecbd6c532.js" crossorigin="anonymous"></script><script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="libs/bootstrap-4.6.0/bootstrap.min.css" rel="stylesheet">
@@ -93,44 +93,750 @@
 <h1>
 <span class="header-section-number">28</span> Divide and Conquere<a class="anchor" aria-label="anchor" href="#going-further-webdev"><i class="fas fa-link"></i></a>
 </h1>
-<!--
-## Motivations
-Adapting an external HTML template to R requires time, efforts and competent people. 
-What if, instead, we decided to:
-
-  - Handle the UI part with HTML, JS and CSS.
-  - Handle the server part with R. 
-  - Communicate between R and JS with the websocket to exchange information. 
+<div id="motivations-2" class="section level2">
+<h2>
+<span class="header-section-number">28.1</span> Motivations<a class="anchor" aria-label="anchor" href="#motivations-2"><i class="fas fa-link"></i></a>
+</h2>
+<p>Adapting an external HTML template to R requires time, efforts and competent people.
+What if, instead, we decided to:</p>
+<ul>
+<li>Handle the UI part with HTML, JS and CSS.</li>
+<li>Handle the server part with R.</li>
+<li>Communicate between R and JS with the websocket to exchange information.</li>
+</ul>
+<p>Theoretically, any front-end web developer could take care of the first task.
+The second task could be handled by any R programmer. The third task involves both developers, the R guy will leverage <code>session$sendCustomMessage</code> and the UI guy will use <code>Shiny.setInputvalue</code> wherever required.</p>
+<p>Eventually, this would allow the R guy, that is most of the time not a UI design expert, to focus on the business logic and extract function out of <code>reactive</code> to improve code base quality. On the other hands, the web developer could focus on building the user interface and prepare the link with the R part, without necessarily have a deep knowledge of R.</p>
+</div>
+<div id="start-of-the-art" class="section level2">
+<h2>
+<span class="header-section-number">28.2</span> Start of the art<a class="anchor" aria-label="anchor" href="#start-of-the-art"><i class="fas fa-link"></i></a>
+</h2>
+<p>Let’s make a list of all requirements for such a project. Since we are working with both web languages and R, we may leverage <a href="https://github.com/JohnCoene/packer">packer</a> <span class="citation">(Coene <a href="references.html#ref-R-packer" role="doc-biblioref">2020</a>)</span> that briefly allows to use <code>webpack</code>, a JavaScript bundler in any R project. Moreover, we need a robust R package template structure for Shiny, which is a good task for <a href="https://github.com/ThinkR-open/golem">golem</a>. As for the icing on the cake, <a href="https://github.com/JohnCoene/packer">packer</a> offers a plug and play function to set up a <a href="https://github.com/ThinkR-open/golem">golem</a> project with <code>webpack</code>, through <code><a href="https://rdrr.io/pkg/packer/man/scaffold_golem.html">packer::scaffold_golem()</a></code>.</p>
+<div class="noteblock">
+<p>An excellent introduction exposing how to maintain robust JavaScript code inside a Shiny project, featuring Webpack and NPM, may be found in <a href="https://book.javascript-for-r.com/webpack-intro.html">JavaScript for R</a> by John Coene.</p>
+</div>
+</div>
+<div id="about-the-project" class="section level2">
+<h2>
+<span class="header-section-number">28.3</span> About the project<a class="anchor" aria-label="anchor" href="#about-the-project"><i class="fas fa-link"></i></a>
+</h2>
+<div id="topic" class="section level3">
+<h3>
+<span class="header-section-number">28.3.1</span> Topic<a class="anchor" aria-label="anchor" href="#topic"><i class="fas fa-link"></i></a>
+</h3>
+<p>We are going to develop a ordinary differential equation solver for the Van Der Pol oscillator, whose equations may be found below:</p>
+<p><span class="math display">\[
+\begin{equation}
+  \left\{\begin{array}{@{}l@{}}
+    \dot{x}=y,\\
+    \dot{y}=\mu (1-x^2)y-x.
+  \end{array}\right.\
+\end{equation}
+\]</span></p>
+<p>Importantly, we don’t really focus on the scientific content and the app will be very simple regarding its features. As shown above, there is only one parameter namely <span class="math inline">\(\mu\)</span>, which we will vary to see how it changes the whole system.</p>
+</div>
+<div id="initialize-the-project" class="section level3">
+<h3>
+<span class="header-section-number">28.3.2</span> Initialize the project<a class="anchor" aria-label="anchor" href="#initialize-the-project"><i class="fas fa-link"></i></a>
+</h3>
+<p>We assume that the R developer is the first to setup the project, even though in theory, both can do.</p>
+<div class="sourceCode" id="cb1016"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">golem</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/golem/man/create_golem.html">create_golem</a></span><span class="op">(</span><span class="st">"vdpMod"</span><span class="op">)</span></code></pre></div>
+<p>We then call the specific <a href="https://github.com/JohnCoene/packer">packer</a> function to setup a <a href="https://github.com/ThinkR-open/golem">golem</a> compatible structure:</p>
+<div class="sourceCode" id="cb1017"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">packer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/packer/man/scaffold_golem.html">scaffold_golem</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<p>You should end up with the file structure depicted on Figure <a href="going-further-webdev.html#fig:vdpMod-init">28.1</a>.</p>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:vdpMod-init"></span>
+<img src="images/going-further/vdpMod-init.png" alt="vdpMod project initialization with {golem} and {packer}" width="50%"><p class="caption">
+FIGURE 28.1: vdpMod project initialization with {golem} and {packer}
+</p>
+</div>
+<p>The structure is basically the same provided by <a href="https://github.com/ThinkR-open/golem">golem</a> with addition of extra files for JS code management by <a href="https://github.com/JohnCoene/packer">packer</a>. This is the same principle shown in chapters <a href="workflow-charpente.html#workflow-charpente">21</a> and <a href="going-further-reactR.html#going-further-reactR">27</a>. Let’s pause here for the setup and continue later in this chapter.</p>
+</div>
+<div id="ui-design" class="section level3">
+<h3>
+<span class="header-section-number">28.3.3</span> UI design<a class="anchor" aria-label="anchor" href="#ui-design"><i class="fas fa-link"></i></a>
+</h3>
+<p>The UI contains a slider input to change <span class="math inline">\(\mu\)</span> as well as two plots, one for the time series and another for the phase plan analysis including the vector field and a simple trajectory from a chosen initial condition.</p>
+<p>We selected the <a href="https://framework7.io/">Framework7</a> template, already mentioned in part <a href="mobile-shiny-intro.html#mobile-shiny-intro">22</a> since we want this app to be optimized for mobile platforms. This will also allow us to fully exploit the Framework7 API (<a href="https://github.com/RinteRface/shinyMobile">shinyMobile</a> does not implement all its features yet). The graphic output part is handled by <a href="https://echarts.apache.org/en/index.html">echartsjs</a> since it offers quite amazing vector field outputs, as depicted <a href="https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&amp;gl=1&amp;theme=dark">here</a>.</p>
+</div>
+<div id="r-business-logic" class="section level3">
+<h3>
+<span class="header-section-number">28.3.4</span> R Business logic<a class="anchor" aria-label="anchor" href="#r-business-logic"><i class="fas fa-link"></i></a>
+</h3>
+<p>Before designing the app and dive into the reactivity, let’s first think about the business logic. On the server side, we want to store the model equations, create a function to solve it, compute the vector field… We create the <code>.R/model.R</code> script. The first step is to store the equations. As it is a 2D ODE system, we can use a simple vector:</p>
+<div class="sourceCode" id="cb1018"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">vdp_equations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+  <span class="st">"Y"</span>,
+  <span class="st">"p['mu'] * (1 - X^2) * Y - X"</span>
+<span class="op">)</span></code></pre></div>
+<p>To solve the equations, we selected the <a href="http://desolve.r-forge.r-project.org/">deSolve</a> package <span class="citation">(Soetaert, Petzoldt, and Setzer <a href="references.html#ref-R-deSolve" role="doc-biblioref">2021</a>)</span>, whose performances are enough for this example (For more complex examples, one may switch to compiled code with Fortran, C or C++. <a href="http://desolve.r-forge.r-project.org/">deSolve</a> provides interface for compiled code).</p>
+<div class="sourceCode" id="cb1019"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">solve_model</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">Y0</span>, <span class="va">t</span>, <span class="va">model</span>, <span class="va">parms</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu">deSolve</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/deSolve/man/ode.html">ode</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">Y0</span>, times <span class="op">=</span> <span class="va">t</span>, <span class="va">model</span>, <span class="va">parms</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p><code>Y0</code> refers to the initial condition, <code>t</code> is the time for which we integrate, model contains the equations and <code>parms</code> is a vector of parameters. Importantly, <a href="http://desolve.r-forge.r-project.org/">deSolve</a> requires the model to be written as follows (<code>t</code> being the time, <code>y</code> a 2D vector and <code>p</code> a parameter vector), returning the value of <code>x</code> and <code>y</code> in a list:</p>
+<div class="sourceCode" id="cb1020"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">vdp</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">y</span>, <span class="va">p</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/with.html">with</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">as.list</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>, <span class="op">{</span>
+    <span class="va">dX</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/eval.html">eval</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/parse.html">parse</a></span><span class="op">(</span>text <span class="op">=</span> <span class="va">vdp_equations</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
+    <span class="va">dY</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/eval.html">eval</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/parse.html">parse</a></span><span class="op">(</span>text <span class="op">=</span> <span class="va">vdp_equations</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
+    <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>X<span class="op">=</span><span class="va">dX</span>, Y<span class="op">=</span><span class="va">dY</span><span class="op">)</span><span class="op">)</span>
+  <span class="op">}</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>From there, calling <code>solve_model()</code> will return a vector containing our solutions at each time step:</p>
+<div class="sourceCode" id="cb1021"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">solve_model</span><span class="op">(</span>
+  Y0 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>X <span class="op">=</span> <span class="fl">1</span>, Y <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,
+  t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">.1</span><span class="op">)</span>,
+  <span class="va">vdp</span>,
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>
+<span class="op">)</span></code></pre></div>
+<pre><code>#&gt;    time        X           Y
+#&gt; 1   0.0 1.000000  1.00000000
+#&gt; 2   0.1 1.094807  0.89424469
+#&gt; 3   0.2 1.178502  0.77803473
+#&gt; 4   0.3 1.250123  0.65309701
+#&gt; 5   0.4 1.308892  0.52128961
+#&gt; 6   0.5 1.354215  0.38451526
+#&gt; 7   0.6 1.385692  0.24464299
+#&gt; 8   0.7 1.403100  0.10344169
+#&gt; 9   0.8 1.406390 -0.03746953
+#&gt; 10  0.9 1.395664 -0.17665503
+#&gt; 11  1.0 1.371158 -0.31286984</code></pre>
+<p>It is therefore, straightforward to plot time series. However, this output does not tell use anything about the vector field. Below is the code used to generate it (<code>mag</code> will be used to setup appropriate color code so as to show the speed along trajectories).</p>
+<div class="sourceCode" id="cb1023"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">build_phase_data</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">xgrid</span>, <span class="va">ygrid</span>, <span class="va">p</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">vectors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html">expand.grid</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">xgrid</span>, y <span class="op">=</span> <span class="va">ygrid</span><span class="op">)</span>
+  <span class="va">X</span> <span class="op">&lt;-</span> <span class="va">vectors</span><span class="op">$</span><span class="va">x</span>
+  <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">vectors</span><span class="op">$</span><span class="va">y</span>
+  <span class="va">vectors</span><span class="op">$</span><span class="va">dx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/eval.html">eval</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/parse.html">parse</a></span><span class="op">(</span>text <span class="op">=</span> <span class="va">vdp_equations</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">vectors</span><span class="op">$</span><span class="va">dy</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/eval.html">eval</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/parse.html">parse</a></span><span class="op">(</span>text <span class="op">=</span> <span class="va">vdp_equations</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">vectors</span><span class="op">$</span><span class="va">mag</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span>
+    <span class="va">vectors</span><span class="op">$</span><span class="va">dx</span> <span class="op">*</span> <span class="va">vectors</span><span class="op">$</span><span class="va">dx</span> <span class="op">+</span> 
+    <span class="va">vectors</span><span class="op">$</span><span class="va">dy</span> <span class="op">*</span> <span class="va">vectors</span><span class="op">$</span><span class="va">dy</span>
+  <span class="op">)</span>
+  <span class="va">vectors</span>
+<span class="op">}</span></code></pre></div>
+<div class="sourceCode" id="cb1024"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">10</span>, <span class="fl">10</span><span class="op">)</span>
+<span class="va">phase_plan</span> <span class="op">&lt;-</span> <span class="fu">build_phase_data</span><span class="op">(</span><span class="va">grid</span>, <span class="va">grid</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span>
+<span class="co"># Original is 441 rows, we provide a subset</span>
+<span class="va">phase_plan</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span></code></pre></div>
+<pre><code>#&gt;     x   y  dx   dy       mag
+#&gt; 1 -10 -10 -10 1000 1000.0500
+#&gt; 2  -9 -10 -10  809  809.0618
+#&gt; 3  -8 -10 -10  638  638.0784
+#&gt; 4  -7 -10 -10  487  487.1027
+#&gt; 5  -6 -10 -10  356  356.1404</code></pre>
+<p>We obtain a matrix indicating for each (X,Y) in the grid what is the corresponding movement direction (dX, dY) as well as the speed (<code>mag</code>, arrow size), thereby allowing to draw the <a href="https://en.wikipedia.org/wiki/Phase_plane">phase plan</a>.</p>
+<p>The last step is to create a main wrapper that will call <code>solve_model()</code> and <code>build_phase_data()</code> at once. Remember that on the UI side, we generate two outputs, the time series and the phase portrait. The first one requires data obtained from <code>solve_model()</code>. The second one requires a subset of <code>solve_model()</code> output and <code>build_phase_data()</code>. Since <code>solve_model()</code> returns a matrix, we convert it to a <code>data.frame</code>, easier to handle on the JS side:</p>
+<div class="sourceCode" id="cb1026"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">generate_model_data</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">model</span>, <span class="va">pars</span>, <span class="va">grid</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">model_output</span> <span class="op">&lt;-</span> <span class="fu">solve_model</span><span class="op">(</span>
+    Y0 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>X <span class="op">=</span> <span class="fl">1</span>, Y <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,
+    t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">100</span>, <span class="fl">.1</span><span class="op">)</span>,
+    <span class="va">model</span>,
+    <span class="va">pars</span>
+  <span class="op">)</span>
   
-Theoretically, any front-end web developer could take care of the first task. 
-The second task could be handled by any R programmer. The third task involves both developers, the R guy will leverage `session$sendCustomMessage` and the UI guy will use `Shiny.setInputvalue`. 
+  <span class="co"># time series (x = f(t), y = f(t))</span>
+  <span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="va">model_output</span><span class="op">)</span>
+  <span class="va">modelData</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>t <span class="op">=</span> <span class="va">data</span><span class="op">$</span><span class="va">time</span>, X <span class="op">=</span> <span class="va">data</span><span class="op">$</span><span class="va">X</span>, Y <span class="op">=</span> <span class="va">data</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span>
+  
+  <span class="co"># phase plan</span>
+  <span class="va">trajectoryData</span> <span class="op">&lt;-</span> <span class="va">data</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"X"</span>, <span class="st">"Y"</span><span class="op">)</span><span class="op">]</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">trajectoryData</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>
+  
+  <span class="va">phaseData</span> <span class="op">&lt;-</span> <span class="fu">build_phase_data</span><span class="op">(</span><span class="va">grid</span>, <span class="va">grid</span>, <span class="va">pars</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">phaseData</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>
+  
+  <span class="co"># return data</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+    lineData <span class="op">=</span> <span class="va">modelData</span>,
+    phaseData <span class="op">=</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span><span class="va">phaseData</span>, pretty <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,
+    trajectoryData <span class="op">=</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span><span class="va">trajectoryData</span>, pretty <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+  <span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>This is basically all we need! I highly encourage you not to dive into
+reactivity first, as this is significantly harder to debug. This way, you can
+setup unit test for these functions without having to handle the Shiny machinery.</p>
+</div>
+<div id="add-shiny" class="section level3">
+<h3>
+<span class="header-section-number">28.3.5</span> Add Shiny<a class="anchor" aria-label="anchor" href="#add-shiny"><i class="fas fa-link"></i></a>
+</h3>
+<p>Now that the business logic is safe, we describe what we must do on the server side. Remember that the original idea is to have a slider which we can move to see what impact has <span class="math inline">\(\mu\)</span> on the whole system.</p>
+<p>In the main <code>.R/app_server.R</code> script, we first create a reactive containing the vector of parameters (here we only have one but you may imagine to add more later):</p>
+<div class="sourceCode" id="cb1027"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html">reactive</a></span><span class="op">(</span><span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html">req</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">mu</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">input</span><span class="op">$</span><span class="va">mu</span><span class="op">)</span>
+<span class="op">}</span><span class="op">)</span></code></pre></div>
+<p>Then, we design an <code><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent()</a></code> listening to any change in <code>pars()</code>, triggered as a result of a UI action (slider input move). Inside, we generate the model data with <code>generate_model_data()</code> and send them to JS:</p>
+<div class="sourceCode" id="cb1028"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent</a></span><span class="op">(</span><span class="fu">pars</span><span class="op">(</span><span class="op">)</span>, <span class="op">{</span>
+  <span class="va">session</span><span class="op">$</span><span class="fu">sendCustomMessage</span><span class="op">(</span>
+    <span class="st">"model-data"</span>,
+    <span class="fu">generate_model_data</span><span class="op">(</span><span class="va">vdp</span>, <span class="fu">pars</span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">10</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span>
+  <span class="op">)</span>
+<span class="op">}</span><span class="op">)</span></code></pre></div>
+<p>That’s all folks! I hope you start to realize the benefits of extracting the business logic out of Shiny. For more complex apps, we recommend to start developing modules and not put the whole code inside <code>.R/app_server.R</code>.</p>
+<p>This is all what the R developer would have to do:</p>
+<ul>
+<li>Write the business logic.</li>
+<li>Add reactivity and send data to JS.</li>
+<li>Talks to the JS guy about what inputs should be on the UI side …</li>
+</ul>
+<p>Now let’s see what happens on the Front-end side.</p>
+</div>
+<div id="create-the-interface" class="section level3">
+<h3>
+<span class="header-section-number">28.3.6</span> Create the interface<a class="anchor" aria-label="anchor" href="#create-the-interface"><i class="fas fa-link"></i></a>
+</h3>
+<p>This is where the front-end developers comes to play and believe me, there is quite some work for him.</p>
+<div id="setup-dev-js-dependencies" class="section level4">
+<h4>
+<span class="header-section-number">28.3.6.1</span> Setup dev JS dependencies<a class="anchor" aria-label="anchor" href="#setup-dev-js-dependencies"><i class="fas fa-link"></i></a>
+</h4>
+<p>The first thing is to continue with the package setup to add development libraries necessary for building the JS code.
+For now, those dependencies are listed in <code>./package.json</code> and only cover <code>webpack</code>:</p>
+<div class="sourceCode" id="cb1029"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1029-1"><a href="going-further-webdev.html#cb1029-1"></a><span class="st">"devDependencies"</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb1029-2"><a href="going-further-webdev.html#cb1029-2"></a>  <span class="st">"webpack"</span><span class="op">:</span> <span class="st">"^5.53.0"</span><span class="op">,</span></span>
+<span id="cb1029-3"><a href="going-further-webdev.html#cb1029-3"></a>  <span class="st">"webpack-cli"</span><span class="op">:</span> <span class="st">"^4.8.0"</span><span class="op">,</span></span>
+<span id="cb1029-4"><a href="going-further-webdev.html#cb1029-4"></a>  <span class="st">"webpack-merge"</span><span class="op">:</span> <span class="st">"^5.8.0"</span></span>
+<span id="cb1029-5"><a href="going-further-webdev.html#cb1029-5"></a><span class="op">}</span></span></code></pre></div>
+<p>We have to install <strong>Babel</strong> that will compile our code to a JS code that all web browsers can understand.</p>
+<div class="sourceCode" id="cb1030"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">packer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/packer/man/npm_install.html">npm_install</a></span><span class="op">(</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+    <span class="st">"babel"</span>, 
+    <span class="st">"babel-loader"</span>, 
+    <span class="st">"@babel/core"</span>, 
+    <span class="st">"@babel/preset-env"</span>
+  <span class="op">)</span>, 
+  scope <span class="op">=</span> <span class="st">"dev"</span>
+<span class="op">)</span></code></pre></div>
+<p>We will be importing CSS directly inside the JS code, so we also need a CSS and style loaders:</p>
+<div class="sourceCode" id="cb1031"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">packer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/packer/man/npm_install.html">npm_install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"style-loader"</span>, <span class="st">"css-loader"</span><span class="op">)</span>, scope <span class="op">=</span> <span class="st">"dev"</span><span class="op">)</span></code></pre></div>
+<p>As we use Framework7 and echartsjs, we install them as production dependencies (needed by the app):</p>
+<div class="sourceCode" id="cb1032"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">packer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/packer/man/npm_install.html">npm_install</a></span><span class="op">(</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+    <span class="st">"framework7"</span>, 
+    <span class="st">"echarts"</span>, 
+    <span class="st">"echarts-gl"</span>
+  <span class="op">)</span>,
+  scope <span class="op">=</span> <span class="st">"prod"</span>
+<span class="op">)</span></code></pre></div>
+<p>You should obtain this JSON:</p>
+<div class="sourceCode" id="cb1033"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1033-1"><a href="going-further-webdev.html#cb1033-1"></a><span class="st">"devDependencies"</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb1033-2"><a href="going-further-webdev.html#cb1033-2"></a>  <span class="st">"@babel/core"</span><span class="op">:</span> <span class="st">"^7.15.5"</span><span class="op">,</span></span>
+<span id="cb1033-3"><a href="going-further-webdev.html#cb1033-3"></a>  <span class="st">"@babel/preset-env"</span><span class="op">:</span> <span class="st">"^7.15.6"</span><span class="op">,</span></span>
+<span id="cb1033-4"><a href="going-further-webdev.html#cb1033-4"></a>  <span class="st">"babel"</span><span class="op">:</span> <span class="st">"^6.23.0"</span><span class="op">,</span></span>
+<span id="cb1033-5"><a href="going-further-webdev.html#cb1033-5"></a>  <span class="st">"babel-loader"</span><span class="op">:</span> <span class="st">"^8.2.2"</span><span class="op">,</span></span>
+<span id="cb1033-6"><a href="going-further-webdev.html#cb1033-6"></a>  <span class="st">"css-loader"</span><span class="op">:</span> <span class="st">"^6.3.0"</span><span class="op">,</span></span>
+<span id="cb1033-7"><a href="going-further-webdev.html#cb1033-7"></a>  <span class="st">"style-loader"</span><span class="op">:</span> <span class="st">"^3.3.0"</span><span class="op">,</span></span>
+<span id="cb1033-8"><a href="going-further-webdev.html#cb1033-8"></a>  <span class="st">"webpack"</span><span class="op">:</span> <span class="st">"^5.53.0"</span><span class="op">,</span></span>
+<span id="cb1033-9"><a href="going-further-webdev.html#cb1033-9"></a>  <span class="st">"webpack-cli"</span><span class="op">:</span> <span class="st">"^4.8.0"</span><span class="op">,</span></span>
+<span id="cb1033-10"><a href="going-further-webdev.html#cb1033-10"></a>  <span class="st">"webpack-merge"</span><span class="op">:</span> <span class="st">"^5.8.0"</span></span>
+<span id="cb1033-11"><a href="going-further-webdev.html#cb1033-11"></a><span class="op">},</span></span>
+<span id="cb1033-12"><a href="going-further-webdev.html#cb1033-12"></a><span class="st">"dependencies"</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb1033-13"><a href="going-further-webdev.html#cb1033-13"></a>  <span class="st">"echarts"</span><span class="op">:</span> <span class="st">"^5.2.1"</span><span class="op">,</span></span>
+<span id="cb1033-14"><a href="going-further-webdev.html#cb1033-14"></a>  <span class="st">"echarts-gl"</span><span class="op">:</span> <span class="st">"^2.0.8"</span><span class="op">,</span></span>
+<span id="cb1033-15"><a href="going-further-webdev.html#cb1033-15"></a>  <span class="st">"framework7"</span><span class="op">:</span> <span class="st">"^6.3.4"</span></span>
+<span id="cb1033-16"><a href="going-further-webdev.html#cb1033-16"></a><span class="op">}</span></span></code></pre></div>
+<p>Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra <a href="https://www.npmjs.com/package/framework7-loader">loader</a> as well as a babel react component:</p>
+<div class="sourceCode" id="cb1034"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">packer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/packer/man/npm_install.html">npm_install</a></span><span class="op">(</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+    <span class="st">"framework7-loader"</span>, 
+    <span class="st">"@babel/preset-react"</span>
+  <span class="op">)</span>,
+  scope <span class="op">=</span> <span class="st">"dev"</span>
+<span class="op">)</span></code></pre></div>
+<p>Alternatively, one can copy the <code>./package.json</code> from <a href="https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f">here</a> to get exactly the same package versions I used when I initialized this project and call <code><a href="https://rdrr.io/pkg/packer/man/npm_install.html">packer::npm_install()</a></code> to pull the dependencies and install them for the project.</p>
+<p>We have to create a <code>./.babel.rc</code> script that will add some configuration for Babel to handle JSX. Within the terminal, we call <code>touch .babelrc</code> and add it the following code:</p>
+<pre><code>{
+  "presets": [
+    "@babel/preset-env",
+    "@babel/preset-react"
+  ]
+}</code></pre>
+<p>We modify the <code>./srcjs/config/loader.json</code> to add the required loaders for <code>js</code>, <code>jsx</code> and <code>css</code> files.</p>
+<div class="sourceCode" id="cb1036"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1036-1"><a href="going-further-webdev.html#cb1036-1"></a>[</span>
+<span id="cb1036-2"><a href="going-further-webdev.html#cb1036-2"></a>  <span class="op">{</span></span>
+<span id="cb1036-3"><a href="going-further-webdev.html#cb1036-3"></a>    <span class="st">"test"</span><span class="op">:</span> <span class="st">"</span><span class="sc">\\</span><span class="st">.(f7).(html|js|jsx)$"</span><span class="op">,</span></span>
+<span id="cb1036-4"><a href="going-further-webdev.html#cb1036-4"></a>    <span class="st">"use"</span><span class="op">:</span> [</span>
+<span id="cb1036-5"><a href="going-further-webdev.html#cb1036-5"></a>      <span class="st">"babel-loader"</span><span class="op">,</span></span>
+<span id="cb1036-6"><a href="going-further-webdev.html#cb1036-6"></a>      <span class="st">"framework7-loader"</span></span>
+<span id="cb1036-7"><a href="going-further-webdev.html#cb1036-7"></a>    ]</span>
+<span id="cb1036-8"><a href="going-further-webdev.html#cb1036-8"></a>  <span class="op">},</span></span>
+<span id="cb1036-9"><a href="going-further-webdev.html#cb1036-9"></a>  <span class="op">{</span></span>
+<span id="cb1036-10"><a href="going-further-webdev.html#cb1036-10"></a>    <span class="st">"test"</span><span class="op">:</span> <span class="st">"</span><span class="sc">\\</span><span class="st">.css$"</span><span class="op">,</span></span>
+<span id="cb1036-11"><a href="going-further-webdev.html#cb1036-11"></a>    <span class="st">"use"</span><span class="op">:</span> [</span>
+<span id="cb1036-12"><a href="going-further-webdev.html#cb1036-12"></a>      <span class="st">"style-loader"</span><span class="op">,</span></span>
+<span id="cb1036-13"><a href="going-further-webdev.html#cb1036-13"></a>      <span class="st">"css-loader"</span></span>
+<span id="cb1036-14"><a href="going-further-webdev.html#cb1036-14"></a>    ]</span>
+<span id="cb1036-15"><a href="going-further-webdev.html#cb1036-15"></a>  <span class="op">}</span></span>
+<span id="cb1036-16"><a href="going-further-webdev.html#cb1036-16"></a>]</span></code></pre></div>
+<p>We can ultimately bundle our JS code and check whether the app starts:</p>
+<div class="sourceCode" id="cb1037"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">packer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/packer/man/bundle.html">bundle</a></span><span class="op">(</span><span class="op">)</span>
+<span class="fu">devtools</span><span class="fu">::</span><span class="fu">load_all</span><span class="op">(</span><span class="op">)</span>
+<span class="fu">run_app</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<div class="figure">
+<span style="display:block;" id="fig:vdpMod-basic-app"></span>
+<img src="images/going-further/vdpMod-basic-app.png" alt="vdpMod basic app" width="100%"><p class="caption">
+FIGURE 28.2: vdpMod basic app
+</p>
+</div>
+</div>
+<div id="basic-r-ui-skeleton" class="section level4">
+<h4>
+<span class="header-section-number">28.3.6.2</span> Basic R UI skeleton<a class="anchor" aria-label="anchor" href="#basic-r-ui-skeleton"><i class="fas fa-link"></i></a>
+</h4>
+<p>The package configuration is successful but we still have to modify the <code>./R/app_ui.R</code> to be consistent with the Framework7 expectations. According to what is required in the <a href="https://framework7.io/docs/app-layout.html">documentation</a>, the <code>body</code> must contain a tag with the <code>app</code> id (actually whatever id but give it an id…), followed by the <code>index.js</code> JS code (obtained after compilation with <a href="https://github.com/JohnCoene/packer">packer</a>). The order is important as not following it will break the app:</p>
+<div class="sourceCode" id="cb1038"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">app_ui</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">request</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagList.html">tagList</a></span><span class="op">(</span>
+    <span class="co"># Leave this function for adding external resources</span>
+    <span class="fu">golem_add_external_resources</span><span class="op">(</span><span class="va">title</span><span class="op">)</span>,
+    <span class="co"># Your application UI logic</span>
+    <span class="va">tags</span><span class="op">$</span><span class="fu">body</span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/builder.html">div</a></span><span class="op">(</span>id <span class="op">=</span> <span class="st">"app"</span><span class="op">)</span>,
+      <span class="va">tags</span><span class="op">$</span><span class="fu">script</span><span class="op">(</span>src <span class="op">=</span> <span class="st">"www/index.js"</span><span class="op">)</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>Note that we also have to consider meta tags in the header to handle the viewport, mobile platforms… This is done inside <code>golem_add_external_resources()</code>. Note that we had to comment out the
+<code>bundle_resources()</code> call since it would have added the dependencies in the head, before the app tag, which is not consistent with the Framework7 requirements:</p>
+<div class="sourceCode" id="cb1039"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">golem_add_external_resources</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">title</span><span class="op">)</span><span class="op">{</span>
 
-Eventually, this would allow the R guy, that is most of the time not a UI design expert, to focus on the business logic and extract function out of `reactive` to avoid sub optimal apps. On the other hands, the web developer could focus on building the user interface and prepare the link with the R part, without necessarily have a deep knowledge of R.
+  <span class="fu">add_resource_path</span><span class="op">(</span>
+    <span class="st">'www'</span>, <span class="fu">app_sys</span><span class="op">(</span><span class="st">'app/www'</span><span class="op">)</span>
+  <span class="op">)</span>
 
+  <span class="va">tags</span><span class="op">$</span><span class="fu">head</span><span class="op">(</span>
+    <span class="fu">favicon</span><span class="op">(</span><span class="op">)</span>,
+    <span class="va">tags</span><span class="op">$</span><span class="fu">meta</span><span class="op">(</span>charset <span class="op">=</span> <span class="st">"utf-8"</span><span class="op">)</span>,
+    <span class="va">tags</span><span class="op">$</span><span class="fu">meta</span><span class="op">(</span>
+      name <span class="op">=</span> <span class="st">"viewport"</span>,
+      content <span class="op">=</span> <span class="st">"width=device-width, initial-scale=1,
+      maximum-scale=1, minimum-scale=1, user-scalable=no,
+      viewport-fit=cover"</span>
+    <span class="op">)</span>,
+    <span class="va">tags</span><span class="op">$</span><span class="fu">meta</span><span class="op">(</span>
+      name <span class="op">=</span> <span class="st">"apple-mobile-web-app-capable"</span>,
+      content <span class="op">=</span> <span class="st">"yes"</span>
+    <span class="op">)</span>,
+    <span class="va">tags</span><span class="op">$</span><span class="fu">meta</span><span class="op">(</span>name <span class="op">=</span> <span class="st">"theme-color"</span>, content <span class="op">=</span> <span class="st">"#2196f3"</span><span class="op">)</span>,
+    <span class="va">tags</span><span class="op">$</span><span class="fu">title</span><span class="op">(</span><span class="va">title</span><span class="op">)</span>
+    <span class="co"># removed code</span>
+  <span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>This is all what we need on the R UI side since most of the code will be written in JSX.</p>
+</div>
+<div id="create-the-app-layout-in-js" class="section level4">
+<h4>
+<span class="header-section-number">28.3.6.3</span> Create the app layout in JS<a class="anchor" aria-label="anchor" href="#create-the-app-layout-in-js"><i class="fas fa-link"></i></a>
+</h4>
+<p>We have the R logic, the R/UI skeleton but few steps remain such as initializing the app as discussed in <a href="mobile-shinyMobile.html#mobile-initialization">23.4</a>.
+Everything happens in the <code>./srcjs/index.js</code> script. For now it should be like below:</p>
+<div class="sourceCode" id="cb1040"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1040-1"><a href="going-further-webdev.html#cb1040-1"></a><span class="im">import</span> <span class="op">{</span> message <span class="op">}</span> <span class="im">from</span> <span class="st">'./modules/message.js'</span><span class="op">;</span></span>
+<span id="cb1040-2"><a href="going-further-webdev.html#cb1040-2"></a><span class="im">import</span> <span class="st">'shiny'</span><span class="op">;</span></span>
+<span id="cb1040-3"><a href="going-further-webdev.html#cb1040-3"></a></span>
+<span id="cb1040-4"><a href="going-further-webdev.html#cb1040-4"></a><span class="co">// In shiny server use:</span></span>
+<span id="cb1040-5"><a href="going-further-webdev.html#cb1040-5"></a><span class="co">// session$sendCustomMessage('show-packer', 'hello packer!')</span></span>
+<span id="cb1040-6"><a href="going-further-webdev.html#cb1040-6"></a><span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(<span class="st">'show-packer'</span><span class="op">,</span> (msg) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1040-7"><a href="going-further-webdev.html#cb1040-7"></a>  <span class="at">message</span>(msg)<span class="op">;</span></span>
+<span id="cb1040-8"><a href="going-further-webdev.html#cb1040-8"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>which is a placeholder provided by <a href="https://github.com/JohnCoene/packer">packer</a>. While we don’t need it,
+note how we may seamlessly import functions from one script to another with just an <code>import</code> statement followed by the function name and the script path. We’ll use this syntax all over the place. What do we need now? We have to call <code>new Framework7({...})</code> for the initialization step so we need <code>Framework7</code>.</p>
+<div class="sourceCode" id="cb1041"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1041-1"><a href="going-further-webdev.html#cb1041-1"></a><span class="im">import</span> <span class="st">'shiny'</span><span class="op">;</span></span>
+<span id="cb1041-2"><a href="going-further-webdev.html#cb1041-2"></a><span class="co">// Import Framework7</span></span>
+<span id="cb1041-3"><a href="going-further-webdev.html#cb1041-3"></a><span class="im">import</span> Framework7 <span class="im">from</span> <span class="st">'framework7'</span><span class="op">;</span></span></code></pre></div>
+<p>We also have to load the css. To get a better idea of where to find them, I propose to browse to <code>./node_modules/framework7</code> and inspect the asset structure, as shown Figure <a href="going-further-webdev.html#fig:vdpMod-framework7-resources">28.3</a>. Since we want to capture all CSS, we’ll point to <code>framework7/framework7-bundle.min.css</code> (bundle stating for all components):</p>
+<div class="sourceCode" id="cb1042"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1042-1"><a href="going-further-webdev.html#cb1042-1"></a><span class="im">import</span> <span class="st">'shiny'</span><span class="op">;</span></span>
+<span id="cb1042-2"><a href="going-further-webdev.html#cb1042-2"></a><span class="co">// Import Framework7</span></span>
+<span id="cb1042-3"><a href="going-further-webdev.html#cb1042-3"></a><span class="im">import</span> Framework7 <span class="im">from</span> <span class="st">'framework7'</span><span class="op">;</span></span>
+<span id="cb1042-4"><a href="going-further-webdev.html#cb1042-4"></a><span class="co">// Import Framework7 Styles</span></span>
+<span id="cb1042-5"><a href="going-further-webdev.html#cb1042-5"></a><span class="im">import</span> <span class="st">'framework7/framework7-bundle.min.css'</span><span class="op">;</span></span></code></pre></div>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:vdpMod-framework7-resources"></span>
+<img src="images/going-further/vdpMod-framework7-resources.png" alt="Framework7 assets in node modules" width="50%"><p class="caption">
+FIGURE 28.3: Framework7 assets in node modules
+</p>
+</div>
+<p>If you remember correctly, we’ll be using a slider to update the model parameter value. Moreover, it’s always nice to notify the user when the new results are available. Let’s do it with a toast. The way we imported Framework7 does not provide any other component, we have to import them one by one, the rule being we only import what is required, to lighten the JS code. According to Figure <a href="going-further-webdev.html#fig:vdpMod-framework7-resources">28.3</a>, Framework7 components are located in <code>framework7/esm/components/&lt;COMPONENT_NAME&gt;/&lt;SCRIPT.js&gt;</code>:</p>
+<div class="sourceCode" id="cb1043"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1043-1"><a href="going-further-webdev.html#cb1043-1"></a><span class="co">// ... Other imports ...</span></span>
+<span id="cb1043-2"><a href="going-further-webdev.html#cb1043-2"></a></span>
+<span id="cb1043-3"><a href="going-further-webdev.html#cb1043-3"></a><span class="co">// Install F7 Components using .use() method on class:</span></span>
+<span id="cb1043-4"><a href="going-further-webdev.html#cb1043-4"></a><span class="im">import</span> Range <span class="im">from</span> <span class="st">'framework7/esm/components/range/range.js'</span><span class="op">;</span></span>
+<span id="cb1043-5"><a href="going-further-webdev.html#cb1043-5"></a><span class="im">import</span> Toast <span class="im">from</span> <span class="st">'framework7/esm/components/toast/toast.js'</span><span class="op">;</span></span>
+<span id="cb1043-6"><a href="going-further-webdev.html#cb1043-6"></a><span class="va">Framework7</span>.<span class="at">use</span>([Range<span class="op">,</span> Toast])<span class="op">;</span></span></code></pre></div>
+<p>For the layout, we use the main App component template, documented <a href="https://framework7.io/docs/router-component.html#main-app-component">here</a>, which is required to instantiate the application:</p>
+<div class="sourceCode" id="cb1044"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1044-1"><a href="going-further-webdev.html#cb1044-1"></a><span class="co">// ... Other imports ...</span></span>
+<span id="cb1044-2"><a href="going-further-webdev.html#cb1044-2"></a></span>
+<span id="cb1044-3"><a href="going-further-webdev.html#cb1044-3"></a><span class="im">import</span> App <span class="im">from</span> <span class="st">'./components/app.f7.jsx'</span><span class="op">;</span></span>
+<span id="cb1044-4"><a href="going-further-webdev.html#cb1044-4"></a><span class="kw">let</span> app <span class="op">=</span> <span class="kw">new</span> <span class="at">Framework7</span>(<span class="op">{</span></span>
+<span id="cb1044-5"><a href="going-further-webdev.html#cb1044-5"></a>  <span class="dt">el</span><span class="op">:</span> <span class="st">'#app'</span><span class="op">,</span></span>
+<span id="cb1044-6"><a href="going-further-webdev.html#cb1044-6"></a>  <span class="dt">theme</span><span class="op">:</span> <span class="st">'ios'</span><span class="op">,</span></span>
+<span id="cb1044-7"><a href="going-further-webdev.html#cb1044-7"></a>  <span class="co">// specify main app component</span></span>
+<span id="cb1044-8"><a href="going-further-webdev.html#cb1044-8"></a>  <span class="dt">component</span><span class="op">:</span> App</span>
+<span id="cb1044-9"><a href="going-further-webdev.html#cb1044-9"></a><span class="op">}</span>)<span class="op">;</span></span></code></pre></div>
+<p>Note that <code>el</code> targets the app tag <code>id</code> defined in <code>./R/app_ui.R</code>. If you ever have to change it, don’t forget to replace it in both places.
+The <code>component</code> slot hosts the <code>App</code> which has to be defined. We assumed it is created in a <code>./srcjs/components/app.f7.jsx</code>, <code>.</code> being the root of the <code>srcjs</code> folder. JSX syntax is very convenient to mix HTML and JavaScript code in the same file. It is crucial to name the files <code>&lt;name&gt;.f7.jsx</code> as it will allow the Framework7 loader to work properly. Practically, a template file will always look the same. We export the main component as a function that may have some parameters and return a render function containing some tags. Below is a <code>./srcjs/components/list.f7.jsx</code> example:</p>
+<div class="sourceCode" id="cb1045"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb1045-1"><a href="going-further-webdev.html#cb1045-1"></a><span class="im">export</span> <span class="im">default</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1045-2"><a href="going-further-webdev.html#cb1045-2"></a></span>
+<span id="cb1045-3"><a href="going-further-webdev.html#cb1045-3"></a>  <span class="kw">const</span> ListItem <span class="op">=</span> (props) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1045-4"><a href="going-further-webdev.html#cb1045-4"></a>    <span class="cf">return</span> (</span>
+<span id="cb1045-5"><a href="going-further-webdev.html#cb1045-5"></a>      <span class="kw">&lt;li&gt;</span><span class="va">{props</span>.<span class="at">title</span><span class="va">}</span><span class="kw">&lt;/li&gt;</span></span>
+<span id="cb1045-6"><a href="going-further-webdev.html#cb1045-6"></a>    )</span>
+<span id="cb1045-7"><a href="going-further-webdev.html#cb1045-7"></a>  <span class="op">}</span></span>
+<span id="cb1045-8"><a href="going-further-webdev.html#cb1045-8"></a></span>
+<span id="cb1045-9"><a href="going-further-webdev.html#cb1045-9"></a>  <span class="cf">return</span> () <span class="kw">=&gt;</span> (</span>
+<span id="cb1045-10"><a href="going-further-webdev.html#cb1045-10"></a>    <span class="kw">&lt;ul&gt;</span></span>
+<span id="cb1045-11"><a href="going-further-webdev.html#cb1045-11"></a>      <span class="fu">&lt;ListItem</span> <span class="ot">title</span><span class="op">=</span><span class="st">"Item 1"</span> <span class="fu">/&gt;</span></span>
+<span id="cb1045-12"><a href="going-further-webdev.html#cb1045-12"></a>      <span class="fu">&lt;ListItem</span> <span class="ot">title</span><span class="op">=</span><span class="st">"Item 2"</span> <span class="fu">/&gt;</span></span>
+<span id="cb1045-13"><a href="going-further-webdev.html#cb1045-13"></a>    <span class="kw">&lt;/ul&gt;</span></span>
+<span id="cb1045-14"><a href="going-further-webdev.html#cb1045-14"></a>  )</span>
+<span id="cb1045-15"><a href="going-further-webdev.html#cb1045-15"></a><span class="op">}</span></span></code></pre></div>
+<p>You may even split the code into more small pieces, below we assume <code>list-item.f7.jsx</code> is in the same directory as the main component:</p>
+<div class="sourceCode" id="cb1046"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb1046-1"><a href="going-further-webdev.html#cb1046-1"></a><span class="co">// list-item.f7.jsx</span></span>
+<span id="cb1046-2"><a href="going-further-webdev.html#cb1046-2"></a><span class="im">export</span> <span class="im">default</span> (props) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1046-3"><a href="going-further-webdev.html#cb1046-3"></a>  <span class="cf">return</span> () <span class="kw">=&gt; &lt;li&gt;</span><span class="va">{props</span>.<span class="at">title</span><span class="va">}</span><span class="kw">&lt;/li&gt;</span><span class="op">;</span></span>
+<span id="cb1046-4"><a href="going-further-webdev.html#cb1046-4"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb1047"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb1047-1"><a href="going-further-webdev.html#cb1047-1"></a><span class="im">import</span> ListItem <span class="im">from</span> <span class="st">'./list-item.f7.jsx'</span><span class="op">;</span></span>
+<span id="cb1047-2"><a href="going-further-webdev.html#cb1047-2"></a><span class="im">export</span> <span class="im">default</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1047-3"><a href="going-further-webdev.html#cb1047-3"></a></span>
+<span id="cb1047-4"><a href="going-further-webdev.html#cb1047-4"></a>  <span class="cf">return</span> () <span class="kw">=&gt;</span> (</span>
+<span id="cb1047-5"><a href="going-further-webdev.html#cb1047-5"></a>    <span class="kw">&lt;ul&gt;</span></span>
+<span id="cb1047-6"><a href="going-further-webdev.html#cb1047-6"></a>      <span class="fu">&lt;ListItem</span> <span class="ot">title</span><span class="op">=</span><span class="st">"Item 1"</span> <span class="fu">/&gt;</span></span>
+<span id="cb1047-7"><a href="going-further-webdev.html#cb1047-7"></a>      <span class="fu">&lt;ListItem</span> <span class="ot">title</span><span class="op">=</span><span class="st">"Item 2"</span> <span class="fu">/&gt;</span></span>
+<span id="cb1047-8"><a href="going-further-webdev.html#cb1047-8"></a>    <span class="kw">&lt;/ul&gt;</span></span>
+<span id="cb1047-9"><a href="going-further-webdev.html#cb1047-9"></a>  )</span>
+<span id="cb1047-10"><a href="going-further-webdev.html#cb1047-10"></a><span class="op">}</span></span></code></pre></div>
+<p>We create a preliminary main app component in <code>./srcjs/components/app.f7.jsx</code> :</p>
+<div class="sourceCode" id="cb1048"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb1048-1"><a href="going-further-webdev.html#cb1048-1"></a><span class="im">export</span> <span class="im">default</span> (props<span class="op">,</span> context) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1048-2"><a href="going-further-webdev.html#cb1048-2"></a>  <span class="kw">const</span> title <span class="op">=</span> <span class="st">'Hello World'</span><span class="op">;</span></span>
+<span id="cb1048-3"><a href="going-further-webdev.html#cb1048-3"></a>  <span class="kw">const</span> content <span class="op">=</span> <span class="st">'App content'</span><span class="op">;</span></span>
+<span id="cb1048-4"><a href="going-further-webdev.html#cb1048-4"></a></span>
+<span id="cb1048-5"><a href="going-further-webdev.html#cb1048-5"></a>  <span class="cf">return</span> () <span class="kw">=&gt;</span> (</span>
+<span id="cb1048-6"><a href="going-further-webdev.html#cb1048-6"></a>    <span class="kw">&lt;div</span> <span class="ot">id</span><span class="op">=</span><span class="st">"app"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-7"><a href="going-further-webdev.html#cb1048-7"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"view view-main view-init safe-areas"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-8"><a href="going-further-webdev.html#cb1048-8"></a>        <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"page"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-9"><a href="going-further-webdev.html#cb1048-9"></a>          <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"navbar"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-10"><a href="going-further-webdev.html#cb1048-10"></a>            <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"navbar-bg"</span><span class="kw">&gt;&lt;/div&gt;</span></span>
+<span id="cb1048-11"><a href="going-further-webdev.html#cb1048-11"></a>            <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"navbar-inner"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-12"><a href="going-further-webdev.html#cb1048-12"></a>              <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"title"</span><span class="kw">&gt;</span><span class="va">{</span>title<span class="va">}</span><span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-13"><a href="going-further-webdev.html#cb1048-13"></a>            <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-14"><a href="going-further-webdev.html#cb1048-14"></a>          <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-15"><a href="going-further-webdev.html#cb1048-15"></a>          <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"toolbar toolbar-bottom"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-16"><a href="going-further-webdev.html#cb1048-16"></a>            <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"toolbar-inner"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-17"><a href="going-further-webdev.html#cb1048-17"></a>              <span class="kw">&lt;a</span> <span class="ot">href</span><span class="op">=</span><span class="st">"#"</span> <span class="kw">&gt;</span>Link 1<span class="kw">&lt;/a&gt;</span></span>
+<span id="cb1048-18"><a href="going-further-webdev.html#cb1048-18"></a>              <span class="kw">&lt;a</span> <span class="ot">href</span><span class="op">=</span><span class="st">"#"</span> <span class="kw">&gt;</span>Link 2<span class="kw">&lt;/a&gt;</span></span>
+<span id="cb1048-19"><a href="going-further-webdev.html#cb1048-19"></a>            <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-20"><a href="going-further-webdev.html#cb1048-20"></a>          <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-21"><a href="going-further-webdev.html#cb1048-21"></a>          <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"page-content"</span><span class="kw">&gt;</span></span>
+<span id="cb1048-22"><a href="going-further-webdev.html#cb1048-22"></a>           <span class="va">{</span>content<span class="va">}</span></span>
+<span id="cb1048-23"><a href="going-further-webdev.html#cb1048-23"></a>          <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-24"><a href="going-further-webdev.html#cb1048-24"></a>        <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-25"><a href="going-further-webdev.html#cb1048-25"></a>      <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-26"><a href="going-further-webdev.html#cb1048-26"></a>    <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1048-27"><a href="going-further-webdev.html#cb1048-27"></a>  )</span>
+<span id="cb1048-28"><a href="going-further-webdev.html#cb1048-28"></a><span class="op">}</span></span></code></pre></div>
+<p><code>props</code> may be elements passed to the component (see <a href="going-further-reactR.html#react-map">27.1.2.2</a>) and <code>context</code> is an object containing <a href="https://framework7.io/docs/router-component.html#component-context">helpers</a> such as:</p>
+<ul>
+<li>
+<code>$f7</code> refers to app instance.</li>
+<li>
+<code>$update</code> tells that this component has to be re-rendered.</li>
+</ul>
+<p>Then we run and preview the app according to Figure <a href="going-further-webdev.html#fig:vdpMod-basic-app-2">28.4</a>. We are slowly getting there!</p>
+<div class="sourceCode" id="cb1049"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">packer</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/packer/man/bundle.html">bundle</a></span><span class="op">(</span><span class="op">)</span>
+<span class="fu">devtools</span><span class="fu">::</span><span class="fu">load_all</span><span class="op">(</span><span class="op">)</span>
+<span class="fu">run_app</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:vdpMod-basic-app-2"></span>
+<img src="images/going-further/vdpMod-basic-app-2.png" alt="vdpMod basic app with main app component template" width="50%"><p class="caption">
+FIGURE 28.4: vdpMod basic app with main app component template
+</p>
+</div>
+<p>We create the slider component that is going to drive the model computation inside <code>./srcjs/components/vdp.f7.jsx</code>. We leverage the Framework7 range widget, which is described <a href="https://framework7.io/docs/range-slider.html#range-slider-auto-initialization">here</a>. For convenience, we decide to rely on the auto-initialized widget, to lighten the JS code. All attributes are stored in <code>data-&lt;ATTR&gt;</code> format and <code>range-slider-init</code> ensures to get auto-initialization. The range is inserted in a block container for a better display. We finally add it an <a href="https://framework7.io/docs/range-slider.html#app-and-range-slider-instance-events">event</a> listening to any value change so that we can assign a Shiny input value and update the component:</p>
+<div class="sourceCode" id="cb1050"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb1050-1"><a href="going-further-webdev.html#cb1050-1"></a><span class="kw">const</span> VdpWidget <span class="op">=</span> (props<span class="op">,</span> <span class="op">{</span> $f7<span class="op">,</span> $update<span class="op">}</span>) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1050-2"><a href="going-further-webdev.html#cb1050-2"></a>  <span class="co">// Handle range change for ODE model computation</span></span>
+<span id="cb1050-3"><a href="going-further-webdev.html#cb1050-3"></a>  <span class="kw">const</span> getRangeValue <span class="op">=</span> (e) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1050-4"><a href="going-further-webdev.html#cb1050-4"></a>    <span class="kw">const</span> range <span class="op">=</span> <span class="va">$f7</span>.<span class="va">range</span>.<span class="at">get</span>(<span class="va">e</span>.<span class="at">target</span>)<span class="op">;</span></span>
+<span id="cb1050-5"><a href="going-further-webdev.html#cb1050-5"></a>    <span class="va">Shiny</span>.<span class="at">setInputValue</span>(<span class="va">range</span>.<span class="va">el</span>.<span class="at">id</span><span class="op">,</span> <span class="va">range</span>.<span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb1050-6"><a href="going-further-webdev.html#cb1050-6"></a>    <span class="at">$update</span>()<span class="op">;</span></span>
+<span id="cb1050-7"><a href="going-further-webdev.html#cb1050-7"></a>  <span class="op">};</span></span>
+<span id="cb1050-8"><a href="going-further-webdev.html#cb1050-8"></a></span>
+<span id="cb1050-9"><a href="going-further-webdev.html#cb1050-9"></a>  <span class="cf">return</span> () <span class="kw">=&gt;</span> (</span>
+<span id="cb1050-10"><a href="going-further-webdev.html#cb1050-10"></a>    <span class="kw">&lt;div&gt;</span></span>
+<span id="cb1050-11"><a href="going-further-webdev.html#cb1050-11"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"block-title"</span><span class="kw">&gt;</span>Parameter value (mu)<span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1050-12"><a href="going-further-webdev.html#cb1050-12"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"block"</span><span class="kw">&gt;</span></span>
+<span id="cb1050-13"><a href="going-further-webdev.html#cb1050-13"></a>        <span class="kw">&lt;div</span></span>
+<span id="cb1050-14"><a href="going-further-webdev.html#cb1050-14"></a>          <span class="ot">class</span><span class="op">=</span><span class="st">"range-slider range-slider-init"</span></span>
+<span id="cb1050-15"><a href="going-further-webdev.html#cb1050-15"></a>          <span class="ot">data-min</span><span class="op">=</span><span class="st">"0"</span></span>
+<span id="cb1050-16"><a href="going-further-webdev.html#cb1050-16"></a>          <span class="ot">data-min</span><span class="op">=</span><span class="st">"0"</span></span>
+<span id="cb1050-17"><a href="going-further-webdev.html#cb1050-17"></a>          <span class="ot">data-max</span><span class="op">=</span><span class="st">"2"</span></span>
+<span id="cb1050-18"><a href="going-further-webdev.html#cb1050-18"></a>          <span class="ot">data-step</span><span class="op">=</span><span class="st">"0.1"</span></span>
+<span id="cb1050-19"><a href="going-further-webdev.html#cb1050-19"></a>          <span class="ot">data-label</span><span class="op">=</span><span class="st">"true"</span></span>
+<span id="cb1050-20"><a href="going-further-webdev.html#cb1050-20"></a>          <span class="ot">data-value</span><span class="op">=</span><span class="st">"0.1"</span></span>
+<span id="cb1050-21"><a href="going-further-webdev.html#cb1050-21"></a>          <span class="ot">data-scale</span><span class="op">=</span><span class="st">"true"</span></span>
+<span id="cb1050-22"><a href="going-further-webdev.html#cb1050-22"></a>          <span class="ot">data-scale-steps</span><span class="op">=</span><span class="st">"2"</span></span>
+<span id="cb1050-23"><a href="going-further-webdev.html#cb1050-23"></a>          <span class="ot">data-scale-sub-steps</span><span class="op">=</span><span class="st">"10"</span></span>
+<span id="cb1050-24"><a href="going-further-webdev.html#cb1050-24"></a>          <span class="ot">id</span><span class="op">=</span><span class="st">"mu"</span></span>
+<span id="cb1050-25"><a href="going-further-webdev.html#cb1050-25"></a>          <span class="ot">onrangeChange</span><span class="op">=</span><span class="va">{</span>(e) <span class="kw">=&gt;</span> <span class="at">getRangeValue</span>(e)<span class="va">}</span></span>
+<span id="cb1050-26"><a href="going-further-webdev.html#cb1050-26"></a>          <span class="kw">&gt;&lt;/div&gt;</span></span>
+<span id="cb1050-27"><a href="going-further-webdev.html#cb1050-27"></a>      <span class="kw">&lt;/div&gt;</span>  </span>
+<span id="cb1050-28"><a href="going-further-webdev.html#cb1050-28"></a>    <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1050-29"><a href="going-further-webdev.html#cb1050-29"></a>  )</span>
+<span id="cb1050-30"><a href="going-further-webdev.html#cb1050-30"></a><span class="op">}</span></span>
+<span id="cb1050-31"><a href="going-further-webdev.html#cb1050-31"></a></span>
+<span id="cb1050-32"><a href="going-further-webdev.html#cb1050-32"></a><span class="im">export</span> <span class="op">{</span> VdpWidget <span class="op">};</span></span></code></pre></div>
+<p>Inside <code>./srcjs/components/app.f7.jsx</code>, we import the newly designed component and replace <code>{content}</code>:</p>
+<div class="sourceCode" id="cb1051"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb1051-1"><a href="going-further-webdev.html#cb1051-1"></a><span class="im">import</span> VdpWidget <span class="im">from</span> <span class="st">'./vdp.f7.jsx'</span><span class="op">;</span></span>
+<span id="cb1051-2"><a href="going-further-webdev.html#cb1051-2"></a></span>
+<span id="cb1051-3"><a href="going-further-webdev.html#cb1051-3"></a><span class="im">export</span> <span class="im">default</span> (props) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1051-4"><a href="going-further-webdev.html#cb1051-4"></a>  <span class="kw">const</span> title <span class="op">=</span> <span class="st">'Hello World'</span><span class="op">;</span></span>
+<span id="cb1051-5"><a href="going-further-webdev.html#cb1051-5"></a>  </span>
+<span id="cb1051-6"><a href="going-further-webdev.html#cb1051-6"></a>  <span class="cf">return</span> () <span class="kw">=&gt;</span> (</span>
+<span id="cb1051-7"><a href="going-further-webdev.html#cb1051-7"></a>    <span class="kw">&lt;div</span> <span class="ot">id</span><span class="op">=</span><span class="st">"app"</span><span class="kw">&gt;</span></span>
+<span id="cb1051-8"><a href="going-further-webdev.html#cb1051-8"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"view view-main view-init safe-areas"</span><span class="kw">&gt;</span></span>
+<span id="cb1051-9"><a href="going-further-webdev.html#cb1051-9"></a>        <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"page"</span><span class="kw">&gt;</span></span>
+<span id="cb1051-10"><a href="going-further-webdev.html#cb1051-10"></a>          <span class="er">&lt;</span>!-- Navbar --&gt;</span>
+<span id="cb1051-11"><a href="going-further-webdev.html#cb1051-11"></a>          <span class="er">&lt;</span>!-- Toolbar --&gt;</span>
+<span id="cb1051-12"><a href="going-further-webdev.html#cb1051-12"></a>          <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"page-content"</span><span class="kw">&gt;</span></span>
+<span id="cb1051-13"><a href="going-further-webdev.html#cb1051-13"></a>            <span class="fu">&lt;VdpWidget</span> <span class="ot">label</span><span class="op">=</span><span class="st">"Van der Pol Model"</span><span class="fu">/&gt;</span></span>
+<span id="cb1051-14"><a href="going-further-webdev.html#cb1051-14"></a>          <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1051-15"><a href="going-further-webdev.html#cb1051-15"></a>        <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1051-16"><a href="going-further-webdev.html#cb1051-16"></a>      <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1051-17"><a href="going-further-webdev.html#cb1051-17"></a>    <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1051-18"><a href="going-further-webdev.html#cb1051-18"></a>  )</span>
+<span id="cb1051-19"><a href="going-further-webdev.html#cb1051-19"></a><span class="op">}</span></span></code></pre></div>
+<p>On the R side, you may add this in the server code to track the range value:</p>
+<div class="sourceCode" id="cb1052"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">mu</span>, <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">mu</span><span class="op">)</span>
+<span class="op">}</span><span class="op">)</span></code></pre></div>
+<p>After recompiling, this gives us Figure <a href="going-further-webdev.html#fig:vdpMod-basic-app-3">28.5</a>.</p>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:vdpMod-basic-app-3"></span>
+<img src="images/going-further/vdpMod-basic-app-3.png" alt="vdpMod basic app with range slider" width="50%"><p class="caption">
+FIGURE 28.5: vdpMod basic app with range slider
+</p>
+</div>
+<p>You’ll notice that <code>input$mu</code> does not exist at app start, only after the range is dragged. We may want to add it an initial value. Let’s design an additional function that will do this. Inside <code>./srcjs/components/vdp.f7.jsx</code>, we add <code>initializeVdpWidget</code>, taking the app instance as parameter. Inside, we listen to the <code>shiny:connected</code>, create <code>input$mu</code> giving it the initial range value. We finally export the new function:</p>
+<div class="sourceCode" id="cb1053"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1053-1"><a href="going-further-webdev.html#cb1053-1"></a><span class="kw">const</span> initializeVdpWidget <span class="op">=</span> (app) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1053-2"><a href="going-further-webdev.html#cb1053-2"></a>  <span class="at">$</span>(document).<span class="at">on</span>(<span class="st">'shiny:connected'</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1053-3"><a href="going-further-webdev.html#cb1053-3"></a>    <span class="co">// Init vals for ODE model computation</span></span>
+<span id="cb1053-4"><a href="going-further-webdev.html#cb1053-4"></a>    <span class="va">Shiny</span>.<span class="at">setInputValue</span>(</span>
+<span id="cb1053-5"><a href="going-further-webdev.html#cb1053-5"></a>        <span class="st">'mu'</span><span class="op">,</span> </span>
+<span id="cb1053-6"><a href="going-further-webdev.html#cb1053-6"></a>        <span class="at">parseFloat</span>(<span class="at">$</span>(<span class="st">'#mu'</span>).<span class="at">attr</span>(<span class="st">'data-value'</span>)<span class="op">,</span> <span class="dv">10</span>)<span class="op">,</span> </span>
+<span id="cb1053-7"><a href="going-further-webdev.html#cb1053-7"></a>        <span class="op">{</span><span class="dt">priority</span><span class="op">:</span> <span class="st">'event'</span><span class="op">}</span></span>
+<span id="cb1053-8"><a href="going-further-webdev.html#cb1053-8"></a>    )<span class="op">;</span></span>
+<span id="cb1053-9"><a href="going-further-webdev.html#cb1053-9"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb1053-10"><a href="going-further-webdev.html#cb1053-10"></a><span class="op">}</span></span>
+<span id="cb1053-11"><a href="going-further-webdev.html#cb1053-11"></a></span>
+<span id="cb1053-12"><a href="going-further-webdev.html#cb1053-12"></a><span class="im">export</span> <span class="op">{</span> VdpWidget<span class="op">,</span> initializeVdpWidget <span class="op">};</span></span></code></pre></div>
+<p>Inside <code>./srcjs/components/app.f7.jsx</code>, we update our import field, and add an extra parameter <code>$f7</code> to capture the app instance required by <code>initializeVdpWidget</code>:</p>
+<div class="sourceCode" id="cb1054"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1054-1"><a href="going-further-webdev.html#cb1054-1"></a><span class="im">import</span> <span class="op">{</span> VdpWidget<span class="op">,</span> initializeVdpWidget <span class="op">}</span> <span class="im">from</span> <span class="st">'./vdp.f7.jsx'</span><span class="op">;</span></span>
+<span id="cb1054-2"><a href="going-further-webdev.html#cb1054-2"></a><span class="im">export</span> <span class="im">default</span> (props<span class="op">,</span> <span class="op">{</span> $f7 <span class="op">}</span>) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1054-3"><a href="going-further-webdev.html#cb1054-3"></a></span>
+<span id="cb1054-4"><a href="going-further-webdev.html#cb1054-4"></a>  <span class="at">initializeVdpWidget</span>($f7)<span class="op">;</span></span>
+<span id="cb1054-5"><a href="going-further-webdev.html#cb1054-5"></a>  <span class="co">// ... unchanged ...</span></span>
+<span id="cb1054-6"><a href="going-further-webdev.html#cb1054-6"></a><span class="op">}</span></span></code></pre></div>
+<p>Congratulations, we are now ready to move to the last part about creating the visualization.</p>
+</div>
+<div id="plot-model-data-with-echartsjs" class="section level4">
+<h4>
+<span class="header-section-number">28.3.6.4</span> Plot model data with echartsjs<a class="anchor" aria-label="anchor" href="#plot-model-data-with-echartsjs"><i class="fas fa-link"></i></a>
+</h4>
+<p>As stated above, we leverage echarts and echarts-gl to draw the model results. We have to import them in the <code>./srcjs/components/vdp.f7.jsx</code> component:</p>
+<div class="sourceCode" id="cb1055"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1055-1"><a href="going-further-webdev.html#cb1055-1"></a><span class="co">// Import plotting library</span></span>
+<span id="cb1055-2"><a href="going-further-webdev.html#cb1055-2"></a><span class="im">import</span> <span class="op">*</span> <span class="im">as</span> echarts <span class="im">from</span> <span class="st">'echarts'</span><span class="op">;</span></span>
+<span id="cb1055-3"><a href="going-further-webdev.html#cb1055-3"></a><span class="im">import</span> <span class="st">'echarts-gl'</span><span class="op">;</span></span></code></pre></div>
+<p>To work properly, <a href="https://echarts.apache.org/handbook/en/get-started/">echarts</a> requires to setup an HTML empty container in the DOM, that will receive the plot, specifying the height and width in pixels, and its <strong>id</strong>. I recommend using percentage for width so as to fill the container:</p>
+<div class="sourceCode" id="cb1056"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb1056-1"><a href="going-further-webdev.html#cb1056-1"></a><span class="kw">&lt;div</span><span class="ot"> id=</span><span class="st">"my-plot"</span><span class="ot"> style=</span><span class="st">"width:100%; min-height:400px;"</span><span class="kw">&gt;&lt;/div&gt;</span></span></code></pre></div>
+<p>On the JS side, we instantiate the plot and set the options list to give it a title, set the axis labels, add the time series:</p>
+<div class="sourceCode" id="cb1057"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1057-1"><a href="going-further-webdev.html#cb1057-1"></a>myChart <span class="op">=</span> <span class="va">echarts</span>.<span class="at">init</span>(<span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">'my-plot'</span>))<span class="op">;</span></span>
+<span id="cb1057-2"><a href="going-further-webdev.html#cb1057-2"></a>myChartOptions <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1057-3"><a href="going-further-webdev.html#cb1057-3"></a>  <span class="dt">title</span><span class="op">:</span> <span class="op">{</span> <span class="dt">text</span><span class="op">:</span> <span class="st">'Plot title'</span> <span class="op">},</span></span>
+<span id="cb1057-4"><a href="going-further-webdev.html#cb1057-4"></a>  <span class="dt">legend</span><span class="op">:</span> <span class="op">{</span> <span class="dt">data</span><span class="op">:</span>[...] <span class="op">},</span></span>
+<span id="cb1057-5"><a href="going-further-webdev.html#cb1057-5"></a>  <span class="dt">xAxis</span><span class="op">:</span> <span class="op">{</span> <span class="dt">data</span><span class="op">:</span> ...<span class="op">},</span></span>
+<span id="cb1057-6"><a href="going-further-webdev.html#cb1057-6"></a>  <span class="dt">yAxis</span><span class="op">:</span> <span class="op">{</span> <span class="dt">type</span><span class="op">:</span> ... <span class="op">},</span></span>
+<span id="cb1057-7"><a href="going-further-webdev.html#cb1057-7"></a>  <span class="dt">series</span><span class="op">:</span> [</span>
+<span id="cb1057-8"><a href="going-further-webdev.html#cb1057-8"></a>    <span class="op">{</span></span>
+<span id="cb1057-9"><a href="going-further-webdev.html#cb1057-9"></a>      <span class="dt">name</span><span class="op">:</span> ...<span class="op">,</span></span>
+<span id="cb1057-10"><a href="going-further-webdev.html#cb1057-10"></a>      <span class="dt">type</span><span class="op">:</span> ...<span class="op">,</span></span>
+<span id="cb1057-11"><a href="going-further-webdev.html#cb1057-11"></a>      <span class="dt">data</span><span class="op">:</span> ...</span>
+<span id="cb1057-12"><a href="going-further-webdev.html#cb1057-12"></a>    <span class="op">},</span></span>
+<span id="cb1057-13"><a href="going-further-webdev.html#cb1057-13"></a>    <span class="co">// other data</span></span>
+<span id="cb1057-14"><a href="going-further-webdev.html#cb1057-14"></a>  ]</span>
+<span id="cb1057-15"><a href="going-further-webdev.html#cb1057-15"></a><span class="op">};</span></span>
+<span id="cb1057-16"><a href="going-further-webdev.html#cb1057-16"></a><span class="va">myChart</span>.<span class="at">setOption</span>(myChartOptions)<span class="op">;</span></span></code></pre></div>
+<p>Obviously, many more options exist but this is enough for this example.
+In our app, we’ll have two plots, one for the time series data and another for the phase portrait. We edit the <code>VdpWidget</code> render function so that plots are included below the range slider, the most important elements being the plot <strong>id</strong>:</p>
+<div class="sourceCode" id="cb1058"><pre class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb1058-1"><a href="going-further-webdev.html#cb1058-1"></a><span class="kw">const</span> VdpWidget <span class="op">=</span> (props<span class="op">,</span> <span class="op">{</span> $f7<span class="op">,</span> $update<span class="op">}</span>) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1058-2"><a href="going-further-webdev.html#cb1058-2"></a>  <span class="co">// ... unchanged ...</span></span>
+<span id="cb1058-3"><a href="going-further-webdev.html#cb1058-3"></a>  </span>
+<span id="cb1058-4"><a href="going-further-webdev.html#cb1058-4"></a>  <span class="kw">const</span> plotStyle <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1058-5"><a href="going-further-webdev.html#cb1058-5"></a>    <span class="dt">width</span><span class="op">:</span> <span class="st">'100%'</span><span class="op">,</span></span>
+<span id="cb1058-6"><a href="going-further-webdev.html#cb1058-6"></a>    <span class="dt">minHeight</span><span class="op">:</span> <span class="st">'400px'</span></span>
+<span id="cb1058-7"><a href="going-further-webdev.html#cb1058-7"></a>  <span class="op">}</span></span>
+<span id="cb1058-8"><a href="going-further-webdev.html#cb1058-8"></a>  </span>
+<span id="cb1058-9"><a href="going-further-webdev.html#cb1058-9"></a>  <span class="cf">return</span> () <span class="kw">=&gt;</span> (</span>
+<span id="cb1058-10"><a href="going-further-webdev.html#cb1058-10"></a>    <span class="kw">&lt;div&gt;</span></span>
+<span id="cb1058-11"><a href="going-further-webdev.html#cb1058-11"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"block-title"</span><span class="kw">&gt;</span><span class="va">{props</span>.<span class="at">label</span><span class="va">}</span><span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1058-12"><a href="going-further-webdev.html#cb1058-12"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"block block-strong text-align-center"</span><span class="kw">&gt;</span></span>
+<span id="cb1058-13"><a href="going-further-webdev.html#cb1058-13"></a>        <span class="kw">&lt;p&gt;</span>The below model is computed by R!<span class="kw">&lt;/p&gt;</span></span>
+<span id="cb1058-14"><a href="going-further-webdev.html#cb1058-14"></a>        <span class="er">&lt;</span>!-- range slider block --&gt;</span>
+<span id="cb1058-15"><a href="going-further-webdev.html#cb1058-15"></a>      <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1058-16"><a href="going-further-webdev.html#cb1058-16"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"card card-outline"</span><span class="kw">&gt;</span></span>
+<span id="cb1058-17"><a href="going-further-webdev.html#cb1058-17"></a>        <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"card-content card-content-padding"</span><span class="kw">&gt;</span></span>
+<span id="cb1058-18"><a href="going-further-webdev.html#cb1058-18"></a>          <span class="kw">&lt;div</span> <span class="ot">id</span><span class="op">=</span><span class="st">"line-plot"</span> <span class="ot">style</span><span class="op">=</span><span class="va">{</span>plotStyle<span class="va">}</span><span class="kw">&gt;&lt;/div&gt;</span></span>
+<span id="cb1058-19"><a href="going-further-webdev.html#cb1058-19"></a>        <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1058-20"><a href="going-further-webdev.html#cb1058-20"></a>      <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1058-21"><a href="going-further-webdev.html#cb1058-21"></a>      <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"card card-outline"</span><span class="kw">&gt;</span></span>
+<span id="cb1058-22"><a href="going-further-webdev.html#cb1058-22"></a>        <span class="kw">&lt;div</span> <span class="ot">class</span><span class="op">=</span><span class="st">"card-content card-content-padding"</span><span class="kw">&gt;</span></span>
+<span id="cb1058-23"><a href="going-further-webdev.html#cb1058-23"></a>          <span class="kw">&lt;div</span> <span class="ot">id</span><span class="op">=</span><span class="st">"phase-plot"</span> <span class="ot">style</span><span class="op">=</span><span class="va">{</span>plotStyle<span class="va">}</span><span class="kw">&gt;&lt;/div&gt;</span></span>
+<span id="cb1058-24"><a href="going-further-webdev.html#cb1058-24"></a>        <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1058-25"><a href="going-further-webdev.html#cb1058-25"></a>      <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1058-26"><a href="going-further-webdev.html#cb1058-26"></a>    <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb1058-27"><a href="going-further-webdev.html#cb1058-27"></a>  )</span>
+<span id="cb1058-28"><a href="going-further-webdev.html#cb1058-28"></a><span class="op">}</span></span></code></pre></div>
+<p>Since the initialization happens once, we add it inside the existing <code>shiny:connect</code> event listener inside <code>initializeVdpWidget</code>. Notice how we make the plot responsive to any viewport change, by calling the echart <code>resize</code> method when the window is resized:</p>
+<div class="sourceCode" id="cb1059"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1059-1"><a href="going-further-webdev.html#cb1059-1"></a><span class="kw">const</span> initializeVdpWidget <span class="op">=</span> (app) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1059-2"><a href="going-further-webdev.html#cb1059-2"></a>  <span class="kw">let</span> linePlot<span class="op">,</span> phasePlot<span class="op">;</span></span>
+<span id="cb1059-3"><a href="going-further-webdev.html#cb1059-3"></a>  <span class="at">$</span>(document).<span class="at">on</span>(<span class="st">'shiny:connected'</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1059-4"><a href="going-further-webdev.html#cb1059-4"></a>    <span class="co">// ... unchanged ...</span></span>
+<span id="cb1059-5"><a href="going-further-webdev.html#cb1059-5"></a>    <span class="co">// prepare echarts plots</span></span>
+<span id="cb1059-6"><a href="going-further-webdev.html#cb1059-6"></a>    linePlot <span class="op">=</span> <span class="va">echarts</span>.<span class="at">init</span>(<span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">'line-plot'</span>))<span class="op">;</span></span>
+<span id="cb1059-7"><a href="going-further-webdev.html#cb1059-7"></a>    phasePlot <span class="op">=</span> <span class="va">echarts</span>.<span class="at">init</span>(<span class="va">document</span>.<span class="at">getElementById</span>(<span class="st">'phase-plot'</span>))<span class="op">;</span></span>
+<span id="cb1059-8"><a href="going-further-webdev.html#cb1059-8"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb1059-9"><a href="going-further-webdev.html#cb1059-9"></a>  </span>
+<span id="cb1059-10"><a href="going-further-webdev.html#cb1059-10"></a>  <span class="co">// Resize plot, responsive</span></span>
+<span id="cb1059-11"><a href="going-further-webdev.html#cb1059-11"></a>  <span class="at">$</span>(window).<span class="at">on</span>(<span class="st">'resize'</span><span class="op">,</span> <span class="kw">function</span>()<span class="op">{</span></span>
+<span id="cb1059-12"><a href="going-further-webdev.html#cb1059-12"></a>    <span class="va">linePlot</span>.<span class="at">resize</span>()<span class="op">;</span></span>
+<span id="cb1059-13"><a href="going-further-webdev.html#cb1059-13"></a>    <span class="va">phasePlot</span>.<span class="at">resize</span>()<span class="op">;</span></span>
+<span id="cb1059-14"><a href="going-further-webdev.html#cb1059-14"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb1059-15"><a href="going-further-webdev.html#cb1059-15"></a><span class="op">};</span></span></code></pre></div>
+<p>The next step is to recover the model data sent from R with the <code>session$sendCustomMessage("model-data", ...)</code> inside <code>./R/app_server.R</code>. We create a dedicated message handler on the JS side still in <code>initializeVdpWidget</code>. As a reminder, since we send a list from R, items are accessed with <code>message.&lt;FIELD&gt;</code> in JS:</p>
+<div class="sourceCode" id="cb1060"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1060-1"><a href="going-further-webdev.html#cb1060-1"></a><span class="kw">const</span> initializeVdpWidget <span class="op">=</span> (app) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1060-2"><a href="going-further-webdev.html#cb1060-2"></a>  <span class="co">// ... shiny:connected ...</span></span>
+<span id="cb1060-3"><a href="going-further-webdev.html#cb1060-3"></a>  </span>
+<span id="cb1060-4"><a href="going-further-webdev.html#cb1060-4"></a>  <span class="co">// Recover ODE data from R</span></span>
+<span id="cb1060-5"><a href="going-further-webdev.html#cb1060-5"></a>  <span class="kw">let</span> lineData<span class="op">,</span> phaseData<span class="op">,</span> trajectoryData<span class="op">,</span> </span>
+<span id="cb1060-6"><a href="going-further-webdev.html#cb1060-6"></a>  linePlotOptions<span class="op">,</span> phasePlotOptions<span class="op">;</span></span>
+<span id="cb1060-7"><a href="going-further-webdev.html#cb1060-7"></a>  </span>
+<span id="cb1060-8"><a href="going-further-webdev.html#cb1060-8"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb1060-9"><a href="going-further-webdev.html#cb1060-9"></a>    <span class="st">'model-data'</span><span class="op">,</span> (message) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1060-10"><a href="going-further-webdev.html#cb1060-10"></a>      lineData <span class="op">=</span> <span class="va">message</span>.<span class="at">lineData</span><span class="op">;</span></span>
+<span id="cb1060-11"><a href="going-further-webdev.html#cb1060-11"></a>      phaseData <span class="op">=</span> <span class="va">message</span>.<span class="at">phaseData</span><span class="op">;</span></span>
+<span id="cb1060-12"><a href="going-further-webdev.html#cb1060-12"></a>      trajectoryData <span class="op">=</span> <span class="va">message</span>.<span class="at">trajectoryData</span><span class="op">;</span></span>
+<span id="cb1060-13"><a href="going-further-webdev.html#cb1060-13"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb1060-14"><a href="going-further-webdev.html#cb1060-14"></a><span class="op">}</span></span></code></pre></div>
+<p>We set the plot options. For the time series chart, we’ll display the solution X (<code>lineData['X']</code>) and Y (<code>lineData['Y']</code>) as a function of time (<code>lineData['t']</code>):</p>
+<div class="sourceCode" id="cb1061"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1061-1"><a href="going-further-webdev.html#cb1061-1"></a><span class="kw">const</span> initializeVdpWidget <span class="op">=</span> (app) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1061-2"><a href="going-further-webdev.html#cb1061-2"></a>  <span class="co">// ... shiny:connected ...</span></span>
+<span id="cb1061-3"><a href="going-further-webdev.html#cb1061-3"></a>  </span>
+<span id="cb1061-4"><a href="going-further-webdev.html#cb1061-4"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb1061-5"><a href="going-further-webdev.html#cb1061-5"></a>    <span class="st">'model-data'</span><span class="op">,</span> (message) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1061-6"><a href="going-further-webdev.html#cb1061-6"></a>      <span class="co">// ... recover data ...</span></span>
+<span id="cb1061-7"><a href="going-further-webdev.html#cb1061-7"></a>      </span>
+<span id="cb1061-8"><a href="going-further-webdev.html#cb1061-8"></a>      <span class="co">// set options</span></span>
+<span id="cb1061-9"><a href="going-further-webdev.html#cb1061-9"></a>      linePlotOptions <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1061-10"><a href="going-further-webdev.html#cb1061-10"></a>        <span class="dt">title</span><span class="op">:</span> <span class="op">{</span></span>
+<span id="cb1061-11"><a href="going-further-webdev.html#cb1061-11"></a>          <span class="dt">text</span><span class="op">:</span> <span class="st">'Van der Pol oscillator: line plot'</span></span>
+<span id="cb1061-12"><a href="going-further-webdev.html#cb1061-12"></a>        <span class="op">},</span></span>
+<span id="cb1061-13"><a href="going-further-webdev.html#cb1061-13"></a>        <span class="dt">legend</span><span class="op">:</span> <span class="op">{</span> <span class="dt">data</span><span class="op">:</span>[<span class="st">'X'</span><span class="op">,</span> <span class="st">'Y'</span>] <span class="op">},</span></span>
+<span id="cb1061-14"><a href="going-further-webdev.html#cb1061-14"></a>        <span class="dt">xAxis</span><span class="op">:</span> <span class="op">{</span> <span class="dt">data</span><span class="op">:</span> lineData[<span class="st">'t'</span>] <span class="op">},</span></span>
+<span id="cb1061-15"><a href="going-further-webdev.html#cb1061-15"></a>        <span class="dt">yAxis</span><span class="op">:</span> <span class="op">{</span> <span class="dt">type</span><span class="op">:</span> <span class="st">'value'</span> <span class="op">},</span></span>
+<span id="cb1061-16"><a href="going-further-webdev.html#cb1061-16"></a>        <span class="dt">series</span><span class="op">:</span> [</span>
+<span id="cb1061-17"><a href="going-further-webdev.html#cb1061-17"></a>          <span class="op">{</span></span>
+<span id="cb1061-18"><a href="going-further-webdev.html#cb1061-18"></a>            <span class="dt">name</span><span class="op">:</span> <span class="st">'X'</span><span class="op">,</span></span>
+<span id="cb1061-19"><a href="going-further-webdev.html#cb1061-19"></a>            <span class="dt">type</span><span class="op">:</span> <span class="st">'line'</span><span class="op">,</span></span>
+<span id="cb1061-20"><a href="going-further-webdev.html#cb1061-20"></a>            <span class="dt">data</span><span class="op">:</span> lineData[<span class="st">'X'</span>]</span>
+<span id="cb1061-21"><a href="going-further-webdev.html#cb1061-21"></a>          <span class="op">},</span></span>
+<span id="cb1061-22"><a href="going-further-webdev.html#cb1061-22"></a>          <span class="op">{</span></span>
+<span id="cb1061-23"><a href="going-further-webdev.html#cb1061-23"></a>            <span class="dt">name</span><span class="op">:</span> <span class="st">'Y'</span><span class="op">,</span></span>
+<span id="cb1061-24"><a href="going-further-webdev.html#cb1061-24"></a>            <span class="dt">type</span><span class="op">:</span> <span class="st">'line'</span><span class="op">,</span></span>
+<span id="cb1061-25"><a href="going-further-webdev.html#cb1061-25"></a>            <span class="dt">data</span><span class="op">:</span> lineData[<span class="st">'Y'</span>]</span>
+<span id="cb1061-26"><a href="going-further-webdev.html#cb1061-26"></a>          <span class="op">}</span></span>
+<span id="cb1061-27"><a href="going-further-webdev.html#cb1061-27"></a>        ]</span>
+<span id="cb1061-28"><a href="going-further-webdev.html#cb1061-28"></a>      <span class="op">};</span></span>
+<span id="cb1061-29"><a href="going-further-webdev.html#cb1061-29"></a>      </span>
+<span id="cb1061-30"><a href="going-further-webdev.html#cb1061-30"></a>      <span class="co">// use configuration item and data specified to show chart</span></span>
+<span id="cb1061-31"><a href="going-further-webdev.html#cb1061-31"></a>      <span class="va">linePlot</span>.<span class="at">setOption</span>(linePlotOptions)<span class="op">;</span></span>
+<span id="cb1061-32"><a href="going-further-webdev.html#cb1061-32"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb1061-33"><a href="going-further-webdev.html#cb1061-33"></a><span class="op">}</span></span></code></pre></div>
+<p>Still inside <code>initializeVdpWidget</code>, we leverage the Framework7 toast API to send a message to the user, telling the model is up to date:</p>
+<div class="sourceCode" id="cb1062"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1062-1"><a href="going-further-webdev.html#cb1062-1"></a><span class="kw">const</span> initializeVdpWidget <span class="op">=</span> (app) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1062-2"><a href="going-further-webdev.html#cb1062-2"></a>  <span class="va">Shiny</span>.<span class="at">addCustomMessageHandler</span>(</span>
+<span id="cb1062-3"><a href="going-further-webdev.html#cb1062-3"></a>    <span class="st">'model-data'</span><span class="op">,</span> (message) <span class="kw">=&gt;</span> <span class="op">{</span></span>
+<span id="cb1062-4"><a href="going-further-webdev.html#cb1062-4"></a>      <span class="co">// ... plot config ...</span></span>
+<span id="cb1062-5"><a href="going-further-webdev.html#cb1062-5"></a>      </span>
+<span id="cb1062-6"><a href="going-further-webdev.html#cb1062-6"></a>      <span class="co">// Notify plot update</span></span>
+<span id="cb1062-7"><a href="going-further-webdev.html#cb1062-7"></a>      <span class="va">app</span>.<span class="va">toast</span>.<span class="at">create</span>(<span class="op">{</span></span>
+<span id="cb1062-8"><a href="going-further-webdev.html#cb1062-8"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">'Model successfuly computed'</span><span class="op">,</span></span>
+<span id="cb1062-9"><a href="going-further-webdev.html#cb1062-9"></a>        <span class="dt">closeTimeout</span><span class="op">:</span> <span class="dv">2000</span><span class="op">,</span></span>
+<span id="cb1062-10"><a href="going-further-webdev.html#cb1062-10"></a>      <span class="op">}</span>).<span class="at">open</span>()<span class="op">;</span></span>
+<span id="cb1062-11"><a href="going-further-webdev.html#cb1062-11"></a>  <span class="op">}</span>)<span class="op">;</span></span>
+<span id="cb1062-12"><a href="going-further-webdev.html#cb1062-12"></a><span class="op">}</span></span></code></pre></div>
+<p>After rebuilding the JS code, you should get Figure <a href="going-further-webdev.html#fig:vdpMod-basic-app-4">28.6</a>.</p>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:vdpMod-basic-app-4"></span>
+<img src="images/going-further/vdpMod-basic-app-4.png" alt="vdpMod basic app with time series output" width="50%"><p class="caption">
+FIGURE 28.6: vdpMod basic app with time series output
+</p>
+</div>
+</div>
+<div id="exercise-add-the-phase-portrait" class="section level4">
+<h4>
+<span class="header-section-number">28.3.6.5</span> Exercise: add the phase portrait<a class="anchor" aria-label="anchor" href="#exercise-add-the-phase-portrait"><i class="fas fa-link"></i></a>
+</h4>
+<p>Based on the example shown <a href="https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&amp;gl=1&amp;theme=dark">here</a>, add the phase portrait chart to the current application.
+TO DO</p>
+</div>
+</div>
+</div>
+<div id="final-product" class="section level2">
+<h2>
+<span class="header-section-number">28.4</span> Final product<a class="anchor" aria-label="anchor" href="#final-product"><i class="fas fa-link"></i></a>
+</h2>
+<p>Final code project may be found <a href="https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f">here</a>.</p>
+<p>To go even further, part of the app logic may be delegated to a Plumber API, which the web developer can query to fetch data from. This is however out of the scope of this book.</p>
 
-## Start of the art
-Let's make a list of all requirements for such a project. Since we are working with both web languages and R, we may leverage `{packer}` [@R-packer] that briefly allows to use `webpack`, a JavaScript bundler in any R project. Moreover, we need a robust R package template structure for Shiny, which is a good task for `{golem}`. As for the icing on the cake, `{packer}` offers a plug and play function to set up a `{golem}` project with `webpack`, through `packer::scaffold_golem()`. 
-
-::: {.noteblock data-latex=""}
-An excellent introduction exposing how to maintain robust JavaScript code inside a Shiny project, featuring Webpack and NPM, may be found in [JavaScript for R](https://book.javascript-for-r.com/webpack-intro.html) by John Coene. 
-:::
-
-
-To go even further, part of the app logic may be delegated to a Plumber API, which the web
-developer can query to fetch data from. 
-
-## Final product
-Final code project may be found [here](https://github.com/RinteRface/shinyComponent/tree/caa07bb9e845f827ddc54679586cc54b6338039d). 
-
--->
-
+</div>
 </div>
   <div class="chapter-nav">
 <div class="prev"><a href="going-further-reactR.html"><span class="header-section-number">27</span> R + Shiny + React: welcome {reactR}</a></div>
 <div class="next"><a href="going-further-where-to-go.html"><span class="header-section-number">29</span> What to do next?</a></div>
 </div></main><div class="col-md-3 col-lg-2 d-none d-md-block sidebar sidebar-chapter">
     <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
-      <ul class="nav navbar-nav"><li><a class="nav-link" href="#going-further-webdev"><span class="header-section-number">28</span> Divide and Conquere</a></li></ul>
+      <ul class="nav navbar-nav">
+<li><a class="nav-link" href="#going-further-webdev"><span class="header-section-number">28</span> Divide and Conquere</a></li>
+<li><a class="nav-link" href="#motivations-2"><span class="header-section-number">28.1</span> Motivations</a></li>
+<li><a class="nav-link" href="#start-of-the-art"><span class="header-section-number">28.2</span> Start of the art</a></li>
+<li>
+<a class="nav-link" href="#about-the-project"><span class="header-section-number">28.3</span> About the project</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#topic"><span class="header-section-number">28.3.1</span> Topic</a></li>
+<li><a class="nav-link" href="#initialize-the-project"><span class="header-section-number">28.3.2</span> Initialize the project</a></li>
+<li><a class="nav-link" href="#ui-design"><span class="header-section-number">28.3.3</span> UI design</a></li>
+<li><a class="nav-link" href="#r-business-logic"><span class="header-section-number">28.3.4</span> R Business logic</a></li>
+<li><a class="nav-link" href="#add-shiny"><span class="header-section-number">28.3.5</span> Add Shiny</a></li>
+<li><a class="nav-link" href="#create-the-interface"><span class="header-section-number">28.3.6</span> Create the interface</a></li>
+</ul>
+</li>
+<li><a class="nav-link" href="#final-product"><span class="header-section-number">28.4</span> Final product</a></li>
+</ul>
 
       <div class="book-extra">
         <ul class="list-unstyled">
@@ -147,7 +853,7 @@ Final code project may be found [here](https://github.com/RinteRface/shinyCompon
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-09-18.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-09-25.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">

@@ -53,7 +53,7 @@ packer::scaffold_golem()
 
 You should end up with the file structure depicted on Figure \@ref(fig:vdpMod-init).
 
-```{r vdpMod-init, echo=FALSE, fig.cap='vdpMod project initialization with {golem} and {packer}', out.width='100%'}
+```{r vdpMod-init, echo=FALSE, fig.cap='vdpMod project initialization with {golem} and {packer}', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-init.png")
 ```
 
@@ -219,7 +219,15 @@ For now, those dependencies are listed in `./package.json` and only cover `webpa
 We have to install __Babel__ that will compile our code to a JS code that all web browsers can understand. 
 
 ```{r, eval=FALSE}
-packer::npm_install(c("babel", "babel-loader", "@babel/core", "@babel/preset-env"), scope = "dev")
+packer::npm_install(
+  c(
+    "babel", 
+    "babel-loader", 
+    "@babel/core", 
+    "@babel/preset-env"
+  ), 
+  scope = "dev"
+)
 ```
 
 We will be importing CSS directly inside the JS code, so we also need a CSS and style loaders:
@@ -231,7 +239,14 @@ packer::npm_install(c("style-loader", "css-loader"), scope = "dev")
 As we use Framework7 and echartsjs, we install them as production dependencies (needed by the app):
 
 ```{r, eval=FALSE}
-packer::npm_install(c("framework7", "echarts", "echarts-gl"), scope = "prod")
+packer::npm_install(
+  c(
+    "framework7", 
+    "echarts", 
+    "echarts-gl"
+  ),
+  scope = "prod"
+)
 ```
 
 You should obtain this JSON:
@@ -258,16 +273,20 @@ You should obtain this JSON:
 Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra [loader](https://www.npmjs.com/package/framework7-loader) as well as a babel react component:
 
 ```{r, eval=FALSE}
-packer::npm_install(c("framework7-loader", "@babel/preset-react"), scope = "dev")
+packer::npm_install(
+  c(
+    "framework7-loader", 
+    "@babel/preset-react"
+  ),
+  scope = "dev"
+)
 ```
 
 Alternatively, one can copy the `./package.json` from [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f) to get exactly the same package versions I used when I initialized this project and call `packer::npm_install()` to pull the dependencies and install them for the project.  
 
-We have to create a `./.babel.rc` script that will add some configuration for Babel to handle JSX:
+We have to create a `./.babel.rc` script that will add some configuration for Babel to handle JSX. Within the terminal, we call `touch .babelrc` and add it the following code:
 
 ```
-touch .babelrc
-> code to copy
 {
   "presets": [
     "@babel/preset-env",
@@ -297,7 +316,7 @@ We modify the `./srcjs/config/loader.json` to add the required loaders for `js`,
 ]
 ```
 
-We can ultimately bundle our JS code and check the app works:
+We can ultimately bundle our JS code and check whether the app starts:
 
 ```{r, eval=FALSE}
 packer::bundle()
@@ -392,7 +411,7 @@ import Framework7 from 'framework7';
 import 'framework7/framework7-bundle.min.css';
 ```
 
-```{r vdpMod-framework7-resources, echo=FALSE, fig.cap='Framework7 assets in node modules', out.width='100%'}
+```{r vdpMod-framework7-resources, echo=FALSE, fig.cap='Framework7 assets in node modules', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-framework7-resources.png")
 ```
 
@@ -510,7 +529,7 @@ devtools::load_all()
 run_app()
 ```
 
-```{r vdpMod-basic-app-2, echo=FALSE, fig.cap='vdpMod basic app with main app component template', out.width='100%'}
+```{r vdpMod-basic-app-2, echo=FALSE, fig.cap='vdpMod basic app with main app component template', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app-2.png")
 ```
 
@@ -532,11 +551,14 @@ const VdpWidget = (props, { $f7, $update}) => {
         <div
           class="range-slider range-slider-init"
           data-min="0"
-          data-max="1"
+          data-min="0"
+          data-max="2"
           data-step="0.1"
           data-label="true"
-          data-value="0.5"
+          data-value="0.1"
           data-scale="true"
+          data-scale-steps="2"
+          data-scale-sub-steps="10"
           id="mu"
           onrangeChange={(e) => getRangeValue(e)}
           ></div>
@@ -548,13 +570,31 @@ const VdpWidget = (props, { $f7, $update}) => {
 export { VdpWidget };
 ```
 
-Inside `./srcjs/components/app.f7.jsx`, we import the newly designed component and replace `{content}` by `<VdpWidget label="Van der Pol Model"/>`:
+Inside `./srcjs/components/app.f7.jsx`, we import the newly designed component and replace `{content}`:
 
-```js
+```jsx
 import VdpWidget from './vdp.f7.jsx';
+
+export default (props) => {
+  const title = 'Hello World';
+  
+  return () => (
+    <div id="app">
+      <div class="view view-main view-init safe-areas">
+        <div class="page">
+          <!-- Navbar -->
+          <!-- Toolbar -->
+          <div class="page-content">
+            <VdpWidget label="Van der Pol Model"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 ```
 
-On the R side, you may add this in the server code to track the gauge value:
+On the R side, you may add this in the server code to track the range value:
 
 ```{r, eval=FALSE}
 observeEvent(input$mu, {
@@ -564,7 +604,7 @@ observeEvent(input$mu, {
 
 After recompiling, this gives us Figure \@ref(fig:vdpMod-basic-app-3).
 
-```{r vdpMod-basic-app-3, echo=FALSE, fig.cap='vdpMod basic app with range slider', out.width='100%'}
+```{r vdpMod-basic-app-3, echo=FALSE, fig.cap='vdpMod basic app with range slider', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app-3.png")
 ```
 
@@ -589,7 +629,7 @@ Inside `./srcjs/components/app.f7.jsx`, we update our import field, and add an e
 
 ```js
 import { VdpWidget, initializeVdpWidget } from './vdp.f7.jsx';
-export default ({ $f7 }) => {
+export default (props, { $f7 }) => {
 
   initializeVdpWidget($f7);
   // ... unchanged ...
@@ -607,42 +647,170 @@ import * as echarts from 'echarts';
 import 'echarts-gl';
 ```
 
-To work properly, echarts requires to setup an HTML empty container in the DOM, that will receive the plot, specifying the height and width in pixels, and its __id__:
+To work properly, [echarts](https://echarts.apache.org/handbook/en/get-started/) requires to setup an HTML empty container in the DOM, that will receive the plot, specifying the height and width in pixels, and its __id__. I recommend using percentage for width so as to fill the container:
 
 ```html
-<div id="line-plot" style="width:600px; height:400px;"></div>
+<div id="my-plot" style="width:100%; min-height:400px;"></div>
 ```
 
-On the JS side, we instantiate the plot and set the options list to give the plot a title, set the axis labels, add the time series:
+On the JS side, we instantiate the plot and set the options list to give it a title, set the axis labels, add the time series:
 
 ```js
-linePlot = echarts.init(document.getElementById('line-plot'));
-linePlotOptions = {
-  title: {
-    text: 'Van der Pol oscillator: line plot'
-  },
-  tooltip: {},
-  legend: {
-    data:['X', 'Y']
-  },
-  xAxis: {
-    data: lineData['t']
-  },
-  yAxis: {
-    type: 'value'
-  },
+myChart = echarts.init(document.getElementById('my-plot'));
+myChartOptions = {
+  title: { text: 'Plot title' },
+  legend: { data:[...] },
+  xAxis: { data: ...},
+  yAxis: { type: ... },
   series: [
     {
-      name: 'X',
-      type: 'line',
-      data: lineData['X']
+      name: ...,
+      type: ...,
+      data: ...
     },
     // other data
   ]
 };
-linePlot.setOption(linePlotOptions);
+myChart.setOption(myChartOptions);
 ```
 
+Obviously, many more options exist but this is enough for this example.
+In our app, we'll have two plots, one for the time series data and another for the phase portrait. We edit the `VdpWidget` render function so that plots are included below the range slider, the most important elements being the plot __id__:
+
+```jsx
+const VdpWidget = (props, { $f7, $update}) => {
+  // ... unchanged ...
+  
+  const plotStyle = {
+    width: '100%',
+    minHeight: '400px'
+  }
+  
+  return () => (
+    <div>
+      <div class="block-title">{props.label}</div>
+      <div class="block block-strong text-align-center">
+        <p>The below model is computed by R!</p>
+        <!-- range slider block -->
+      </div>
+      <div class="card card-outline">
+        <div class="card-content card-content-padding">
+          <div id="line-plot" style={plotStyle}></div>
+        </div>
+      </div>
+      <div class="card card-outline">
+        <div class="card-content card-content-padding">
+          <div id="phase-plot" style={plotStyle}></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+
+Since the initialization happens once, we add it inside the existing `shiny:connect` event listener inside `initializeVdpWidget`. Notice how we make the plot responsive to any viewport change, by calling the echart `resize` method when the window is resized:
+
+```js
+const initializeVdpWidget = (app) => {
+  let linePlot, phasePlot;
+  $(document).on('shiny:connected', () => {
+    // ... unchanged ...
+    // prepare echarts plots
+    linePlot = echarts.init(document.getElementById('line-plot'));
+    phasePlot = echarts.init(document.getElementById('phase-plot'));
+  });
+  
+  // Resize plot, responsive
+  $(window).on('resize', function(){
+    linePlot.resize();
+    phasePlot.resize();
+  });
+};
+```
+
+The next step is to recover the model data sent from R with the `session$sendCustomMessage("model-data", ...)` inside `./R/app_server.R`. We create a dedicated message handler on the JS side still in `initializeVdpWidget`. As a reminder, since we send a list from R, items are accessed with `message.<FIELD>` in JS:
+
+```js
+const initializeVdpWidget = (app) => {
+  // ... shiny:connected ...
+  
+  // Recover ODE data from R
+  let lineData, phaseData, trajectoryData, 
+  linePlotOptions, phasePlotOptions;
+  
+  Shiny.addCustomMessageHandler(
+    'model-data', (message) => {
+      lineData = message.lineData;
+      phaseData = message.phaseData;
+      trajectoryData = message.trajectoryData;
+  });
+}
+```
+
+We set the plot options. For the time series chart, we'll display the solution X (`lineData['X']`) and Y (`lineData['Y']`) as a function of time (`lineData['t']`):
+
+```js
+const initializeVdpWidget = (app) => {
+  // ... shiny:connected ...
+  
+  Shiny.addCustomMessageHandler(
+    'model-data', (message) => {
+      // ... recover data ...
+      
+      // set options
+      linePlotOptions = {
+        title: {
+          text: 'Van der Pol oscillator: line plot'
+        },
+        legend: { data:['X', 'Y'] },
+        xAxis: { data: lineData['t'] },
+        yAxis: { type: 'value' },
+        series: [
+          {
+            name: 'X',
+            type: 'line',
+            data: lineData['X']
+          },
+          {
+            name: 'Y',
+            type: 'line',
+            data: lineData['Y']
+          }
+        ]
+      };
+      
+      // use configuration item and data specified to show chart
+      linePlot.setOption(linePlotOptions);
+  });
+}
+```
+
+Still inside `initializeVdpWidget`, we leverage the Framework7 toast API to send a message to the user, telling the model is up to date:
+
+```js
+const initializeVdpWidget = (app) => {
+  Shiny.addCustomMessageHandler(
+    'model-data', (message) => {
+      // ... plot config ...
+      
+      // Notify plot update
+      app.toast.create({
+        text: 'Model successfuly computed',
+        closeTimeout: 2000,
+      }).open();
+  });
+}
+```
+
+After rebuilding the JS code, you should get Figure \@ref(fig:vdpMod-basic-app-4).
+
+```{r vdpMod-basic-app-4, echo=FALSE, fig.cap='vdpMod basic app with time series output', out.width='50%', fig.align='center'}
+knitr::include_graphics("images/going-further/vdpMod-basic-app-4.png")
+```
+#### Exercise: add the phase portrait
+Based on the example shown [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark), add the phase portrait chart to the current application. 
+TO DO
 
 ## Final product
 Final code project may be found [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f). 
