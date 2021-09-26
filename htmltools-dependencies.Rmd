@@ -1,25 +1,31 @@
 # Handle HTML dependencies with {htmltools} {#htmltools-dependencies}
-In this chapter, I'll demonstrate how we can utilize `{htmltools}` [@R-htmltools] to manage web dependencies, that is handling CSS and JS code as well as other assets in your shiny apps.  You'll realized quickly that it opens the doors to work with almost any web framework, thereby unleashing 
+In this chapter, I'll demonstrate how we can utilize `{htmltools}` [@R-htmltools] to manage web dependencies, that is handling CSS and JS code as well as other assets in your shiny apps. This literally opens the doors to work with almost any web framework and design outstanding user experiences with Shiny. 
 
 ## Motivations
-Let's consider the following example. Since __Bootstrap__ is one of the most popular HTML/CSS/JS framework to develop websites and web apps, we want to include a Bootstrap 4 card in a shiny app. This case study is taken from a RStudio Community [question](https://community.rstudio.com/t/create-a-div-using-htmltools-withtags/22439/2). The naive approach would be to include the HTML code directly in the app code. This approach is dirty since it is not easily re-usable by others. `my_card()` creates the card structure:
+In this example, we would like to include a Material Bootstrap [card](https://mdbootstrap.com/docs/standard/components/cards/) in a shiny app. 
+
+```{r mdb-card, echo=FALSE, fig.cap='Material Bootstrap design card', out.width='50%', fig.align='center'}
+knitr::include_graphics("images/htmltools/mdb-card.png")
+```
+
+The naive approach would be to include the HTML code directly in the app code. `my_card()` creates the card structure:
 
 ```{r}
 library(shiny)
 # we create the card function before
 my_card <- function(...) {
   withTags(
-    div(
-      class = "card border-success mb-3",
-      div(class = "card-header bg-transparent border-success"),
-      div(
-        class = "card-body text-success",
-        h3(class = "card-title", "title"),
-        p(class = "card-text", ...)
-      ),
-      div(
-        class = "card-footer bg-transparent border-success",
-        "footer"
+    tags$div(
+      class = "card",
+      tags$div(
+        class = "card-body",
+        tags$h5(class = "card-title", "Card title"),
+        tags$p(class = "card-text", "Card content"),
+        tags$button(
+          type = "button",
+          class = "btn btn-primary",
+          "Button"
+        )
       )
     )
   )
@@ -33,25 +39,23 @@ code_chunk(OSUICode::get_example("htmltools/deps/card/ex1"), "r")
 ```
 
 
-```{r bs4-card-dirty, echo=FALSE, fig.cap='Attempt to display a Bootstrap 4 card without dependencies', out.width='100%'}
-knitr::include_graphics("images/htmltools/bs4-card-dirty.png")
+```{r mdb-card-dirty, echo=FALSE, fig.cap='Attempt to display a Material Bootstrap card without dependencies in a shiny app.', out.width='100%'}
+knitr::include_graphics("images/htmltools/mdb-card-dirty.png")
 ```
 
-As depicted by Figure \@ref(fig:bs4-card-dirty), nothing is displayed which was expected since `{shiny}` [@R-shiny] does not contain Bootstrap 4 dependencies. Don't panic! We load the necessary css to display this card (if required, we could include the javascript as well). We could use either `includeCSS()`, `tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"))`, as described in the shiny documentation [here](https://shiny.rstudio.com/articles/css.html). Web development best practice recommend to point to external file rather than including CSS in the head or as inline CSS (see chapter \@ref(beautify-css)). In the below example, we use a __CDN__ (content delivery network) but that could be a local file in the `www/` folder:
+As depicted by Figure \@ref(fig:mdb-card-dirty), nothing is displayed which was expected since `{shiny}` [@R-shiny] does not contain Bootstrap 4 dependencies. Don't panic! We load the necessary css to display this card (if required, we could include the javascript as well). We could use either `includeCSS()`, `tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"))`, as described in the shiny documentation [here](https://shiny.rstudio.com/articles/css.html). Web development best practice recommend to point to external file rather than including CSS in the head or as inline CSS (see chapter \@ref(beautify-css)). In the below example, we use a __CDN__ (content delivery network) but that could be a local file in the `www/` folder:
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("htmltools/deps/card/ex2"), "r")
 ```
 
-The card may seem ugly but at least it is displayed as shown on Figure \@ref(fig:bs4-card-deps).
+The card may seem ugly but at least it is displayed as shown on Figure \@ref(fig:mdb-card-deps). This approach is however not easy to re-usable by other developers since there is no way to recover the specific dependency.
 
-```{r bs4-card-deps, echo=FALSE, fig.cap='Bootstrap 4 card within a simple app', out.width='100%'}
-knitr::include_graphics("images/htmltools/bs4-card-deps.png")
+```{r mdp-card-deps, echo=FALSE, fig.cap='Material Bootstrap card within a simple app', out.width='100%'}
+knitr::include_graphics("images/htmltools/mdb-card-deps.png")
 ```
 
-## The clean approach
-
-The best approach consists in leveraging the `htmlDependency()` and `attachDependencies()` functions from `{htmltools}`.
+The best approach actually consists in leveraging the `htmlDependency()` and `attachDependencies()` functions from `{htmltools}`.
 `htmlDependency()` takes the following main parameters:
 
   - A __name__.
@@ -61,20 +65,20 @@ The best approach consists in leveraging the `htmlDependency()` and `attachDepen
 
 ```{r, eval = FALSE}
 # handle dependency
-bs4_cdn <- "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/"
-bs4_card_dep <- function() {
+mdb_cdn <- "https://cdnjs.cloudflare.com/ajax/libs/"
+mdb_card_dep <- function() {
   htmlDependency(
-    name = "bs4_card",
+    name = "mdb-card",
     version = "1.0",
-    src = c(href = bs4_cdn),
-    stylesheet = "css/bootstrap.min.css"
+    src = c(href = mdb_cdn),
+    stylesheet = "mdb-ui-kit/3.6.0/mdb.min.css"
   )
 }
 ```
 
 If you are not pointing to a CDN and use local files, this is crucial to wrap the newly created dependency in a function since the path has to be determined at run time and not when the package builds. It means that if you are developing a package with dependencies, forgetting this step might prevent other users to get the dependency working on their own machine (the differences between Unix and Windows OS paths is clearly a good example).
 
-We create the card tag and give it the Bootstrap 4 dependency through the `attachDependencies()` function.
+We create the card tag and give it the Material Bootstrap dependency through the `attachDependencies()` function.
 
 ::: {.noteblock data-latex=""}
 In recent version of `{htmltools}`, we may simply use `tagList(tag, deps)` instead. Importantly, `attachDependencies()` has an `append` parameter FALSE by default. Ensure to set it to TRUE if you want to keep already attached dependencies!
@@ -89,7 +93,7 @@ my_card <- function(...) {
   # htmltools::attachDependencies(cardTag, bs4_card_dep())
 
   # simpler way
-  tagList(cardTag, bs4_card_dep())
+  tagList(cardTag, mdb_card_dep())
 
 }
 
@@ -101,9 +105,18 @@ We finally run our app:
 code_chunk(OSUICode::get_example("htmltools/deps/card/ex3"), "r")
 ```
 
+According to Figure \@ref(fig:mdb-card-deps-conflict), something seems to be broken or conflicting. If we look at the developer tools, we realize that the new Material Design stylesheet comes before the Shiny Bootstrap CSS, which is the source of our problems. 
+
+::: {.importantblock data-latex=""}
+This raises an important consideration about `htmlDependency()`. Under the hood, Shiny adds many necessary dependencies like Bootstrap, jQuery and you have no control over where your own dependencies will be inserted yet. Section \@ref(htmltools-suppress-deps) explains how to seamlessly solve that issue.
+:::
+
+```{r mdb-card-deps-conflict, echo=FALSE, fig.cap='Conflict between Material Bootstrap and Bootstrap CSS. ', out.width='100%'}
+knitr::include_graphics("images/htmltools/mdb-card-deps-conflict.png")
+```
+
 With this approach, you can develop a package of custom dependencies that people
 could use when they need to add custom elements in shiny.
-
 
 ## Importing HTML dependencies from other packages {#htmldeps-import}
 
@@ -158,11 +171,11 @@ code_chunk(OSUICode::get_example("htmltools/deps/dashboard"), "r")
 knitr::include_graphics("images/htmltools/shiny-import-box.png")
 ```
 
-You now have limitless possibilities!  Interestingly, this same approach is the basis of [shinyWidgets](https://github.com/dreamRs/shinyWidgets/blob/master/R/useBs4Dash.R) for the `useBs4Dash()` function and other related tools.
+You now have limitless possibilities!  Interestingly, this same approach is the basis of [shinyWidgets](https://github.com/dreamRs/shinyWidgets/blob/5b1fe07eaa13ff9157effaa13187d560d4d97644/R/useBs4Dash.R#L123) for the `useBs4Dash()` function and other related tools.
 
-## Suppress dependencies
+## Suppress dependencies {#htmltools-suppress-deps}
 
-In rare cases, you may need to remove an existing __conflicting__ dependency. The `suppressDependencies()` function allows users to perform this task. For instance, [shiny.semantic](https://github.com/Appsilon/shiny.semantic) built on top of
+In rare cases, you may need to remove an existing __conflicting__ dependency. The `suppressDependencies()` function allows users to perform this task. For instance, [shiny.semantic](https://github.com/Appsilon/shiny.semantic/tree/f184da21864db3c39ea5233187400a87df85fb0f) built on top of
 semantic ui is not compatible with Bootstrap, the latter being dropped from the list, as illustrated by Figure \@ref(fig:semantic-suppress-bootstrap).
 
 ```{r semantic-suppress-bootstrap, echo=FALSE, fig.cap='Deletion of Bootstrap inside semanticPage', out.width='100%'}
