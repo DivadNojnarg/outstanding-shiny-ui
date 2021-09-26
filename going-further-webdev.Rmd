@@ -1,18 +1,19 @@
 # Divide and Conquere {#going-further-webdev}
 
 ## Motivations
-Adapting an external HTML template to R requires time, efforts and competent people. 
-What if, instead, we decided to:
+Adapting an external HTML template to R requires time, efforts and competent people. As an example, I took me about two years to get `{shinyMobile}` on the road, definitely not a compatible timeline for more urgent projects which have to be released under weeks.
 
-  - Handle the UI part with HTML, JS and CSS.
-  - Handle the server part with R. 
-  - Communicate between R and JS with the websocket to exchange information. 
+What if, instead, we decided to handle the UI part with usual web languages like HTML, JS and CSS, thereby avoiding the time consuming HTML to R conversion and input binding creation?
   
-Theoretically, any front-end web developer could take care of the first task. 
-The second task could be handled by any R programmer. The third task involves both developers, the R guy will leverage `session$sendCustomMessage` and the UI guy will use `Shiny.setInputvalue` wherever required. 
+Theoretically, any front-end web developer could take care of creating the user interface. There already exists HTML templates for [Shiny](https://shiny.rstudio.com/articles/templates.html), allowing one to leverage any existing HTML template. The result may be literally stunning, as shown during the latest Shiny [contest](https://nz-stefan.shinyapps.io/commute-explorer-2/?_ga=2.70875408.1031573581.1632613467-748932920.1610966288) and illustrated on Figure \@ref(fig:htmlTemplate-app). However, from a modern web development point of view, there are nowadays much more suited tools to build and maintain application like React from the previous chapter. 
 
-Eventually, this would allow the R guy, that is most of the time not a UI design expert, to focus on the business logic and extract function out of `reactive` to improve code base quality. On the other hands, the web developer could focus on building the user interface and prepare the link with the R part, without necessarily have a deep knowledge of R.
+```{r htmlTemplate-app, echo=FALSE, fig.cap='Commute explorer app, Shiny Contest winner 2021', out.width='100%'}
+knitr::include_graphics("images/going-further/htmlTemplate-app.png")
+```
 
+Eventually, the above approach would permit the R developer, that is most of the time not a UI design expert, to focus on the business logic and improve the code base quality. On the other hands, the web developer could focus on building the user interface with his favorite web tools and prepare the link with the R part, without necessarily have a deep knowledge of R.
+
+This chapter may be of interest to any company leveraging Shiny and having people with different programming background who wish to better work together around that same technology 
 
 ## Start of the art
 Let's make a list of all requirements for such a project. Since we are working with both web languages and R, we may leverage `{packer}` [@R-packer] that briefly allows to use `webpack`, a JavaScript bundler in any R project. Moreover, we need a robust R package template structure for Shiny, which is a good task for `{golem}`. As for the icing on the cake, `{packer}` offers a plug and play function to set up a `{golem}` project with `webpack`, through `packer::scaffold_golem()`. 
@@ -24,7 +25,7 @@ An excellent introduction exposing how to maintain robust JavaScript code inside
 ## About the project
 
 ### Topic
-We are going to develop a ordinary differential equation solver for the Van Der Pol oscillator, whose equations may be found below:
+We are going to develop an ordinary differential equation solver for the Van Der Pol oscillator, whose equations may be found below:
 
 $$
 \begin{equation}
@@ -615,9 +616,9 @@ const initializeVdpWidget = (app) => {
   $(document).on('shiny:connected', () => {
     // Init vals for ODE model computation
     Shiny.setInputValue(
-        'mu', 
-        parseFloat($('#mu').attr('data-value'), 10), 
-        {priority: 'event'}
+      'mu', 
+      parseFloat($('#mu').attr('data-value'), 10), 
+      {priority: 'event'}
     );
   });
 }
@@ -761,9 +762,9 @@ const initializeVdpWidget = (app) => {
       // set options
       linePlotOptions = {
         title: {
-          text: 'Van der Pol oscillator: line plot'
+          text: 'Line plot'
         },
-        legend: { data:['X', 'Y'] },
+        legend: { data: ['X', 'Y'] },
         xAxis: { data: lineData['t'] },
         yAxis: { type: 'value' },
         series: [
@@ -809,8 +810,83 @@ After rebuilding the JS code, you should get Figure \@ref(fig:vdpMod-basic-app-4
 knitr::include_graphics("images/going-further/vdpMod-basic-app-4.png")
 ```
 #### Exercise: add the phase portrait
-Based on the example shown [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark), add the phase portrait chart to the current application. 
-TO DO
+Based on the example shown [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark), you'll have to add the phase portrait chart to the current application. 
+
+1. In `initializeVdpWidget`, after the `linePlotOptions`, create a new
+`phasePlotOptions` object containing the plot title.
+
+```js
+phasePlotOptions = {
+  title: {
+    text: 'Phase plot'
+  }
+}
+```
+
+2. Since we plot Y against X (it was X and Y against time in the previous plot), we add two entries to the previous configuration.
+
+```js
+phasePlotOptions = {
+  // ... title ...
+  xAxis: {
+    type: 'value'
+  },
+  yAxis: {
+    type: 'value'
+  }
+}
+```
+
+3. The first layer is a flow GL chart showing particles movement in the vector field. The chosen __type__ entry ensures we utilize the proper chart. We pass the `phaseData` recovered from the R side. Other properties are responsible for controlling the particle appearance like the speed, size and transparency. You may try with different values to see what happens in the plot. 
+
+```js
+phasePlotOptions = {
+  series: [
+    {
+      type: 'flowGL',
+      data: phaseData,
+      particleDensity: 64,
+      particleSize: 5,
+      particleSpeed: 4,
+      supersampling: 4,
+      particleType: 'point',
+      itemStyle: {
+        opacity: 0.5
+      }
+    },
+    // Other series
+  ]
+}
+```
+
+4. How do we control the flow chart visual aspect? The __visualMap__
+property 
+
+```js
+phasePlotOptions = {
+  visualMap: {
+    show: false,
+    min: magMin,
+    max: magMax,
+    dimension: 4,
+    inRange: {
+      color: [
+        '#313695',
+        '#4575b4',
+        '#74add1',
+        '#abd9e9',
+        '#e0f3f8',
+        '#ffffbf',
+        '#fee090',
+        '#fdae61',
+        '#f46d43',
+        '#d73027',
+        '#a50026'
+      ]
+    }
+  }
+}
+```
 
 ## Final product
 Final code project may be found [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f). 
