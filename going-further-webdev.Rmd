@@ -1,31 +1,33 @@
 # Divide and Conquere {#going-further-webdev}
 
 ## Motivations
-Adapting an external HTML template to R requires time, efforts and competent people. As an example, I took me about two years to get `{shinyMobile}` on the road, definitely not a compatible timeline for more urgent projects which have to be released under weeks.
+Adapting an external HTML template to R requires time, efforts and competent people. As an example, it took me about two years to get `{shinyMobile}` on the road, definitely not a compatible timeline for more urgent projects which have to be released under weeks.
 
 What if, instead, we decided to handle the UI part with usual web languages like HTML, JS and CSS, thereby avoiding the time consuming HTML to R conversion and input binding creation?
   
-Theoretically, any front-end web developer could take care of creating the user interface. There already exists HTML templates for [Shiny](https://shiny.rstudio.com/articles/templates.html), allowing one to leverage any existing HTML template. The result may be literally stunning, as shown during the latest Shiny [contest](https://nz-stefan.shinyapps.io/commute-explorer-2/?_ga=2.70875408.1031573581.1632613467-748932920.1610966288) and illustrated on Figure \@ref(fig:htmlTemplate-app). However, from a modern web development point of view, there are nowadays much more suited tools to build and maintain application like React from the previous chapter. 
+Theoretically, any front-end web developer could take care of creating the user interface. There already exists HTML templates for [Shiny](https://shiny.rstudio.com/articles/templates.html), allowing one to leverage any existing HTML skeleton. The result may be literally stunning, as shown during the latest Shiny [contest](https://nz-stefan.shinyapps.io/commute-explorer-2/?_ga=2.70875408.1031573581.1632613467-748932920.1610966288) and illustrated on Figure \@ref(fig:htmlTemplate-app). However, from a modern web development point of view, there are nowadays much more suited tools to build and maintain application like React and webpack from the previous chapter. 
 
 ```{r htmlTemplate-app, echo=FALSE, fig.cap='Commute explorer app, Shiny Contest winner 2021', out.width='100%'}
 knitr::include_graphics("images/going-further/htmlTemplate-app.png")
 ```
 
-Eventually, the above approach would permit the R developer, that is most of the time not a UI design expert, to focus on the business logic and improve the code base quality. On the other hands, the web developer could focus on building the user interface with their favorite web tools and prepare the link with the R part, without necessarily have a deep knowledge of R.
+Eventually, the above approach would permit the R developers, that are most of the time not a UI design experts, to focus on the __business logic__ and improve the code base quality. On the other hands, the web developers could focus on building the user interface with their favorite web tools and prepare the link with the R part, without necessarily have a deep knowledge of R.
 
 This chapter may be of interest to any company leveraging Shiny and having people with different programming background who wish to better work together around that same technology.
 
+In the following, I'll show you how one may seamlessly leverage Shiny and some modern web dev tools like JSX, ES6, webpack and external JS viz libraries. 
+
 ## Start of the art
-Let's make a list of all requirements for such a project. Since we are working with both web languages and R, we may leverage `{packer}` [@R-packer] that briefly allows to use `webpack`, a JavaScript bundler in any R project. Moreover, we need a robust R package template structure for Shiny, which is a good task for `{golem}`. As for the icing on the cake, `{packer}` offers a plug and play function to set up a `{golem}` project with `webpack`, through `packer::scaffold_golem()`. 
+Let's make a list of all requirements for such a project. Since we are working with both web languages and R, we may select `{packer}` [@R-packer] that briefly allows to use `webpack`, a JavaScript __bundler__, in any R project. Moreover, we seek for a robust R __package__ template structure for Shiny, which is a perfect task for `{golem}`. As for the icing on the cake, `{packer}` offers a plug and play function to set up a `{golem}` project with `webpack`, through `packer::scaffold_golem()`. 
 
 ::: {.noteblock data-latex=""}
-An excellent introduction exposing how to maintain robust JavaScript code inside a Shiny project, featuring Webpack and NPM, may be found in [JavaScript for R](https://book.javascript-for-r.com/webpack-intro.html) by John Coene. 
+An excellent introduction exposing how to maintain robust JavaScript code inside a Shiny project, featuring webpack and NPM, may be found in [JavaScript for R](https://book.javascript-for-r.com/webpack-intro.html) by John Coene. 
 :::
 
 ## About the project
 
 ### Topic
-We are going to develop an ordinary differential equation solver for the Van Der Pol oscillator, whose equations may be found below:
+We are going to develop an ordinary differential equation solver app for the Van Der Pol oscillator, whose equations may be found below:
 
 $$
 \begin{equation}
@@ -36,7 +38,7 @@ $$
 \end{equation}
 $$
 
-Importantly, we don't really focus on the scientific content and the app will be very simple regarding its features. As shown above, there is only one parameter namely $\mu$, which we will vary to see how it changes the whole system. 
+Importantly, we don't really focus on the scientific content and the app will be very simple regarding its features. As shown above, there is only one parameter namely $\mu$, which we will vary to see its influence on the whole system. 
 
 
 ### Initialize the project
@@ -58,15 +60,22 @@ You should end up with the file structure depicted on Figure \@ref(fig:vdpMod-in
 knitr::include_graphics("images/going-further/vdpMod-init.png")
 ```
 
-The structure is basically the same provided by `{golem}` with addition of extra files for JS code management by `{packer}`. This is the same principle shown in chapters \@ref(workflow-charpente) and \@ref(going-further-reactR). Let's pause here for the setup and continue later in this chapter.
+The structure is basically the same provided by `{golem}` with addition of extra files for JS code management by `{packer}`. This is the same principle shown in chapters \@ref(workflow-charpente) and \@ref(going-further-reactR). Let's pause here for the R setup and continue later in this chapter.
 
 ### UI design
-The UI contains a slider input to change $\mu$ as well as two plots, one for the time series and another for the phase plan analysis including the vector field and a simple trajectory from a chosen initial condition. 
+The UI will contain a slider input to change $\mu$ as well as two plots, one for the solutions `x` and `y` and another for the __phase plan__ analysis including the vector field and a simple trajectory from a chosen initial condition. In short, phase plan [analysis allows to __qualitatively__ study a non linear systems, that is determine:
 
-We selected the [Framework7](https://framework7.io/) template, already mentioned in part \@ref(mobile-shiny-intro) since we want this app to be optimized for mobile platforms. This will also allow us to fully exploit the Framework7 API (`{shinyMobile}` does not implement all its features yet). The graphic output part is handled by [echartsjs](https://echarts.apache.org/en/index.html) since it offers quite amazing vector field outputs, as depicted [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark). 
+  - What are the __steady states__ (points for which the system).
+  - The nature of the steady states (stable, unstable).
+  - Whether there are __bifurcations__ (change in number of steady state and stability).
+  - ... This is just wonderful believe me!
+
+After knowing all those details, we may easily predict given an initial condition, how the system will react to any external perturbation. If you want to know more, this [book](https://www.springer.com/gp/book/9780387952239) is a good starting point. 
+
+To build the user interface, we selected the [Framework7](https://framework7.io/) template, already mentioned in part \@ref(mobile-shiny-intro) since we want this app to be optimized for __mobile__ platforms. Besides, as `{shinyMobile}` does not implement all its features yet, this will also allow us to fully exploit the Framework7 API. The graphic output part will be handled by [echartsjs](https://echarts.apache.org/en/index.html), offering quite amazing vector field outputs, as depicted [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark). 
 
 ### R Business logic
-Before designing the app and dive into the reactivity, let's first think about the business logic. On the server side, we want to store the model equations, create a function to solve it, compute the vector field... We create the `.R/model.R` script. The first step is to store the equations. As it is a 2D ODE system, we can use a simple vector:
+Before designing the app and dive into the reactivity, let's first think about the business logic. On the server side, we want to write the model equations, create a function to solve it, compute the vector field... in a `.R/model.R` script. The first step is to store the equations. As it is a two dimensions ODE system, we can use a simple vector:
 
 ```{r}
 vdp_equations <- c(
@@ -75,7 +84,7 @@ vdp_equations <- c(
 )
 ```
 
-To solve the equations, we selected the `{deSolve}` package [@R-deSolve], whose performances are enough for this example (For more complex examples, one may switch to compiled code with Fortran, C or C++. `{deSolve}` provides interface for compiled code).
+Equations are solved with the `{deSolve}` package [@R-deSolve], whose performances are enough for this example (For more complex examples, one may switch to compiled code with Fortran, C or C++, `{deSolve}` providing a convenient API for compiled code).
 
 ```{r}
 solve_model <- function(Y0, t, model, parms) {
@@ -83,7 +92,7 @@ solve_model <- function(Y0, t, model, parms) {
 }
 ```
 
-`Y0` refers to the initial condition, `t` is the time for which we integrate, model contains the equations and `parms` is a vector of parameters. Importantly, `{deSolve}` requires the model to be written as follows (`t` being the time, `y` a 2D vector and `p` a parameter vector), returning the value of `x` and `y` in a list:
+`Y0` refers to the initial condition, `t` is the time for which we integrate, `model` contains the equations and `parms` is a vector of parameters. Importantly, `{deSolve}` requires the model to be written as follows (`t` being the time, `y` a 2D vector and `p` a parameter vector), returning the value of `x` and `y` in a list:
 
 
 ```{r}
@@ -107,7 +116,7 @@ solve_model(
 )
 ```
 
-It is therefore, straightforward to plot time series. However, this output does not tell use anything about the vector field. Below is the code used to generate it. `mag` represents the speed along trajectories resulting from a linear combination of the vertical speed and the horizontal speed components, respectively `dy` and `dx`. It is obtained after applying the Pythagorean theorem:
+It is therefore straightforward to plot __solutions__. However, this output does not tell use anything about the __vector field__. Below is the code used to generate it. `mag` represents the speed along trajectories resulting from a linear combination of the vertical speed and the horizontal speed components, respectively `dy` and `dx`. It is obtained after applying the Pythagorean theorem:
 
 $$
 mag = \sqrt{dx^2 + dy^2}
@@ -171,8 +180,8 @@ generate_model_data <- function(model, pars, grid) {
 ```
 
 This is basically all we need! I highly encourage you not to dive into
-reactivity first, as this is significantly harder to debug. This way, you can
-setup unit test for these functions without having to handle the Shiny machinery. 
+__reactivity__ first, as this is significantly harder to debug. This way, you can
+design unit test for these functions without having to handle the Shiny machinery. 
 
 ### Add Shiny
 Now that the business logic is safe, we describe what we must do on the server side. Remember that the original idea is to have a slider which we can move to see what impact $\mu$ has on the whole system. 
@@ -222,7 +231,7 @@ For now, those dependencies are listed in `./package.json` and only cover `webpa
 }
 ```
 
-We have to install __Babel__ that will compile our code to a JS code that all web browsers can understand. 
+Since we'll be using quite modern JS syntay (ES6) and some JSX, we have to install __Babel__ that will compile our code to a JS code that all web browsers can understand. 
 
 ```{r, eval=FALSE}
 packer::npm_install(
@@ -236,13 +245,13 @@ packer::npm_install(
 )
 ```
 
-We will be importing CSS directly inside the JS code, so we also need a CSS and style loaders:
+For convenience, we import CSS directly inside the JS code, thereby requiring style loaders:
 
 ```{r, eval=FALSE}
 packer::npm_install(c("style-loader", "css-loader"), scope = "dev")
 ```
 
-As we use Framework7 and echartsjs, we install them as production dependencies (needed by the app):
+As we depend on Framework7 and echartsjs, we install them as production dependencies (needed by the app):
 
 ```{r, eval=FALSE}
 packer::npm_install(
@@ -276,7 +285,7 @@ You should obtain this JSON:
 }
 ```
 
-Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra [loader](https://www.npmjs.com/package/framework7-loader) as well as a babel react component:
+Interestingly, Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra [loader](https://www.npmjs.com/package/framework7-loader) as well as a babel react component:
 
 ```{r, eval=FALSE}
 packer::npm_install(
@@ -290,7 +299,7 @@ packer::npm_install(
 
 Alternatively, one can copy the `./package.json` from [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f) to get exactly the same package versions I used when I initialized this project and call `packer::npm_install()` to pull the dependencies and install them for the project.  
 
-We have to create a `./.babel.rc` script that will add some configuration for Babel to handle JSX. Within the terminal, we call `touch .babelrc` and add it the following code:
+We create a `./.babelrc` script providing some configuration for Babel to handle JSX. Within the terminal, we call `touch .babelrc` and add it the following code:
 
 ```
 {
@@ -301,7 +310,7 @@ We have to create a `./.babel.rc` script that will add some configuration for Ba
 }
 ```
 
-We modify the `./srcjs/config/loader.json` to add the required loaders for `js`, `jsx` and `css` files.
+We modify the `./srcjs/config/loader.json` to include the required loaders for `js`, `jsx` and `css` files.
 
 ```js
 [
@@ -335,7 +344,7 @@ knitr::include_graphics("images/going-further/vdpMod-basic-app.png")
 ```
 
 #### Basic R UI skeleton
-The package configuration is successful but we still have to modify the `./R/app_ui.R` to be consistent with the Framework7 expectations. According to what is required in the [documentation](https://framework7.io/docs/app-layout.html), the `body` must contain a tag with the `app` id (actually whatever id but give it an id...), followed by the `index.js` JS code (obtained after compilation with `{packer}`). The order is important as not following it will break the app:
+The package configuration is successful but we still have to modify the `./R/app_ui.R` to be consistent with the Framework7 expectations. According to what is required in the [documentation](https://framework7.io/docs/app-layout.html), the `body` must contain a tag with the an id, followed by the `index.js` JS code (obtained after compilation with `{packer}`). The order is important as not following it will break the app:
 
 ```{r, eval=FALSE}
 app_ui <- function(request, title = NULL) {
@@ -351,8 +360,7 @@ app_ui <- function(request, title = NULL) {
 }
 ```
 
-Note that we also have to consider meta tags in the header to handle the viewport, mobile platforms... This is done inside `golem_add_external_resources()`. Note that we had to comment out the 
-`bundle_resources()` call since it would have added the dependencies in the head, before the app tag, which is not consistent with the Framework7 requirements:
+Note that we also have to consider meta tags in the header to handle the viewport, mobile platforms... This is done inside `golem_add_external_resources()`. Besides, we had to comment out the `bundle_resources()` call since it would have added the dependencies in the head, before the app tag, which is not consistent with the Framework7 requirements:
 
 ```{r, eval=FALSE}
 golem_add_external_resources <- function(title){
