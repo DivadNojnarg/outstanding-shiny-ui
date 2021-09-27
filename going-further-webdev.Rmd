@@ -407,7 +407,7 @@ Shiny.addCustomMessageHandler('show-packer', (msg) => {
 ```
 
 which is a placeholder provided by `{packer}`. While we don't need it,
-note how we may seamlessly import functions from one script to another with just an `import` statement followed by the function name and the script path. We'll use this syntax all over the place. What do we need now? We have to call `new Framework7({...})` for the initialization step so we need `Framework7`. 
+note how we may seamlessly import functions from one script to another with just an `import` statement followed by the function name and the script path. We'll use this syntax all over the place. What do we need now? We import `Framework7` required for the app initialization in `new Framework7({...})`: 
 
 ```js
 import 'shiny';
@@ -415,7 +415,7 @@ import 'shiny';
 import Framework7 from 'framework7';
 ```
 
-We also have to load the css. To get a better idea of where to find them, I propose to browse to `./node_modules/framework7` and inspect the asset structure, as shown Figure \@ref(fig:vdpMod-framework7-resources). Since we want to capture all CSS, we'll point to `framework7/framework7-bundle.min.css` (bundle stating for all components):
+Then, we import the css, whose assets are located under `./node_modules/framework7` and as shown on Figure \@ref(fig:vdpMod-framework7-resources). To capture all CSS, we'll point to `framework7/framework7-bundle.min.css` (bundle usually corresponds to all components):
 
 ```js
 import 'shiny';
@@ -429,7 +429,8 @@ import 'framework7/framework7-bundle.min.css';
 knitr::include_graphics("images/going-further/vdpMod-framework7-resources.png")
 ```
 
-If you remember correctly, we'll be using a slider to update the model parameter value. Moreover, it's always nice to notify the user when the new results are available. Let's do it with a toast. The way we imported Framework7 does not provide any other component, we have to import them one by one, the rule being we only import what is required, to lighten the JS code. According to Figure \@ref(fig:vdpMod-framework7-resources), Framework7 components are located in `framework7/esm/components/<COMPONENT_NAME>/<SCRIPT.js>`:
+The way we imported Framework7 does not provide any other component. To lighten the JS code, Framework7 has a modular organisation, thereby consisting in inporting only what we require. According to Figure \@ref(fig:vdpMod-framework7-resources), those components are located in `framework7/esm/components/<COMPONENT_NAME>/<SCRIPT.js>`
+If you remember correctly, we seek for a slider widget to update the model parameter value. Moreover, it's always nice to notify the user when the new results are available, so let's do it with a toast:
 
 ```js
 // ... Other imports ...
@@ -440,7 +441,7 @@ import Toast from 'framework7/esm/components/toast/toast.js';
 Framework7.use([Range, Toast]);
 ```
 
-For the layout, we use the main App component template, documented [here](https://framework7.io/docs/router-component.html#main-app-component), which is required to instantiate the application:
+For the layout, we selected the main App component template, documented [here](https://framework7.io/docs/router-component.html#main-app-component). Overall, it offers a better way to organize the app code in different component modules, the `App` being the top level component:
 
 ```js
 // ... Other imports ...
@@ -454,8 +455,7 @@ let app = new Framework7({
 });
 ```
 
-Note that `el` targets the app tag `id` defined in `./R/app_ui.R`. If you ever have to change it, don't forget to replace it in both places.
-The `component` slot hosts the `App` which has to be defined. We assumed it is created in a `./srcjs/components/app.f7.jsx`, `.` being the root of the `srcjs` folder. JSX syntax is very convenient to mix HTML and JavaScript code in the same file. It is crucial to name the files `<name>.f7.jsx` as it will allow the Framework7 loader to work properly. Practically, a template file will always look the same. We export the main component as a function that may have some parameters and return a render function containing some tags. Below is a `./srcjs/components/list.f7.jsx` example: 
+`el` targets the app tag `id` defined in `./R/app_ui.R`. If you ever have to change it, don't forget to replace it in both places. The `component` slot hosts the `App` which has to be defined. We assumed it is created in a `./srcjs/components/app.f7.jsx`, `.` being the root of the `srcjs` folder. Interestingly, it has the `.jsx` extension, the JSX syntax being very convenient to mix HTML and JavaScript code in the same file. It is crucial to name the files `<name>.f7.jsx` as it will allow the Framework7 loader to work properly. Practically, a template file will always look the same. We export the main component as a function that may have some parameters. Each component must return a __render__ function containing some tags. Below is a `./srcjs/components/list.f7.jsx` example: 
 
 ```jsx
 export default () => {
@@ -497,7 +497,7 @@ export default () => {
 }
 ```
 
-We create a preliminary main app component in `./srcjs/components/app.f7.jsx` :
+We define the preliminary main app component in `./srcjs/components/app.f7.jsx`, the layout being composed of a `navbar` (top), a `toolbar` (bottom) and the page content, as already discussed in \@ref(framework7-layouts):
 
 ```jsx
 export default (props, context) => {
@@ -530,12 +530,12 @@ export default (props, context) => {
 }
 ```
 
-`props` may be elements passed to the component (see \@ref(react-map)) and `context` is an object containing [helpers](https://framework7.io/docs/router-component.html#component-context) such as:
+`props` are elements passed to the component (see \@ref(react-map)) and `context` is an object containing [helpers](https://framework7.io/docs/router-component.html#component-context) such as:
 
   - `$f7` refers to app instance.
-  - `$update` tells that this component has to be re-rendered. 
+  - `$update` to re-rendered programmatically re-render the component. 
 
-Then we run and preview the app according to Figure \@ref(fig:vdpMod-basic-app-2). We are slowly getting there!
+Once done, we run and preview the app according to Figure \@ref(fig:vdpMod-basic-app-2). We are slowly getting there!
 
 ```{r, eval=FALSE}
 packer::bundle()
@@ -547,7 +547,7 @@ run_app()
 knitr::include_graphics("images/going-further/vdpMod-basic-app-2.png")
 ```
 
-We create the slider component that is going to drive the model computation inside `./srcjs/components/vdp.f7.jsx`. We leverage the Framework7 range widget, which is described [here](https://framework7.io/docs/range-slider.html#range-slider-auto-initialization). For convenience, we decide to rely on the auto-initialized widget, to lighten the JS code. All attributes are stored in `data-<ATTR>` format and `range-slider-init` ensures to get auto-initialization. The range is inserted in a block container for a better display. We finally add it an [event](https://framework7.io/docs/range-slider.html#app-and-range-slider-instance-events) listening to any value change so that we can assign a Shiny input value and update the component:
+We add the slider component that is going to drive the model computation inside `./srcjs/components/vdp.f7.jsx`, leveraging the Framework7 range widget described [here](https://framework7.io/docs/range-slider.html#range-slider-auto-initialization). To lighten the JS code, we decide to rely on the auto-initialized widget. All attributes are stored in `data-<ATTR>` format and the `range-slider-init` class ensures to get the widget properly initialized. The range is inserted in a block container for a better display. We finally bind it an [event](https://framework7.io/docs/range-slider.html#app-and-range-slider-instance-events) listening to any value change so that we can assign a Shiny input value and use it on the R side:
 
 ```jsx
 const VdpWidget = (props, { $f7, $update}) => {
@@ -622,7 +622,7 @@ After recompiling, this gives us Figure \@ref(fig:vdpMod-basic-app-3).
 knitr::include_graphics("images/going-further/vdpMod-basic-app-3.png")
 ```
 
-You'll notice that `input$mu` does not exist at app start, only after the range is dragged. We may want to add it an initial value. Let's design an additional function that will do this. Inside `./srcjs/components/vdp.f7.jsx`, we add `initializeVdpWidget`, taking the app instance as parameter. Inside, we listen to the `shiny:connected`, create `input$mu` giving it the initial range value. We finally export the new function:
+You'll notice that `input$mu` only exist after the range is dragged. To give it an initial value, we design an additional function, `initializeVdpWidget` located in `./srcjs/components/vdp.f7.jsx`, taking the app instance as parameter. Inside, we listen to the `shiny:connected`, create `input$mu` giving it the initial range value. We finally export the new function:
 
 ```js
 const initializeVdpWidget = (app) => {
@@ -639,7 +639,7 @@ const initializeVdpWidget = (app) => {
 export { VdpWidget, initializeVdpWidget };
 ```
 
-Inside `./srcjs/components/app.f7.jsx`, we update our import field, and add an extra parameter `$f7` to capture the app instance required by `initializeVdpWidget`:
+Inside `./srcjs/components/app.f7.jsx`, we update our import field, passing an extra parameter `$f7` which captures the app instance required by `initializeVdpWidget`:
 
 ```js
 import { VdpWidget, initializeVdpWidget } from './vdp.f7.jsx';
@@ -653,7 +653,7 @@ export default (props, { $f7 }) => {
 Congratulations, we are now ready to move to the last part about creating the visualization.
 
 #### Plot model data with echartsjs
-As stated above, we leverage echarts and echarts-gl to draw the model results. We have to import them in the `./srcjs/components/vdp.f7.jsx` component:
+As stated above, we leverage echarts and echarts-gl to plot the model results. Like for other dependencies, we have to import them, specifically in the `./srcjs/components/vdp.f7.jsx` component:
 
 ```js
 // Import plotting library
@@ -661,7 +661,7 @@ import * as echarts from 'echarts';
 import 'echarts-gl';
 ```
 
-To work properly, [echarts](https://echarts.apache.org/handbook/en/get-started/) requires to setup an HTML empty container in the DOM, that will receive the plot, specifying the height and width in pixels, and its __id__. I recommend using percentage for width so as to fill the container:
+To work properly, [echarts](https://echarts.apache.org/handbook/en/get-started/) requires to setup an HTML empty container in the DOM with height and width in pixels, as well as an __id__. I recommend using percentage for width so as to fill the entire parent container:
 
 ```html
 <div id="my-plot" style="width:100%; min-height:400px;"></div>
@@ -688,8 +688,8 @@ myChartOptions = {
 myChart.setOption(myChartOptions);
 ```
 
-Obviously, many more options exist but this is enough for this example.
-In our app, we'll have two plots, one for the time series data and another for the phase portrait. We edit the `VdpWidget` render function so that plots are included below the range slider, the most important elements being the plot __id__:
+Obviously, many more options exist, but this is enough for this example.
+We edit the `VdpWidget` render function to include the time series plot of model solution, below the range slider:
 
 ```jsx
 const VdpWidget = (props, { $f7, $update}) => {
@@ -717,8 +717,7 @@ const VdpWidget = (props, { $f7, $update}) => {
 }
 ```
 
-
-Since the initialization happens once, we add it inside the existing `shiny:connect` event listener inside `initializeVdpWidget`. Notice how we make the plot responsive to any viewport change, by calling the echart `resize` method when the window is resized:
+The initialization happens once, that's why we include it inside the existing `shiny:connect` event listener in the `initializeVdpWidget` function. Notice how we make the plot responsive to any viewport change, by calling the echarts `resize` method when the window is resized:
 
 ```js
 const initializeVdpWidget = (app) => {
@@ -736,7 +735,7 @@ const initializeVdpWidget = (app) => {
 };
 ```
 
-The next step is to recover the model data sent from R with the `session$sendCustomMessage("model-data", ...)` inside `./R/app_server.R`. We create a dedicated message handler on the JS side still in `initializeVdpWidget`. As a reminder, since we send a list from R, items are accessed with `message.<FIELD>` in JS:
+The next step is to recover the model data sent from R with the `session$sendCustomMessage("model-data", ...)` in `./R/app_server.R`. We create a dedicated message handler on the JS side still in `initializeVdpWidget`. As a reminder, since we send a list from R, items are accessed with `message.<FIELD>` in JS:
 
 ```js
 const initializeVdpWidget = (app) => {
@@ -752,7 +751,7 @@ const initializeVdpWidget = (app) => {
 }
 ```
 
-We set the plot options. For the time series chart, we'll display the solution X (`lineData['X']`) and Y (`lineData['Y']`) as a function of time (`lineData['t']`):
+We set the plot options. For the time series chart, we'll display the solution X (`lineData['X']`) and Y (`lineData['Y']`) as a function of time (`lineData['t']`). The plot type is `line`
 
 ```js
 const initializeVdpWidget = (app) => {
@@ -790,7 +789,7 @@ const initializeVdpWidget = (app) => {
 }
 ```
 
-Still inside `initializeVdpWidget`, we leverage the Framework7 toast API to send a message to the user, telling the model is up to date:
+We finally leverage the Framework7 toast API to send a message to the user, telling the model is up to date:
 
 ```js
 const initializeVdpWidget = (app) => {
@@ -815,7 +814,7 @@ knitr::include_graphics("images/going-further/vdpMod-basic-app-4.png")
 #### Exercise: add the phase portrait
 Based on the example shown [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark), you'll have to add the phase portrait chart to the current application. 
 
-1. In `VdpWidget`, we add the card container that will hold the phase plan, right after the time series card. The plot will have the `phase-plot` id:
+1. In `VdpWidget`, add the card container that will hold the phase plan, right after the time series card. The plot will have the `phase-plot` id:
 
 ```jsx
 const VdpWidget = (props, { $f7, $update}) => {
@@ -836,7 +835,7 @@ const VdpWidget = (props, { $f7, $update}) => {
 ```
 
 2. In `initializeVdpWidget`, inside the `shiny:connected` event listener,
-initialized the new `phasePlot` instance. Fill in the `...`.
+initialize the new `phasePlot` instance. Fill in the `...`.
 
 ```js
 const initializeVdpWidget = (app) => {
@@ -867,7 +866,7 @@ const initializeVdpWidget = (app) => {
 ```
 
 4. In `initializeVdpWidget`, after the `linePlotOptions`, create a new
-`phasePlotOptions` object containing the plot title.
+`phasePlotOptions` object containing the plot title. Fill in the `...`.
 
 ```js
 const initializeVdpWidget = (app) => {
@@ -882,7 +881,7 @@ const initializeVdpWidget = (app) => {
     phaseData = message.phaseData;
     trajectoryData = message.trajectoryData;
     
-    phasePlotOptions = {
+    ... = {
       title: {
         text: 'Phase plot'
       },
@@ -899,14 +898,14 @@ const initializeVdpWidget = (app) => {
 
 Since we plot Y against X (it was X and Y against time in the previous plot), we add two entries to the previous configuration.
 
-5. The first layer is a flow GL chart showing particles movement in the vector field. The chosen __type__ entry ensures we utilize the proper chart. We pass the `phaseData` recovered from the R side. Other properties are responsible for controlling the particle appearance like the speed, size and transparency. You may try with different values to see what happens in the plot. Fill in the `...`.
+5. The first layer is a flow GL chart showing particles movement in the vector field. The chosen __type__ `flowGL` entry ensures we utilize the proper chart module. We pass the `phaseData` recovered from the R side. Other properties are responsible for controlling the particle appearance like the speed, size and transparency. You may try with different values to see what happens in the plot. Fill in the `...`.
 
 ```js
 phasePlotOptions = {
   // ... title, axis ...
   series: [
     {
-      type: 'flowGL',
+      type: ...,
       data: ...,
       particleDensity: 64,
       particleSize: 5,
@@ -922,14 +921,14 @@ phasePlotOptions = {
 }
 ```
 
-6. How do we control the flow chart visual aspect? As a reminder, `phaseData` is a matrix with 5 columns, the last one being a measure of the flow speed. Ideally, we would like to set up a scale representing different speeds. This is where we introduce the __visualMap__ property, which exposes multiple properties like:
+6. How do we control the flow chart visual aspect? As a reminder, `phaseData` is a matrix with 5 columns, the last one being a measure of the flow speed. Ideally, we would like to set up a scale representing different speeds. This is where we introduce the __visualMap__ property, which exposes multiple sub-properties like:
 
   - `show` to display a scale.
   - `min` and `max` to set the color grid. 
   - `dimension` is the column of data used to apply colors (here `mag`).
   - `inRange.color` defines a color palette for all values in the range. The provided examples default to 11 predefined colors. 
 
-`min` and `max` are determined as per below calculation:
+`min` and `max` are determined as per below calculation. Fill in the `...`.
 
 ```js
 let magMin = Infinity;
@@ -984,6 +983,12 @@ series: [
 
 ```js
 phasePlot.setOption(...);
+```
+
+Recompile the code and enjoy the result displayed on Figure \@ref(fig:vdpMod-basic-app-5).
+
+```{r vdpMod-basic-app-5, echo=FALSE, fig.cap='vdpMod basic app with time series output and phase portrait', out.width='50%', fig.align='center'}
+knitr::include_graphics("images/going-further/vdpMod-basic-app-5.png")
 ```
 
 ## Final product
