@@ -107,7 +107,13 @@ solve_model(
 )
 ```
 
-It is therefore, straightforward to plot time series. However, this output does not tell use anything about the vector field. Below is the code used to generate it (`mag` will be used to setup appropriate color code so as to show the speed along trajectories). 
+It is therefore, straightforward to plot time series. However, this output does not tell use anything about the vector field. Below is the code used to generate it. `mag` represents the speed along trajectories resulting from a linear combination of the vertical speed and the horizontal speed components, respectively `dy` and `dx`. It is obtained after applying the Pythagorean theorem:
+
+$$
+mag = \sqrt{dx^2 + dy^2}
+$$
+
+We will use it later to setup appropriate color code in the JS code:
 
 ```{r}
 build_phase_data <- function(xgrid, ygrid, p) {
@@ -131,7 +137,7 @@ phase_plan <- build_phase_data(grid, grid, c(mu = 1))
 phase_plan[1:5, ]
 ```
 
-We obtain a matrix indicating for each (X,Y) in the grid what is the corresponding movement direction (dX, dY) as well as the speed (`mag`, arrow size), thereby allowing to draw the [phase plan](https://en.wikipedia.org/wiki/Phase_plane). 
+We obtain a matrix indicating for each `(X,Y)` in the grid what are the vertical and horizontal speed, respectively `dX` and `dY` as well as the resulting speed, `mag`, thereby allowing to draw the [phase plan](https://en.wikipedia.org/wiki/Phase_plane). 
 
 The last step is to create a main wrapper that will call `solve_model()` and `build_phase_data()` at once. Remember that on the UI side, we generate two outputs, the time series and the phase portrait. The first one requires data obtained from `solve_model()`. The second one requires a subset of `solve_model()` output and `build_phase_data()`. Since `solve_model()` returns a matrix, we convert it to a `data.frame`, easier to handle on the JS side:
 
@@ -169,9 +175,9 @@ reactivity first, as this is significantly harder to debug. This way, you can
 setup unit test for these functions without having to handle the Shiny machinery. 
 
 ### Add Shiny
-Now that the business logic is safe, we describe what we must do on the server side. Remember that the original idea is to have a slider which we can move to see what impact has $\mu$ on the whole system. 
+Now that the business logic is safe, we describe what we must do on the server side. Remember that the original idea is to have a slider which we can move to see what impact $\mu$ has on the whole system. 
 
-In the main `.R/app_server.R` script, we first create a reactive containing the vector of parameters (here we only have one but you may imagine to add more later):
+In the main `.R/app_server.R` script, we set a reactive expression containing the vector of parameters (here we only have one but you may imagine to add more later):
 
 ```{r, eval=FALSE}
 pars <- reactive({
@@ -180,7 +186,7 @@ pars <- reactive({
 })
 ```
 
-Then, we design an `observeEvent()` listening to any change in `pars()`, triggered as a result of a UI action (slider input move). Inside, we generate the model data with `generate_model_data()` and send them to JS:
+Then, we add an `observeEvent()` listening to any change in `pars()`, triggered as a result of a UI action, that is a slider input change. Inside, we generate the model data with `generate_model_data()` and send them to JS through the websocket with `session$sendCustomMessage`:
 
 ```{r, eval=FALSE}
 observeEvent(pars(), {
@@ -198,7 +204,6 @@ This is all what the R developer would have to do:
   - Write the business logic.
   - Add reactivity and send data to JS.
   - Talks to the JS guy about what inputs should be on the UI side ...
-
 
 Now let's see what happens on the Front-end side.
 
@@ -699,11 +704,6 @@ const VdpWidget = (props, { $f7, $update}) => {
           <div id="line-plot" style={plotStyle}></div>
         </div>
       </div>
-      <div class="card card-outline">
-        <div class="card-content card-content-padding">
-          <div id="phase-plot" style={plotStyle}></div>
-        </div>
-      </div>
     </div>
   )
 }
@@ -714,18 +714,16 @@ Since the initialization happens once, we add it inside the existing `shiny:conn
 
 ```js
 const initializeVdpWidget = (app) => {
-  let linePlot, phasePlot;
+  let linePlot;
   $(document).on('shiny:connected', () => {
     // ... unchanged ...
     // prepare echarts plots
     linePlot = echarts.init(document.getElementById('line-plot'));
-    phasePlot = echarts.init(document.getElementById('phase-plot'));
   });
   
   // Resize plot, responsive
   $(window).on('resize', function(){
     linePlot.resize();
-    phasePlot.resize();
   });
 };
 ```
@@ -737,14 +735,11 @@ const initializeVdpWidget = (app) => {
   // ... shiny:connected ...
   
   // Recover ODE data from R
-  let lineData, phaseData, trajectoryData, 
-  linePlotOptions, phasePlotOptions;
+  let lineData, linePlotOptions;
   
   Shiny.addCustomMessageHandler(
     'model-data', (message) => {
       lineData = message.lineData;
-      phaseData = message.phaseData;
-      trajectoryData = message.trajectoryData;
   });
 }
 ```
@@ -762,7 +757,7 @@ const initializeVdpWidget = (app) => {
       // set options
       linePlotOptions = {
         title: {
-          text: 'Line plot'
+          text: 'Time series plot'
         },
         legend: { data: ['X', 'Y'] },
         xAxis: { data: lineData['t'] },
@@ -812,39 +807,99 @@ knitr::include_graphics("images/going-further/vdpMod-basic-app-4.png")
 #### Exercise: add the phase portrait
 Based on the example shown [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark), you'll have to add the phase portrait chart to the current application. 
 
-1. In `initializeVdpWidget`, after the `linePlotOptions`, create a new
+1. In `VdpWidget`, we add the card container that will hold the phase plan, right after the time series card. The plot will have the `phase-plot` id:
+
+```jsx
+const VdpWidget = (props, { $f7, $update}) => {
+  // ... getRangeValue ...
+  // ... plotStyle ...
+  return () => (
+    <div>
+      <div class="block-title">{props.label}</div>
+      <div class="block block-strong text-align-center">
+        <p>The below model is computed by R!</p>
+        <!-- range slider block -->
+      </div>
+      <!-- line plot -->
+      TO ADD
+    </div>
+  )
+}
+```
+
+2. In `initializeVdpWidget`, inside the `shiny:connected` event listener,
+initialized the new `phasePlot` instance. Fill in the `...`.
+
+```js
+const initializeVdpWidget = (app) => {
+  let linePlot, ...;
+  $(document).on('shiny:connected', () => {
+  // ... Init vals for ODE model computation ...
+  // ... Time series plot init ...
+  ... = echarts.init(document.getElementById(...));
+  });
+  // ...
+}
+```
+
+3. Ensure it is properly resized by adding an entry to the `resize` event listener. Fill in the `...`.
+
+    phasePlot.resize();
+```js
+const initializeVdpWidget = (app) => {
+  
+  //... shiny:connected ...
+  
+  $(window).on('resize', function(){
+    linePlot.resize();
+    ....resize();
+  });
+  
+}
+```
+
+4. In `initializeVdpWidget`, after the `linePlotOptions`, create a new
 `phasePlotOptions` object containing the plot title.
 
 ```js
-phasePlotOptions = {
-  title: {
-    text: 'Phase plot'
-  }
+const initializeVdpWidget = (app) => {
+ // ... shiny:connected ...
+ // ... resize plots ...
+ let lineData, linePlotOptions, phasePlotOptions, 
+ phaseData, trajectoryData;
+ 
+ Shiny.addCustomMessageHandler(
+    'model-data', (message) => {
+    lineData = message.lineData;
+    phaseData = message.phaseData;
+    trajectoryData = message.trajectoryData;
+    
+    phasePlotOptions = {
+      title: {
+        text: 'Phase plot'
+      },
+      xAxis: {
+        type: 'value'
+      },
+      yAxis: {
+        type: 'value'
+      }
+    }
+  });
 }
 ```
 
-2. Since we plot Y against X (it was X and Y against time in the previous plot), we add two entries to the previous configuration.
+Since we plot Y against X (it was X and Y against time in the previous plot), we add two entries to the previous configuration.
+
+5. The first layer is a flow GL chart showing particles movement in the vector field. The chosen __type__ entry ensures we utilize the proper chart. We pass the `phaseData` recovered from the R side. Other properties are responsible for controlling the particle appearance like the speed, size and transparency. You may try with different values to see what happens in the plot. Fill in the `...`.
 
 ```js
 phasePlotOptions = {
-  // ... title ...
-  xAxis: {
-    type: 'value'
-  },
-  yAxis: {
-    type: 'value'
-  }
-}
-```
-
-3. The first layer is a flow GL chart showing particles movement in the vector field. The chosen __type__ entry ensures we utilize the proper chart. We pass the `phaseData` recovered from the R side. Other properties are responsible for controlling the particle appearance like the speed, size and transparency. You may try with different values to see what happens in the plot. 
-
-```js
-phasePlotOptions = {
+  // ... title, axis ...
   series: [
     {
       type: 'flowGL',
-      data: phaseData,
+      data: ...,
       particleDensity: 64,
       particleSize: 5,
       particleSpeed: 4,
@@ -859,16 +914,32 @@ phasePlotOptions = {
 }
 ```
 
-4. How do we control the flow chart visual aspect? The __visualMap__
-property 
+6. How do we control the flow chart visual aspect? As a reminder, `phaseData` is a matrix with 5 columns, the last one being a measure of the flow speed. Ideally, we would like to set up a scale representing different speeds. This is where we introduce the __visualMap__ property, which exposes multiple properties like:
+
+  - `show` to display a scale.
+  - `min` and `max` to set the color grid. 
+  - `dimension` is the column of data used to apply colors (here `mag`).
+  - `inRange.color` defines a color palette for all values in the range. The provided examples default to 11 predefined colors. 
+
+`min` and `max` are determined as per below calculation:
+
+```js
+let magMin = Infinity;
+let magMax = -Infinity;
+for (let i = 0; i < message.phaseData.length; i++) {
+  let magTemp = message.phaseData[i][4];
+  magMax = Math.max(..., ...);
+  magMin = Math.min(..., ...);
+}
+```
 
 ```js
 phasePlotOptions = {
   visualMap: {
     show: false,
-    min: magMin,
-    max: magMax,
-    dimension: 4,
+    min: ...,
+    max: ...,
+    dimension: ..., // hint: column to select in phaseData
     inRange: {
       color: [
         '#313695',
@@ -886,6 +957,25 @@ phasePlotOptions = {
     }
   }
 }
+```
+
+7. The last data to show is the trajectory from the initial condition. Right after the flow GL data serie, we add an extra JSON pointing to `trajectoryData`. Fill in the `...`.
+
+```js
+series: [
+  // flowGL data
+  {
+    type: ...,
+    data: ...,
+    symbol: 'none'
+  }
+]
+```
+
+8. Finally, at the end of the `model-data` Shiny custom handler, we apply the newly defined options to the plot instance. Fill in the `...`.
+
+```js
+phasePlot.setOption(...);
 ```
 
 ## Final product
