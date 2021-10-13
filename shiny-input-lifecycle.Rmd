@@ -3,13 +3,13 @@ In the following, we provide an integrated view of the shiny input system by sum
 mechanisms seen since chapter \@ref(shiny-intro).
 
 ## App initialization
-When a shiny apps starts, Shiny runs `initShiny` on the client. This [function](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js) has three main tasks:
+When a shiny apps starts, Shiny runs `initShiny` on the client. This JS [function](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js) has three main tasks:
 
   - __Bind__ all inputs and outputs.
   - __Initialize__ all inputs (if necessary) with `initializeInputs`.
   - Initialize the client __websocket__ connection mentioned in the previous chapter \@ref(shiny-intro) and send __initial values__ to the server.
 
-Most input bindings are in principle bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple shiny app. In any case, they are all contained in a __binding registry__, namely `inputBindings` built on top the following class (the same apply for output bindings):
+Most input bindings are in principle bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple shiny app. In any case, they are all contained in a __binding registry__, namely `inputBindings` built on top the following class:
 
 ```js
 var BindingRegistry = function() {
@@ -28,11 +28,11 @@ Once done, for each binding, `find` is triggered. If no corresponding element is
   - `getValue` gets the initial input value.
   - `subscribe` registers event listeners driving the input behavior.
 
-The data attribute `shiny-input-binding` is then added. This allows shiny to access the input binding methods from the client, as shown in \@ref(update-binding-client). The `shiny-bound-input` class is added, the corresponding input is appended to the `boundInputs` object (listing all bound inputs) and `shiny:bound` triggered on the client. As a side note, if you recall about the `Shiny.unbinAll()` method from section \@ref(input-binding) and \@ref(edit-input-binding), it triggers the `shiny:unbound` event for all inputs as well as remove them from the `boundInputs` registry (also affect outputs, but they are not considered here).
+The data attribute `shiny-input-binding` is then added. This allows shiny to access the input binding methods from the client, as shown in \@ref(update-binding-client). The `shiny-bound-input` class is added, the corresponding input is appended to the `boundInputs` object (listing all bound inputs) and `shiny:bound` triggered on the client. As a side note, if you recall about the `Shiny.unbinAll()` method from section \@ref(input-binding) and \@ref(edit-input-binding), it triggers the `shiny:unbound` event for all inputs as well as remove them from the `boundInputs` registry.
 
 Once done, shiny stores all initial values in a variable `initialInput`, also containing all [client data](https://shiny.rstudio.com/articles/client-data.html) and pass them to the `Shinyapp.connect` method. As shown in \@ref(shiny-intro), the latter opens the client __websocket__ connection, raises the `shiny:connected` event and send all values to the server (R). Few time after, `shiny:sessioninitialized` is triggered.
 
-```{r init-shiny-recap, echo=FALSE, fig.cap='What Shiny does client side on initialization', out.width='100%'}
+```{r init-shiny-recap, echo=FALSE, fig.cap='What Shiny does client side on initialization.', out.width='100%'}
 knitr::include_graphics("images/survival-kit/init-shiny-recap.png")
 ```
 
@@ -87,7 +87,7 @@ shinyApp(ui, server)
 
 Figure \@ref(fig:shiny-initial-inputs) shows how to access Shiny's initial input value with `Shiny.shinyapp.$initialInput.obs`. After changing the slider position, its value is given by `Shiny.shinyapp.$inputValues.obs`. `$initialInput` and `$inputValues` contain many more elements, however we are only interested in the slider function in this example.
 
-```{r shiny-initial-inputs, echo=FALSE, fig.cap='Explore initial input values', out.width='100%'}
+```{r shiny-initial-inputs, echo=FALSE, fig.cap='Explore initial input values.', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shiny-init-input.png")
 ```
 
@@ -123,7 +123,7 @@ addMessageHandler('inputMessages', function(message) {
 });
 ```
 
-In short, this does get the inputId and access the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and call the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
+In short, it gets the `inputId` and access the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and call the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
 The `callback` function is actually defined during the initialization [process](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js#L128):
 
 ```js
@@ -185,6 +185,6 @@ Finally, current `inputValues` are updated. On the server side, the new value is
 by the server __websocket__ message handler, that is `ws$onMessage(message)`.
 
 
-```{r update-input-recap, echo=FALSE, fig.cap='What Shiny does when initializing client side', out.width='100%'}
+```{r update-input-recap, echo=FALSE, fig.cap='What Shiny does upon input update.', out.width='100%'}
 knitr::include_graphics("images/survival-kit/update-input-recap.png")
 ```

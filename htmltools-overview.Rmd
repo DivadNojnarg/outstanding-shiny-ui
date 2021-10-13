@@ -1,8 +1,5 @@
 # Manipulate HTML tags from R with {htmltools} {#htmltools-overview}
 
-> ... However, if you already know HTML (or want to learn!) you can also work directly with HTML tags to achieve any level of customization you want
-`r tufte::quote_footer('--- Hadley Wickham')`
-
 `{htmltools}` [@R-htmltools] is a R package designed to:
 
   - Generate HTML __tags__ from R.
@@ -12,7 +9,7 @@ Historically, `{htmltools}` was extracted out of `{shiny}` [@R-shiny] to be able
 
 The ultimate goal of `{htmltools}` is to __manipulate__, __combine__ and __rearrange__ tags in order to create flexible and rich HTML structures from R. Would you believe that the below example heavily relies on `{htmltools}` (Figure \@ref(fig:shinyRPG))?
 
-```{r shinyRPG, echo=FALSE, fig.cap='shinyRPG was built with htmltools', out.width='50%', fig.align = 'center'}
+```{r shinyRPG, echo=FALSE, fig.cap='{shinyRPG} was built with {htmltools}.', out.width='50%', fig.align = 'center'}
 knitr::include_graphics("images/htmltools/shinyRPG.png")
 ```
 
@@ -38,9 +35,12 @@ Inside the function call, all named elements become __attributes__, whereas unna
 the corresponding R code is `input(disabled = NA)`. 
 
 ::: {.noteblock data-latex=""}
-Pro tip: Since tag functions produce shiny tags, that is HTML elements, calling `tag` inside a document will render the tag instead of printing its code. Sometimes, particularly in this book, you want to see the code output. In that case, use the following code:
+Pro tip: Since tag functions produce shiny tags, that is HTML elements, calling `tag` inside a document will render the tag instead of printing its code. Sometimes, particularly in this book, you want to see the code output. In that case, use the code below. 
+You may find another example [here](https://github.com/rstudio/htmltools/blob/6a03c3f35fbe6bfd0f91ba0607808a2b9127c5e5/vignettes/tagQuery.Rmd#L16).
+:::
 
 ```{r, eval=FALSE}
+# Render the tag instead of printing its code
 library(knitr)
 library(htmltools)
 registerS3method(
@@ -52,17 +52,15 @@ registerS3method(
   getS3method("print", "shiny.tag.list")
 )
 ```
-You may find another example [here](https://github.com/rstudio/htmltools/blob/6a03c3f35fbe6bfd0f91ba0607808a2b9127c5e5/vignettes/tagQuery.Rmd#L16).
-:::
 
 ## Notations
-If you type `htmltools::tags$` in the R console, you should be suggested the most common available HTML tags, thereby making it fairly easy to switch between HTML and R, as shown Figure \@ref(fig:htmltools-tags)
+If you type `htmltools::tags$` in the R console, you should be suggested the most common available HTML tags, thereby making it fairly easy to switch between HTML and R, as shown Figure \@ref(fig:htmltools-tags).
 
-```{r htmltools-tags, echo=FALSE, fig.cap='htmltools tags builder', out.width='100%'}
+```{r htmltools-tags, echo=FALSE, fig.cap='htmltools tags builder.', out.width='100%'}
 knitr::include_graphics("images/htmltools/htmltools-tags.png")
 ```
 
-However, for convenience, the most commonly used tags like `p`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `a`, `br`, `div`, `span`, `pre`, `code`, `img`, `strong`, `em`, `hr`, ...
+For convenience, the most commonly used tags like `p`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `a`, `br`, `div`, `span`, `pre`, `code`, `img`, `strong`, `em`, `hr`, ...
 are accessible by a simple function call like:
 
 ```{r, eval=FALSE}
@@ -83,9 +81,8 @@ tags$nav("This is the navigation")
 try(nav("This is the navigation"))
 ```
 
-When building custom templates, you will be writing a lot of tags! It might seem
-too much work to always write `tags$<TAG_NAME>`. There exists a function called `withTags()`, such that wrapping your code in this function allows code like this, much
-easier to write and read:
+When building custom templates, you will be writing a lot of tags. It might seem
+too much work to always write `tags$<TAG_NAME>`. There exists a function called `withTags()`, which allows to get rid of all `tags$`. Hence, the whole code is much easier to write and read:
 
 ```{r, eval=FALSE}
 # Better
@@ -107,6 +104,7 @@ tag_list_1 <- tagList(
 )
 
 str(tag_list_1)
+tag_list_1
 
 # correct but not optimal
 tag_list_2 <- list(
@@ -115,11 +113,37 @@ tag_list_2 <- list(
 )
 
 str(tag_list_2)
+tag_list_2
 ```
 
+The first has the `shiny.tag.list` class in addition to `list`. You may see it as a detail but this has noticeable consequences. For instance, `tag_list_1` prints as HTML content whereas `tag_list_2` prints as a list. If we try to apply `as.character()` on both elements, we obtain very different outputs:
 
-The first has the `shiny.tag.list` class in addition to `list`. `{golem}` [@R-golem] allows to test if an R object is a tag list. In this case, using a list would cause the test fail.
+```{r}
+# tag_list_1
+as.character(tag_list_1)
+```
 
+<!-- This is to trim the output too large for pdf -->
+```{r, eval=FALSE}
+# tag_list_2
+as.character(tag_list_2)
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  as.character(tag_list_2)
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '[1] "list(name = \"p\", attribs = list(), 
+    children = list(\"Some text\"))"
+[2] "list(name = \"div\", attribs = list(), 
+    children = list(\"Content\"))"'
+exclude_from_html(code)
+```
+
+Besides, packages like `{golem}` [@R-golem] allows to test if an R object is a tag list. In this case, using a simple list would cause the test fail. 
 
 ## Adding new tags
 You may define extra HTML tags with the `tag()` function:
@@ -139,36 +163,41 @@ customTag
 Good practice is to check whether the created tag is in line with the HTML validation rules. If you want to check a web page, particularly a Shiny generated HTML page, W3C has an online validation [tool](https://validator.w3.org/). Be careful as, not following this rule will cause the HTML code to be invalid. By default, Shiny complies with all the recommendations, but we suggest you to be careful with any exotic template. 
 
 ## Alternative way to write tags
-`{htmltools}` comes with the `HTML()` function that you can feed with raw HTML. Below, both code give exactly the same output:
+`{htmltools}` comes with the `HTML()` function that you can feed with raw HTML. It prevents HTML escaping on the provided content, which is convenient for instance when using formatting tags inside a string:
+
+```{r}
+div("Hello <u>World</u>")
+div(HTML("Hello <u>World</u>"))
+```
+
+Below, both code give exactly the same output:
 
 ```{r, eval = FALSE}
 HTML("<div>Blabla</div>")
 div("Blabla")
 ```
 
-Internally, their classes are different:
+Internally, their classes are different, which has consequences:
 
 ```{r}
 class(HTML("<div>Blabla</div>"))
 class(div("Blabla"))
 ```
 
-<!-- Why pick one over the other? -->
+Doing so, you will not be able to use tags related functions, as in the next parts.
 
 ::: {.importantblock data-latex=""}
-Doing so, you will not be able to use tags related functions, as in the next parts.
-Therefore, we strongly recommend using R and not mixing HTML in R.
+We strongly recommend to use R as much as possible and avoid mixing HTML with R.
 :::
  
 Interestingly, if you want to convert raw HTML to R code, there is a Shiny App developed by Alan
 Dipert from RStudio, namely [html2R](https://github.com/alandipert/html2r/tree/4217b5430e2bfc3af0d841cbefcd94bc1aadbcdf), shown Figure \@ref(fig:htmltools-html2R). Non standard attributes (like `data-toggle`) are not correctly processed but there are [solutions](https://github.com/alandipert/html2r/issues/2). This will save you precious time! A more recent approach is developed in section \@ref(workflow-charpente) and has be internally used to develop some of the RinteRface [templates](https://github.com/RinteRface).
 
-```{r htmltools-html2R, echo=FALSE, fig.cap='Illustration of the html2R App', out.width='100%'}
+```{r htmltools-html2R, echo=FALSE, fig.cap='Illustration of the html2R app.', out.width='100%'}
 knitr::include_graphics("images/htmltools/htmltools-html2R.png")
 ```
 
-By converting HTML to R functions, it's possible to easily parameterize the generated tag.
-and reuse it later in the code. It also allows to maintain one single code base (only R), which is much simpler in the long run if the code had to be reviewed by people non familiar with HTML.
+By converting HTML to R functions, it's easy to parameterize the generated tag and reuse it later in the code. It also allows one to maintain a single code base (only R), which is much simpler in the long run if the code had to be reviewed by people non familiar with HTML.
 
 ## Playing with tags
 
@@ -178,7 +207,7 @@ Before becoming an `{htmltools}` wizard, let's learn the shiny tags fundamentals
 
 A __shiny tag__ is defined by:
 
-  - A __name__ such as span, div, h1 ..., accessed with `tag$name`.
+  - A __name__ such as `span`, `div`, `h1` ..., accessed with `tag$name`.
   - Some __attributes__, which can be accessed with `tag$attribs`.
   - __Children__, which can be accessed with `tag$children`.
   - A __class__, namely `shiny.tag`.
@@ -214,6 +243,7 @@ How to modify the class of the second child?
 ```{r}
 second_children <- myTag$children[[2]]
 second_children$attribs$class <- "adult"
+myTag
 # This is not working ...
 ```
 
@@ -231,7 +261,7 @@ Below we give concrete example on how to customize tags in the real life. There 
 nice RPG HTML template, that is [rpgui](http://ronenness.github.io/RPGUI/). It provides
 the necessary elements to get started developing nice RPG looking user interfaces, as depicted by Figure \@ref(fig:rpgui-select).
 
-```{r rpgui-select, echo=FALSE, fig.cap='rpgui select input', out.width='100%'}
+```{r rpgui-select, echo=FALSE, fig.cap='rpgui select input with two displays, dropdown or list.', out.width='100%'}
 knitr::include_graphics("images/htmltools/rpgui-select.png")
 ```
 
@@ -292,14 +322,33 @@ rpgSelect(
 )
 ```
 
+<!-- This is to trim the output too large for pdf -->
 ```{r, echo=FALSE}
-rpgSelect(
-  "variable", 
-  "Variable:",
-  c("Cylinders" = "cyl",
-    "Transmission" = "am",
-    "Gears" = "gear")
-)
+if (knitr::is_html_output()) {
+  rpgSelect(
+    "variable", 
+    "Variable:",
+    c("Cylinders" = "cyl",
+      "Transmission" = "am",
+      "Gears" = "gear")
+  )
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '<div class="form-group shiny-input-container">
+  <label class="control-label" id="variable-label" 
+    for="variable">Variable:
+  </label>
+  <div>
+    <select id="variable" class="form-control">
+      <option value="cyl" selected>Cylinders</option>
+      <option value="am">Transmission</option>
+      <option value="gear">Gears</option>
+    </select>
+  </div>
+</div>'
+exclude_from_html(code)
 ```
 
 As shown in the above output, this is not exactly matching:
@@ -310,7 +359,7 @@ As shown in the above output, this is not exactly matching:
   - The input tag should have the `rpgui-dropdown` or `rpgui-list` class,
   depending on the size value. 
   
-To fix the first problem we target the outer tag (`selectTag`), that is the tag returned by our `rpgSelect()` function. The second row cleans the label class. The third row removes the extra outer div and only keeps its children, corresponding to the input tag. The last instruction ensure to set the appropriate class, depending on the size value:
+To fix the first problem we target the outer tag (`selectTag`), that is the tag returned by our `rpgSelect()` function. The second row cleans the label class. The third row removes the extra outer div and only keeps its children, corresponding to the input tag. The last instruction ensures to set the appropriate class, depending on the size value:
 
 ```{r, eval=FALSE}
 # Modify tag
@@ -362,7 +411,7 @@ rpgSelect <- function(inputId, label, choices, selected = NULL,
 }
 ```
 
-```{r}
+```{r, eval=FALSE}
 rpgSelect(
   "variable", 
   "Variable:",
@@ -370,6 +419,31 @@ rpgSelect(
     "Transmission" = "am",
     "Gears" = "gear")
 )
+```
+
+<!-- This is to trim the output too large for pdf -->
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  rpgSelect(
+    "variable", 
+    "Variable:",
+    c("Cylinders" = "cyl",
+      "Transmission" = "am",
+      "Gears" = "gear")
+  )
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '<div>
+  <label id="variable-label" for="variable">Variable:</label>
+  <select id="variable" class="rpgui-dropdown">
+    <option value="cyl" selected>Cylinders</option>
+    <option value="am">Transmission</option>
+    <option value="gear">Gears</option>
+  </select>
+</div>'
+exclude_from_html(code)
 ```
 
 ### Useful functions for tags
@@ -381,11 +455,11 @@ tag$attribs$id <- "id"
 ```
 
 These are two lines of code, and believe me, for complex examples, it might be much worse, thereby significantly impairing code readability.
-Fortunately, `{htmltools}` provides powerful functions to overcome this issue. Let's review some of them below.
+Fortunately, `{htmltools}` provides powerful functions to overcome this issue, the most significant being reviewed below.
 
 #### Add attributes
 
-`tagAppendAttributes()` adds a new attribute to the current tag. For instance, assuming we created a div without any id attribute:
+`tagAppendAttributes()` adds a new attribute to the current tag. For instance, assuming we created a `div` without any id attribute:
 
 ```{r}
 myTag <- div("A tag")
@@ -406,11 +480,27 @@ myTag
 
 As a reminder, even though correct, the classic approach would requires two steps:
 
-```{r}
+```{r, eval=FALSE}
 myTag$attribs[["data-toggle"]] <- "newValue"
 myTag$attribs$class <- "newClass"
 
 myTag
+```
+
+<!-- This is to trim the output too large for pdf -->
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  myTag$attribs[["data-toggle"]] <- "newValue"
+  myTag$attribs$class <- "newClass"
+  myTag
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '<div id="myid" data-toggle="newValue" 
+  class="newClass">A tag
+</div>'
+exclude_from_html(code)
 ```
 
 #### Check if tag has specific attribute
@@ -423,7 +513,7 @@ myTag <- div(class = "myclass")
 tagHasAttribute(myTag, "class")
 ```
 
-In practice, this function is useful when testing tag elements as shown in chapter \@ref(custom-templates-testing).
+In practice, this function is suitable for testing tag elements as shown in chapter \@ref(custom-templates-testing).
 
 #### Get all attributes 
 
@@ -728,13 +818,68 @@ knitr::include_graphics("images/htmltools/htmltools-query-tags.png")
 
 Let's consider an example consisting of a [tabset](https://mastering-shiny.org/action-layout.html#tabsets) panel with three tabs. Those menu items are one of the most challenging elements to handle when building a custom Shiny template and the new `tagQuery()` literally make it a breeze to handle. A detailed case study is available section \@ref(tabler-navbar-navigation). 
 
-```{r}
+```{r, eval=FALSE}
 temp_tabs <- lapply(1:3, function(i) {
   tabPanel(i, paste("Tab", i))
 })
 tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
 
 tabs
+```
+
+```{r, include=FALSE}
+temp_tabs <- lapply(1:3, function(i) {
+  tabPanel(i, paste("Tab", i))
+})
+tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
+
+tabs
+```
+
+<!-- This is to trim the output too large for pdf -->
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  temp_tabs <- lapply(1:3, function(i) {
+    tabPanel(i, paste("Tab", i))
+  })
+  tabs <- bs4Dash::tabsetPanel(.list = temp_tabs)
+
+  tabs
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '<div class="tabbable">
+  <ul class="nav nav-tabs" data-tabsetid="5315">
+    <li class="nav-item">
+      <a href="#" data-toggle="tab" data-value="1" 
+        class="nav-link active" data-target="#tab-5315-1">1
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" data-toggle="tab" data-value="2" 
+        class="nav-link" data-target="#tab-5315-2">2
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" data-toggle="tab" data-value="3" 
+        class="nav-link" data-target="#tab-5315-3">3
+      </a>
+    </li>
+  </ul>
+  <div class="tab-content" data-tabsetid="5315">
+    <div class="tab-pane active" data-value="1" 
+      id="tab-5315-1">Tab 1
+    </div>
+    <div class="tab-pane" data-value="2" 
+      id="tab-5315-2">Tab 2
+    </div>
+    <div class="tab-pane" data-value="3" 
+      id="tab-5315-3">Tab 3
+    </div>
+  </div>
+</div>'
+exclude_from_html(code)
 ```
 
 How would you select the third tab content element?
@@ -746,10 +891,19 @@ tagQuery(tabs)$
 ```
 
 ```{r, echo=FALSE}
-tagQuery(tabs)$
-  find("div.tab-pane")$ # div element with tab-pane class
-  filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
-  selectedTags()
+if (knitr::is_html_output()) {
+  tagQuery(tabs)$
+    find("div.tab-pane")$ # div element with tab-pane class
+    filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
+    selectedTags()
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '[[1]]
+<div class="tab-pane" data-value="3" id="tab-8147-3">Tab 3
+</div>'
+exclude_from_html(code)
 ```
 
 Note that we provided an anonymous R function to `$filter()`, where x is the tag and i the index, allowing us to drill down to the third tab which has `data-value = 3`. 
@@ -785,10 +939,28 @@ tagQuery(tabs)$
 ```
 
 ```{r, echo=FALSE}
-tagQuery(tabs)$
-  find(".tab-pane")$
-  addClass("fade")$
-  selectedTags()
+if (knitr::is_html_output()) {
+  tagQuery(tabs)$
+    find(".tab-pane")$
+    addClass("fade")$
+    selectedTags() 
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '[[1]]
+<div class="tab-pane active fade" data-value="1" 
+  id="tab-4283-1">Tab 1
+</div>
+[[2]]
+<div class="tab-pane fade" data-value="2" 
+  id="tab-4283-2">Tab 2
+</div>
+[[3]]
+<div class="tab-pane fade" data-value="3" 
+  id="tab-4283-3">Tab 3
+</div>'
+exclude_from_html(code)
 ```
 
 #### Altering tag/children/siblings
@@ -810,13 +982,52 @@ knitr::include_graphics("images/htmltools/htmltools-alter-tags.png")
 
 Going back to our previous tabs example, we would like to include an icon before each tab title. We leverage the `$prepend()` method, after selecting the `a` elements part of the tab navigation:
 
-```{r}
+```{r, eval=FALSE}
 # Add extra item to tabs at the end
 new_tabs <- tagQuery(tabs)$
   find("a")$
   prepend(icon("flag"))
 
 new_tabs$selectedTags()
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  # Add extra item to tabs at the end
+  new_tabs <- tagQuery(tabs)$
+    find("a")$
+    prepend(icon("flag"))
+  
+  new_tabs$selectedTags()
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '[[1]]
+<a href="#" data-toggle="tab" data-value="1" 
+  class="nav-link active" data-target="#tab-4311-1">
+  <i class="fa fa-flag" role="presentation" 
+    aria-label="flag icon"></i>
+  1
+</a>
+
+[[2]]
+<a href="#" data-toggle="tab" data-value="2" 
+  class="nav-link" data-target="#tab-4311-2">
+  <i class="fa fa-flag" role="presentation" 
+    aria-label="flag icon"></i>
+  2
+</a>
+
+[[3]]
+<a href="#" data-toggle="tab" data-value="3" 
+  class="nav-link" data-target="#tab-4311-3">
+  <i class="fa fa-flag" role="presentation" 
+    aria-label="flag icon"></i>
+  3
+</a>
+'
+exclude_from_html(code)
 ```
 
 ```{r, eval=FALSE}
@@ -835,7 +1046,7 @@ knitr::include_graphics("images/htmltools/htmltools-tabs-icons.png")
 ### Chain tag queries {#htmtools-chain-queries}
 One of the strength of the `tagQuery()` API is the ability to __chain__ methods, where the classic `{htmltools}` syntax might be __repetitive__ and heavy. `$resetSelected()` allows to __reset__ the tag selection to the root tag after a given operation, thereby making it possible to chain multiple queries with different purposes. The overall flow is more human readable than a step by step approach, similarly to the `tidyverse` or `ggplot` grammar. Let's combine all previous examples:
 
-```{r}
+```{r, eval=FALSE}
 # add fade class to all panels
 tagQuery(tabs)$
   find(".tab-pane")$
@@ -855,6 +1066,74 @@ tagQuery(tabs)$
   # Make it active
   addClass("active")$
   allTags()
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  tagQuery(tabs)$
+    find(".tab-pane")$
+    addClass("fade")$
+    removeClass("active")$
+    filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
+    addClass("active")$
+    resetSelected()$
+    # new operation: add icon before each nav link title
+    find("a")$
+    prepend(icon("flag"))$
+    # Here the next operation use the same target
+    # We don't need to reset the scope
+    removeClass("active")$
+    # Select third nav link
+    filter(function(x, i) tagGetAttribute(x, "data-value") == 3)$
+    # Make it active
+    addClass("active")$
+    allTags() 
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '<div class="tabbable">
+  <ul class="nav nav-tabs" data-tabsetid="8746">
+    <li class="nav-item">
+      <a href="#" data-toggle="tab" data-value="1" 
+        class="nav-link" data-target="#tab-8746-1">
+        <i class="fa fa-flag" role="presentation" 
+          aria-label="flag icon"></i>
+        1
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" data-toggle="tab" data-value="2" 
+        class="nav-link" data-target="#tab-8746-2">
+        <i class="fa fa-flag" role="presentation" 
+          aria-label="flag icon"></i>
+        2
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" data-toggle="tab" 
+        data-value="3" class="nav-link active" 
+        data-target="#tab-8746-3">
+        <i class="fa fa-flag" role="presentation" 
+          aria-label="flag icon"></i>
+        3
+      </a>
+    </li>
+  </ul>
+  <div class="tab-content" data-tabsetid="8746">
+    <div class="tab-pane fade" data-value="1" 
+      id="tab-8746-1">Tab 1
+    </div>
+    <div class="tab-pane fade" data-value="2" 
+      id="tab-8746-2">Tab 2
+    </div>
+    <div class="tab-pane fade active" data-value="3" 
+      id="tab-8746-3">Tab 3
+    </div>
+  </div>
+</div>
+'
+exclude_from_html(code)
 ```
 
 
@@ -892,16 +1171,37 @@ tagQuery(tabs)$
 ```
 
 ```{r, echo=FALSE}
-tagQuery(tabs)$
-  find(".tab-pane")$
-  empty()$
-  each(function(x, i) {
-    # replace text
-    x <- tagAppendChildren(x, paste("This is tab", i))
-    # return edited tag
-    x
-  })$
-  selectedTags()
+if (knitr::is_html_output()) {
+  tagQuery(tabs)$
+    find(".tab-pane")$
+    empty()$
+    each(function(x, i) {
+      # replace text
+      x <- tagAppendChildren(x, paste("This is tab", i))
+      # return edited tag
+      x
+    })$
+    selectedTags() 
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '[[1]]
+<div class="tab-pane active" data-value="1" 
+  id="tab-8746-1">This is tab 1
+</div>
+
+[[2]]
+<div class="tab-pane" data-value="2" 
+  id="tab-8746-2">This is tab 2
+</div>
+
+[[3]]
+<div class="tab-pane" data-value="3" 
+  id="tab-8746-3">This is tab 3
+</div>
+'
+exclude_from_html(code)
 ```
 
 ### Practice {#htmltools-shinyRPG-rework}
@@ -937,9 +1237,9 @@ devmode(TRUE)
 getOption("shiny.devmode")
 ```
 
-Then we create our custom tag with the `.renderHook` parameter available for `{htmltools}` tag element, providing a special function, namely a __ render hook__, that will be called upon tag rendering:
+Then we create our custom tag with the `.renderHook` parameter available for `{htmltools}` tag element, providing a special function, namely a __render hook__, that will be called upon tag rendering:
 
-```{r}
+```{r, eval=FALSE}
 cssStyle <- "color:red; border-style:dashed; border-color:blue;"
 customTag <- span("", .renderHook = function(x) {
   if (getOption("shiny.devmode")) {
@@ -948,6 +1248,25 @@ customTag <- span("", .renderHook = function(x) {
 })
 
 customTag
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  cssStyle <- "color:red; border-style:dashed; border-color:blue;"
+  customTag <- span("", .renderHook = function(x) {
+    if (getOption("shiny.devmode")) {
+      tagAppendAttributes(x, style = cssStyle)
+    } 
+  })
+
+  customTag
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '<span style="color:red; border-style:dashed; 
+border-color:blue;"></span>'
+exclude_from_html(code)
 ```
 
 Note that if the tag already has any existing __hook__, `tagAddRenderHook()` adds another hook to the current list. An option controls whether to erase existing hooks (`replace`).
