@@ -7,7 +7,7 @@ What if, instead, we decided to handle the UI part with usual web languages like
   
 Theoretically, any front-end web developer could take care of creating the user interface. There already exists HTML templates for [Shiny](https://shiny.rstudio.com/articles/templates.html), allowing one to leverage any existing HTML skeleton. The result may be literally stunning, as shown during the latest Shiny [contest](https://nz-stefan.shinyapps.io/commute-explorer-2/?_ga=2.70875408.1031573581.1632613467-748932920.1610966288) and illustrated on Figure \@ref(fig:htmlTemplate-app). However, from a modern web development point of view, there are nowadays much more suited tools to build and maintain application like React and webpack from the previous chapter. 
 
-```{r htmlTemplate-app, echo=FALSE, fig.cap='Commute explorer app, Shiny Contest winner 2021', out.width='100%'}
+```{r htmlTemplate-app, echo=FALSE, fig.cap='Commute explorer app, Shiny Contest winner 2021.', out.width='100%'}
 knitr::include_graphics("images/going-further/htmlTemplate-app.png")
 ```
 
@@ -17,12 +17,22 @@ This chapter may be of interest to any company leveraging Shiny and having peopl
 
 In the following, I'll show you how one may seamlessly leverage Shiny and some modern web dev tools like JSX, ES6, webpack and external JS viz libraries. 
 
-## Start of the art
+## State of the art
 Let's make a list of all requirements for such a project. Since we are working with both web languages and R, we may select `{packer}` [@R-packer] that briefly allows to use `webpack`, a JavaScript __bundler__, in any R project. Moreover, we seek for a robust R __package__ template structure for Shiny, which is a perfect task for `{golem}`. As for the icing on the cake, `{packer}` offers a plug and play function to set up a `{golem}` project with `webpack`, through `packer::scaffold_golem()`. 
 
 ::: {.noteblock data-latex=""}
-An excellent introduction exposing how to maintain robust JavaScript code inside a Shiny project, featuring webpack and NPM, may be found in [JavaScript for R](https://book.javascript-for-r.com/webpack-intro.html) by John Coene. 
+An excellent introduction exposing how to maintain robust JavaScript code inside a Shiny project, featuring webpack and NPM, may be found in JavaScript for R (https://book.javascript-for-r.com/webpack-intro.html) by John Coene. 
 :::
+
+To install `{packer}` and `{golem}`, we run:
+
+```{r, eval=FALSE}
+# CRAN
+install.packages(c("packer", "golem"))
+# development version
+remotes::install_github("JohnCoene/packer")
+remotes::install_github("ThinkR-open/golem")
+```
 
 ## About the project
 
@@ -54,11 +64,15 @@ packer::scaffold_golem()
 
 You should end up with the file structure depicted on Figure \@ref(fig:vdpMod-init).
 
-```{r vdpMod-init, echo=FALSE, fig.cap='vdpMod project initialization with {golem} and {packer}', out.width='50%', fig.align='center'}
+```{r vdpMod-init, echo=FALSE, fig.cap='vdpMod project initialization with {golem} and {packer}.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-init.png")
 ```
 
 The structure is basically the same provided by `{golem}` with addition of extra files for JS code management by `{packer}`. This is the same principle shown in chapters \@ref(workflow-charpente) and \@ref(going-further-reactR). Let's pause here for the R setup and continue later in this chapter.
+
+::: {.noteblock data-latex=""}
+With the latest `{packer}` github version, you may get a plug and play Framework7 project by running `packer::scaffold_golem(framework7 = TRUE)`.
+:::
 
 ### UI design
 The UI will contain a slider input to change $\mu$ as well as two plots, one for the solutions `x` and `y` and another for the __phase plan__ analysis including the vector field and a simple trajectory from a chosen initial condition. In short, phase plan [analysis allows to __qualitatively__ study a non linear systems, that is determine:
@@ -172,7 +186,10 @@ generate_model_data <- function(model, pars, grid) {
   list(
     lineData = modelData,
     phaseData = jsonlite::toJSON(phaseData, pretty = TRUE),
-    trajectoryData = jsonlite::toJSON(trajectoryData, pretty = TRUE)
+    trajectoryData = jsonlite::toJSON(
+      trajectoryData, 
+      pretty = TRUE
+    )
   )
 }
 ```
@@ -243,12 +260,6 @@ packer::npm_install(
 )
 ```
 
-For convenience, we import CSS directly inside the JS code, thereby requiring style loaders:
-
-```{r, eval=FALSE}
-packer::npm_install(c("style-loader", "css-loader"), scope = "dev")
-```
-
 As we depend on Framework7 and echartsjs, we install them as production dependencies (needed by the app):
 
 ```{r, eval=FALSE}
@@ -270,8 +281,6 @@ You should obtain this JSON:
   "@babel/preset-env": "^7.15.6",
   "babel": "^6.23.0",
   "babel-loader": "^8.2.2",
-  "css-loader": "^6.3.0",
-  "style-loader": "^3.3.0",
   "webpack": "^5.53.0",
   "webpack-cli": "^4.8.0",
   "webpack-merge": "^5.8.0"
@@ -283,16 +292,51 @@ You should obtain this JSON:
 }
 ```
 
-Interestingly, Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra [loader](https://www.npmjs.com/package/framework7-loader) as well as a babel react component:
+We modify the `./srcjs/config/loader.json` to include the required loaders for `js`, `jsx` and `css` files. For css, `{packer}` exposes a functions, `use_loader_rule()`:
 
 ```{r, eval=FALSE}
-packer::npm_install(
-  c(
-    "framework7-loader", 
-    "@babel/preset-react"
-  ),
-  scope = "dev"
+use_loader_rule(
+  c("style-loader", "css-loader"),
+  test = "\\.css$"
 )
+```
+
+which gives:
+
+```js
+[
+  {
+    "test": "\\.css$",
+    "use": [
+      "style-loader",
+      "css-loader"
+    ]
+  }
+]
+```
+
+Interestingly, Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra [loader](https://www.npmjs.com/package/framework7-loader) as well as a babel react component (you may imagine to design a `use_loader_framework7()` function ...):
+
+```{r, eval=FALSE}
+use_loader_rule(
+  "framework7-loader", 
+  test = "\\.(f7).(html|js|jsx)$",
+  use = list("babel-loader", "framework7-loader")
+)
+packer::npm_install("@babel/preset-react", scope = "dev")
+```
+
+```js
+[
+  // ... style loader ...
+  {
+    "test": "\\.(f7).(html|js|jsx)$",
+    "use": [
+      "babel-loader",
+      "framework7-loader"
+    ]
+  }
+]
 ```
 
 Alternatively, one can copy the `./package.json` from [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f) to get exactly the same package versions I used when I initialized this project and call `packer::npm_install()` to pull the dependencies and install them for the project.  
@@ -308,27 +352,6 @@ We create a `./.babelrc` script providing some configuration for Babel to handle
 }
 ```
 
-We modify the `./srcjs/config/loader.json` to include the required loaders for `js`, `jsx` and `css` files.
-
-```js
-[
-  {
-    "test": "\\.(f7).(html|js|jsx)$",
-    "use": [
-      "babel-loader",
-      "framework7-loader"
-    ]
-  },
-  {
-    "test": "\\.css$",
-    "use": [
-      "style-loader",
-      "css-loader"
-    ]
-  }
-]
-```
-
 We can ultimately bundle our JS code and check whether the app starts:
 
 ```{r, eval=FALSE}
@@ -337,7 +360,7 @@ devtools::load_all()
 run_app()
 ```
 
-```{r vdpMod-basic-app, echo=FALSE, fig.cap='vdpMod basic app', out.width='100%'}
+```{r vdpMod-basic-app, echo=FALSE, fig.cap='vdpMod basic app.', out.width='100%'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app.png")
 ```
 
@@ -423,7 +446,7 @@ import Framework7 from 'framework7';
 import 'framework7/framework7-bundle.min.css';
 ```
 
-```{r vdpMod-framework7-resources, echo=FALSE, fig.cap='Framework7 assets in node modules', out.width='50%', fig.align='center'}
+```{r vdpMod-framework7-resources, echo=FALSE, fig.cap='Framework7 assets in node modules.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-framework7-resources.png")
 ```
 
@@ -541,7 +564,7 @@ devtools::load_all()
 run_app()
 ```
 
-```{r vdpMod-basic-app-2, echo=FALSE, fig.cap='vdpMod basic app with main app component template', out.width='50%', fig.align='center'}
+```{r vdpMod-basic-app-2, echo=FALSE, fig.cap='vdpMod basic app with main app component template.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app-2.png")
 ```
 
@@ -616,7 +639,7 @@ observeEvent(input$mu, {
 
 After recompiling, this gives us Figure \@ref(fig:vdpMod-basic-app-3).
 
-```{r vdpMod-basic-app-3, echo=FALSE, fig.cap='vdpMod basic app with range slider', out.width='50%', fig.align='center'}
+```{r vdpMod-basic-app-3, echo=FALSE, fig.cap='vdpMod basic app with range slider.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app-3.png")
 ```
 
@@ -806,7 +829,7 @@ const initializeVdpWidget = (app) => {
 
 After rebuilding the JS code, you should get Figure \@ref(fig:vdpMod-basic-app-4).
 
-```{r vdpMod-basic-app-4, echo=FALSE, fig.cap='vdpMod basic app with time series output', out.width='50%', fig.align='center'}
+```{r vdpMod-basic-app-4, echo=FALSE, fig.cap='vdpMod basic app with time series output.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app-4.png")
 ```
 #### Exercise: add the phase portrait
@@ -983,7 +1006,7 @@ phasePlot.setOption(...);
 
 Recompile the code and enjoy the result displayed on Figure \@ref(fig:vdpMod-basic-app-5).
 
-```{r vdpMod-basic-app-5, echo=FALSE, fig.cap='vdpMod basic app with time series output and phase portrait', out.width='50%', fig.align='center'}
+```{r vdpMod-basic-app-5, echo=FALSE, fig.cap='vdpMod basic app with time series output and phase portrait.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app-5.png")
 ```
 
