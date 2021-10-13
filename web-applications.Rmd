@@ -35,7 +35,7 @@ If we inspect the first request from Figure \@ref(fig:shinyapp-requests), we obt
   We mostly use `GET` to ask for something or `POST`, to submit something. 
   - An __url__, corresponding to the path to the targeted element. Here, if nothing is specified in the path, the server will try to get the main HTML page, also called `index.html`. 
 
-```{r http-request-details, echo=FALSE, fig.cap='Details about an HTTP request', out.width='100%'}
+```{r http-request-details, echo=FALSE, fig.cap='Details about an HTTP request.', out.width='100%'}
 knitr::include_graphics("images/survival-kit/http-request-details.png")
 ```
 
@@ -111,7 +111,7 @@ Under the hood, `runApp()`:
   4. The HTML code is received and interpreted by the client web browser.
   5. The HTML page is rendered. It is an exact mirror of the initially provided `ui.R` code. 
   
-```{r shinyapp-lifecycle, echo=FALSE, fig.cap='Shiny App lifecycle', out.width='100%'}
+```{r shinyapp-lifecycle, echo=FALSE, fig.cap='Shiny App lifecycle.', out.width='100%'}
 knitr::include_graphics("images/survival-kit/shinyapp-lifecycle.png")
 ```
 
@@ -140,7 +140,8 @@ Under the hood, `shinyApp()` does many things, particularly creating a valid HTT
 
 ```html
 <!DOCTYPE html>
-<html{{ if (isTRUE(nzchar(lang))) paste0(" lang=\"", lang, "\"") }}>
+<html{{ if (isTRUE(nzchar(lang))) 
+  paste0(" lang=\"", lang, "\"") }}>
   <head>
   {{ headContent() }}
   </head>
@@ -192,21 +193,68 @@ shiny knows where to insert the dependencies, that is all mandatory JS and CSS a
 
 For instance, we call `renderTags()` on the shiny `icon()`:
 
-```{r}
+```{r, eval=FALSE}
 library(htmltools)
 res <- renderTags(icon("cogs"))
 str(res)
 ```
 
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  library(htmltools)
+  res <- renderTags(icon("cogs"))
+  str(res)
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- 'List of 4
+ $ head        : \'html\' chr ""
+  ..- attr(*, "html")= logi TRUE
+ $ singletons  : chr(0) 
+ $ dependencies:List of 1
+  ..$ :List of 9
+  .. ..$ name      : chr "font-awesome"
+  .. ..$ version   : chr "5.13.0"
+  .. ..$ src       :List of 1
+  .. .. ..$ file: chr "<TRUNCATED>"
+  .. ..$ meta      : NULL
+  .. ..$ script    : NULL
+  .. ..$ stylesheet: chr [1:2] "css/all.min.css" 
+  "css/v4-shims.min.css"
+  .. ..$ head      : NULL
+  .. ..$ attachment: NULL
+  .. ..$ all_files : logi TRUE
+  .. ..- attr(*, "class")= chr "html_dependency"
+ $ html        : \'html\' chr "<i class=\"fa fa-cogs\" 
+ role=\"presentation\" aria-label=\"cogs icon\"></i>"
+  ..- attr(*, "html")= logi TRUE'
+exclude_from_html(code)
+```
+
 and then `renderDependencies()` on the tag dependency:
 
-```{r}
+```{r, eval=FALSE}
 renderDependencies(res$dependencies)
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  renderDependencies(res$dependencies)
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '<link href="TRUNCATED/fontawesome/css/all.min.css" 
+rel="stylesheet" />
+<link href="TRUNCATED/fontawesome/css/v4-shims.min.css" 
+rel="stylesheet" />'
+exclude_from_html(code)
 ```
 
 Let's apply `renderDocument()` to our previous template:
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 html <- renderDocument(
   ui,
   deps = c(
@@ -258,13 +306,49 @@ Look at the `head` tag where all dependencies are correctly inserted.
 </html>
 ```
 
-The final step is to return an HTTP response containing the HTML string. As of `{shiny}` `1.6.0`, the `httpResponse` function is exported by default:
+The final step is to return an HTTP response containing the HTML string. As of `{shiny}` `1.6.0`, the `httpResponse` function is exported by default and the retuned content is exactly the same as showed above:
 
-```{r}
+```{r, eval=FALSE}
 httpResponse(
   status = 200,
   content = enc2utf8(paste(collapse = "\n", html))
 )
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  httpResponse(
+    status = 200,
+    content = enc2utf8(paste(collapse = "\n", html))
+  )
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '$status
+[1] 200
+
+$content_type
+[1] "text/html; charset=UTF-8"
+
+$content
+[1] "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  
+  <meta http-equiv=\"Content-Type\" content=\"text/html; 
+  charset=utf-8\"/>\n  
+  <script type=\"application/shiny-singletons\"></script>\n  
+  <script type=\"application/html-dependencies\">jquery[3.5.1];
+  shiny-css[1.6.0];shiny-javascript[1.6.0];bootstrap[3.4.1]
+  </script>\n
+  <script src=\"shared/jquery.min.js\"></script>... TRUNCATED"
+
+$headers
+$headers$`X-UA-Compatible`
+[1] "IE=edge,chrome=1"
+
+
+attr(,"class")
+[1] "httpResponse"'
+exclude_from_html(code)
 ```
 
 

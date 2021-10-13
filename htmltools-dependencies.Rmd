@@ -1,10 +1,10 @@
 # Handle HTML dependencies with {htmltools} {#htmltools-dependencies}
-In this chapter, I'll demonstrate how we can utilize `{htmltools}` [@R-htmltools] to manage web dependencies, that is handling CSS and JS code as well as other assets in your shiny apps. This literally opens the doors to work with almost any web framework and design outstanding user experiences with Shiny. 
+In this chapter, I'll demonstrate how we can utilize `{htmltools}` [@R-htmltools] to manage web __dependencies__, that is handling CSS and JS code as well as other __assets__ in your shiny apps. This literally opens the doors to work with almost any web framework and design outstanding user experiences with Shiny in a reasonable amount of time and __reproducible__ manner. 
 
 ## Motivations
 In this example, we would like to include a Material Bootstrap [card](https://mdbootstrap.com/docs/standard/components/cards/) in a shiny app. 
 
-```{r mdb-card, echo=FALSE, fig.cap='Material Bootstrap design card', out.width='50%', fig.align='center'}
+```{r mdb-card, echo=FALSE, fig.cap='Material Bootstrap design card.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/htmltools/mdb-card.png")
 ```
 
@@ -43,15 +43,15 @@ code_chunk(OSUICode::get_example("htmltools/deps/card/ex1"), "r")
 knitr::include_graphics("images/htmltools/mdb-card-dirty.png")
 ```
 
-As depicted by Figure \@ref(fig:mdb-card-dirty), nothing is displayed which was expected since `{shiny}` [@R-shiny] does not contain Bootstrap 4 dependencies. Don't panic! We load the necessary css to display this card (if required, we could include the javascript as well). We could use either `includeCSS()`, `tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"))`, as described in the shiny documentation [here](https://shiny.rstudio.com/articles/css.html). Web development best practice recommend to point to external file rather than including CSS in the head or as inline CSS (see chapter \@ref(beautify-css)). In the below example, we use a __CDN__ (content delivery network) but that could be a local file in the `www/` folder:
+As depicted by Figure \@ref(fig:mdb-card-dirty), nothing is displayed which was expected since `{shiny}` [@R-shiny] does not import Bootstrap 4 dependencies. Don't panic! We load the necessary css to display this card (if required, we could include the javascript as well). We could use either `includeCSS()`, `tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"))`, as described in the shiny documentation [here](https://shiny.rstudio.com/articles/css.html). Web development best practice recommend to point to external file rather than including CSS in the head or as inline CSS (see chapter \@ref(beautify-css)). In the below example, we use a __CDN__ (content delivery network) but that could be a local file in the `www/` folder:
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("htmltools/deps/card/ex2"), "r")
 ```
 
-The card may seem ugly but at least it is displayed as shown on Figure \@ref(fig:mdb-card-deps). This approach is however not easy to re-usable by other developers since there is no way to recover the specific dependency.
+The card may seem ugly but at least it is displayed as shown on Figure \@ref(fig:mdb-card-deps). This approach is however not easy to share with other developers since there is no way to recover the specific dependency.
 
-```{r mdb-card-deps, echo=FALSE, fig.cap='Material Bootstrap card within a simple app', out.width='100%'}
+```{r mdb-card-deps, echo=FALSE, fig.cap='Material Bootstrap card within a simple app.', out.width='100%'}
 knitr::include_graphics("images/htmltools/mdb-card-deps.png")
 ```
 
@@ -81,7 +81,7 @@ If you are not pointing to a CDN and use local files, this is crucial to wrap th
 We create the card tag and give it the Material Bootstrap dependency through the `attachDependencies()` function.
 
 ::: {.noteblock data-latex=""}
-In recent version of `{htmltools}`, we may simply use `tagList(tag, deps)` instead. Importantly, `attachDependencies()` has an `append` parameter FALSE by default. Ensure to set it to TRUE if you want to keep already attached dependencies!
+In recent version of `{htmltools}`, we may simply use `tagList(tag, deps)` instead. Importantly, `attachDependencies()` has an `append` parameter FALSE by default. Ensure to set it to TRUE if you want to keep already attached dependencies.
 :::
 
 ```{r, eval = FALSE}
@@ -108,7 +108,7 @@ code_chunk(OSUICode::get_example("htmltools/deps/card/ex3"), "r")
 According to Figure \@ref(fig:mdb-card-deps-conflict), something seems to be broken or conflicting. If we look at the developer tools, we realize that the new Material Design stylesheet comes before the Shiny Bootstrap CSS, which is the source of our problems. 
 
 ::: {.importantblock data-latex=""}
-This raises an important consideration about `htmlDependency()`. Under the hood, Shiny adds many necessary dependencies like Bootstrap, jQuery and you have no control over where your own dependencies will be inserted yet. Section \@ref(htmltools-suppress-deps) explains how to seamlessly solve that issue.
+This raises an important consideration about `htmlDependency()`. Under the hood, Shiny adds many necessary dependencies like Bootstrap, jQuery and you have no control over where your own dependencies will be inserted. Section \@ref(htmltools-suppress-deps) explains how to seamlessly solve that issue.
 :::
 
 ```{r mdb-card-deps-conflict, echo=FALSE, fig.cap='Conflict between Material Bootstrap and Bootstrap CSS. ', out.width='100%'}
@@ -134,10 +134,36 @@ dashboard_ui <- dashboardPage(
 There are numerous details associated with `{shinydashboard}` that we will not go into.
 If you are interested in learning more, please [check out the package website](https://rstudio.github.io/shinydashboard/). The key point here is the main wrapper function `dashboardPage()`. The `fluidPage()` is another wrapper function that most are already familiar with. We apply `findDependencies()` on `dashboard_ui`:
 
-```{r}
+```{r, eval=FALSE}
 library(htmltools)
 dashboard_deps <- findDependencies(dashboard_ui)
 dashboard_deps[[1]]
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  library(htmltools)
+  dashboard_deps <- findDependencies(dashboard_ui)
+  dashboard_deps[[1]]
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- 'List of 10
+ $ name      : chr "font-awesome"
+ $ version   : chr "5.13.0"
+ $ src       :List of 1
+  ..$ file: chr "www/shared/fontawesome"
+ $ meta      : NULL
+ $ script    : NULL
+ $ stylesheet: chr [1:2] "css/all.min.css" 
+ "css/v4-shims.min.css"
+ $ head      : NULL
+ $ attachment: NULL
+ $ package   : chr "shiny"
+ $ all_files : logi TRUE
+ - attr(*, "class")= chr "html_dependency"'
+exclude_from_html(code)
 ```
 
 For space reasons, we only printed the first dependency output but `dashboard_deps` is a list containing four dependencies:
@@ -167,18 +193,18 @@ my_dashboard_box <- function(title, status) {
 code_chunk(OSUICode::get_example("htmltools/deps/dashboard"), "r")
 ```
 
-```{r shiny-import-box, echo=FALSE, fig.cap='AdminLTE2 box inside classic shiny app', out.width='100%'}
+```{r shiny-import-box, echo=FALSE, fig.cap='AdminLTE2 box inside classic shiny app.', out.width='100%'}
 knitr::include_graphics("images/htmltools/shiny-import-box.png")
 ```
 
-You now have limitless possibilities!  Interestingly, this same approach is the basis of [shinyWidgets](https://github.com/dreamRs/shinyWidgets/blob/5b1fe07eaa13ff9157effaa13187d560d4d97644/R/useBs4Dash.R#L123) for the `useBs4Dash()` function and other related tools.
+You now have limitless possibilities. Interestingly, the [shinyWidgets](https://github.com/dreamRs/shinyWidgets/blob/5b1fe07eaa13ff9157effaa13187d560d4d97644/R/useBs4Dash.R#L123) `useBs4Dash()` function relies on the same approach.
 
 ## Suppress dependencies {#htmltools-suppress-deps}
 
 In rare cases, you may need to remove an existing __conflicting__ dependency. The `suppressDependencies()` function allows users to perform this task. For instance, [shiny.semantic](https://github.com/Appsilon/shiny.semantic/tree/f184da21864db3c39ea5233187400a87df85fb0f) built on top of
 semantic ui is not compatible with Bootstrap, the latter being dropped from the list, as illustrated by Figure \@ref(fig:semantic-suppress-bootstrap).
 
-```{r semantic-suppress-bootstrap, echo=FALSE, fig.cap='Deletion of Bootstrap inside semanticPage', out.width='100%'}
+```{r semantic-suppress-bootstrap, echo=FALSE, fig.cap='Deletion of Bootstrap inside semanticPage.', out.width='100%'}
 knitr::include_graphics("images/htmltools/semantic-suppress-bootstrap.png")
 ```
 
@@ -193,7 +219,7 @@ code_chunk(OSUICode::get_example("htmltools/deps/remove-deps"), "r")
 ## Resolve dependencies {#resolve-dependencies}
 Imagine a situation in which we would like to use the very last version of Font Awesome icons, that is currently 5.15.1 according to [jsdelivr](https://www.jsdelivr.com/package/npm/@fortawesome/fontawesome-free). We recall that `{shiny}` already provides version 5.13.0 through the `icon()` function. Including another version would probably cause conflicts and we would like to avoid that case. `{htmltools}` has a `resolveDependencies()` tool that removes any redundant dependencies, keeping the dependency with the higher version if names are identical:
 
-```{r}
+```{r, eval=FALSE}
 jsdelivr_cdn <- "https://cdn.jsdelivr.net/npm/@fortawesome/"
 ft_aws <- paste0(jsdelivr_cdn, "fontawesome-free@5.15.1/")
 new_icon_dep <- htmlDependency(
@@ -209,6 +235,45 @@ icon_deps <- list(
 )
 
 resolveDependencies(icon_deps)
+```
+
+```{r, echo=FALSE}
+if (knitr::is_html_output()) {
+  jsdelivr_cdn <- "https://cdn.jsdelivr.net/npm/@fortawesome/"
+  ft_aws <- paste0(jsdelivr_cdn, "fontawesome-free@5.15.1/")
+  new_icon_dep <- htmlDependency(
+    name = "font-awesome",
+    version = "5.15.1",
+    src = c(href = ft_aws),
+    stylesheet = "css/all.min.css"
+  )
+  
+  icon_deps <- list(
+    new_icon_dep,
+    findDependencies(shiny::icon("th"))[[1]]
+  )
+  
+  resolveDependencies(icon_deps)
+}
+```
+
+```{r, echo=FALSE, results='asis'}
+code <- '[[1]]
+List of 10
+ $ name      : chr "font-awesome"
+ $ version   : chr "5.15.1"
+ $ src       :List of 1
+  ..$ href: chr "https://cdn.jsdelivr.net/npm/@fortawesome
+  /fontawesome-free@5.15.1/"
+ $ meta      : NULL
+ $ script    : NULL
+ $ stylesheet: chr "css/all.min.css"
+ $ head      : NULL
+ $ attachment: NULL
+ $ package   : NULL
+ $ all_files : logi TRUE
+ - attr(*, "class")= chr "html_dependency"'
+exclude_from_html(code)
 ```
 
 Combining `findDependencies()`, `suppressDependencies()` and `resolveDependencies()` gives you great power to successfully manage your dependencies!
@@ -261,6 +326,6 @@ code_chunk(OSUICode::get_example("htmltools/deps/custom"), "r")
 According the the AdminLTE [documentation](https://adminlte.io/themes/AdminLTE/documentation/index.html#adminlte-options), global options must be passed before loading the `app.min.js` script. Creating this "dummy" dependency allowed us to do so, as shown on Figure \@ref(fig:htmltools-head-deps).
 
 
-```{r htmltools-head-deps, echo=FALSE, fig.cap='Insert arbitrary script in the head', out.width='100%'}
+```{r htmltools-head-deps, echo=FALSE, fig.cap='Insert arbitrary script in the head.', out.width='100%'}
 knitr::include_graphics("images/htmltools/htmltools-head-deps.png")
 ```
