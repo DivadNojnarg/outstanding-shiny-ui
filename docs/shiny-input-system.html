@@ -95,25 +95,30 @@
 </h1>
 <p>Shiny <strong>inputs</strong> are key elements of Shiny apps since they are a way for the end-user to <strong>interact</strong> with the app. You may know <code><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput()</a></code>, <code><a href="https://rdrr.io/pkg/shiny/man/numericInput.html">numericInput()</a></code>, <code><a href="https://rdrr.io/pkg/shiny/man/checkboxInput.html">checkboxInput()</a></code> but sometimes you may need fancier elements like <code><a href="https://rdrr.io/pkg/shinyWidgets/man/knobInput.html">knobInput()</a></code> from <a href="https://github.com/dreamRs/shinyWidgets/blob/5566202a4b9a0899eaafa36da23f076454bc9622/R/input-knob.R#L69">shinyWidgets</a>, as depicted on Figure <a href="shiny-input-system.html#fig:fancy-inputs">12.1</a> or even more sophisticated inputs like the <a href="https://github.com/RinteRface/shinyMobile/blob/93eaffee6a8941376802ae867add36407531e19d/R/f7-inputs.R">shinyMobile</a> <code>smartSelect()</code> (Figure <a href="shiny-input-system.html#fig:fancy-inputs">12.1</a>, right panel). Have you ever wondered what are the mechanisms behind inputs? Have you ever dreamt to develop your own?</p>
 <p>The goal of this section is to understand how Shiny inputs work and how to create new ones.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:fancy-inputs"></span>
 <img src="images/survival-kit/jquery-knobs.png" alt="Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile." width="50%"><img src="images/survival-kit/smart-select.png" alt="Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile." width="50%"><p class="caption">
 FIGURE 12.1: Custom shiny inputs. left: knobInput from shinyWidgets; right: smart select from shinyMobile.
 </p>
 </div>
+<p></p>
 <div id="input-binding" class="section level2" number="12.1">
 <h2>
 <span class="header-section-number">12.1</span> Input bindings<a class="anchor" aria-label="anchor" href="#input-binding"><i class="fas fa-link"></i></a>
 </h2>
 <p>When we run our app, most of the time it works just fine. The question is, what is the magic behind? Upon initialization, Shiny runs several JavaScript functions. Some are accessible to the programmer, thought the <strong>Shiny</strong> JS object, already mentioned in section <a href="survival-kit-javascript.html#shiny-js-object">10.6.3</a>. To illustrate what they do, let’s run the app below:</p>
+<p></p>
 <div class="sourceCode" id="cb481"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
 <span class="co">#  "input-system/dummy-app", </span>
 <span class="co">#   package = "OSUICode" </span>
 <span class="co"># ) </span></code></pre></div>
+<p></p>
 <p>We then open the HTML inspector and run <code>Shiny.unbindAll(document)</code>, document being the scope, that is where to search. Try to change the slider input. You will notice that nothing happens. Now let’s type <code>Shiny.bindAll(document)</code> and update the slider value. Moving the slider successfully update the plot. Magic isn’t it? This simply shows that when inputs are not bound, nothing happens so <strong>binding</strong> inputs is necessary.</p>
 <p>We consider another example with multiple inputs and two buttons to bind/unbind inputs, respectively. Start it, change some input values, have a look at the corresponding text output. Click on unbind all and try to change some inputs. What happens? Click on bind and change another input value. What do you observe?</p>
+<p></p>
 <div class="sourceCode" id="cb482"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -152,6 +157,7 @@ FIGURE 12.1: Custom shiny inputs. left: knobInput from shinyWidgets; right: smar
 <span class="op">}</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>Let’s see below what is an <strong>input binding</strong> and how it works.</p>
 <div id="input-structure" class="section level3" number="12.1.1">
 <h3>
@@ -191,13 +197,16 @@ an input binding to target a class (and all associated elements) rather than an 
 steps.</p>
 </div>
 <p>Figure <a href="shiny-input-system.html#fig:shiny-find-inputs">12.2</a> summarizes this important step.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:shiny-find-inputs"></span>
 <img src="images/survival-kit/shiny-find-inputs.png" alt="How to find inputs?" width="100%"><p class="caption">
 FIGURE 12.2: How to find inputs?
 </p>
 </div>
+<p></p>
 <p>Below, we are going to re-create <code><a href="https://rdrr.io/pkg/shiny/man/textInput.html">textInput()</a></code> binding, step by step. As <a href="https://shiny.rstudio.com/">shiny</a> already provides bindings for the <code><a href="https://rdrr.io/pkg/shiny/man/textInput.html">textInput()</a></code>, we don’t want them to recognize our new input. Therefore, we add a new <code>input-text</code> class and make our own input binding pointing to that specific class:</p>
+<p></p>
 <div class="sourceCode" id="cb485"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">customTextInput</span> <span class="op">&lt;-</span> <span class="kw">function</span> <span class="op">(</span>
   <span class="va">inputId</span>, 
@@ -230,6 +239,7 @@ FIGURE 12.2: How to find inputs?
     <span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>The last part of the code contains a <code><a href="https://rdrr.io/pkg/htmltools/man/tagList.html">tagList()</a></code> with two elements:</p>
 <ul>
 <li>The element input binding, <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputDeps.html">customTextInputDeps()</a></code>. <code>binding_step</code> allows us to review one step at a time, which is easier from a learning perspective.</li>
@@ -237,6 +247,7 @@ FIGURE 12.2: How to find inputs?
 </ul>
 <p>Below is an example of how we managed the dependency creation in the side package.
 If we had multiple inputs, we would add more script to the dependency by passing a vector to the script parameter.</p>
+<p></p>
 <div class="sourceCode" id="cb486"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">customTextInputDeps</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">binding_step</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
@@ -253,14 +264,18 @@ If we had multiple inputs, we would add more script to the dependency by passing
     <span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>Figure <a href="shiny-input-system.html#fig:text-input">12.3</a> shows the main elements of the <code><a href="https://rdrr.io/pkg/shiny/man/textInput.html">textInput()</a></code> widget. In the above code, <code>shinyInputLabel</code> is a Shiny internal function that creates the numeric input label, or in other word the text displayed next to it. The core input element is wrapped by <code>tags$input</code>.</p>
+<p></p>
 <div class="figure" style="text-align: center">
 <span style="display:block;" id="fig:text-input"></span>
 <img src="images/survival-kit/text-input.png" alt="Shiny's textInput elements." width="100%"><p class="caption">
 FIGURE 12.3: Shiny’s textInput elements.
 </p>
 </div>
+<p></p>
 <p>We invite the reader to run the full working demonstration exposed below.</p>
+<p></p>
 <div class="sourceCode" id="cb487"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -272,7 +287,9 @@ FIGURE 12.3: Shiny’s textInput elements.
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExample.html">customTextInputExample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>In short, this example consists in a simple text input and an output showing the current text input value:</p>
+<p></p>
 <div class="sourceCode" id="cb488"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">customTextInputExample</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">binding_step</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html">fluidPage</a></span><span class="op">(</span>
@@ -289,15 +306,19 @@ FIGURE 12.3: Shiny’s textInput elements.
   <span class="op">}</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>We open the developer tools to inspect the <code>customTextInputBinding.js</code> script, put a breakpoints in the <code>find</code> method and reload the page. Upon reload, the JavaScript debugger opens, as shown Figure <a href="shiny-input-system.html#fig:binding-find">12.4</a>. Type <code>$(scope).find('.input-text')</code> in the console and see what is displayed. This is the DOM element which you may highlight when you hover over the JavaScript output.</p>
 <p>Building input bindings like this significantly ease the debugging process and you’ll get more chances to be successful!</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-find"></span>
 <img src="images/survival-kit/binding-find.png" alt="Find is the first method triggered." width="100%"><p class="caption">
 FIGURE 12.4: Find is the first method triggered.
 </p>
 </div>
+<p></p>
 <p>Now, let’s see why it is better to target elements by type or class. We run the below example.</p>
+<p></p>
 <div class="sourceCode" id="cb489"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -309,18 +330,21 @@ FIGURE 12.4: Find is the first method triggered.
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExampleBis.html">customTextInputExampleBis</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>This is a demonstration app containing two text inputs. Moreover, the binding is modified so that it looks for element having a specific id:</p>
 <div class="sourceCode" id="cb490"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb490-1"><a href="shiny-input-system.html#cb490-1" aria-hidden="true" tabindex="-1"></a>find<span class="op">:</span> <span class="kw">function</span>(scope) {</span>
 <span id="cb490-2"><a href="shiny-input-system.html#cb490-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">$</span>(scope)<span class="op">.</span><span class="fu">find</span>(<span class="st">'#mytextInput'</span>)<span class="op">;</span></span>
 <span id="cb490-3"><a href="shiny-input-system.html#cb490-3" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
 <p>If you repeat the above debugging steps, <code>$(scope).find('.input-text')</code> only targets the
 first text input, meaning that the second input will not be found and bound, as demonstrated in Figure <a href="shiny-input-system.html#fig:binding-find-by-id">12.5</a>.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-find-by-id"></span>
 <img src="images/survival-kit/binding-find-by-id.png" alt="Find by id is a rather bad idea." width="100%"><p class="caption">
 FIGURE 12.5: Find by id is a rather bad idea.
 </p>
 </div>
+<p></p>
 <p>As a side note, you’ll also get an error in the binding (<code>Uncaught Not implemented</code>), indicating that the <code>getValue</code> method is not implemented yet. Fear not! We are going to add it very soon.</p>
 </div>
 <div id="initialize-inputs" class="section level4" number="12.1.2.2">
@@ -352,12 +376,14 @@ FIGURE 12.5: Find by id is a rather bad idea.
 <span class="header-section-number">12.1.2.3</span> Get the value<a class="anchor" aria-label="anchor" href="#get-the-value"><i class="fas fa-link"></i></a>
 </h4>
 <p>The <strong>getValue</strong> method returns the input value. The way to obtain the value is different for almost all inputs. For instance, the <code><a href="https://rdrr.io/pkg/shiny/man/textInput.html">textInput()</a></code> is pretty simple since the value is located in the <code>value</code> attribute. <strong>el</strong> refers to the element holding the id attribute and recognized by the <code>find</code> method. Figure <a href="shiny-input-system.html#fig:shiny-el">12.6</a> shows the result of a <code>console.log($(el));</code>.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:shiny-el"></span>
 <img src="images/survival-kit/shiny-el.png" alt="About the el element." width="100%"><p class="caption">
 FIGURE 12.6: About the el element.
 </p>
 </div>
+<p></p>
 <div class="sourceCode" id="cb493"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb493-1"><a href="shiny-input-system.html#cb493-1" aria-hidden="true" tabindex="-1"></a>getValue<span class="op">:</span> <span class="kw">function</span>(el) {</span>
 <span id="cb493-2"><a href="shiny-input-system.html#cb493-2" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="fu">$</span>(el))<span class="op">;</span></span>
 <span id="cb493-3"><a href="shiny-input-system.html#cb493-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">$</span>(el)<span class="op">.</span><span class="fu">val</span>()<span class="op">;</span></span>
@@ -367,6 +393,7 @@ FIGURE 12.6: About the el element.
 <p>Don’t forget the <code>return</code> statement.</p>
 </div>
 <p>Similarly as in the find section, we run the below example and open the developer tools to inspect the <code>customTextInputBinding_2.js</code> script.</p>
+<p></p>
 <div class="sourceCode" id="cb494"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -378,14 +405,17 @@ FIGURE 12.6: About the el element.
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputExample.html">customTextInputExample</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>We put a breakpoints in the <code>getValue</code> method and reload the page. Upon reload, the JavaScript debugger opens starts in <code>find</code>. You may click on the next blue arrow to jump to the next breakpoints that is <code>getValue</code>, as shown Figure <a href="shiny-input-system.html#fig:binding-getValue">12.7</a>. Typing <code>$(el).val()</code> in the console shows the current
 text value.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-getValue"></span>
 <img src="images/survival-kit/binding-getValue.png" alt="getValue returns the current input value." width="100%"><p class="caption">
 FIGURE 12.7: getValue returns the current input value.
 </p>
 </div>
+<p></p>
 <p>Clicking on next again exit the debugger. Interestingly, you’ll notice that a text appears below the input, meaning that the <code>input$caption</code> element exists and is internally tracked by shiny. Notice that when you try to change the text content, the output value does not update as we would normally expect. We are actually omitting a couple of methods so preventing the binding from being fully functional. We will introduce them in the following sections!</p>
 </div>
 <div id="set-and-update" class="section level4" number="12.1.2.4">
@@ -407,6 +437,7 @@ FIGURE 12.7: getValue returns the current input value.
 <li>
 <strong>session</strong> is the Shiny session object mentioned earlier in section <a href="shiny-intro.html#shiny-session">11.5.1</a>. We will use the <strong>sendInputMessage</strong> to send values from R to JavaScript. The <code>receiveMessage</code> method will apply <code>setValue</code> with the data received from R. The current session is recovered with <code><a href="https://rdrr.io/pkg/shiny/man/domains.html">getDefaultReactiveDomain()</a></code>.</li>
 </ul>
+<p></p>
 <div class="sourceCode" id="cb496"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateCustomTextInput</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
   <span class="va">inputId</span>, 
@@ -415,15 +446,19 @@ FIGURE 12.7: getValue returns the current input value.
 <span class="op">)</span> <span class="op">{</span>
   <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">inputId</span>, message <span class="op">=</span> <span class="va">value</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>We add <code>setValue</code> and <code>receiveMessage</code> to custom input binding.</p>
 <p>Figure <a href="shiny-input-system.html#fig:shiny-update-inputs">12.8</a> illustrates the main mechanisms.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:shiny-update-inputs"></span>
 <img src="images/survival-kit/shiny-update-inputs.png" alt="Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket." width="100%"><p class="caption">
 FIGURE 12.8: Events following a click on the update button. This figure demonstrates how R and JS communicate, through the websocket.
 </p>
 </div>
+<p></p>
 <p>If we have to pass multiple elements to update, we would have to change the <code>updateCustomTextInput</code> function such as:</p>
+<p></p>
 <div class="sourceCode" id="cb497"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateCustomTextInput</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
   <span class="va">inputId</span>, 
@@ -439,6 +474,7 @@ FIGURE 12.8: Events following a click on the update button. This figure demonstr
   <span class="op">)</span>
   <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">inputId</span>, <span class="va">message</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p><code>shiny:::dropNulls</code> is an internal function ensuring that the list does not contain <code>NULL</code> elements. We send a list from R, which is then serialized to a JSON object. In the <code>receiveMessage</code> method, properties like <code>value</code> may be accessed using the <code>.</code> notation. It is good practice to add a <code>data.hasOwnProperty</code> check to avoid running code
 if the specified property does not exist:</p>
 <div class="sourceCode" id="cb498"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb498-1"><a href="shiny-input-system.html#cb498-1" aria-hidden="true" tabindex="-1"></a><span class="co">// data are received from R. </span></span>
@@ -455,6 +491,7 @@ if the specified property does not exist:</p>
 the <code>setValue</code> method …</p>
 </div>
 <p>Similarly as in the previous sections, we run <code><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample(3)</a></code> and open the developer tools to inspect the <code>customTextInputBinding_3.js</code> script.</p>
+<p></p>
 <div class="sourceCode" id="cb499"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -466,20 +503,25 @@ the <code>setValue</code> method …</p>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>We put a breakpoints in the <code>receiveMessage</code> and <code>setValue</code> methods and reload the page. Upon reload, the JavaScript debugger opens starts in <code>find</code>. You may click on the next blue arrow until you reach <code>receiveMessage</code>, as shown Figure <a href="shiny-input-system.html#fig:binding-receive">12.9</a>. Inspecting the <code>data</code> object, it contains only one property namely the value. In practice, there may be more complex structure. As an exercise, you may change the <code>data.value</code> to whatever value you want.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-receive"></span>
 <img src="images/survival-kit/binding-receive.png" alt="Receive a message from R." width="100%"><p class="caption">
 FIGURE 12.9: Receive a message from R.
 </p>
 </div>
+<p></p>
 <p>Click on the next arrow makes us jump in the next call that is <code>setValue</code>, where we can print the value to check whether it is correct. Running <code>$(el).val(value);</code> in the debugger console instantaneously update the DOM element with the new text, as shown on Figure <a href="shiny-input-system.html#fig:binding-setValue">12.10</a>.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-setValue"></span>
 <img src="images/survival-kit/binding-setValue.png" alt="Set the new value." width="100%"><p class="caption">
 FIGURE 12.10: Set the new value.
 </p>
 </div>
+<p></p>
 <p>So far so good. We managed to update the text input value on the client. Yet, after clicking the button, the output value still does not change. We are going to fix this missing step in the next section.</p>
 </div>
 <div id="subscribe" class="section level4" number="12.1.2.5">
@@ -503,6 +545,7 @@ Going back to our custom text input, what event would make it change?</p>
 convention.</p>
 </div>
 <p>The <strong>callback</strong> parameter ensures that the new value is captured by Shiny. Chapter <a href="shiny-input-lifecycle.html#shiny-input-lifecycle">13</a> provides more details, but this is quite technical.</p>
+<p></p>
 <div class="sourceCode" id="cb501"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -514,21 +557,26 @@ convention.</p>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>We run the above example, open the HTML inspector, select the <code>customTextInputBinding_4.js</code> script and put a break point in the <code>getValue</code> as well as <code>subscribe</code> method. We enter a new text inside the input field, which triggers the debugger inside the <code>subscribe</code> call. Inspecting the event object, the type indicate the action, which is an input action and the target is the text input element itself, depicted on Figure <a href="shiny-input-system.html#fig:binding-subscribe-1">12.11</a>.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-subscribe-1"></span>
 <img src="images/survival-kit/binding-subscribe-1.png" alt="Subscribe method after the text input manual update." width="100%"><p class="caption">
 FIGURE 12.11: Subscribe method after the text input manual update.
 </p>
 </div>
+<p></p>
 <p>We click on next and notice that we go back in the <code>getValue</code> method to get the new value.
 You may check typing <code>$(el).val()</code> in the debugger console, like on Figure <a href="shiny-input-system.html#fig:binding-subscribe-2">12.12</a>. Clicking next again shows the updated output value.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-subscribe-2"></span>
 <img src="images/survival-kit/binding-subscribe-2.png" alt="Subscribe is followed by a new getValue." width="100%"><p class="caption">
 FIGURE 12.12: Subscribe is followed by a new getValue.
 </p>
 </div>
+<p></p>
 <p>Hooray! The output result is successfully changed when the input value is manually updated. However, it is not modified when we click on the update button. What did we miss? Looking back at the <code>receiveMessage</code> method, we changed the input value but how does Shiny knows that this step was successful? To check that no event is raised, we put a <code>console.log(event);</code> in the <code>subscribe</code> method. Any action like removing the text content or adding new text triggers event but clicking on the action button does not. Therefore, we must trigger an event and add it to the <code>subscribe</code> method. We may choose the <code>change</code> event, that triggers when an element is updated. Notice the parameter passed to callback. We discuss it in the next part!</p>
 <div class="sourceCode" id="cb502"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb502-1"><a href="shiny-input-system.html#cb502-1" aria-hidden="true" tabindex="-1"></a><span class="fu">$</span>(el)<span class="op">.</span><span class="fu">on</span>(<span class="st">'change.customTextBinding'</span><span class="op">,</span> <span class="kw">function</span>(<span class="bu">event</span>) {</span>
 <span id="cb502-2"><a href="shiny-input-system.html#cb502-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">callback</span>(<span class="kw">false</span>)<span class="op">;</span></span>
@@ -541,6 +589,7 @@ FIGURE 12.12: Subscribe is followed by a new getValue.
 <span id="cb503-5"><a href="shiny-input-system.html#cb503-5" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb503-6"><a href="shiny-input-system.html#cb503-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
 <p>Let’s try again.</p>
+<p></p>
 <div class="sourceCode" id="cb504"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -552,13 +601,16 @@ FIGURE 12.12: Subscribe is followed by a new getValue.
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>We put a new break point in the second event listener, that is the one for the change event. Clicking on the button only triggers the change event, as shown Figure <a href="shiny-input-system.html#fig:binding-subscribe-3">12.13</a>.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-subscribe-3"></span>
 <img src="images/survival-kit/binding-subscribe-3.png" alt="Add multiple event listeners inside the subscribe method." width="100%"><p class="caption">
 FIGURE 12.13: Add multiple event listeners inside the subscribe method.
 </p>
 </div>
+<p></p>
 <div class="warningblock">
 <p>… In some situations, we have to be careful with the <strong>this</strong> element. Indeed, called in an event listener, <code>this</code> refers to the element that triggered the event and not to the input binding object. For instance below is an example where we need to trigger the <code>getValue</code> method inside an event listener located in the <code>subscribe</code> method. If you call <code>this.getValue(el)</code>, you’ll get an error. The trick consists in creating a variable namely <strong>self</strong> that take <code>this</code> as value, outside the event listener. In that case <code>self</code> refers to the binding itself and it make sens to call <code>self.getValue(el)</code>:</p>
 <div class="sourceCode" id="cb505"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb505-1"><a href="shiny-input-system.html#cb505-1" aria-hidden="true" tabindex="-1"></a>subscribe<span class="op">:</span> <span class="kw">function</span>(el<span class="op">,</span> callback) {</span>
@@ -578,6 +630,7 @@ FIGURE 12.13: Add multiple event listeners inside the subscribe method.
 </h4>
 <p>It would be better to only change the input value once the keyboard is completely released for some time (and not each time a key is released). This is what we call <strong>debouncing</strong>, which allows a <strong>delay</strong> before telling Shiny to read the new value, and is achieved using the <strong>getRatePolicy</strong> method. Additionally, we must also pass <code>true</code> to the <code>callback</code> in the subscribe method, in order to apply our specific rate policy (<a href="https://davidwalsh.name/javascript-debounce-function">debounce</a>, throttle). This is useful for instance when we don’t want to flood the server with useless update requests. For example when using a slider, we only want to send the value as soon as the range stops moving and not all intermediate values. Those elements are defined <a href="https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/input_rate.js">here</a>.</p>
 <p>Run the below app and try to manually change the text input value by adding a couple of letters as fast as you can. What do you notice? We see the output value only updates when we release the keyboard.</p>
+<p></p>
 <div class="sourceCode" id="cb506"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -589,6 +642,7 @@ FIGURE 12.13: Add multiple event listeners inside the subscribe method.
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateCustomTextInputExample.html">updateCustomTextInputExample</a></span><span class="op">(</span><span class="fl">6</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>You may adjust the delay according to your needs, but we caution to not set the delay too long as this becomes problematic too (unnecessary lags).</p>
 <p>If you want to get an overview of all binding steps, you may try the following <a href="https://rinterface.com/shiny/talks/RPharma2020/?panelset1=r-code2#45">slide</a> from the 2020 R in Pharma workshop.</p>
 </div>
@@ -610,10 +664,12 @@ FIGURE 12.13: Add multiple event listeners inside the subscribe method.
 Although the Shiny <a href="https://shiny.rstudio.com/articles/building-inputs.html">documentation</a> mentions a <code>Shiny.inputBindings.setPriority</code> method to handle conflicting bindings, if you respect the above convention, this case almost never happens.</p>
 <p>As a side note, if you think that the binding name is useless, have a look at the <code>{shinytest}</code> internal structure.
 Under the hood, it has a <a href="https://github.com/rstudio/shinytest/blob/dea2ecc9f9d87f98fa109a6959b07d3e6e3ff4f3/R/shiny-mapping.R#L56">file</a> which maps all input elements:</p>
+<p></p>
 <div class="sourceCode" id="cb508"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb508-1"><a href="shiny-input-system.html#cb508-1" aria-hidden="true" tabindex="-1"></a>widget_names <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
 <span id="cb508-2"><a href="shiny-input-system.html#cb508-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"shiny.actionButtonInput"</span>  <span class="ot">=</span> <span class="st">"actionButton"</span>,</span>
 <span id="cb508-3"><a href="shiny-input-system.html#cb508-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"shiny.checkboxInput"</span>      <span class="ot">=</span> <span class="st">"checkboxInput"</span>,</span>
 <span id="cb508-4"><a href="shiny-input-system.html#cb508-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"shiny.checkboxGroupInput"</span> <span class="ot">=</span> <span class="st">"checkboxGroupInput"</span>,</span></code></pre></div>
+<p></p>
 <p>Guess what? Those names are the one given during the input binding registration!</p>
 </div>
 <div id="other-binding-methods" class="section level4" number="12.1.2.8">
@@ -627,12 +683,14 @@ Under the hood, it has a <a href="https://github.com/rstudio/shinytest/blob/dea2
 <li>
 <strong>getType</strong> required to handle custom data format. It is called after <code>getId</code>. An entire section <a href="shiny-input-system.html#custom-data-format">12.4</a> is dedicated.</li>
 </ul>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-getId"></span>
 <img src="images/survival-kit/binding-getId.png" alt="The binding getId method." width="100%"><p class="caption">
 FIGURE 12.14: The binding getId method.
 </p>
 </div>
+<p></p>
 </div>
 </div>
 <div id="edit-input-binding" class="section level3" number="12.1.3">
@@ -722,19 +780,23 @@ only increases its value by 1. How do we proceed?</p>
 <span id="cb512-23"><a href="shiny-input-system.html#cb512-23" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb512-24"><a href="shiny-input-system.html#cb512-24" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
 <p>The whole JS code is found <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b95f656bce9de7600c05b5045a4e005f70c4f83d/inst/input-system/input-bindings/editBinding.js#L1">here</a> and below is the related app. It is available as an HTML dependency with <code><a href="https://rdrr.io/pkg/OSUICode/man/editBindingDeps.html">OSUICode::editBindingDeps()</a></code>.</p>
+<p></p>
 <div class="sourceCode" id="cb513"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
 <span class="co">#  "input-system/edit-binding-client", </span>
 <span class="co">#   package = "OSUICode" </span>
 <span class="co"># ) </span></code></pre></div>
-whose output is shown Figure <a href="shiny-input-system.html#fig:edit-binding-demo">12.15</a>.
-<div class="figure">
+<p></p>
+<p>whose output is shown Figure <a href="shiny-input-system.html#fig:edit-binding-demo">12.15</a>.</p>
+<p></p>
+<div class="figure" style="text-align: center">
 <span style="display:block;" id="fig:edit-binding-demo"></span>
-<img src="images/survival-kit/edit-binding-demo.png" alt="Edit and trigger an input binding from the client." width="100%"><p class="caption">
+<img src="images/survival-kit/edit-binding-demo.png" alt="Edit and trigger an input binding from the client." width="75%"><p class="caption">
 FIGURE 12.15: Edit and trigger an input binding from the client.
 </p>
 </div>
+<p></p>
 <p>This trick has been extensively used in the <a href="https://community.rstudio.com/t/shiny-contest-submission-a-virtual-lab-for-teaching-physiology/25348">virtual physiology simulator</a> to trigger <a href="https://dgranjon.shinyapps.io/entry_level/">animations</a>.</p>
 <p>Another example of accessing a binding method from the client is found in the <a href="http://rstudio.github.io/shinydashboard/">shinydashboard</a> <a href="https://github.com/rstudio/shinydashboard/blob/dc1e15b39b7198286373643e8e4417867548c467/srcjs/sidebar.js#L29">package</a>.</p>
 </div>
@@ -752,6 +814,7 @@ FIGURE 12.15: Edit and trigger an input binding from the client.
 <span class="header-section-number">12.2.1</span> Boxes on steroids<a class="anchor" aria-label="anchor" href="#boxes-on-steroids"><i class="fas fa-link"></i></a>
 </h3>
 <p>You may know the <a href="http://rstudio.github.io/shinydashboard/">shinydashboard</a> <code>box</code> function. Boxes are containers with a title, body, footer, as well as optional elements. Those box may also be collapsed. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an <code>id</code> parameter to the box function. Below is what we had to modify compared to the <code><a href="https://rdrr.io/pkg/shinydashboard/man/box.html">shinydashboard::box()</a></code> function.</p>
+<p></p>
 <div class="sourceCode" id="cb514"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">..</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">background</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span>,
@@ -771,7 +834,9 @@ FIGURE 12.15: Edit and trigger an input binding from the client.
     <span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p><code><a href="https://rdrr.io/pkg/OSUICode/man/boxDeps.html">boxDeps()</a></code> contains the JS dependencies to handle the box behavior.</p>
+<p></p>
 <div class="sourceCode" id="cb515"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">boxDeps</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
@@ -784,7 +849,9 @@ FIGURE 12.15: Edit and trigger an input binding from the client.
     script <span class="op">=</span> <span class="st">"boxBinding.js"</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>As we may collapse and uncollapse the box, we create the <code><a href="https://rdrr.io/pkg/OSUICode/man/updateBox.html">updateBox()</a></code> function, which will toggle it. In this example, it does not send any specific message since we’ll rely on internal AdminLTE JS methods to do the work.</p>
+<p></p>
 <div class="sourceCode" id="cb516"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateBox</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
   <span class="va">id</span>, 
@@ -792,13 +859,16 @@ FIGURE 12.15: Edit and trigger an input binding from the client.
 <span class="op">)</span> <span class="op">{</span>
   <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">id</span>, message <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>If you play with this <a href="https://adminlte.io/themes/AdminLTE/index2.html">example</a> and inspect a box as shown on Figure <a href="shiny-input-system.html#fig:inspect-adminlte-box">12.16</a>, you’ll notice that when collapsed, a box gets the <code>collapsed-box</code> class, which is useful to keep in mind for the input binding design.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:inspect-adminlte-box"></span>
 <img src="images/survival-kit/inspect-adminlte-box.png" alt="Collapsed AdminLTE2 box." width="100%"><p class="caption">
 FIGURE 12.16: Collapsed AdminLTE2 box.
 </p>
 </div>
+<p></p>
 <p>This is time to design the JS dependency, that is <code>boxBinding.js</code>. Like all input bindings, it start by instantiating a new object with <code>Shiny.InputBinding()</code>. At the end of the code, we register the binding so that Shiny knows it exists.</p>
 <div class="sourceCode" id="cb517"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb517-1"><a href="shiny-input-system.html#cb517-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> boxBinding <span class="op">=</span> <span class="kw">new</span> Shiny<span class="op">.</span><span class="fu">InputBinding</span>()<span class="op">;</span></span>
 <span id="cb517-2"><a href="shiny-input-system.html#cb517-2" aria-hidden="true" tabindex="-1"></a>$<span class="op">.</span><span class="fu">extend</span>(boxBinding<span class="op">,</span> {</span>
@@ -872,18 +942,22 @@ FIGURE 12.16: Collapsed AdminLTE2 box.
 <span id="cb523-5"><a href="shiny-input-system.html#cb523-5" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
 <p>We don’t need an extra listener for the <code><a href="https://rdrr.io/pkg/OSUICode/man/updateBox.html">updateBox()</a></code> function since it also triggers a click on the collapse button, thereby forwarding to the corresponding listener. The whole code may be found <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b95f656bce9de7600c05b5045a4e005f70c4f83d/inst/input-system/input-bindings/boxBinding.js#L1">here</a>.</p>
 <p>Let’s try our new toy in a simple app. The output is depicted on Figure <a href="shiny-input-system.html#fig:toggle-shinydashboard-box">12.17</a>.</p>
-<div class="figure">
+<p></p>
+<div class="figure" style="text-align: center">
 <span style="display:block;" id="fig:toggle-shinydashboard-box"></span>
-<img src="images/survival-kit/toggle-shinydashboard-box.png" alt="{shinydashboard} box with custom input binding listening to the box collapse state." width="100%"><p class="caption">
+<img src="images/survival-kit/toggle-shinydashboard-box.png" alt="{shinydashboard} box with custom input binding listening to the box collapse state." width="50%"><p class="caption">
 FIGURE 12.17: {shinydashboard} box with custom input binding listening to the box collapse state.
 </p>
 </div>
+<p></p>
+<p></p>
 <div class="sourceCode" id="cb524"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
 <span class="co">#  "input-system/boxes-on-steroids", </span>
 <span class="co">#   package = "OSUICode" </span>
 <span class="co"># ) </span></code></pre></div>
+<p></p>
 <p>The <a href="https://rinterface.github.io/bs4Dash/index.html">bs4Dash</a> box function follows the same principle, with extra features showed <a href="https://github.com/RinteRface/bs4Dash/blob/6fb8f8175e3672bbb65236d76285c6310197f10c/srcjs/bs4Dash-2.0.0/cards.js#L2">here</a>. We leave the reader to explore the code as an exercise.</p>
 </div>
 <div id="boxes-on-steroids-more" class="section level3" number="12.2.2">
@@ -891,6 +965,7 @@ FIGURE 12.17: {shinydashboard} box with custom input binding listening to the bo
 <span class="header-section-number">12.2.2</span> Further optimize boxes<a class="anchor" aria-label="anchor" href="#boxes-on-steroids-more"><i class="fas fa-link"></i></a>
 </h3>
 <p>We may imagine leveraging the input binding system to update any box property and get rid of the classic <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code> approach. Indeed, until now, there would be only one way to update a box from the server. In the below code, we intentionally added a dummy task causing a five seconds delay in the card rendering. You’ll notice that nothing happens for some time, which is weird for the end user and might let it think about a possible app crash (Figure <a href="shiny-input-system.html#fig:update-shinydashboard-box">12.18</a>, left side).</p>
+<p></p>
 <div class="sourceCode" id="cb525"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -938,17 +1013,21 @@ FIGURE 12.17: {shinydashboard} box with custom input binding listening to the bo
 <span class="op">}</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p></p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:update-shinydashboard-box"></span>
 <img src="images/survival-kit/update-shinydashboard-box-1.png" alt="Left: what the user sees when app starts. Right: what the users sees after five seconds." width="50%"><img src="images/survival-kit/update-shinydashboard-box-2.png" alt="Left: what the user sees when app starts. Right: what the users sees after five seconds." width="50%"><p class="caption">
 FIGURE 12.18: Left: what the user sees when app starts. Right: what the users sees after five seconds.
 </p>
 </div>
+<p></p>
 <p>The whole piece of UI is re-rendered each time, while only the box class should be modified. As shown above, this does have substantial impact for a very complex app festooned with inputs/outputs, thereby altering the overall user experience.</p>
 <p>Let’s provide some optimization and get rid of the <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code>.
 Figure <a href="shiny-input-system.html#fig:box-on-steroids-summary">12.19</a> summarizes the main idea and you may use it as a mind map to follow the remaining of this section.
 We proceed in two steps. The first part consists in customizing the previously designed <code><a href="https://rdrr.io/pkg/OSUICode/man/box.html">box()</a></code> function from <a href="shiny-input-system.html#boxes-on-steroids">12.2.1</a> to gather as many parameters as possible in a list of options. For instance, we choose to extract <code>width</code> and <code>title</code>.</p>
 <p><code>width</code> is expected to be numeric, while <code>title</code> might be any HTML tag, a list of HTML tags, justifying the use of slightly more sophisticated code (we can’t use <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> on a shiny tag … not yet). So that we don’t shoot ourselves in the foot, we create a specific object for the processed <code>title</code>, that is <code>processed_title</code>. Indeed, a common mistake would be to re-inject the processed title later in the HTML box tag, which would cause an error. It’s purpose is solely to be part of the configuration script required by JS.</p>
+<p></p>
 <div class="sourceCode" id="cb526"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">background</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span>,
@@ -975,7 +1054,9 @@ We proceed in two steps. The first part consists in customizing the previously d
   
   <span class="co"># ....; Extra code removed</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>This properties list has to be treated on the JS side, the reason why we remove <code>NULL</code> elements with <code><a href="https://rdrr.io/pkg/OSUICode/man/dropNulls.html">dropNulls()</a></code>, since we don’t want to send empty arrays. We choose the following approach, where we convert our properties to a JSON with <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> and embed them in a script tag. Note the <code>data-for</code> attribute pointing to the unique <code>id</code> parameter. This will guarantee the uniqueness of our configuration script.</p>
+<p></p>
 <div class="sourceCode" id="cb527"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">background</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span>,
@@ -994,7 +1075,9 @@ We proceed in two steps. The first part consists in customizing the previously d
   <span class="op">)</span>
   
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>To create the box HTML tag, we leverage the <code><a href="https://rdrr.io/pkg/OSUICode/man/box.html">box()</a></code> function. The next step is to add it the configuration tag, which is achieved with the new <a href="https://github.com/rstudio/htmltools">htmltools</a> <code><a href="https://rdrr.io/pkg/htmltools/man/tagQuery.html">tagQuery()</a></code> API, extensively studied in <a href="htmltools-overview.html#htmltools-modern">2.6</a>. We finally attach the not yet designed JS dependencies with <code><a href="https://rdrr.io/pkg/htmltools/man/tagList.html">tagList()</a></code>.</p>
+<p></p>
 <div class="sourceCode" id="cb528"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">title</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">footer</span> <span class="op">=</span> <span class="cn">NULL</span>,
                  <span class="va">background</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">width</span> <span class="op">=</span> <span class="fl">6</span>, <span class="va">height</span> <span class="op">=</span> <span class="cn">NULL</span>,
@@ -1014,7 +1097,9 @@ We proceed in two steps. The first part consists in customizing the previously d
 
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/tagList.html">tagList</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/box2Deps.html">box2Deps</a></span><span class="op">(</span><span class="op">)</span>, <span class="va">boxTag</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>Like in <a href="shiny-input-system.html#boxes-on-steroids">12.2.1</a>, we define the new dependencies, namely <code><a href="https://rdrr.io/pkg/OSUICode/man/box2Deps.html">box2Deps()</a></code>, referencing the <code>boxBindingEnhance.js</code> script, which we are going to design in few minutes.</p>
+<p></p>
 <div class="sourceCode" id="cb529"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">box2Deps</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/htmltools/man/htmlDependency.html">htmlDependency</a></span><span class="op">(</span>
@@ -1027,8 +1112,10 @@ We proceed in two steps. The first part consists in customizing the previously d
     script <span class="op">=</span> <span class="st">"boxBindingEnhanced.js"</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>Then, we have to modify the <code><a href="https://rdrr.io/pkg/OSUICode/man/updateBox.html">updateBox()</a></code> function such that it handles both toggle and update possibilities. <code>options</code> contains all changeable properties like <code>title</code> and <code>width</code>.
 We don’t describe the toggle case since it is quite similar to the previous implementations. When the action is <code>update</code>, we enter the <code>if</code> statement and options must be processed. If the option element is a shiny tag or a list of shiny tags (<code><a href="https://rdrr.io/pkg/htmltools/man/tagList.html">tagList()</a></code>), we convert it to character with <code><a href="https://rdrr.io/r/base/character.html">as.character()</a></code>. The returned message is a vector containing the action as well as the option list:</p>
+<p></p>
 <div class="sourceCode" id="cb530"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">updateBox2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span>
   <span class="va">id</span>, 
@@ -1058,6 +1145,7 @@ We don’t describe the toggle case since it is quite similar to the previous im
     <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">id</span>, message <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/match.arg.html">match.arg</a></span><span class="op">(</span><span class="va">action</span><span class="op">)</span><span class="op">)</span>
   <span class="op">}</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>Let’s define the new JS binding required by <code><a href="https://rdrr.io/pkg/OSUICode/man/box2Deps.html">box2Deps()</a></code>. We start from the previously defined binding in <code>boxBindings.js</code> and modify the <code>setValue</code> method to import our newly defined properties. The <code>boxTag</code> has two children, the box and the configuration script. <code>$(el)</code> refers to the box, therefore we have to look one level up to be able to use the <code>find</code> method (find always goes deeper in the DOM), namely <code>$(el).parent()</code>. From there, we only have to target the script tag <code>$(el).parent().find("script[data-for='" + el.id + "']")</code>. In practice, you may reuse this piece of code in multiple places, for instance in the <code>getValue</code> method. To avoid duplication, we create an internal function, <code>_getConfig</code>. Note the <code>_</code> prefix, which makes the difference between the default input binding methods (available for all bindings) and the user defined methods, local to a specific binding. This function just returns the config script:</p>
 <div class="sourceCode" id="cb531"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb531-1"><a href="shiny-input-system.html#cb531-1" aria-hidden="true" tabindex="-1"></a>_getConfigScript<span class="op">:</span> <span class="kw">function</span>(el) {</span>
 <span id="cb531-2"><a href="shiny-input-system.html#cb531-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span>(</span>
@@ -1118,13 +1206,16 @@ We don’t describe the toggle case since it is quite similar to the previous im
 <span id="cb536-9"><a href="shiny-input-system.html#cb536-9" aria-hidden="true" tabindex="-1"></a>    <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(config) <span class="op">+</span> </span>
 <span id="cb536-10"><a href="shiny-input-system.html#cb536-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">'&lt;/script&gt;'</span></span>
 <span id="cb536-11"><a href="shiny-input-system.html#cb536-11" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span></code></pre></div>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:box-on-steroids-summary"></span>
 <img src="images/survival-kit/box-on-steroids.png" alt="Box config tag concept and application." width="100%"><p class="caption">
 FIGURE 12.19: Box config tag concept and application.
 </p>
 </div>
+<p></p>
 <p>The whole JS code may be found <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b95f656bce9de7600c05b5045a4e005f70c4f83d/inst/input-system/input-bindings/boxBindingEnhanced.js#L1">here</a>. Below is the reworked version of the previously updated box without <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html">renderUI()</a></code>. When app starts, the box is displayed as shown on Figure <a href="shiny-input-system.html#fig:update-shinydashboard-box-optimized">12.20</a>, which is better for the end user experience.</p>
+<p></p>
 <div class="sourceCode" id="cb537"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -1181,12 +1272,15 @@ FIGURE 12.19: Box config tag concept and application.
 <span class="op">}</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p></p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:update-shinydashboard-box-optimized"></span>
 <img src="images/survival-kit/update-shinydashboard-box-optimized-1.png" alt="Left: what the user sees when app starts. Right: what the users sees after five seconds." width="50%"><img src="images/survival-kit/update-shinydashboard-box-optimized-2.png" alt="Left: what the user sees when app starts. Right: what the users sees after five seconds." width="50%"><p class="caption">
 FIGURE 12.20: Left: what the user sees when app starts. Right: what the users sees after five seconds.
 </p>
 </div>
+<p></p>
 </div>
 <div id="exercise-1" class="section level3" number="12.2.3">
 <h3>
@@ -1213,6 +1307,7 @@ both titles are the same).</li>
 <ol start="3" style="list-style-type: decimal">
 <li>On the R side, the new title will be provided as below:</li>
 </ol>
+<p></p>
 <div class="sourceCode" id="cb540"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/updateBox2.html">updateBox2</a></span><span class="op">(</span>
   <span class="st">"mybox"</span>,
@@ -1224,6 +1319,7 @@ both titles are the same).</li>
     <span class="op">)</span>
   <span class="op">)</span>
 <span class="op">)</span></code></pre></div>
+<p></p>
 <p>However, a valid AdminLTE box title has the following HTML structure:</p>
 <div class="sourceCode" id="cb541"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb541-1"><a href="shiny-input-system.html#cb541-1" aria-hidden="true" tabindex="-1"></a><span class="kw">&lt;h3</span> <span class="er">class</span><span class="ot">=</span><span class="st">"box-title"</span><span class="kw">&gt;</span></span>
 <span id="cb541-2"><a href="shiny-input-system.html#cb541-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">&lt;!-- TITLE CONTENT --&gt;</span></span>
@@ -1300,6 +1396,7 @@ Briefly, this function avoids the creation an input binding and is faster to cod
 <span id="cb547-6"><a href="shiny-input-system.html#cb547-6" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
 <p>This allows to conditionally display elements and deeply customize the interface.
 In the following example, the card will show a different title if the user is browsing with MacOS.</p>
+<p></p>
 <div class="sourceCode" id="cb548"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -1349,6 +1446,7 @@ In the following example, the card will show a different title if the user is br
 <span class="op">}</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>This is what we leverage in the <a href="https://rinterface.github.io/shinyMobile/articles/shinyMobile_tools.html">shinyMobile</a> package to store the current device information in a shiny input. Briefly, Framework7 (on top of which is built shinyMobile) has a method <code>Framework7.device</code>, which gives many <a href="https://framework7.io/docs/device.html">details</a> related to the user device.</p>
 </div>
 </div>
@@ -1369,6 +1467,7 @@ We introduce <strong>input handlers</strong>, a tool to fine tune the deserializ
 <li>a <strong>function</strong> to transform data, having data as main parameter.</li>
 </ul>
 <p>Below we directly include JS code in the shiny app snippet, which is not best practice but convenient for the demonstration. Only the second input will give the correct result thanks to the defined handler:</p>
+<p></p>
 <div class="sourceCode" id="cb549"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -1421,6 +1520,7 @@ We introduce <strong>input handlers</strong>, a tool to fine tune the deserializ
 <span class="op">}</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></code></pre></div>
+<p></p>
 </div>
 <div id="the-clean-way-leverage-gettype" class="section level3" number="12.4.2">
 <h3>
@@ -1428,13 +1528,16 @@ We introduce <strong>input handlers</strong>, a tool to fine tune the deserializ
 </h3>
 <p>The cleanest way is to leverage the <strong>getType</strong> method from the <code>InputBinding</code> class.
 Let’s refine our text input so that it handles dates. On the R side, in the <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInput.html">customTextInput()</a></code> function, we check the current value’s type:</p>
+<p></p>
 <div class="sourceCode" id="cb550"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">type</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">value</span>, <span class="st">"Date"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="st">"date"</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
   <span class="cn">NULL</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>We add a custom data attribute to the input tag, which won’t be displayed if the value is not a date:</p>
+<p></p>
 <div class="sourceCode" id="cb551"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">tags</span><span class="op">$</span><span class="fu">input</span><span class="op">(</span>
   id <span class="op">=</span> <span class="va">inputId</span>,
@@ -1444,7 +1547,9 @@ Let’s refine our text input so that it handles dates. On the R side, in the <c
   placeholder <span class="op">=</span> <span class="va">placeholder</span>,
   `data-data-type` <span class="op">=</span> <span class="va">type</span>
 <span class="op">)</span></code></pre></div>
+<p></p>
 <p>We then define our custom handler. This code is run when the package is loaded and usually located in a <code>zzz.R</code> script:</p>
+<p></p>
 <div class="sourceCode" id="cb552"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">.onLoad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">registerInputHandler</a></span><span class="op">(</span>
@@ -1462,6 +1567,7 @@ Let’s refine our text input so that it handles dates. On the R side, in the <c
       <span class="op">}</span>
   <span class="op">}</span>, force <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <div class="noteblock">
 <p><a href="https://shiny.rstudio.com/">shiny</a> already handles dates and we could use the built-in input handler.
 The current handler was only designed to explain the underlying processes.</p>
@@ -1473,6 +1579,7 @@ The current handler was only designed to explain the underlying processes.</p>
 <span id="cb553-4"><a href="shiny-input-system.html#cb553-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span> <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span></span>
 <span id="cb553-5"><a href="shiny-input-system.html#cb553-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
 <p>To use the shiny built-in handler we could return <code>"shiny.date"</code> instead. We then run:</p>
+<p></p>
 <div class="sourceCode" id="cb554"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -1484,14 +1591,18 @@ The current handler was only designed to explain the underlying processes.</p>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputHandlerExample.html">customTextInputHandlerExample</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>which sets the value as text by default. After opening the HTML inspector and setting a break point in the <code>getType</code> method (Figure <a href="shiny-input-system.html#fig:binding-getType-1">12.21</a>), we check that the data type is not defined. Therefore the input handler will not apply.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-getType-1"></span>
 <img src="images/survival-kit/binding-getType-1.png" alt="Example where getType does not call the input handler." width="100%"><p class="caption">
 FIGURE 12.21: Example where getType does not call the input handler.
 </p>
 </div>
+<p></p>
 <p>For the second example, we give a date value to the function:</p>
+<p></p>
 <div class="sourceCode" id="cb555"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -1503,28 +1614,36 @@ FIGURE 12.21: Example where getType does not call the input handler.
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputHandlerExample.html">customTextInputHandlerExample</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>As illustrated Figure <a href="shiny-input-system.html#fig:binding-getType-2">12.22</a>, the date is properly processed. Moreover, if you type any other valid date in the text field like <code>2020-11-12</code>, it will be recognized as a date, while entering a text will return a character element. This is a way to obtain a slightly more clever text input widget.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-getType-2"></span>
 <img src="images/survival-kit/binding-getType-2.png" alt="Passing a date to a text input correctly processes it." width="100%"><p class="caption">
 FIGURE 12.22: Passing a date to a text input correctly processes it.
 </p>
 </div>
+<p></p>
 <p>Importantly, since the <code>data-type</code> is set at app startup by checking the class of the value, it will never change later. For instance, if you start the app with the text input value to be a simple text, setting it to a date through the app does not convert it into a date since <code>$(el).data("data-type")</code> always return <code>undefined</code>! Therefore, if you want to be able to use both text and dates, be sure to wisely set the initial value.</p>
 <p>To finish, we could seamlessly make our text input even more clever, by handling numbers. Even though shiny has a <code>shiny.number</code> input <a href="https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/R/server-input-handlers.R#L144">handler</a>, it simply makes sure that whenever the input is missing a value, NA is returned instead of ““.
 (Figure <a href="shiny-input-system.html#fig:shiny-getType-number">12.23</a>).</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:shiny-getType-number"></span>
 <img src="images/survival-kit/shiny-getType-number.png" alt='shiny.number input handler ensures that an empty numericInput returns NA instead of "".' width="100%"><p class="caption">
 FIGURE 12.23: shiny.number input handler ensures that an empty numericInput returns NA instead of ““.
 </p>
 </div>
+<p></p>
 <p>What we want is an handler that recognizes the string <code>"1"</code> and convert it to a number. In R, converting a string to a number gives <code>NA</code>:</p>
+<p></p>
 <div class="sourceCode" id="cb556"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="st">"test"</span><span class="op">)</span></code></pre></div>
 <pre><code>#&gt; Warning: NAs introduced by coercion</code></pre>
 <pre><code>#&gt; [1] NA</code></pre>
+<p></p>
 <p>Therefore, if we obtain <code>NA</code>, we return original data so that the input gives the correct type. In the <code>zzz.R</code> script, right after our previous handler, we can write:</p>
+<p></p>
 <div class="sourceCode" id="cb559"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/registerInputHandler.html">registerInputHandler</a></span><span class="op">(</span>
   <span class="st">"OSUICode.textNumber"</span>, <span class="kw">function</span><span class="op">(</span><span class="va">data</span>, <span class="va">...</span><span class="op">)</span> <span class="op">{</span>
@@ -1539,6 +1658,7 @@ FIGURE 12.23: shiny.number input handler ensures that an empty numericInput retu
       <span class="op">}</span>
     <span class="op">}</span>
   <span class="op">}</span>, force <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>We also update the JavaScript <code>getType</code> method as follows:</p>
 <div class="sourceCode" id="cb560"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb560-1"><a href="shiny-input-system.html#cb560-1" aria-hidden="true" tabindex="-1"></a>getType<span class="op">:</span> <span class="kw">function</span> <span class="fu">getType</span>(el) {</span>
 <span id="cb560-2"><a href="shiny-input-system.html#cb560-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> dataType <span class="op">=</span> <span class="fu">$</span>(el)<span class="op">.</span><span class="fu">data</span>(<span class="st">"data-type"</span>)<span class="op">;</span></span>
@@ -1547,6 +1667,7 @@ FIGURE 12.23: shiny.number input handler ensures that an empty numericInput retu
 <span id="cb560-5"><a href="shiny-input-system.html#cb560-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span> <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span></span>
 <span id="cb560-6"><a href="shiny-input-system.html#cb560-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
 <p>On the R side, don’t forget to add an extra <code>else if</code> statement to the <code><a href="https://rdrr.io/pkg/OSUICode/man/customTextInput.html">customTextInput()</a></code> <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/1b626e97738fd627097b57e21359b603e03d33eb/R/inputs.R#L35">function</a>:</p>
+<p></p>
 <div class="sourceCode" id="cb561"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">type</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html">inherits</a></span><span class="op">(</span><span class="va">value</span>, <span class="st">"Date"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="st">"date"</span>
@@ -1555,7 +1676,9 @@ FIGURE 12.23: shiny.number input handler ensures that an empty numericInput retu
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
   <span class="cn">NULL</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>If we run:</p>
+<p></p>
 <div class="sourceCode" id="cb562"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
 <span class="co"># OSUICode::run_example( </span>
@@ -1567,13 +1690,16 @@ FIGURE 12.23: shiny.number input handler ensures that an empty numericInput retu
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/customTextInputHandlerExample.html">customTextInputHandlerExample</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">1</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>we obtain the desired behavior shown Figure <a href="shiny-input-system.html#fig:binding-getType-3">12.24</a>.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:binding-getType-3"></span>
 <img src="images/survival-kit/binding-getType-3.png" alt="Passing a number to a text input correctly processes it." width="100%"><p class="caption">
 FIGURE 12.24: Passing a number to a text input correctly processes it.
 </p>
 </div>
+<p></p>
 
 </div>
 </div>
@@ -1629,7 +1755,7 @@ FIGURE 12.24: Passing a number to a text input correctly processes it.
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-10-28.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-11-11.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">

@@ -101,12 +101,14 @@ driving the R/JavaScript <strong>communication</strong>, which is quite frankly 
 <span class="header-section-number">11.1</span> Introductory example<a class="anchor" aria-label="anchor" href="#introductory-example"><i class="fas fa-link"></i></a>
 </h2>
 <p>The Shiny app shown in Figure <a href="shiny-intro.html#fig:websocket-intro">11.1</a> consists in an <code><a href="https://rdrr.io/pkg/shiny/man/actionButton.html">actionButton()</a></code> and a <code><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html">sliderInput()</a></code>. Clicking on the action button triggers an <code><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html">observeEvent()</a></code>, which subsequently fires <code>updateSlideInput()</code>. Under the hood, clicking on the action button sends a message from the client (JS) to the server (R). This message is processed and the corresponding input value is updated on the server R, thereby invalidating any observer, reactive element. <code>updateSlideInput()</code> sends a message back to the client containing the id of the input to update. This message is received and processed by JS, thereby updating the corresponding input element on the client. You may imagine that when the slider is updated, it also sends a message back to the server, triggering a <strong>cascade</strong> of reactions.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:websocket-intro"></span>
 <img src="images/survival-kit/websocket-intro.png" alt="Websocket allows communication between server and client." width="100%"><p class="caption">
 FIGURE 11.1: Websocket allows communication between server and client.
 </p>
 </div>
+<p></p>
 <p>Reading this will probably raise a burning question: how two different languages like R and JS can communicate?</p>
 <p>Let’s meet below to understand what are the mechanisms involved.</p>
 </div>
@@ -115,6 +117,7 @@ FIGURE 11.1: Websocket allows communication between server and client.
 <span class="header-section-number">11.2</span> JSON: exhange data<a class="anchor" aria-label="anchor" href="#json-exhange-data"><i class="fas fa-link"></i></a>
 </h2>
 <p>Since R and JS are very different languages, we can’t just send R code to JS and conversely. We must find a <strong>common language</strong> to exchange data. Guess what? We’ll be using JSON. <strong>JSON</strong> stands for JavaScript Object Notation. JSON has the great advantage that it is suitable for many languages, particularly R. It has the same structure as a JS object but can be serialized as a character string, for instance:</p>
+<p></p>
 <div class="sourceCode" id="cb444"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_json</span> <span class="op">&lt;-</span> <span class="st">'
 {
@@ -130,6 +133,7 @@ FIGURE 11.1: Websocket allows communication between server and client.
   ]
 }
 '</span></code></pre></div>
+<p></p>
 <p>In the next section we’ll see how we may interact with JSON.</p>
 <div id="process-json-from-r" class="section level3" number="11.2.1">
 <h3>
@@ -145,6 +149,7 @@ for instance JS.</li>
 </ul>
 <p>The most commonly utilized R package is <a href="https://arxiv.org/abs/1403.2805">jsonlite</a> <span class="citation">(<a href="references.html#ref-R-jsonlite" role="doc-biblioref">Ooms 2020</a>)</span> which allows to read JSON with <code>fronJSON</code> and export to JSON with
 <code>toJSON</code>. Let’s try to read the above defined JSON:</p>
+<p></p>
 <div class="sourceCode" id="cb445"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://arxiv.org/abs/1403.2805">jsonlite</a></span><span class="op">)</span>
 <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON</a></span><span class="op">(</span><span class="va">my_json</span><span class="op">)</span>
@@ -157,8 +162,10 @@ for instance JS.</li>
 #&gt;   ..$ name: chr "Euclide"
 #&gt;   ..$ type: chr "cat"
 #&gt;   ..$ age : int 7</code></pre>
+<p></p>
 <p>By default, this gives us a list. Interestingly, the nested array is converted into a dataframe. If you don’t like
 this behavior, you may pass the <code>simplifyVector = FALSE</code> options, giving nested lists:</p>
+<p></p>
 <div class="sourceCode" id="cb447"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON</a></span><span class="op">(</span><span class="va">my_json</span>, simplifyVector <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
 <pre><code>#&gt; $name
@@ -180,7 +187,9 @@ this behavior, you may pass the <code>simplifyVector = FALSE</code> options, giv
 #&gt; 
 #&gt; $animals[[1]]$age
 #&gt; [1] 7</code></pre>
+<p></p>
 <p>Inversely, assume we have a R <code><a href="https://rdrr.io/r/base/list.html">list()</a></code> that we want to transmit to JS. We apply <code>toJSON</code>:</p>
+<p></p>
 <div class="sourceCode" id="cb449"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
   name <span class="op">=</span> <span class="st">"David"</span>,
@@ -197,9 +206,11 @@ this behavior, you may pass the <code>simplifyVector = FALSE</code> options, giv
 #&gt;   "color": "purple",
 #&gt;   "planet": "Mars"
 #&gt; }</code></pre>
+<p></p>
 <p>Note the <code>auto_unbox</code> (unbox atomic vectors of length 1) and <code>pretty</code> (adds indentation) options that allow for a better rendering. There are many more available options and we invite the reader to refer to the <a href="https://arxiv.org/abs/1403.2805">jsonlite</a>
 documentation.</p>
 <p>Most of the time, you will pass more complex data structures like nested lists. For instance imagine you have to send a user profile information containing its unique id, name and organization, the latter being a nested list with fields like id, name, site, …:</p>
+<p></p>
 <div class="sourceCode" id="cb453"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
   id <span class="op">=</span> <span class="st">"01522"</span>,
@@ -221,6 +232,7 @@ documentation.</p>
 #&gt;     "site": "Switzerland"
 #&gt;   }
 #&gt; }</code></pre>
+<p></p>
 </div>
 <div id="process-json-from-js" class="section level3" number="11.2.2">
 <h3>
@@ -245,6 +257,7 @@ explain how this communication is made possible. This involves web elements call
 <span class="header-section-number">11.3</span> What is a websocket?<a class="anchor" aria-label="anchor" href="#what-is-a-websocket"><i class="fas fa-link"></i></a>
 </h2>
 <p>Before going further let’s define what is a <strong>websocket</strong>. It is an advanced technology allowing <strong>bidirectional communication</strong> between a (or multiple) client(s) and a server. For instance, a <a href="https://dev.to/spukas/learn-websockets-by-building-simple-chat-app-dee">chat</a> system may be built on top of a websocket.<a class="footnote-ref" tabindex="0" data-toggle="popover" data-content='&lt;p&gt;By default, each time a client connects to the server, a new connection is opened, thereby preventing this client from capturing others connections messages, also called single cast. For a chat, we use a &lt;a href="https://medium.com/the-quarter-espresso/multicast-websocket-nodejs-ff1f400ba2f7"&gt;multi cast&lt;/a&gt; strategy, that is forwarding one client’s message to (all) other connected clients. &lt;code&gt;{httpuv}&lt;/code&gt; does not provide such a feature since this would not make sense and would be harmful in the context of shiny!&lt;/p&gt;'><sup>3</sup></a> The server is generally created using Node.js libraries like <a href="https://github.com/websockets/ws">ws</a> and the client with JavaScript. In the R Shiny context, the server part is created from <a href="https://github.com/rstudio/httpuv">httpuv</a> <span class="citation">(<a href="references.html#ref-R-httpuv" role="doc-biblioref">Cheng and Chang 2021</a>)</span> and the client either with <code>{websocket}</code> <span class="citation">(<a href="references.html#ref-R-websocket" role="doc-biblioref">Chang et al. 2020</a>)</span> (see below) or directly from JavaScript, as described later:</p>
+<p></p>
 <div class="sourceCode" id="cb457"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/httpuv">httpuv</a></span><span class="op">)</span>
 <span class="co"># set the server</span>
@@ -264,6 +277,7 @@ explain how this communication is made possible. This involves web elements call
     <span class="op">}</span>
   <span class="op">)</span>
 <span class="op">)</span></code></pre></div>
+<p></p>
 <p>On the server side, <code><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer()</a></code> also handles websockets. To proceed, the app list must contain an extra element, that is the <code>onWSOpen</code> function, defining all actions to perform after the connection is established. Those actions are listed in the <a href="https://github.com/rstudio/httpuv">httpuv</a> <code>WebSocket</code> R6 class:</p>
 <ul>
 <li>
@@ -274,6 +288,7 @@ explain how this communication is made possible. This involves web elements call
 <strong>send</strong> sends a message from the server (to the client).</li>
 </ul>
 <p>On the client, we may use the <code>{websocket}</code> <code>WebSocket</code> class provided by the <a href="https://github.com/rstudio/websocket">websocket</a> package:</p>
+<p></p>
 <div class="sourceCode" id="cb458"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">websocket</span><span class="op">)</span>
 <span class="co"># set the client</span>
@@ -287,6 +302,7 @@ explain how this communication is made possible. This involves web elements call
 
 <span class="co"># Close client</span>
 <span class="va">ws</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>We briefly describe the above code:</p>
 <ul>
 <li>We create a new client socket instance, which triggers the server <code>onWSOpen</code> function, displaying the welcome message.</li>
@@ -295,14 +311,17 @@ explain how this communication is made possible. This involves web elements call
 Figure <a href="shiny-intro.html#fig:websocket-basics">11.2</a> shows the main mechanisms.</li>
 <li>The client connection is closed, which also closes the server connection.</li>
 </ul>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:websocket-basics"></span>
 <img src="images/survival-kit/websocket-basics.png" alt="Typical websocket flow between client and server." width="100%"><p class="caption">
 FIGURE 11.2: Typical websocket flow between client and server.
 </p>
 </div>
+<p></p>
 <p>Interestingly, multiple clients can connect to the same server.
 You may give it a try with the <code>{OSUICode}</code> side package:</p>
+<p></p>
 <div class="sourceCode" id="cb459"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">OSUICode</span><span class="op">)</span>
 <span class="va">server</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/OSUICode/man/websocket.html">websocket_server</a></span><span class="op">(</span><span class="op">)</span>
@@ -315,6 +334,7 @@ You may give it a try with the <code>{OSUICode}</code> side package:</p>
 <span class="va">client_2</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html">Sys.sleep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>
 <span class="va">server</span><span class="op">$</span><span class="kw">stop</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>whose output is shown below.</p>
 <pre><code>Server connection opened.
 Server connection opened.
@@ -329,12 +349,14 @@ Server connection closed.</code></pre>
 <p>Under the hood, whenever a client initiates a websocket connection, it actually sends an HTTP request to the server.
 This is called the <strong>handshake</strong>, utilizing the <strong>CONNECT</strong> HTTP method to establish a bridge between the HTTP server and
 the websocket server. If the server accepts, the returned HTTP code is 101, meaning that we switch protocole from HTTP to WS or WSS, as depicted by Figure <a href="shiny-intro.html#fig:http-upgrade-to-ws">11.3</a>.</p>
-<div class="figure">
+<p></p>
+<div class="figure" style="text-align: center">
 <span style="display:block;" id="fig:http-upgrade-to-ws"></span>
-<img src="images/survival-kit/http-upgrade-to-ws.png" alt="HTTP upgrade to WS in a shiny app example." width="100%"><p class="caption">
+<img src="images/survival-kit/http-upgrade-to-ws.png" alt="HTTP upgrade to WS in a shiny app example." width="75%"><p class="caption">
 FIGURE 11.3: HTTP upgrade to WS in a shiny app example.
 </p>
 </div>
+<p></p>
 <div id="from-R-to-JS" class="section level3" number="11.3.1">
 <h3>
 <span class="header-section-number">11.3.1</span> Example<a class="anchor" aria-label="anchor" href="#from-R-to-JS"><i class="fas fa-link"></i></a>
@@ -371,12 +393,15 @@ the slider value and update the gauge value.</li>
 <span class="header-section-number">11.3.1.1.1</span> Handle the websocket server<a class="anchor" aria-label="anchor" href="#handle-the-websocket-server"><i class="fas fa-link"></i></a>
 </h5>
 <p>The most important elements is the app that consists in a server websocket (R) and an HTTP response (HTML, JS). The websocket call back may be defined as follows. We first raise a message upon client connection:</p>
+<p></p>
 <div class="sourceCode" id="cb461"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ws_handler</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">ws</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># The ws object is a WebSocket object</span>
   <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"New connection opened.\n"</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>The critical part is the <code>onMessage</code> call back which has to process the client message.</p>
+<p></p>
 <div class="sourceCode" id="cb462"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb462-1"><a href="shiny-intro.html#cb462-1" aria-hidden="true" tabindex="-1"></a>ws_handler <span class="ot">&lt;-</span> <span class="cf">function</span>(ws) {</span>
 <span id="cb462-2"><a href="shiny-intro.html#cb462-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The ws object is a WebSocket object</span></span>
 <span id="cb462-3"><a href="shiny-intro.html#cb462-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"New connection opened.</span><span class="sc">\n</span><span class="st">"</span>)</span>
@@ -385,7 +410,9 @@ the slider value and update the gauge value.</li>
 <span id="cb462-6"><a href="shiny-intro.html#cb462-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># server logic</span></span>
 <span id="cb462-7"><a href="shiny-intro.html#cb462-7" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb462-8"><a href="shiny-intro.html#cb462-8" aria-hidden="true" tabindex="-1"></a><span class="er">}</span></span></code></pre></div>
+<p></p>
 <p>As we’ll send a JSON (from the client), we leverage <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON()</a></code> to properly treat the message. It is printed for debugging purposes and the value is injected inside a <code><a href="https://rdrr.io/r/graphics/hist.html">hist(rnorm())</a></code> function. Copy the below code inside the <code>ws$onMessage</code> handler.</p>
+<p></p>
 <div class="sourceCode" id="cb463"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># capture client message</span>
 <span class="va">input_message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON</a></span><span class="op">(</span><span class="va">message</span><span class="op">)</span>
@@ -396,7 +423,9 @@ the slider value and update the gauge value.</li>
 
 <span class="co"># create plot</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="va">input_message</span><span class="op">$</span><span class="va">value</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>Still within <code>ws$onMessage</code>, we send a message to JS in order to update the gauge value. See it like an <code>updateSlider()</code> function for instance. We utilize <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON()</a></code> to send a random value to JS as well as a polite message:</p>
+<p></p>
 <div class="sourceCode" id="cb464"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Send random value to JS</span>
 <span class="va">output_message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">toJSON</a></span><span class="op">(</span>
@@ -411,11 +440,14 @@ the slider value and update the gauge value.</li>
 
 <span class="co"># debug</span>
 <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="va">output_message</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>We finally add the <code>onClose</code> callback to handle client disconnection:</p>
+<p></p>
 <div class="sourceCode" id="cb465"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ws</span><span class="op">$</span><span class="fu">onClose</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="st">"Server connection closed.\n"</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>The whole code may be found <a href="https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/b95f656bce9de7600c05b5045a4e005f70c4f83d/R/websocket.R#L145">here</a>.</p>
 </div>
 <div id="handle-the-http-response" class="section level5" number="11.3.1.1.2">
@@ -423,6 +455,7 @@ the slider value and update the gauge value.</li>
 <span class="header-section-number">11.3.1.1.2</span> Handle the HTTP response<a class="anchor" aria-label="anchor" href="#handle-the-http-response"><i class="fas fa-link"></i></a>
 </h5>
 <p>The HTTP response is returned by the <code>call</code> function and is typically defined as follows:</p>
+<p></p>
 <div class="sourceCode" id="cb466"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">http_response</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
@@ -433,6 +466,7 @@ the slider value and update the gauge value.</li>
     body <span class="op">=</span> <span class="st">"Hello world!"</span>
   <span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>It returns a list composed of:</p>
 <ul>
 <li>A <strong>status</strong> code, 200 being the OK HTTP <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">status</a>.</li>
@@ -440,12 +474,14 @@ the slider value and update the gauge value.</li>
 <li>The <strong>body</strong> which is what will be displayed upon client request.</li>
 </ul>
 <p>To start the server, we leverage the <code><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer()</a></code> function, giving it a default port <code>8080</code> and host such that the url is <code>127.0.0.1:8080</code>:</p>
+<p></p>
 <div class="sourceCode" id="cb467"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/pkg/httpuv/man/startServer.html">startServer</a></span><span class="op">(</span>
   <span class="st">"127.0.0.1"</span>,
   <span class="fl">8080</span>,
   <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>call <span class="op">=</span> <span class="va">http_response</span>, onWSOpen <span class="op">=</span> <span class="va">ws_handler</span><span class="op">)</span>
 <span class="op">)</span></code></pre></div>
+<p></p>
 <p>The next step is to replace the <code>http_reponse$body</code> by a real HTML page containing the client websocket handler,
 as well as the slider and gauge widgets.</p>
 </div>
@@ -546,12 +582,14 @@ and browse to <code>127.0.0.1:8080</code> with Chrome. You should see the range 
 the reader to have R and Chrome side by side, to properly see all messages sent between R and JS. In Chrome,
 open the developer tools and navigate to the Network tab and select the <code>websocket</code> entry, as show Figure <a href="shiny-intro.html#fig:httpuv-websocket-demo">11.4</a>. From now, you may change the slider value. Notice the green arrow message appearing
 in the developer tools. This indicates a message sent by the client: here a JSON containing the slider value as well as a tiny message, to be polite with the server. In the R console, you may inspect the received message (it should be the same as the client!). R is instructed to create a new plot and, once done, sends a message back to the client (red arrow) to indicate that the plot is updated and a new value has been generated for the gauge.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:httpuv-websocket-demo"></span>
 <img src="images/survival-kit/httpuv-websocket-demo.png" alt="Server client communication through a websocket." width="100%"><p class="caption">
 FIGURE 11.4: Server client communication through a websocket.
 </p>
 </div>
+<p></p>
 </div>
 </div>
 <div id="clients-concurrency" class="section level2" number="11.4">
@@ -559,6 +597,7 @@ FIGURE 11.4: Server client communication through a websocket.
 <span class="header-section-number">11.4</span> Clients concurrency<a class="anchor" aria-label="anchor" href="#clients-concurrency"><i class="fas fa-link"></i></a>
 </h2>
 <p>Not shown in the above sections, <code><a href="https://rdrr.io/pkg/OSUICode/man/httpuv_app.html">httpuv_app()</a></code> exposes a delay parameter that simulates a computationally intense task on the server:</p>
+<p></p>
 <div class="sourceCode" id="cb473"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ws</span><span class="op">$</span><span class="fu">onMessage</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">binary</span>, <span class="va">message</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">message</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html">fromJSON</a></span><span class="op">(</span><span class="va">message</span><span class="op">)</span>
@@ -568,6 +607,7 @@ FIGURE 11.4: Server client communication through a websocket.
   <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html">is.null</a></span><span class="op">(</span><span class="va">delay</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html">Sys.sleep</a></span><span class="op">(</span><span class="va">delay</span><span class="op">)</span>
   <span class="va">ws</span><span class="op">$</span><span class="fu">send</span><span class="op">(</span><span class="st">"Thanks client! I updated the plot."</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
+<p></p>
 <p>This is to simulate <strong>concurrency</strong> that could occur between multiple client. To test it, you may try to call <code>my_app &lt;- httpuv_app(5)</code>, open two browser tabs pointing to <code>127.0.0.1:8080</code>, update the slider on the first client and update it on the second client. What happens? Why? This highlights one fundamental limitation about Shiny: as R is single threaded, clients have to queue to get an answer from the server.</p>
 <div class="importantblock">
 <p>Once done, don’t forget to close the server connection with <code>my_app$stop()</code>!</p>
@@ -601,6 +641,7 @@ Importantly, the session is unique to a given user. It means that two different 
 <span class="header-section-number">11.5.2</span> Server side<a class="anchor" aria-label="anchor" href="#server-side"><i class="fas fa-link"></i></a>
 </h3>
 <p>On the server, that is R, a websocket is initiated in the <a href="https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L534">startApp</a> function, leveraging the <a href="https://github.com/rstudio/httpuv">httpuv</a> package. Websocket handlers are <a href="https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L303">defined</a> by <code>shiny:::createAppHandlers</code>:</p>
+<p></p>
 <div class="sourceCode" id="cb474"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ws</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">ws</span><span class="op">)</span> <span class="op">{</span>
   
@@ -621,7 +662,9 @@ Importantly, the session is unique to a given user. It means that two different 
   <span class="op">}</span><span class="op">)</span>
   <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p></p>
 <p>Overall, handlers drive the server websocket behavior. When the Shiny session is initialized, a message is sent through the WS, providing the <code>sessionId</code>, <code>workerId</code>, and <code>user</code> to the client (see <code>Shiny.shinyapp.config</code> and section <a href="survival-kit-javascript.html#shiny-js-object">10.6.3</a>):</p>
+<p></p>
 <div class="sourceCode" id="cb475"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">private</span><span class="op">$</span><span class="fu">sendMessage</span><span class="op">(</span>
   config <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
@@ -630,6 +673,7 @@ Importantly, the session is unique to a given user. It means that two different 
     user <span class="op">=</span> <span class="va">self</span><span class="op">$</span><span class="va">user</span>
   <span class="op">)</span>
 <span class="op">)</span></code></pre></div>
+<p></p>
 <p>The <code>workerId</code> is not always used. In practice, it is relevant only in the context of solutions able to
 load balance clients across multiple workers, that is <a href="https://www.shinyapps.io/">shinyapps.io</a>, <a href="https://www.rstudio.com/products/connect/">RStudio Connect</a>, and <a href="https://docs.rstudio.com/other/ssp/">Shiny Server Pro</a>.</p>
 <p><code>ws$onMessage</code> describes what should happen when the server receives an message from the client.
@@ -644,6 +688,9 @@ which tells Shiny to manage <code>inputs</code> before running any observer (sin
 <p>Finally, when the server connection is closed, all client connections are also closed.</p>
 <!-- All those handlers are [applied](https://github.com/rstudio/shiny/blob/da6df5da9e4ab40e2ed0afa846d5b2d172b647c1/R/server.R#L537) by `handlerManager$addWSHandler(appHandlers$ws, "/", tail = TRUE)`:
 
+ \scriptsize
+
+
 ```r
 # see middleware.R
 httpuvApp <- handlerManager$createHttpuvApp()
@@ -656,6 +703,8 @@ addWSHandler = function(wsHandler, key, tail = FALSE) {
   wsHandlers$add(wsHandler, key, tail)
 }
 ```
+
+ \normalsize
 -->
 </div>
 <div id="client-side" class="section level3" number="11.5.3">
@@ -720,6 +769,7 @@ Once the connection is opened, events are handled with the <code>onopen</code> e
 <span class="header-section-number">11.5.4</span> Debug websocket with Shiny<a class="anchor" aria-label="anchor" href="#debug-websocket-with-shiny"><i class="fas fa-link"></i></a>
 </h3>
 <p>Let’s run the following app (see <a href="shiny-intro.html#fig:shiny-websocket">11.5</a>, left panel):</p>
+<p></p>
 <div class="sourceCode" id="cb480"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.rstudio.com/">shiny</a></span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html">shinyApp</a></span><span class="op">(</span>
@@ -739,17 +789,23 @@ Once the connection is opened, events are handled with the <code>onopen</code> e
     <span class="op">}</span>, rownames <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
   <span class="op">}</span>
 <span class="op">)</span></code></pre></div>
+<p></p>
 <p>After opening the HTML inspector, we select the network tab and search for websocket in the list. By choosing the message tab, you may inspect what R and JavaScript say to each others. As stated above, the first message sent contains initial input values. Then Shiny recalculates the table, notifies when the recalculation is done and becomes idle. The second message received from R is after updating the select input, which triggers the same event cycle.</p>
 <p>Although complex, it is extremely useful to check whether the input / output communication is working properly. If not, we would see the error field identifying the issue.</p>
 <p><code>Shiny.shinyapp.$socket.readyState</code> returns the state of the socket connection. It should be 1 if your app is running. In some instances when the socket is closed, an error would be raised.</p>
+<p></p>
 <div class="figure">
 <span style="display:block;" id="fig:shiny-websocket"></span>
 <img src="images/survival-kit/shiny-websocket.png" alt="Inspect content exchanged in the websocket within a Shiny app." width="100%"><p class="caption">
 FIGURE 11.5: Inspect content exchanged in the websocket within a Shiny app.
 </p>
 </div>
+<p></p>
 <!-- REMOVE AS PER BARRET SUGGESTION.  
 We see below that we can even bypass the UI element and update the input value directly via the websocket using `Shiny.shinyapp.$sendMsg` with the `update` method. This is captured on the server side which triggers the output recalculation. We'll discuss more about this in the next section \@ref(shiny-input-system).
+
+
+ \scriptsize
 
 
 ```r
@@ -789,6 +845,8 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 ```
+
+ \normalsize
 
 -->
 <p>It let you imagine how many messages are exchanged for more complex apps.</p>
@@ -843,7 +901,7 @@ shinyApp(ui, server)
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-10-28.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-11-11.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
