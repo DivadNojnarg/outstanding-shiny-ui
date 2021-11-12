@@ -315,14 +315,7 @@ if (knitr::is_html_output()) {
 ```
 
 ```{r, echo=FALSE, results='asis'}
-code <- '-- Failure (<text>:2:3): validate width works --
-`tabler_card(width = -1)` did not throw an error.
-
--- Failure (<text>:3:3): validate width works --
-`tabler_card(width = 13)` did not throw an error.
-
--- Failure (<text>:4:3): validate width works --
-`tabler_card(width = "hello world")` did not throw an error.'
+code <- 'Test passed !'
 exclude_from_html(code)
 ```
 
@@ -404,40 +397,42 @@ Notice how the three above tests elegantly fail. The provided context ("validate
 ### Caveats
 As stated above, there might be situations where tests should be carefully written and not rely too much on upstream package structure. I propose to consider a real life example involving the `{shinyMobile}` CRAN package, depending on `{shiny}` and `{htmltools}`. It has a function, namely `preview_mobile()` allowing one to preview an app on a mobile device iframe. This function has an internal [test](https://github.com/schloerke/shinyMobile/blob/5e0344ad083217d0bd3be82aff446e63fbb1d000/tests/testthat/test-preview_mobile.R#L18) to check if HTML dependencies are properly applied. However, the test may fail if Shiny dependencies are updated, which is independent of `{shinyMobile}` but would eventually prevent `{shiny}` from being released on [CRAN](https://github.com/RinteRface/shinyMobile/pull/211). Below is what is obtained with `{shiny}` 1.6.0.
 
-```
-[[1]]
-List of 10
- $ name      : chr "marvel-devices-css"
- $ version   : chr "1.0.0"
- ...
-
-[[2]]
-List of 10
- $ name      : chr "bootstrap"
- $ version   : chr "3.4.1"
- ...
+```{r, echo=FALSE, results='asis'}
+tmp_code <- '#> [[1]]
+#> List of 10
+#>  $ name      : chr "marvel-devices-css"
+#>  $ version   : chr "1.0.0"
+#>  ...
+#> 
+#> [[2]]
+#> List of 10
+#>  $ name      : chr "bootstrap"
+#>  $ version   : chr "3.4.1"
+#>  ...'
+code_chunk_custom(tmp_code)
 ```
 
 Then doing `expect_length(deps, 2)` is [fine](https://github.com/schloerke/shinyMobile/commit/5e0344ad083217d0bd3be82aff446e63fbb1d000#diff-d206e3d4eeee0729f4975a2a8e8414182a6603d10aca57be2c3eb97b5fe7e160L25). However, with `{shiny}` 1.7.0 (it could also come from another `{htmltools}` version), the result is significantly different: 
 
-```
-[[1]]
-List of 10
- $ name      : chr "jquery"
- $ version   : chr "3.6.0"
- ...
-
-[[2]]
-List of 10
- $ name      : chr "marvel-devices-css"
- $ version   : chr "1.0.0"
- ...
-
-[[3]]
-List of 10
- $ name      : chr "bootstrap"
- $ version   : chr "3.4.1"
- ...
+```{r, echo=FALSE, results='asis'}
+tmp_code <- '#> [[1]]
+#> List of 10
+#>  $ name      : chr "jquery"
+#>  $ version   : chr "3.6.0"
+#>  ...
+#> 
+#> [[2]]
+#> List of 10
+#>  $ name      : chr "marvel-devices-css"
+#>  $ version   : chr "1.0.0"
+#>  ...
+#> 
+#> [[3]]
+#> List of 10
+#>  $ name      : chr "bootstrap"
+#>  $ version   : chr "3.4.1"
+#>  ...'
+code_chunk_custom(tmp_code)
 ```
 
 The returned list contains one extra dependency, thereby breaking the underlying test. This subsequently requires to change the test. 
@@ -539,13 +534,14 @@ This test being set, it ensures to seamlessly capture any breaking change in the
 #### JS side {#custom-templates-testing-js}
 In the following, we have to test whether the corresponding JS handler works as expected:
 
-```js
-Shiny.addCustomMessageHandler(
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
   'update-progress', function(message) {
     $('#' + message.id)
       .css('width', message.value +'%')
       .attr('aria-valuenow', message.value);
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We leverage the `{crrry}` packages developed by Colin Fay from ThinkR.
@@ -617,9 +613,10 @@ the `update_tabler_progress()` function. This is how we change the slider value,
 thanks to the noUiSlider [API](https://refreshless.com/nouislider/slider-read-write/#section-setting). We first
 select the slider DOM element and call `noUiSlider.set` on the selected instance:
 
-```js
-var slider = document.getElementById('progress_value');
-slider.noUiSlider.set(50);
+```{r, echo=FALSE, results='asis'}
+js_code <- "var slider = document.getElementById('progress_value');
+slider.noUiSlider.set(50);"
+code_chunk_custom(js_code, "js")
 ```
 
 We use `call_js()` to update the slider value within our testing pipeline (R side):

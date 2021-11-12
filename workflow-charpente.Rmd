@@ -223,8 +223,9 @@ add_bulma_deps <- function(tag) {
 
 ### Set up the minimal page template
 According to the bulma [documentation](https://bulma.io/documentation/overview/start/#starter-template), the starter page template is:
-```html
-<!DOCTYPE html>
+
+```{r, echo=FALSE, results='asis'}
+html_code <- '<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8">
@@ -246,7 +247,8 @@ According to the bulma [documentation](https://bulma.io/documentation/overview/s
       </div>
     </section>
   </body>
-</html>
+</html>'
+code_chunk_custom(html_code, "html")
 ```
 
 Adding some `{charpente}` magic with `html_2_R()`, we set the path parameter to `/html` to get the entire template. We, replace `...` with the appropriate content (see above). Since the copied HTML contains double quotations marks like `<p class="subtitle"></p>`, we put the string in single quotation marks.
@@ -393,11 +395,12 @@ The API works as follows:
   
 In other words the below code attaches the notification to the `body`:
 
-```js
-Bulma('body').notification({
+```{r, echo=FALSE, results='asis'}
+js_code <- "Bulma('body').notification({
   body: 'Example notification',
   color: 'info'
-}).show();
+}).show();"
+code_chunk_custom(js_code, "js")
 ```
   
 In the following we design the R interface and JavaScript handler (which is no more than an event listener). 
@@ -426,13 +429,14 @@ send_notification_message <- function(
 and the corresponding JavaScript piece in `notification.js`, 
 derived from the `golem::add_js_handler` function:
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   Shiny.addCustomMessageHandler(
     'notification', function(message) {
  
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 By default, the JS file is created in the `./srcjs` directory. This is a special directory where we store all JavaScript files that depend on the package author. For instance, bulmaJS is an external dependency and is very unlikely to be edited by the package author. For that reason, it remains in the `./inst` folder like all other external dependencies.
@@ -452,8 +456,8 @@ create_input_binding("boxBinding")
 
 which gives the `input-boxBinding.js` script in the `./srcjs` folder:
 
-```js
-var boxBinding = new Shiny.InputBinding();
+```{r, echo=FALSE, results='asis'}
+js_code <- "var boxBinding = new Shiny.InputBinding();
 $.extend(boxBinding, {
   find: function(scope) {
     // JS logic $(scope).find('whatever')
@@ -477,7 +481,8 @@ $.extend(boxBinding, {
     $(el).off('.boxBinding');
   }
 });
-Shiny.inputBindings.register(boxBinding, 'shiny.whatever');
+Shiny.inputBindings.register(boxBinding, 'shiny.whatever');"
+code_chunk_custom(js_code, "js")
 ```
 
 This function has multiple options:
@@ -493,8 +498,8 @@ This function has multiple options:
 Similarly, the `create_output_binding()` function creates a ready to use output binding JS script, 
 in the `./srcjs` folder (`create_output_binding("menuOutput")`):
 
-```js
-var menuOutput = new Shiny.OutputBinding();
+```{r, echo=FALSE, results='asis'}
+js_code <- "var menuOutput = new Shiny.OutputBinding();
 $.extend(menuOutput, {
   find: function(scope) {
     // JS logic $(scope).find('whatever')
@@ -503,7 +508,8 @@ $.extend(menuOutput, {
     // JS logic
   }
 });
-Shiny.outputBindings.register(menuOutput, 'shiny.whatever');
+Shiny.outputBindings.register(menuOutput, 'shiny.whatever');"
+code_chunk_custom(js_code, "js")
 ```
 
 ### Organize your JS code {#organize-your-js}
@@ -557,11 +563,12 @@ Switching between `prod` and `dev` automatically updates the `mypkg-dependencies
 
 Finally, under the hood, `create_js()`, `create_input_binding()`, `create_output_binding()`  and `create_custom_handler()` add a reference to the newly created script in the `main.js` entry point, which may look like:
 
-```js
-// Gather all files to import here
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Gather all files to import here
 import './init.js'
 import './widgets.js'
-import './test.js'
+import './test.js'"
+code_chunk_custom(js_code, "js")
 ```
 
 A real life example will be shown in the next part \@ref(mobile-modularizeJS) and the result showcased [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/tree/fd0ba28881869c5c605dd0e5b9f7a8f420bbedb4/srcjs).
@@ -643,18 +650,20 @@ It gives a diagnosis comparing the current installed version
 with the latest available version, yielding three possible cases. Dependencies are __up to date__
 and `update_dependency("bulma")` yields:
 
-```
-#> ℹ Trying https://data.jsdelivr.com/v1/package/npm/bulma
+
+```{r, echo=FALSE, results='asis'}
+tmp_code <- '#> ℹ Trying https://data.jsdelivr.com/v1/package/npm/bulma
 #> ✓ Success!
 #> ───────────────────────────────────────────────────────
-#> Error in update_dependency("bulma") : Versions are identical
+#> Error in update_dependency("bulma") : Versions are identical'
+code_chunk_custom(tmp_code)
 ```
 
 The installed dependencies are __outdated__ (we have 0.7.0 with `create_dependency("bulma", tag = "0.7.0", options = charpente_options(local = TRUE))`), the function shows the targeted version as well as
 the last one:
 
-```
-#> ℹ Trying https://data.jsdelivr.com/v1/package/npm/bulma
+```{r, echo=FALSE, results='asis'}
+tmp_code <- '#> ℹ Trying https://data.jsdelivr.com/v1/package/npm/bulma
 #> ✓ Success!
 #> ───────────────────────────────────────────────────────
 #> ℹ current version: 0.7.0 ||
@@ -662,16 +671,16 @@ the last one:
 #> latest version: 0.9.3
 #> ! Upgrading bulma to 0.9.3
 #> ✓ Directory inst/bulma-0.9.3/css successfully created
-#> ! Remove existing file R/bulma-dependencies.R
+#> ! Remove existing file R/bulma-dependencies.R'
+code_chunk_custom(tmp_code)
 ```
 
 The last use case is a __downgrade__, which may be possible if the package maintainer realizes
 that the dependency version is too unstable. In the following, we have `bulma-0.9.3` installed 
 and downgrade to 0.7.0 with `update_dependency("bulma", version_target = "0.7.0")`:
 
-
-```
-#> ℹ Trying https://data.jsdelivr.com/v1/package/npm/bulma
+```{r, echo=FALSE, results='asis'}
+tmp_code <- '#> ℹ Trying https://data.jsdelivr.com/v1/package/npm/bulma
 #> ✓ Success!
 #> ───────────────────────────────────────────────────────
 #> ℹ current version: 0.9.3 ||
@@ -679,9 +688,9 @@ and downgrade to 0.7.0 with `update_dependency("bulma", version_target = "0.7.0"
 #> latest version: 0.9.3
 #> ! Downgrading bulma to 0.7.0
 #> ✓ Directory inst/bulma-0.7.0/css successfully created
-#> ! Remove existing file R/bulma-dependencies.R
+#> ! Remove existing file R/bulma-dependencies.R'
+code_chunk_custom(tmp_code)
 ```
-
 
 ## Other tips
 ### Validate JavaScript
@@ -725,8 +734,9 @@ the JavaScript logic, please refer to Chapter \@ref(custom-templates-testing-js)
 Be extremely careful: if we consider the example mentioned in section \@ref(broken-shiny-app-debug), the
 following code is valid JavaScript:
 
-```js
-const sendNotif = (message, type, duration) => {
+
+```{r, echo=FALSE, results='asis'}
+js_code <- "const sendNotif = (message, type, duration) => {
   Shiny.notification.show({
     html: `<strong>${message}</strong>`,
     type: type,
@@ -734,7 +744,8 @@ const sendNotif = (message, type, duration) => {
   });
 };
 
-sendNotif('Hello')
+sendNotif('Hello')"
+code_chunk_custom(js_code, "js")
 ```
 
 and will pass the validation step without any error:
@@ -763,12 +774,13 @@ Yet the code won't work since `Shiny.notification` does not exist.
 ### Test JS code
 `{charpente}` provides a starting point to __test__ the JS code with `test_js()`, by leveraging the [mocha](https://mochajs.org/) library. All tests are assumed to be contained within the `srcjs/test` folder. Inside, we find `test_basic.js`, which was created upon package initialization, as a boilerplate:
 
-```js
-describe('Basic test', () => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "describe('Basic test', () => {
   it('should not fail', (done) => {
     done();
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 This test starts with a `describe` function, similar to the `{testthat}` `context()` function, where you provide the general idea behind the test. `it` is equivalent to `test_that()`, where we describe what specific feature is being tested. Inside, we write a series of instructions, some of them failing, others passing. Naturally, `mocha` works better with other assertions libraries like [expect.js](https://github.com/Automattic/expect.js) or [should.js](http://shouldjs.github.io/), whose details are out of the scope of this book. 
