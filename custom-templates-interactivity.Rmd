@@ -77,13 +77,14 @@ update_tabler_progress <- function(
 
 On the JS side, we leverage the well known `Shiny.addCustomMessageHandler`. As mentioned in Chapter \@ref(survival-kit-javascript), `sendCustomMessage` and `addCustomMessageHandler` are connected by the __type__ parameter. This is crucial! Moreover, as the sent message is a R list, it becomes an JSON, meaning that elements must be accessed with a `.` in JS:
 
-```js
-$(function () {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function () {
   Shiny.addCustomMessageHandler(
     'update-progress', function(message) {
     $('#' + message.id).css('width', message.value +'%');
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We finally test these components in a simple app, whom output is depicted in Figure \@ref(fig:tabler-progress):
@@ -104,14 +105,15 @@ The idea is to get rid of the classic `session$sendCustomMessage` and `Shiny.add
   - We recover the trigger element with any JS/jQuery method.
   - We leverage the noUiSlider [API](https://refreshless.com/nouislider/) to listen to any update in the range. It's fine because the slider instance has already been initialized in the shinyWidget [input binding](https://github.com/dreamRs/shinyWidgets/blob/55ec7eab9bcf18ceefee2e3714328fd09cfa6e06/inst/assets/nouislider/nouislider-bindings.js#L100). This would not work if we were not waiting for shiny to be connected (you may try)! Notice the use of `this.get()` in the event listener, which avoids to repeat `slider.noUiSlider`
   - We modify the `width` CSS property of the target like in the previous example.
-
-```js
-$(document).on('shiny:connected', function(event) {
+  
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(document).on('shiny:connected', function(event) {
   let slider = document.getElementById('triggerId');
   slider.noUiSlider.on('update', function(event) {
     $('#targetId').css('width', this.get() + '%');
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 To insert this script in the app UI, we create `update_tabler_progress2` that just wraps it inside a `tags$script`.
@@ -147,8 +149,8 @@ __Toasts__ are components to send discrete user feedback, contrary to modals whi
 ### Toast skeleton
 The skeleton is the HTML structure of the toast:
 
-```html
-<div class="toast show" role="alert" aria-live="assertive" 
+```{r, echo=FALSE, results='asis'}
+html_code <- '<div class="toast show" role="alert" aria-live="assertive" 
 aria-atomic="true" data-autohide="false" data-toggle="toast">
   <div class="toast-header">
     <span class="avatar mr-2" 
@@ -163,7 +165,8 @@ aria-atomic="true" data-autohide="false" data-toggle="toast">
   <div class="toast-body">
     Hello, world! This is a toast message.
   </div>
-</div>
+</div>'
+code_chunk_custom(html_code, "html")
 ```
 
 Toasts are mainly composed of a header and a body. There might be a close button in case the toast does not hide itself after a period of time. If multiple toasts appear one after each others, they are stacked, the latest being at the bottom of the stack. The position is controlled with the style attribute like `style="position: absolute; top: 0; right: 0;"` for a top-right placement. Accessibility parameters like `aria-live` are detailed [here](https://getbootstrap.com/docs/4.3/components/toasts/#accessibility).
@@ -247,8 +250,8 @@ show_tabler_toast <- function(
 
 Let's design the corresponding JS handler. We first configure the toast and show it. Notice how we chained jQuery methods (see Chapter \@ref(survival-kit-javascript)). We optionally add an __event listener__ to capture the `hidden.bs.toast` event, so that we may trigger an action when the toast is closed. The `input$id` is used for that purpose in combination with the `Shiny.setInputValue`. Notice the extra parameter `{priority: 'event'}`: basically, once the toast is closed, `input$id` is always `TRUE`, thereby breaking the __reactivity__. Adding this extra parameter __forces__ the evaluation of the input, although constant over time.
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   Shiny.addCustomMessageHandler(
     'tabler-toast', function(message) {
       $(`#${message.id}`)
@@ -264,7 +267,8 @@ $(function() {
         );
       });
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 ```{r, echo=FALSE, results='asis'}
@@ -384,13 +388,14 @@ show_tabler_dropdown <- function(
 
 To show the dropdown, we use the __dropdown__ method which is linked to the `data-toggle="dropdown"` of `tabler_dropdown()`. 
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   Shiny.addCustomMessageHandler(
    'show-dropdown', function(message) {
       $(`#${message}`).dropdown('show');
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 Let's play with it (Figure \@ref(fig:tabler-dropdown)). 
@@ -414,8 +419,8 @@ How do we proceed? If you recall about the `tabler_navbar_menu_item()` and `tabl
   - `tabler_navbar_menu_item()` are `<li>` elements.
   - `tabler_tab_item()` is a `<div>` element with specific classes.
 
-```html
-<li class="nav-item">
+```{r, echo=FALSE, results='asis'}
+html_code <- '<li class="nav-item">
   <a class="nav-link" href="#ww" data-toggle="pill" 
     data-value="ww" role="tab">
     <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -426,7 +431,8 @@ How do we proceed? If you recall about the `tabler_navbar_menu_item()` and `tabl
 
 <div role="tabpanel" class="tab-pane fade container-fluid" 
   id="ww">
-</div>
+</div>'
+code_chunk_custom(html_code, "html")
 ```
 
 We design the `insert_tabler_tab()` function similar to the Shiny `insertTab()`. 
@@ -503,8 +509,8 @@ On the JS side, we capture the R message (list) in two elements:
 
 Depending on the position parameter, we use the `insertAfter()` and `insertBefore()` jQuery methods. Finally, if the newly inserted tab has to be selected, we activate the corresponding tab element with `$(tablink).tab('show')`. 
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   Shiny.addCustomMessageHandler(
     'insert-tab-1', function(message) {
       // define div and li targets
@@ -514,13 +520,13 @@ $(function() {
       if (message.position === 'after') {
         $divTag.insertAfter($(targetId));
         $liTag.insertAfter(
-          $('[data-target="' + targetId + '"]')
+          $('[data-target=\"' + targetId + '\"]')
             .parent()
         );
       } else if (message.position === 'before') {
         $divTag.insertBefore($(targetId));
         $liTag.insertBefore(
-          $('[data-target="' + targetId + '"]')
+          $('[data-target=\"' + targetId + '\"]')
             .parent()
         );
       }
@@ -530,13 +536,13 @@ $(function() {
         let newTabId = $divTag.attr('id');
         $('#' + 
           message.inputId + 
-          ' a[data-target="#' + 
-          newTabId +'"]').tab('show');
+          ' a[data-target=\"#' + 
+          newTabId +'\"]').tab('show');
       }
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
-
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("tabler/insert-tab-1", view_code = FALSE), "r")
@@ -582,11 +588,12 @@ renderUI <- function (
 
 The last line returned is `processDeps(result, shinysession)`. As stated in section \@ref(insert-ui), this function is responsible to handle dependencies during run time. `shiny:::processDeps` (R side) works with `Shiny.renderContent` (JS side), as already mentioned in part 15.3. The latter takes a tag element as well as an object containing its HTML code and dependencies, for instance:
 
-```js
-exports.renderContent($tag[0], {
+```{r, echo=FALSE, results='asis'}
+js_code <- "exports.renderContent($tag[0], {
   html: $tag.html(),
   deps: message.tag.deps
-});  
+}); "
+code_chunk_custom(js_code, "js")
 ```
 
 Note that, as it is bad practice to rely on other packages internal functions, we'll rely on `htmltools::renderTags` instead of `shiny:::processDeps`, being very similar.
@@ -614,8 +621,8 @@ insert_tabler_tab_2 <- function(
 
 We then apply the `Shiny.renderContent` method to the tab content and navigation item. Below, we only show what changed compared to the first handler defined earlier:
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   Shiny.addCustomMessageHandler('insert-tab-2', 
     function(message) {
     // message.content and message.link are objects
@@ -639,7 +646,8 @@ $(function() {
     
     // Trigger show: unchanged
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We check if our approach works as expected.

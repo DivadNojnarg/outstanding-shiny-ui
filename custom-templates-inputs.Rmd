@@ -29,17 +29,18 @@ id, style, type, class, `data-val`, label and children passed via `...`.
 
 When the app starts, the action button has the value 0 and each click increments its value by 1. How is this behavior controlled? If you recall, it is due to the input binding file, specifically the one for the action button:
 
-```js
-var actionButtonInputBinding = new InputBinding();
+```{r, echo=FALSE, results='asis'}
+js_code <- "var actionButtonInputBinding = new InputBinding();
 $.extend(actionButtonInputBinding, {
   find: function(scope) {
-    return $(scope).find(".action-button");
+    return $(scope).find('.action-button');
   },
   getValue: function(el) {
     return $(el).data('val') || 0;
   },
   // ....; Extra code removed
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 What you see above is not the whole script since we focus on the first method, that is `find`. It will look for all elements having the class `action-button`, making it possible to define multiple action buttons at the same time.
@@ -49,8 +50,9 @@ Consequently, if we go back to the previous section, the `actionButton()` has th
 ### Application to Tabler
 First of all, let's compare the tabler HTML button to the Shiny action button.
 
-```html
-<button class="btn btn-primary">Button</button>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<button class="btn btn-primary">Button</button>'
+code_chunk_custom(html_code, "html")
 ```
 
 We convert it to R code. The button API contains more style and we leave the reader to add extra elements 
@@ -103,12 +105,12 @@ As a general rule, don't try to reinvent the wheel and see whether any existing 
 
 ## Toggle Switch
 We implement the toggle __switch__ component. The HTML structure may be inspected [here](https://github.com/tabler/tabler/blob/14d0c001436b85d2a4533d63680d209affdf774b/demo/form-elements.html) (or in  `demo/form-elements.html` if you already downloaded the repository locally). 
-
-```html
-<label class="form-check form-switch">
+```{r, echo=FALSE, results='asis'}
+html_code <- '<label class="form-check form-switch">
   <input class="form-check-input" type="checkbox" checked>
   <span class="form-check-label">Option 1</span>
-</label>
+</label>'
+code_chunk_custom(html_code, "html")
 ```
 
 Notice that the tabler switch has the checkbox type, which is very similar to the Shiny checkbox (a switch being a checkbox with a different style):
@@ -134,13 +136,14 @@ value <- restoreInput(id = inputId, default = value)
 
 Then, in line with the above HTML structure, we design the input tag. If we want to reuse the `shiny::checkboxInput()` binding, we must not forget the `type = checkbox`:
 
-```js
-$.extend(checkboxInputBinding, {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$.extend(checkboxInputBinding, {
   find: function(scope) {
-    return $(scope).find('input[type="checkbox"]');
+    return $(scope).find('input[type=\"checkbox\"]');
   }
   // other methods
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 ```{r, eval=FALSE}
@@ -225,16 +228,17 @@ tabler_navbar_menu <- function(..., inputId = NULL) {
 
 The next step is the JS `navbarMenuBinding` creation. We decide to look for the `navbar-nav` class in the `find` method. Below, we describe the binding step by step. You may find the whole working code at the end of this example:
 
-```js
-find: function(scope) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "find: function(scope) {
   return $(scope).find('.navbar-nav');
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 In the `initialize` method, we ensure that if no tab is selected at start, the first tab will be selected by default. Otherwise, we select the activated tab. We use the __template literals__ to ease the insertion of JS code in strings (``${menuId} .nav-link.active``):
 
-```js
-initialize: function(el) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "initialize: function(el) {
   let menuId = '#' + $(el).attr('id');
   let activeTab = $(`${menuId} .nav-link.active`);
   // if multiple items are found
@@ -247,7 +251,8 @@ initialize: function(el) {
       .first()
       .tab('show');
   }
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 The role of `getValue` is to return the currently selected tab. 
@@ -273,28 +278,28 @@ tabler_navbar_menu_item <- function(text, tabName,
 
 From that function, the active item has is the `a` element with the classes `nav-link active`. We recover the tab value stored in the `data-value` attribute. A bit of jQuery does the trick:
 
-
-```js
-getValue: function(el) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "getValue: function(el) {
   let activeTab = $(el).find('a').filter('nav-link active');
   return $(activeTab).attr('data-value');
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
-
 
 `setValue` is the function allowing to update the active tab. Bootstrap 4 already has
 predefined methods to [activate](https://getbootstrap.com/docs/4.0/components/navs/#via-javascript) tabs. The easiest way is to select the tab by name like `$('#tabMenu a[data-target="#tab1"]').tab('show')`. The `receiveMessage` is simply applying the `setValue` method:
 
-```js
-setValue: function(el, value) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "setValue: function(el, value) {
   let hrefVal = '#' + value;
   let menuId = $(el).attr('id');
-  $(`#${menuId} a[data-target="${hrefVal}"]`).tab('show');
+  $(`#${menuId} a[data-target=\"${hrefVal}\"]`).tab('show');
 }
 
 receiveMessage: function(el, data) {
   this.setValue(el, data);
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 Besides, we have to create the `update_tabler_tab_item()` function:
@@ -319,8 +324,8 @@ in the whole app. We may listen to multiple events, keeping in mind that events 
   
 Hence, it makes more sense to listen to `shown.bs.tab`, that is wait the current tab to be shown:
 
-```js
-subscribe: function(el, callback) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "subscribe: function(el, callback) {
   // important to use shown.bs.tab and not show.bs.tab!
   $(el).on('shown.bs.tab.navbarMenuBinding', function(e) {
     callback();
@@ -329,7 +334,8 @@ subscribe: function(el, callback) {
   
 unsubscribe: function(el) {
   $(el).off('.navbarMenuBinding');
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 The whole binding code is located [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/db99b034b06a1ab26ef27bf864b2c853626ebc19/inst/tabler/tabler-update-navbar/navbarMenuBinding.js).
