@@ -11,11 +11,12 @@ When a shiny apps starts, Shiny runs `initShiny` on the client. This JS [functio
 
 Most input bindings are in principle bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple shiny app. In any case, they are all contained in a __binding registry__, namely `inputBindings` built on top the following class:
 
-```js
-var BindingRegistry = function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "var BindingRegistry = function() {
   this.bindings = [];
   this.bindingNames = {};
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 This class has a method to `register` a binding. This method is executed when calling `Shiny.inputBindings.register(myBinding, 'reference');`, which appends the newly created binding to the bindings array. 
@@ -23,7 +24,7 @@ This class has a method to `register` a binding. This method is executed when ca
 When shiny starts, it has to find all defined bindings with the `getBindings` method.
 Once done, for each binding, `find` is triggered. If no corresponding element is found in the DOM, nothing is done. For each found input, the following methods are triggered:
 
-  - `getId` returns the input id. This ensures the uniqueness and is critical!
+  - `getId` returns the input id. This ensures the uniqueness and is critical.
   - `getType` optionally handles any `registerInputHandler` defined by the user on the R side. A detailed example is shown in \@ref(custom-data-format).
   - `getValue` gets the initial input value.
   - `subscribe` registers event listeners driving the input behavior.
@@ -38,8 +39,8 @@ knitr::include_graphics("images/survival-kit/init-shiny-recap.png")
 
 In chapter \@ref(shiny-intro), we briefly described the `Shiny` JavaScript object. As an exercise, let's explore what the `Shiny.shinyApp` object contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js). 
 
-```js
-var ShinyApp = function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "var ShinyApp = function() {
   this.$socket = null;
   // Cached input values
   this.$inputValues = {};
@@ -57,7 +58,8 @@ var ShinyApp = function() {
   this.$activeRequests = {};
   this.$nextRequestId = 0;
   this.$allowReconnect = false;
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization):
@@ -94,16 +96,17 @@ knitr::include_graphics("images/survival-kit/shiny-init-input.png")
 ## Update input {#update-input-lifecycle}
 Below we try to explain what are the mechanisms to update an input from the server on the client. As stated above, it all starts with an `update<name>Input` function call, which actually sends a message through the current __session__. This message is received by the client __websocket__ message manager:
 
-```js
-socket.onmessage = function(e) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "socket.onmessage = function(e) {
   self.dispatchMessage(e.data);
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 which sends the message to the appropriate [handler](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L552), that is `inputMessages`:
 
-```js
-addMessageHandler('inputMessages', function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "addMessageHandler('inputMessages', function(message) {
   // inputMessages should be an array
   for (var i = 0; i < message.length; i++) {
     var $obj = $('.shiny-bound-input#' + $escape(message[i].id));
@@ -120,29 +123,31 @@ addMessageHandler('inputMessages', function(message) {
         inputBinding.receiveMessage(el, evt.message);
     }
   }
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 In short, it gets the `inputId` and access the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and call the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
 The `callback` function is actually defined during the initialization [process](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js#L128):
 
-```js
-function valueChangeCallback(binding, el, allowDeferred) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "function valueChangeCallback(binding, el, allowDeferred) {
   var id = binding.getId(el);
   if (id) {
     var value = binding.getValue(el);
     var type = binding.getType(el);
     if (type)
-      id = id + ":" + type;
+      id = id + ':' + type;
 
     let opts = {
-      priority: allowDeferred ? "deferred" : "immediate",
+      priority: allowDeferred ? 'deferred' : 'immediate',
       binding: binding,
       el: el
     };
     inputs.setInput(id, value, opts);
   }
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 `valueChangeCallback` ultimately calls `inputs.setInput(id, value, opts)`. The latter involves a rather complex chain of [reactions](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/input_rate.js) (which is not described here). It is important to understand that the client does not send input values one by one, but by batch:
@@ -153,8 +158,8 @@ code_chunk(OSUICode::get_example("inputs-lifecycle/event-message"), "r")
 
 Overall, the result is stored in a queue, namely `pendingData` and sent to the server with `shinyapp.sendInput`:
 
-```js
-this.sendInput = function(values) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "this.sendInput = function(values) {
   var msg = JSON.stringify({
     method: 'update',
     data: values
@@ -165,20 +170,22 @@ this.sendInput = function(values) {
   $.extend(this.$inputValues, values);
   
   // ....; Extra code removed
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 The message has an `update` tag and is sent through the client __websocket__, only if the connection is opened. If not, it is added to the list of pending messages. 
 
-```js
-this.$sendMsg = function(msg) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "this.$sendMsg = function(msg) {
   if (!this.$socket.readyState) {
     this.$pendingMessages.push(msg);
   }
   else {
     this.$socket.send(msg);
   }
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 Finally, current `inputValues` are updated. On the server side, the new value is received
