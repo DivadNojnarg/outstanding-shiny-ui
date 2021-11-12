@@ -3,7 +3,7 @@ We've already seen a couple of Shiny JS __events__ since the beginning of this b
 internal methods/functions are available to the programmer. Below, we add more elements to the list, trying to
 give practical examples and see how it can significantly improve your apps. If you ever used the `{waiter}` [@R-waiter] package by John Coene, know that it heavily relies on some Shiny's event (Figure \@ref(fig:waiter-preloader)).
 
-```{r waiter-preloader, echo=FALSE, fig.cap='{waiter} preloader significantly improves the perceived app performance and user experience.', out.width='100%'}
+```{r waiter-preloader, echo=FALSE, fig.cap='{waiter} preloader significantly improves the perceived app performance and user experience.', out.width='100%', fig.align='center'}
 knitr::include_graphics("images/survival-kit/waiter-preloader.png")
 ```
 
@@ -42,8 +42,8 @@ knitr::include_graphics("images/survival-kit/input-changed-event.png")
 
 Contrary to what is mentioned in the online [documentation](https://shiny.rstudio.com/articles/js-events.html), __inputType__ does not always have a value. In this case, an alternative, is to access the related input binding and extract its name (Figure \@ref(fig: input-changed-event-zoom)), as shown below:
 
-```js
-$(document).on('shiny:inputchanged', function(event) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(document).on('shiny:inputchanged', function(event) {
   Shiny.setInputValue(
     'pleaseStayHome', 
     {
@@ -52,7 +52,8 @@ $(document).on('shiny:inputchanged', function(event) {
       type: event.binding.name.split('.')[1]
     }
   );
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 If you use this code in a custom shiny template, it is possible that input bindings doesn't have name, which would thereby make `event.binding.name.split('.')[1]` crash, `event.binding` being undefined.
@@ -113,13 +114,14 @@ Under the hood, this feature relies on the `shiny:idle` event. When the app star
 Whenever we call `waiter_preloader()`, an HTML overlay is added in the DOM. Moreover, this extra JS code ensures to
 hide the waiter when shiny is ready:
 
-```js
-window.ran = false;
+```{r, echo=FALSE, results='asis'}
+js_code <- "window.ran = false;
 $(document).on('shiny:idle', function(event){
   if(!window.ran)
     hide_waiter(id = null);
   window.ran = true;
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 As a security, `window.ran` prevents us from running this code twice. As an example, consider this app with
@@ -135,22 +137,24 @@ Notice how the waiter correctly handles the plot processing time.
 Similarly, the `waiter_on_busy()` exploit the `shiny:idle` and `shiny:busy` events. Each time an output is invalidated, `shiny:busy` is fired, which triggers the recalculation until the next `shiny:idle` event. The loader is shown as soon as 
 shiny is busy:
 
-```js
-$(document).on('shiny:busy', function(event) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(document).on('shiny:busy', function(event) {
   show_waiter(
     id = null,
     html = ..., 
     color = ...
   );
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 and is hidden once shiny is done:
 
-```js
-$(document).on('shiny:idle', function(event) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(document).on('shiny:idle', function(event) {
   hide_waiter(null);
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 ```{r, echo=FALSE, results='asis'}
