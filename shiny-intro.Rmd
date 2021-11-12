@@ -97,19 +97,21 @@ toJSON(my_list, auto_unbox = TRUE, pretty = TRUE)
 Like R, JS has two methods to process JSON, that are provided by the `JSON` class.
 We parse a JSON, that is converting it from character to JS object with:
 
-```js
-JSON.parse(my_json)
+```{r, echo=FALSE, results='asis'}
+js_code <- "JSON.parse(my_json)"
+code_chunk_custom(js_code, "js")
 ```
 
 Conversely, we convert a JS object to JSON leveraging `JSON.stringify`:
 
-```js
-myObject = {
+```{r, echo=FALSE, results='asis'}
+js_code <- 'myObject = {
   "name": "David",
   "color": "purple",
   "planet": "Mars",
 }
-JSON.stringify(my_object)
+JSON.stringify(my_object)'
+code_chunk_custom(js_code, "js")
 ```
 
 Now that we have seen a convenient way to exchange data between two different languages, R and JS, we are going to
@@ -195,17 +197,18 @@ server$stop()
 
 whose output is shown below.
 
-```
-Server connection opened.
-Server connection opened.
-Server received message: Hello from client 1 
-Client received message: Hello client! 
-Server received message: Hello from client 2 
-Client received message: Hello client! 
-Server connection closed.
-Server received message: Only client 2 is here 
-Client received message: Hello client! 
-Server connection closed.
+```{r, echo=FALSE, results='asis'}
+tmp_code <- '#> Server connection opened.
+#> Server connection opened.
+#> Server received message: Hello from client 1 
+#> Client received message: Hello client! 
+#> Server received message: Hello from client 2 
+#> Client received message: Hello client! 
+#> Server connection closed.
+#> Server received message: Only client 2 is here 
+#> Client received message: Hello client! 
+#> Server connection closed.'
+code_chunk_custom(tmp_code)
 ```
 
 Under the hood, whenever a client initiates a websocket connection, it actually sends an HTTP request to the server.
@@ -350,14 +353,13 @@ The first task consists in setting up the websocket client connection:
 Importantly, we must wait for all elements to be available in the DOM before starting any action. Therefore, we wrap the whole thing inside a `document.addEventListener("DOMContentLoaded", ...)`.
 :::
 
-
-```js
-document.addEventListener(
-  "DOMContentLoaded", function(event) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "document.addEventListener(
+  'DOMContentLoaded', function(event) {
     // Capture gauge widget
-    let gauge = document.getElementById("mygauge");
+    let gauge = document.getElementById('mygauge');
     // Initialize client socket connection
-    let mySocket = new WebSocket("ws://<HOST>:<PORT>");
+    let mySocket = new WebSocket('ws://<HOST>:<PORT>');
     mySocket.onopen = function (event) {
       // do things
     };
@@ -366,14 +368,15 @@ document.addEventListener(
       let data = JSON.parse(event.data);
       gauge.value = data.val;
     };
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We eventually insert it inside the `script` tag of our basic HTML boilerplate, which also contains the gauge
 skeleton, borrowed from the MDN [resources](https://developer.mozilla.org/fr/docs/Web/HTML/Element/Meter). `min`, `max` and `value` set the range, while `low`, `high` and `optimum` are responsible for the color (red, yellow and green, respectively):
 
-```html
-<!DOCTYPE HTML>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<!DOCTYPE HTML>
 <html lang="en">
   <head>
     <script language="javascript">
@@ -386,24 +389,26 @@ skeleton, borrowed from the MDN [resources](https://developer.mozilla.org/fr/doc
     <meter id="mygauge" min="0" max="100" low="33" high="66" 
     optimum="80" value="50"></meter>
   </body>
-</html>
+</html>'
+code_chunk_custom(html_code, "html")
 ```
 
 Once done, we have to take care of the range slider whose code is taken from the MDN [resources](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input/range):
 
-```html
-<div>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<div>
   <input type="range" id="slider" name="volume" 
   min="0" max="100">
   <label for="slider" id ="sliderLabel">Value:</label>
-</div>
+</div>'
+code_chunk_custom(html_code, "html")
 ```
 
 It is a simple div containing an input tag as well as a label. The input tag has some attributes, notably the
 minimum and maximum value. The slider has to be inserted in the HTML boilerplate shown below:
 
-```html
-<!DOCTYPE HTML>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<!DOCTYPE HTML>
 <html lang="en">
   <head>
     <script language="javascript">
@@ -418,28 +423,30 @@ minimum and maximum value. The slider has to be inserted in the HTML boilerplate
     <meter id="mygauge" min="0" max="100" low="33" high="66" 
     optimum="80" value="50"></meter>
   </body>
-</html>
+</html>'
+code_chunk_custom(html_code, "html")
 ```
 
 The slider behavior is entirely controlled by JS. We recover its value with `document.getElementById` and
 add it to the label inner HTML so as to know the current value. We also add an event listener to update the slider value each time the range is updated, either by drag or by keyboard action with `oninput`. It is best practice to 
 convert the slider value to a number with [`parseInt`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/parseInt), as the returned value defaults to a string. Finally, we send the value through the websocket, converting it to JSON so that we may process it from R with `{jsonlite}` (or any other relevant package):
 
-```js
-let sliderWidget = document.getElementById("slider");
-let label = document.getElementById("sliderLabel");
-label.innerHTML = "Value:" + slider.value; // init
+```{r, echo=FALSE, results='asis'}
+js_code <- "let sliderWidget = document.getElementById('slider');
+let label = document.getElementById('sliderLabel');
+label.innerHTML = 'Value:' + slider.value; // init
 // on change
 sliderWidget.oninput = function() {
   let val = parseInt(this.value, 10);
   mySocket.send(
     JSON.stringify({
       value: val,
-      message: "New value for you server!"
+      message: 'New value for you server!'
     })
   );
-  label.innerHTML = "Value:" + val;
-};
+  label.innerHTML = 'Value:' + val;
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 ### Test it!
@@ -560,20 +567,21 @@ addWSHandler = function(wsHandler, key, tail = FALSE) {
 ### Client side
 On the JS side, the socket creation occurs in the `shinyapps.js` [file](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L58):
 
-```js
-var ws = new WebSocket(
+```{r, echo=FALSE, results='asis'}
+js_code <- "var ws = new WebSocket(
   protocol + 
   '//' + 
   window.location.host + 
   defaultPath
-);
+);"
+code_chunk_custom(js_code, "js")
 ```
 
 through the `WebSocket` object. `protocol` is the chosen protocol, either `ws` or `wss` (if using `https`). `window.location.host` contains the host name and its [port](https://developer.mozilla.org/fr/docs/Web/API/window/location).
 Once the connection is opened, events are handled with the `onopen` event registry:
 
-```js
-socket.onopen = function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "socket.onopen = function() {
   hasOpened = true;
 
   $(document).trigger({
@@ -592,24 +600,25 @@ socket.onopen = function() {
     var msg = self.$pendingMessages.shift();
     socket.send(msg);
   }
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 The `shiny:connected` event is triggered, any disconnected overlay (the _famous_ grayed out screen) is then removed from the DOM. Initial input values are sent to the server via the `send` method. The `onmessage` registry aims at handling messages received from the server:
 
-
-```js
-socket.onmessage = function(e) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "socket.onmessage = function(e) {
   self.dispatchMessage(e.data);
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 It subsequently invokes the `dispatchMessage` method that sends message to all handlers, triggering the `shiny:message` event. Shiny has internal and custom provided handlers (read user-defined) stored in separate arrays. Each time, a message type matches a given handler, it is treated. For instance, there is a dedicated internal handler for input messages, that bridges the gap between a given input and the corresponding input binding. This handler eventually triggers the `inputBinding.receiveMessage` method so that the input value is updated on the client. We discuss this in detail in the following section \@ref(update-input-lifecycle).
 
 Finally the `onclose` method is called when the websocket connection is closed. 
 
-```js
-socket.onclose = function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "socket.onclose = function() {
   // These things are needed only if we've successfully 
   // opened the websocket.
   if (hasOpened) {
@@ -623,7 +632,8 @@ socket.onclose = function() {
 
   self.onDisconnected(); // Run before self.$removeSocket()
   self.$removeSocket();
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 If the connection was opened, the `shiny:disconnected` event is triggered. Then, the disconnect overlay is added to the DOM (grayed out screen) and the socket is removed.
