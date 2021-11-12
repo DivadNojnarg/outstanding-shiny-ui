@@ -78,17 +78,17 @@ I strongly discourage to use `shiny:::processDeps()` or any other internal funct
   
 On the UI side, Shiny has a predefined message [handler](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L671):
 
-```js
-addMessageHandler('shiny-insert-ui', function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "addMessageHandler('shiny-insert-ui', function(message) {
   let targets = $(message.selector);
   if (targets.length === 0) {
     // render the HTML and deps to a null target, so
     // the side-effect of rendering the deps, singletons,
     // and <head> still occur
     console.warn(
-      'The selector you chose ("' + 
+      'The selector you chose (\"' + 
       message.selector +
-      '") could not be found in the DOM.'
+      '\") could not be found in the DOM.'
     );
     exports.renderHtml(
       message.content.html, 
@@ -105,7 +105,8 @@ addMessageHandler('shiny-insert-ui', function(message) {
       return message.multiple;
     });
   }
-})
+})"
+code_chunk_custom(js_code, "js")
 ```
 
 It checks whether the provided selector has multiple DOM elements. If at least one item is found, it calls __renderContent(html, el, dependencies)__ that triggers __renderHtml(html, el, dependencies)__:
@@ -180,13 +181,14 @@ say_hello_to_js <- function(
 
 The JavaScript part is defined below:
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   Shiny.AddCustomMessageHandler(
     'say-hello', function(message) {
       alert(`R says ${message} to you!`)
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 The following shiny app example will simply print a welcome message every five seconds. We obviously set `options(shiny.trace = TRUE)` so as to capture all messages sent between R and JS. Figure \@ref(fig:shiny-custom-message) summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found [here](https://github.com/DivadNojnarg/OSUICode/blob/43911d32885e960d6f42c7bd7d92748109f29f00/R/custom-handlers.R#L9). Don't forget to load the `say_hello_to_js()` function before:
@@ -208,8 +210,8 @@ code_chunk(OSUICode::get_example("custom-handlers/get-random-pokemon"), "r")
 
 On the JS side, the `getPokemon` function, whose script is adapted from Colin Fay et al. (see [here](https://engineering-shiny.org/optimjs.html)), fetches the [pokeapi](https://pokeapi.co/) data and if successful sets an input value, which will be subsequently available on the R side.
 
-```js
-const getPokemon = () => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const getPokemon = () => {
   // FETCHING THE API DATA
   let randId = Math.floor(Math.random() * (+151 + 1 - +1)) + +1;
   fetch('https://pokeapi.co/api/v2/pokemon/' + randId)
@@ -225,37 +227,41 @@ const getPokemon = () => {
     .catch((error) => {
       alert('Error catching result from API')
     })
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 `input$pokeData` is actually a quite complex list and some manipulation is done from R in the `observeEvent()` block. Once done, we send the data back to JS through the websocket (the session object sends a message). 
 
 An event listener is set to the only button on the page so that each time we click, we call `getPokemon` to select a random background image.
 
-```js
-// add event listener
+```{r, echo=FALSE, results='asis'}
+js_code <- "// add event listener
 $('#button').on('click', function() {
   getPokemon();
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 This last piece of JS code ensures to add the randomly selected background contained in the `message` parameter to the `body` tag.
 
-```js
-// update background based on R data
+```{r, echo=FALSE, results='asis'}
+js_code <- "// update background based on R data
 Shiny.addCustomMessageHandler(
   'update_background', function(message) {
     $('body').css({
       'background-image':'url(' + message +')', 
       'background-repeat':'no-repeat'
     });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   // INSERT PREVIOUS CODE HERE
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 ### Toward custom UI management functions {#custom-ui-functions}
@@ -283,8 +289,8 @@ We create the `insertMessageItem` function with two parameters:
   
 We don't use `htmltools::renderTags` as it is very unlikely that our `messageItem` contains any extra dependency. item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a __type__, that is `add-message-item`, to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
 
-```js
-$(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "$(function() {
   Shiny.addCustomMessageHandler(
     'add-message-item', function(message) {
       // since we do not re-render the dropdown, 
@@ -298,7 +304,8 @@ $(function() {
       let itemTag = $.parseHTML(message)[0];
       $(itemTag).insertAfter($('.dropdown-item.dropdown-header'));
   });
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We also update the dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. The number of items is given by the dropdown children (without the `dropdown-divier` class). These two extra JS steps save us to create extra `observeEvent()` on the server, as shown before.
@@ -341,8 +348,8 @@ This solution significantly lightens the server code since everything may be don
 
 `{shinydashboardPlus}` user messages provide an easy way to create a chat system within a shiny app. `userMessages()` hosts the main container while `userMessage()` is the message element. All of this is pure HTML:
 
-```html
-<div class="direct-chat-msg">
+```{r, echo=FALSE, results='asis'}
+html_code <- '<div class="direct-chat-msg">
   <div class="direct-chat-info clearfix">
     <span class="direct-chat-name pull-left">
       Alexander Pierce
@@ -356,10 +363,11 @@ This solution significantly lightens the server code since everything may be don
   alt="message user image">
   <!-- /.direct-chat-img -->
   <div class="direct-chat-text">
-    Is this template really for free? That's unbelievable!
+    Is this template really for free? That\'s unbelievable!
   </div>
   <!-- /.direct-chat-text -->
-</div>
+</div>'
+code_chunk_custom(html_code, "html")
 ```
 
 Figure \@ref(fig:shinydashboardPlus-chat) shows the overall appearance.  
@@ -373,8 +381,9 @@ Given that no JavaScript API is available to handle messages, that is send/recei
 ##### HTML elements
 The message container is a simple `div` element:
 
-```html
-<div class="direct-chat-messages">...</div>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<div class="direct-chat-messages">...</div>'
+code_chunk_custom(html_code, "html")
 ```
 
 where `...` receives all messages (`userMessage()`). From the AdminLTE demonstration [page](https://adminlte.io/themes/AdminLTE/index2.html), the class `direct-chat-warning` gives the yellow color to the sent messages, while received messages are always gray. In `{shinydashboardPlus}`, the container is defined as below:
@@ -570,32 +579,35 @@ Note the __session$ns__ that actually makes sure this function can work within s
 
 We are now all done on the R side but still have to design the JS interface. The first step is to create a custom message handler skeleton:
 
-```js
-Shiny.addCustomMessageHandler(
-  "user-messages", function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
+  'user-messages', function(message) {
     // JS logic
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 where the __message__ parameter is actually the message sent through the R `updateUserMessages()` function. We recall that if we send a list, it is subsequently converted into a JS object. Therefore, to access the container __id__ element, we do:
 
-```js
-message.id
+```{r, echo=FALSE, results='asis'}
+js_code <- "message.id"
+code_chunk_custom(js_code, "js")
 ```
 
 and similarly for other elements. There may be nested lists, like the message content, which is not very complex to handle: we simply use the `.` JS notation to access lower level elements, that is `message.content.text` for the message text. 
 
 The second step is to store all message elements in multiple variables separated by commas. This step is not mandatory but improves the code readability:
 
-```js
-Shiny.addCustomMessageHandler(
-  "user-messages", function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
+  'user-messages', function(message) {
     // Variables definition 
     let id = message.id, 
       action = message.action, 
       content = message.body, 
       index = message.index;
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 In the following we show how to process any message content. For sake of simplicity, we assume to be able to only edit the message text. As mentioned earlier, there are two possible cases:
@@ -605,13 +617,13 @@ In the following we show how to process any message content. For sake of simplic
   
 This yields:
 
-```js
-Shiny.addCustomMessageHandler(
-  "user-messages", function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
+  'user-messages', function(message) {
   // ... Variables definition ...
   
   // Process message content
-  if (content.hasOwnProperty("text")) {
+  if (content.hasOwnProperty('text')) {
     let text;
     if (content.text.html === undefined) {
       text = content.text;
@@ -624,7 +636,8 @@ Shiny.addCustomMessageHandler(
     } 
   }
   
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 ::: {.noteblock data-latex=""}
@@ -641,42 +654,44 @@ Then, the next step is to implement the multiple options provided by the user (u
   
 We therefore target the main container with `$("#" + id)`, look for its messages with `find(".direct-chat-msg")`, specify the target using `eq(index - 1)` (index is the R value) and apply the remove method:
 
-```js
-Shiny.addCustomMessageHandler(
-  "user-messages", function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
+  'user-messages', function(message) {
   // ... Variables definition ...
   
   // ... Process message content ...
   
-  if (action === "remove") {
-    $("#" + id)
-      .find(".direct-chat-msg")
+  if (action === 'remove') {
+    $('#' + id)
+      .find('.direct-chat-msg')
       .eq(index - 1)
       .remove();
   }
   
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We could add more security with `console.warn` whenever the user wants to delete a message that does not exist. We leave it to the reader as an exercise. 
 
 The second case consists in adding a new message. We define new variables containing the author, the date, the image and the message type. 
 
-```js
-// ... Other conditions ....
-else if (action === "add") {
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ... Other conditions ....
+else if (action === 'add') {
   // Variables definition
   let author = content.author, 
     date = content.date, 
     image = content.image, 
     type = content.type;
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 Below is a reminder of the message HTML structure:
 
-```html
-<div class="direct-chat-msg">
+```{r, echo=FALSE, results='asis'}
+html_code <- '<div class="direct-chat-msg">
   <div class="direct-chat-info clearfix">
     <span class="direct-chat-name pull-left">
       AUTHOR (TO REPLACE)
@@ -692,57 +707,60 @@ Below is a reminder of the message HTML structure:
   <div class="direct-chat-text">MAIN CONTENT (TO REPLACE)
   </div>
   <!-- /.direct-chat-text -->
-</div>
+</div>'
+code_chunk_custom(html_code, "html")
 ```
 
 In our JS logic, we use the same template and replace any relevant element (see capital letters) 
 by the previously created variables. We might use the string [interpolation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#browser_compatibility). 
 
-```js
-// ... Other conditions ...
-else if (action === "add") {
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ... Other conditions ...
+else if (action === 'add') {
   // ... Variables definition ...
   
   // build the new message 
   let newMessage = `
-    <div class="direct-chat-info clearfix">
-      <span class="direct-chat-name"> 
+    <div class=\"direct-chat-info clearfix\">
+      <span class=\"direct-chat-name\"> 
         ${author}
       </span>
-      <span class="direct-chat-timestamp" 
-        style="margin-left: 4px">
+      <span class=\"direct-chat-timestamp\" 
+        style=\"margin-left: 4px\">
         ${date}
       </span>
     </div>
-    <img class="direct-chat-img" src="${image}"/> 
-    <div class="direct-chat-text">${text}</div>`;
-}
+    <img class=\"direct-chat-img\" src=\"${image}\"/> 
+    <div class=\"direct-chat-text\">${text}</div>`;
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 We wrap all of these elements in a `direct-chat-msg` div which class may vary depending on the message type. If sent, the class is `direct-chat-msg right` and `direct-chat-msg` otherwise. 
 
-```js
-// ... Other conditions ...
-else if (action === "add") {
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ... Other conditions ...
+else if (action === 'add') {
   // ... Variables definition ...
   
   // ... build the new message ...
   
   // build wrapper
   let newMessageWrapper;
-  if (type === "sent") {
+  if (type === 'sent') {
     newMessageWrapper = `
-      <div class="direct-chat-msg right">
+      <div class=\"direct-chat-msg right\">
         ${newMessage} 
       </div>`;
   } else {
     newMessageWrapper = `
-      <div class="direct-chat-msg">
+      <div class=\"direct-chat-msg\">
         ${newMessage} 
       </div>`;
   }
   
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 The final step is to target the main container with `$("#" + id)`, look for the messages slot `find(".direct-chat-messages")` (the message container is nested in the main wrapper) and `append` it 
@@ -750,9 +768,9 @@ to the DOM. We used `append` which adds the message at the end but could choose 
 of all other messages. This behavior may be defined by the programmer with no option for the end-user.
 Alternatively, the developer could expose an external parameter to control the add position. 
 
-```js
-// ... Other conditions ...
-else if (action === "add") {
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ... Other conditions ...
+else if (action === 'add') {
   // ... Variables definition ...
   
   // ... build the new message ...
@@ -760,20 +778,22 @@ else if (action === "add") {
   // ... build wrapper ...
   
   // append message
-  $("#" + id)
-    .find(".direct-chat-messages")
+  $('#' + id)
+    .find('.direct-chat-messages')
     .append(newMessageWrapper);
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
+
 
 Finally, the last case is to update a given message. As stated above, we assume to only edit the
 message text and the date. To update the message, we target the messages container with `$("#" + id)`,
 look for all texts with `find(".direct-chat-text")`, refine our choice by targeting the good element with
 `eq(index - 1)` and call `replaceWith` containing the new text element: 
 
-```js
-// ... Other conditions ...
-else if (action === "update") {
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ... Other conditions ...
+else if (action === 'update') {
   // today's date
   let d = new Date();
   let month = d.getMonth() + 1;
@@ -785,25 +805,26 @@ else if (action === "update") {
   // we assume only text may be updated. 
   // Does not make sense to modify author
   
-  $("#" + id)
-    .find(".direct-chat-text")
+  $('#' + id)
+    .find('.direct-chat-text')
     .eq(index - 1)
     .replaceWith(`
-      <div class="direct-chat-text">
-        <small class="text-red">
+      <div class=\"direct-chat-text\">
+        <small class=\"text-red\">
           (modified: ${today})
         </small>
         <br>
       </div>
     `)
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 Don't forget to __unbind__, re-__initialize__ and __bind__ all inputs by successively calling `Shiny.unbindAll();`, `Shiny.initializeInputs();` and `Shiny.bindAll();`. If you omit this part, the newly inserted input/output elements won't work.
 
-```js
-Shiny.addCustomMessageHandler(
-  "user-messages", function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
+  'user-messages', function(message) {
   // ... Variables definition ...
   
   // ... Process message content ...
@@ -811,11 +832,11 @@ Shiny.addCustomMessageHandler(
   // unbind all
   Shiny.unbindAll();
   
-  if (action === "remove") {
+  if (action === 'remove') {
     // ... Remove logic ...
-  } else if (action === "add") {
+  } else if (action === 'add') {
     // ... Add logic ...
-  } else if (action === "update") {
+  } else if (action === 'update') {
     // ... Update logic ...
   }
   
@@ -824,7 +845,8 @@ Shiny.addCustomMessageHandler(
   Shiny.initializeInputs();
   Shiny.bindAll(); // bind all inputs/outputs
   
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 The whole JS code may be found [here](https://github.com/RinteRface/shinydashboardPlus/blob/ee2437cbaa1b7db36adea534d5b613b944c0a09e/srcjs/shinydashboardPlus-2.0.2/userMessages.js#L2).
