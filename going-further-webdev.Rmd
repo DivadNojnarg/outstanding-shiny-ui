@@ -238,12 +238,13 @@ This is where the front-end developers come to play and believe me, there is qui
 The first thing is to continue with the package setup to add development libraries necessary for building the JS code. 
 For now, those dependencies are listed in `./package.json` and only cover `webpack`:
 
-```js
-"devDependencies": {
+```{r, echo=FALSE, results='asis'}
+js_code <- '"devDependencies": {
   "webpack": "^5.53.0",
   "webpack-cli": "^4.8.0",
   "webpack-merge": "^5.8.0"
-}
+}'
+code_chunk_custom(js_code, "js")
 ```
 
 Since we'll be using quite modern JS syntay (ES6) and some JSX, we have to install __Babel__ that will compile our code to a JS code that all web browsers can understand. 
@@ -275,8 +276,8 @@ packer::npm_install(
 
 You should obtain this JSON:
 
-```js
-"devDependencies": {
+```{r, echo=FALSE, results='asis'}
+js_code <- '"devDependencies": {
   "@babel/core": "^7.15.5",
   "@babel/preset-env": "^7.15.6",
   "babel": "^6.23.0",
@@ -289,7 +290,8 @@ You should obtain this JSON:
   "echarts": "^5.2.1",
   "echarts-gl": "^2.0.8",
   "framework7": "^6.3.4"
-}
+}'
+code_chunk_custom(js_code, "js")
 ```
 
 We modify the `./srcjs/config/loader.json` to include the required loaders for `js`, `jsx` and `css` files. For css, `{packer}` exposes a functions, `use_loader_rule()`:
@@ -303,8 +305,8 @@ use_loader_rule(
 
 which gives:
 
-```js
-[
+```{r, echo=FALSE, results='asis'}
+js_code <- '[
   {
     "test": "\\.css$",
     "use": [
@@ -312,7 +314,8 @@ which gives:
       "css-loader"
     ]
   }
-]
+]'
+code_chunk_custom(js_code, "js")
 ```
 
 Interestingly, Framework7 allows to write JSX code without the need of importing React. This is very convenient but require to add an extra [loader](https://www.npmjs.com/package/framework7-loader) as well as a babel react component (you may imagine to design a `use_loader_framework7()` function ...):
@@ -326,8 +329,8 @@ use_loader_rule(
 packer::npm_install("@babel/preset-react", scope = "dev")
 ```
 
-```js
-[
+```{r, echo=FALSE, results='asis'}
+js_code <- '[
   // ... style loader ...
   {
     "test": "\\.(f7).(html|js|jsx)$",
@@ -336,20 +339,22 @@ packer::npm_install("@babel/preset-react", scope = "dev")
       "framework7-loader"
     ]
   }
-]
+]'
+code_chunk_custom(js_code, "js")
 ```
 
 Alternatively, one can copy the `./package.json` from [here](https://github.com/RinteRface/shinyComponent/tree/07ef8216c5803147691d95343ef6639a0e1ecf2f) to get exactly the same package versions I used when I initialized this project and call `packer::npm_install()` to pull the dependencies and install them for the project.  
 
 We create a `./.babelrc` script providing some configuration for Babel to handle JSX. Within the terminal, we call `touch .babelrc` and add it the following code:
 
-```
-{
+```{r, echo=FALSE, results='asis'}
+js_code <- '{
   "presets": [
     "@babel/preset-env",
     "@babel/preset-react"
   ]
-}
+}'
+code_chunk_custom(js_code, "js")
 ```
 
 We can ultimately bundle our JS code and check whether the app starts:
@@ -416,34 +421,37 @@ This is all what we need on the R UI side since most of the code will be written
 We have the R logic, the R/UI skeleton but few steps remain such as initializing the app as discussed in \@ref(mobile-initialization).
 Everything happens in the `./srcjs/index.js` script. For now it should be like below:
 
-```js
-import { message } from './modules/message.js';
+```{r, echo=FALSE, results='asis'}
+js_code <- "import { message } from './modules/message.js';
 import 'shiny';
 
 // In shiny server use:
 // session$sendCustomMessage('show-packer', 'hello packer!')
 Shiny.addCustomMessageHandler('show-packer', (msg) => {
   message(msg);
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 which is a placeholder provided by `{packer}`. While we don't need it,
 note how we may seamlessly import functions from one script to another with just an `import` statement followed by the function name and the script path. We'll use this syntax all over the place. What do we need now? We import `Framework7` required for the app initialization in `new Framework7({...})`: 
 
-```js
-import 'shiny';
+```{r, echo=FALSE, results='asis'}
+js_code <- "import 'shiny';
 // Import Framework7
-import Framework7 from 'framework7';
+import Framework7 from 'framework7';"
+code_chunk_custom(js_code, "js")
 ```
 
 Then, we import the css, whose assets are located under `./node_modules/framework7` and as shown on Figure \@ref(fig:vdpMod-framework7-resources). To capture all CSS, we'll point to `framework7/framework7-bundle.min.css` (bundle usually corresponds to all components):
 
-```js
-import 'shiny';
+```{r, echo=FALSE, results='asis'}
+js_code <- "import 'shiny';
 // Import Framework7
 import Framework7 from 'framework7';
 // Import Framework7 Styles
-import 'framework7/framework7-bundle.min.css';
+import 'framework7/framework7-bundle.min.css';"
+code_chunk_custom(js_code, "js")
 ```
 
 ```{r vdpMod-framework7-resources, echo=FALSE, fig.cap='Framework7 assets in node modules.', out.width='50%', fig.align='center'}
@@ -453,19 +461,20 @@ knitr::include_graphics("images/going-further/vdpMod-framework7-resources.png")
 The way we imported Framework7 does not provide any other component. To lighten the JS code, Framework7 has a modular organisation, thereby consisting in inporting only what we require. According to Figure \@ref(fig:vdpMod-framework7-resources), those components are located in `framework7/esm/components/<COMPONENT_NAME>/<SCRIPT.js>`
 If you remember correctly, we seek for a slider widget to update the model parameter value. Moreover, it's always nice to notify the user when the new results are available, so let's do it with a toast:
 
-```js
-// ... Other imports ...
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ... Other imports ...
 
 // Install F7 Components using .use() method on class:
 import Range from 'framework7/esm/components/range/range.js';
 import Toast from 'framework7/esm/components/toast/toast.js';
-Framework7.use([Range, Toast]);
+Framework7.use([Range, Toast]);"
+code_chunk_custom(js_code, "js")
 ```
 
 For the layout, we selected the main App component template, documented [here](https://framework7.io/docs/router-component.html#main-app-component). Overall, it offers a better way to organize the app code in different component modules, the `App` being the top level component:
 
-```js
-// ... Other imports ...
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ... Other imports ...
 
 import App from './components/app.f7.jsx';
 let app = new Framework7({
@@ -473,13 +482,14 @@ let app = new Framework7({
   theme: 'ios',
   // specify main app component
   component: App
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 `el` targets the app tag `id` defined in `./R/app_ui.R`. If you ever have to change it, don't forget to replace it in both places. The `component` slot hosts the `App` which has to be defined. We assumed it is created in a `./srcjs/components/app.f7.jsx`, `.` being the root of the `srcjs` folder. Interestingly, it has the `.jsx` extension, the JSX syntax being very convenient to mix HTML and JavaScript code in the same file. It is crucial to name the files `<name>.f7.jsx` as it will allow the Framework7 loader to work properly. Practically, a template file will always look the same. We export the main component as a function that may have some parameters. Each component must return a __render__ function containing some tags. Below is a `./srcjs/components/list.f7.jsx` example: 
 
-```jsx
-export default () => {
+```{r, echo=FALSE, results='asis'}
+jsx_code <- "export default () => {
 
   const ListItem = (props) => {
     return (
@@ -489,41 +499,44 @@ export default () => {
 
   return () => (
     <ul>
-      <ListItem title="Item 1" />
-      <ListItem title="Item 2" />
+      <ListItem title=\"Item 1\" />
+      <ListItem title=\"Item 2\" />
     </ul>
   )
-}
+}"
+code_chunk_custom(jsx_code, "jsx")
 ```
 
 You may even split the code into more small pieces, below we assume `list-item.f7.jsx` is in the same directory as the main component:
 
-```jsx
-// list-item.f7.jsx
+```{r, echo=FALSE, results='asis'}
+jsx_code <- "// list-item.f7.jsx
 export default (props) => {
   return () => <li>{props.title}</li>;
-}
+}"
+code_chunk_custom(jsx_code, "jsx")
 ```
 
-```jsx
-import ListItem from './list-item.f7.jsx';
+```{r, echo=FALSE, results='asis'}
+jsx_code <- "import ListItem from './list-item.f7.jsx';
 export default () => {
 
   return () => (
     <ul>
-      <ListItem title="Item 1" />
-      <ListItem title="Item 2" />
+      <ListItem title=\"Item 1\" />
+      <ListItem title=\"Item 2\" />
     </ul>
   )
-}
+}"
+code_chunk_custom(jsx_code, "jsx")
 ```
 
 We define the preliminary main app component in `./srcjs/components/app.f7.jsx`, the layout being composed of a `navbar` (top), a `toolbar` (bottom) and the page content, as already discussed in \@ref(framework7-layouts):
 
-```jsx
-export default (props, context) => {
-  const title = 'Hello World';
-  const content = 'App content';
+```{r, echo=FALSE, results='asis'}
+jsx_code <- 'export default (props, context) => {
+  const title = \'Hello World\';
+  const content = \'App content\';
 
   return () => (
     <div id="app">
@@ -548,8 +561,10 @@ export default (props, context) => {
       </div>
     </div>
   )
-}
+}'
+code_chunk_custom(jsx_code, "jsx")
 ```
+
 
 `props` are elements passed to the component (see \@ref(react-map)) and `context` is an object containing [helpers](https://framework7.io/docs/router-component.html#component-context) such as:
 
@@ -570,8 +585,8 @@ knitr::include_graphics("images/going-further/vdpMod-basic-app-2.png")
 
 We add the slider component that is going to drive the model computation inside `./srcjs/components/vdp.f7.jsx`, leveraging the Framework7 range widget described [here](https://framework7.io/docs/range-slider.html#range-slider-auto-initialization). To lighten the JS code, we decide to rely on the auto-initialized widget. All attributes are stored in `data-<ATTR>` format and the `range-slider-init` class ensures to get the widget properly initialized. The range is inserted in a block container for a better display. We finally bind it an [event](https://framework7.io/docs/range-slider.html#app-and-range-slider-instance-events) listening to any value change so that we can assign a Shiny input value and use it on the R side:
 
-```jsx
-const VdpWidget = (props, { $f7, $update}) => {
+```{r, echo=FALSE, results='asis'}
+jsx_code <- "const VdpWidget = (props, { $f7, $update}) => {
   // Handle range change for ODE model computation
   const getRangeValue = (e) => {
     const range = $f7.range.get(e.target);
@@ -581,20 +596,20 @@ const VdpWidget = (props, { $f7, $update}) => {
 
   return () => (
     <div>
-      <div class="block-title">Parameter value (mu)</div>
-      <div class="block">
+      <div class=\"block-title\">Parameter value (mu)</div>
+      <div class=\"block\">
         <div
-          class="range-slider range-slider-init"
-          data-min="0"
-          data-min="0"
-          data-max="2"
-          data-step="0.1"
-          data-label="true"
-          data-value="0.1"
-          data-scale="true"
-          data-scale-steps="2"
-          data-scale-sub-steps="10"
-          id="mu"
+          class=\"range-slider range-slider-init\"
+          data-min=\"0\"
+          data-min=\"0\"
+          data-max=\"2\"
+          data-step=\"0.1\"
+          data-label=\"true\"
+          data-value=\"0.1\"
+          data-scale=\"true\"
+          data-scale-steps=\"2\"
+          data-scale-sub-steps=\"10\"
+          id=\"mu\"
           onrangeChange={(e) => getRangeValue(e)}
           ></div>
       </div>  
@@ -602,31 +617,33 @@ const VdpWidget = (props, { $f7, $update}) => {
   )
 }
 
-export { VdpWidget };
+export { VdpWidget };"
+code_chunk_custom(jsx_code, "jsx")
 ```
 
 Inside `./srcjs/components/app.f7.jsx`, we import the newly designed component and replace `{content}`:
 
-```jsx
-import VdpWidget from './vdp.f7.jsx';
+```{r, echo=FALSE, results='asis'}
+jsx_code <- "import VdpWidget from './vdp.f7.jsx';
 
 export default (props) => {
   const title = 'Hello World';
   
   return () => (
-    <div id="app">
-      <div class="view view-main view-init safe-areas">
-        <div class="page">
+    <div id=\"app\">
+      <div class=\"view view-main view-init safe-areas\">
+        <div class=\"page\">
           <!-- Navbar -->
           <!-- Toolbar -->
-          <div class="page-content">
-            <VdpWidget label="Van der Pol Model"/>
+          <div class=\"page-content\">
+            <VdpWidget label=\"Van der Pol Model\"/>
           </div>
         </div>
       </div>
     </div>
   )
-}
+}"
+code_chunk_custom(jsx_code, "jsx")
 ```
 
 On the R side, you may add this in the server code to track the range value:
@@ -645,8 +662,8 @@ knitr::include_graphics("images/going-further/vdpMod-basic-app-3.png")
 
 You'll notice that `input$mu` only exist after the range is dragged. To give it an initial value, we design an additional function, `initializeVdpWidget` located in `./srcjs/components/vdp.f7.jsx`, taking the app instance as parameter. Inside, we listen to the `shiny:connected`, create `input$mu` giving it the initial range value. We finally export the new function:
 
-```js
-const initializeVdpWidget = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
   $(document).on('shiny:connected', () => {
     // Init vals for ODE model computation
     Shiny.setInputValue(
@@ -657,18 +674,20 @@ const initializeVdpWidget = (app) => {
   });
 }
 
-export { VdpWidget, initializeVdpWidget };
+export { VdpWidget, initializeVdpWidget };"
+code_chunk_custom(js_code, "js")
 ```
 
 Inside `./srcjs/components/app.f7.jsx`, we update our import field, passing an extra parameter `$f7` which captures the app instance required by `initializeVdpWidget`:
 
-```js
-import { VdpWidget, initializeVdpWidget } from './vdp.f7.jsx';
+```{r, echo=FALSE, results='asis'}
+js_code <- "import { VdpWidget, initializeVdpWidget } from './vdp.f7.jsx';
 export default (props, { $f7 }) => {
 
   initializeVdpWidget($f7);
   // ... unchanged ...
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 Congratulations, we are now ready to move to the last part about creating the visualization.
@@ -676,22 +695,24 @@ Congratulations, we are now ready to move to the last part about creating the vi
 #### Plot model data with echartsjs
 As stated above, we leverage echarts and echarts-gl to plot the model results. Like for other dependencies, we have to import them, specifically in the `./srcjs/components/vdp.f7.jsx` component:
 
-```js
-// Import plotting library
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Import plotting library
 import * as echarts from 'echarts';
-import 'echarts-gl';
+import 'echarts-gl';"
+code_chunk_custom(js_code, "js")
 ```
 
 To work properly, [echarts](https://echarts.apache.org/handbook/en/get-started/) requires to setup an HTML empty container in the DOM with height and width in pixels, as well as an __id__. I recommend using percentage for width so as to fill the entire parent container:
 
-```html
-<div id="my-plot" style="width:100%; min-height:400px;"></div>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<div id="my-plot" style="width:100%; min-height:400px;"></div>'
+code_chunk_custom(html_code, "html")
 ```
 
 On the JS side, we instantiate the plot and set the options list to give it a title, set the axis labels, add the time series:
 
-```js
-myChart = echarts.init(document.getElementById('my-plot'));
+```{r, echo=FALSE, results='asis'}
+js_code <- "myChart = echarts.init(document.getElementById('my-plot'));
 myChartOptions = {
   title: { text: 'Plot title' },
   legend: { data:[...] },
@@ -706,14 +727,15 @@ myChartOptions = {
     // other data
   ]
 };
-myChart.setOption(myChartOptions);
+myChart.setOption(myChartOptions);"
+code_chunk_custom(js_code, "js")
 ```
 
 Obviously, many more options exist, but this is enough for this example.
 We edit the `VdpWidget` render function to include the time series plot of model solution, below the range slider:
 
-```jsx
-const VdpWidget = (props, { $f7, $update}) => {
+```{r, echo=FALSE, results='asis'}
+jsx_code <- "const VdpWidget = (props, { $f7, $update}) => {
   // ... unchanged ...
   
   const plotStyle = {
@@ -723,25 +745,26 @@ const VdpWidget = (props, { $f7, $update}) => {
   
   return () => (
     <div>
-      <div class="block-title">{props.label}</div>
-      <div class="block block-strong text-align-center">
+      <div class=\"block-title\">{props.label}</div>
+      <div class=\"block block-strong text-align-center\">
         <p>The below model is computed by R!</p>
         <!-- range slider block -->
       </div>
-      <div class="card card-outline">
-        <div class="card-content card-content-padding">
-          <div id="line-plot" style={plotStyle}></div>
+      <div class=\"card card-outline\">
+        <div class=\"card-content card-content-padding\">
+          <div id=\"line-plot\" style={plotStyle}></div>
         </div>
       </div>
     </div>
   )
-}
+}"
+code_chunk_custom(jsx_code, "jsx")
 ```
 
 The initialization happens once, that's why we include it inside the existing `shiny:connect` event listener in the `initializeVdpWidget` function. Notice how we make the plot responsive to any viewport change, by calling the echarts `resize` method when the window is resized:
 
-```js
-const initializeVdpWidget = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
   let linePlot;
   $(document).on('shiny:connected', () => {
     // ... unchanged ...
@@ -753,13 +776,14 @@ const initializeVdpWidget = (app) => {
   $(window).on('resize', function(){
     linePlot.resize();
   });
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 The next step is to recover the model data sent from R with the `session$sendCustomMessage("model-data", ...)` in `./R/app_server.R`. We create a dedicated message handler on the JS side still in `initializeVdpWidget`. As a reminder, since we send a list from R, items are accessed with `message.<FIELD>` in JS:
 
-```js
-const initializeVdpWidget = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
   // ... shiny:connected ...
   
   // Recover ODE data from R
@@ -769,13 +793,14 @@ const initializeVdpWidget = (app) => {
     'model-data', (message) => {
       lineData = message.lineData;
   });
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
-We set the plot options. For the time series chart, we'll display the solution X (`lineData['X']`) and Y (`lineData['Y']`) as a function of time (`lineData['t']`). The plot type is `line`
+We set the plot options. For the time series chart, we'll display the solution X (`lineData['X']`) and Y (`lineData['Y']`) as a function of time (`lineData['t']`). The plot type is `line`:
 
-```js
-const initializeVdpWidget = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
   // ... shiny:connected ...
   
   Shiny.addCustomMessageHandler(
@@ -807,13 +832,14 @@ const initializeVdpWidget = (app) => {
       // use configuration item and data specified to show chart
       linePlot.setOption(linePlotOptions);
   });
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 We finally leverage the Framework7 toast API to send a message to the user, telling the model is up to date:
 
-```js
-const initializeVdpWidget = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
   Shiny.addCustomMessageHandler(
     'model-data', (message) => {
       // ... plot config ...
@@ -824,7 +850,8 @@ const initializeVdpWidget = (app) => {
         closeTimeout: 2000,
       }).open();
   });
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 After rebuilding the JS code, you should get Figure \@ref(fig:vdpMod-basic-app-4).
@@ -832,19 +859,21 @@ After rebuilding the JS code, you should get Figure \@ref(fig:vdpMod-basic-app-4
 ```{r vdpMod-basic-app-4, echo=FALSE, fig.cap='vdpMod basic app with time series output.', out.width='40%', fig.align='center'}
 knitr::include_graphics("images/going-further/vdpMod-basic-app-4.png")
 ```
+
 #### Exercise: add the phase portrait
+
 Based on the example shown [here](https://echarts.apache.org/examples/en/editor.html?c=flowGL-noise&gl=1&theme=dark), you'll have to add the phase portrait chart to the current application. 
 
 1. In `VdpWidget`, add the card container that will hold the phase plan, right after the time series card. The plot will have the `phase-plot` id:
 
-```jsx
-const VdpWidget = (props, { $f7, $update}) => {
+```{r, echo=FALSE, results='asis'}
+jsx_code <- "const VdpWidget = (props, { $f7, $update}) => {
   // ... getRangeValue ...
   // ... plotStyle ...
   return () => (
     <div>
-      <div class="block-title">{props.label}</div>
-      <div class="block block-strong text-align-center">
+      <div class=\"block-title\">{props.label}</div>
+      <div class=\"block block-strong text-align-center\">
         <p>The below model is computed by R!</p>
         <!-- range slider block -->
       </div>
@@ -852,14 +881,15 @@ const VdpWidget = (props, { $f7, $update}) => {
       TO ADD
     </div>
   )
-}
+}"
+code_chunk_custom(jsx_code, "jsx")
 ```
 
 2. In `initializeVdpWidget`, inside the `shiny:connected` event listener,
 initialize the new `phasePlot` instance. Fill in the `...`.
 
-```js
-const initializeVdpWidget = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
   let linePlot, ...;
   $(document).on('shiny:connected', () => {
   // ... Init vals for ODE model computation ...
@@ -867,12 +897,14 @@ const initializeVdpWidget = (app) => {
   ... = echarts.init(document.getElementById(...));
   });
   // ...
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 3. Ensure it is properly resized by adding an entry to the `resize` event listener. Fill in the `...`.
-```js
-const initializeVdpWidget = (app) => {
+
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
   
   //... shiny:connected ...
   
@@ -881,14 +913,15 @@ const initializeVdpWidget = (app) => {
     ....resize();
   });
   
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 4. In `initializeVdpWidget`, after the `linePlotOptions`, create a new
 `phasePlotOptions` object containing the plot title. Fill in the `...`.
 
-```js
-const initializeVdpWidget = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const initializeVdpWidget = (app) => {
  // ... shiny:connected ...
  // ... resize plots ...
  let lineData, linePlotOptions, phasePlotOptions, 
@@ -912,15 +945,16 @@ const initializeVdpWidget = (app) => {
       }
     }
   });
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 Since we plot Y against X (it was X and Y against time in the previous plot), we add two entries to the previous configuration.
 
 5. The first layer is a flow GL chart showing particles movement in the vector field. The chosen __type__ `flowGL` entry ensures we utilize the proper chart module. We pass the `phaseData` recovered from the R side. Other properties are responsible for controlling the particle appearance like the speed, size and transparency. You may try with different values to see what happens in the plot. Fill in the `...`.
 
-```js
-phasePlotOptions = {
+```{r, echo=FALSE, results='asis'}
+js_code <- "phasePlotOptions = {
   // ... title, axis ...
   series: [
     {
@@ -937,7 +971,8 @@ phasePlotOptions = {
     },
     // Other series
   ]
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 6. How do we control the flow chart visual aspect? As a reminder, `phaseData` is a matrix with 5 columns, the last one being a measure of the flow speed. Ideally, we would like to set up a scale representing different speeds. This is where we introduce the __visualMap__ property, which exposes multiple sub-properties like:
@@ -949,18 +984,19 @@ phasePlotOptions = {
 
 `min` and `max` are determined as per below calculation. Fill in the `...`.
 
-```js
-let magMin = Infinity;
+```{r, echo=FALSE, results='asis'}
+js_code <- "let magMin = Infinity;
 let magMax = -Infinity;
 for (let i = 0; i < message.phaseData.length; i++) {
   let magTemp = message.phaseData[i][4];
   magMax = Math.max(..., ...);
   magMin = Math.min(..., ...);
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
-```js
-phasePlotOptions = {
+```{r, echo=FALSE, results='asis'}
+js_code <- "phasePlotOptions = {
   visualMap: {
     show: false,
     min: ...,
@@ -982,26 +1018,29 @@ phasePlotOptions = {
       ]
     }
   }
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 7. The last data to show is the trajectory from the initial condition. Right after the flow GL data serie, we add an extra JSON pointing to `trajectoryData`. Fill in the `...`.
 
-```js
-series: [
+```{r, echo=FALSE, results='asis'}
+js_code <- "series: [
   // flowGL data
   {
     type: ...,
     data: ...,
     symbol: 'none'
   }
-]
+]"
+code_chunk_custom(js_code, "js")
 ```
 
 8. Finally, at the end of the `model-data` Shiny custom handler, we apply the newly defined options to the plot instance. Fill in the `...`.
 
-```js
-phasePlot.setOption(...);
+```{r, echo=FALSE, results='asis'}
+js_code <- "phasePlot.setOption(...);"
+code_chunk_custom(js_code, "js")
 ```
 
 Recompile the code and enjoy the result displayed on Figure \@ref(fig:vdpMod-basic-app-5).
