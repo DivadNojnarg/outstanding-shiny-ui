@@ -62,8 +62,8 @@ shinyApp(ui, server)
 
 Then we set the PWA configuration with `set_pwa()`. Overall, this function generates a `manifest.webmanifest` file, downloads the Google PWA compatibility script, adds a custom dependency pointing to the `manifest.webmanifest` file and a `144x144` icon file, copies a boilerplate `service-worker.js` with its `offline.html` page and optionally registers the service worker (whose code is borrowed from [web.dev](https://web.dev/offline-fallback-page/#registering-the-service-worker)):
 
-```js
-window.addEventListener('load', () => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
     var pathname = window.location.pathname;
     navigator.serviceWorker
@@ -76,7 +76,8 @@ window.addEventListener('load', () => {
         console.log('Service Worker Registered'); 
       });
   };
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 In the `{shinyMobile}` case, as Framework7 already registers any provided __service
@@ -97,8 +98,8 @@ In the following, we provide more detail about the mentioned steps.
 ### Create the manifest
 We would like to create a __JSON__ configuration file like this:
 
-```js
-{
+```{r, echo=FALSE, results='asis'}
+js_code <- '{
   "short_name": "My App",
   "name": "Super amazing app",
   "description": "This app is just mind blowing",
@@ -124,7 +125,8 @@ We would like to create a __JSON__ configuration file like this:
       "icons": [{ "src": "icons/.png", "sizes": "192x192" }]
     }
   ]
-}
+}'
+code_chunk_custom(js_code, "js")
 ```
 
 All fields are following the official recommendation provided by Google regarding the PWA, I do not recommend removing any entry, except the `shortcuts`, described later. Since the state of the art may slightly change in the future, you are encouraged to regularly check this [website](https://web.dev/add-manifest/) to get the latest features. 
@@ -146,13 +148,13 @@ observeEvent(session$clientData$url_search, {
 
 The web manifest and icons have to be included in the `head` before the Google PWA compatibility script:
 
-```html
-<link rel="manifest" href="manifest.webmanifest" />
+```{r, echo=FALSE, results='asis'}
+html_code <- '<link rel="manifest" href="manifest.webmanifest" />
 <!-- include icon also from manifest -->
 <link rel="icon" type="image/png" 
-  href="icons/icon-144.png" sizes="144x144" />
+  href="icons/icon-144.png" sizes="144x144" />'
+code_chunk_custom(html_code, "html")
 ```
-
 
 `set_pwa()` internally calls `create_pwa_dependency()` which creates an HTML __dependency__ containing all necessary resources:
 
@@ -240,26 +242,27 @@ knitr::include_graphics("images/mobile/mobile-pwa-missing-sw.png")
 The second mandatory step to make our app installable is the __service worker__.
 We borrowed and modified the code from [web.dev](https://web.dev/offline-fallback-page/). `set_pwa()` copies this code in the the provided app `/www` folder:
 
-```js
-// Incrementing OFFLINE_VERSION will kick off the install 
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Incrementing OFFLINE_VERSION will kick off the install 
 // event and force previously cached resources to be 
 // updated from the network.
 const OFFLINE_VERSION = 1;
-const CACHE_NAME = "offline";
+const CACHE_NAME = 'offline';
 // Customize this with a different URL if needed.
-const OFFLINE_URL = "offline.html";
+const OFFLINE_URL = 'offline.html';
 
-self.addEventListener("install", (event) => {
+self.addEventListener('install', (event) => {
   // Install logic
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener('activate', (event) => {
   // Activate logic
 });
 
-self.addEventListener("fetch", (event) => {
+self.addEventListener('fetch', (event) => {
   // Fetch logic
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 This service worker is composed of three steps, which we succinctly describe below.
@@ -267,13 +270,13 @@ This service worker is composed of three steps, which we succinctly describe bel
 #### Installation
 During the __installation__ step, the cache is initialized and assets like HTML page (`offline.html`), CSS, JS, images are asynchronously cached. Assets's respective path is taken from the server location, for instance, Framework7 assets are located in `framework7-5.7.14/...` and jQuery assets in `shared/`. Best practice is to look at the developer tools `Source` tab which provides the right location. 
 
-```js
-self.addEventListener("install", (event) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       await cache.add(
-        new Request(OFFLINE_URL, { cache: "reload" })
+        new Request(OFFLINE_URL, { cache: 'reload' })
       );
       // Cache other assets ...
     })()
@@ -281,19 +284,20 @@ self.addEventListener("install", (event) => {
   // Force the waiting service worker to become 
   // the active service worker.
   self.skipWaiting();
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 #### Activation
-This step ensures that the service worker boots. As the service worker boot-up time may be delayed (until 0.5s), the navigation preload [feature](https://developers.google.com/web/updates/2017/02/navigation-preload) guaranties to have reasonable performances by making network request in parallel of the booting process. In sum, don't touch this code!
+This step ensures that the service worker boots. As the service worker boot-up time may be delayed (until 0.5s), the navigation preload [feature](https://developers.google.com/web/updates/2017/02/navigation-preload) guaranties to have reasonable performances by making network request in parallel of the booting process. In sum, don't touch this code.
 
-```js
-self.addEventListener("activate", (event) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       // Enable navigation preload if it's supported.
       // Speeds up 
-      if ("navigationPreload" in self.registration) {
+      if ('navigationPreload' in self.registration) {
         await self.registration.navigationPreload.enable();
       }
     })()
@@ -302,29 +306,31 @@ self.addEventListener("activate", (event) => {
   // Tell the active service worker to take control of 
   // the page immediately.
   self.clients.claim();
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 #### Fetch
 Once active, the service worker intercepts all network requests sent by the client and returns answers according to a predefined strategy. Here we set the "network first" strategy, meaning we always try to return an answer from the network and fall back to the cache if the request failed (for instance in case of missing internet connection). In the above code, there are two kind of requests: __navigation__, that is related to an HTML page and Other requests corresponding to static assets like CSS or JS. Therefore, we have an `if` and `else` statement to consider those two cases. If you would like to know more about caching strategies please refer to the Google documentation: https://developers.google.com/web/tools/workbox/modules/workbox-strategies. 
 
-```js
-// Fix service-worker bug
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Fix service-worker bug
 if (event.request.cache === 'only-if-cached') return;
 
 // We only want to call event.respondWith() if this 
 // is a navigation request for an HTML page ...
-if (event.request.mode === "navigate") {
+if (event.request.mode === 'navigate') {
   // Navigation request
 } else {
   // Other requests
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
-Below is the navigation request logic, that is what will be triggered each time an end-user points to your app. As stated above, if the navigation preload is available, we return the preload response. If not, the request is fetched. In case of failure, we fallback to the offline HTML page, cached during the installation step.  
+Below is the navigation request logic, that is what will be triggered each time an end-user points to your app. As stated above, if the navigation preload is available, we return the preload response. If not, the request is fetched. In case of failure, we fallback to the offline HTML page, cached during the installation step. 
 
-```js
-// Navigation request logic
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Navigation request logic
 event.respondWith(
   (async () => {
     try {
@@ -339,20 +345,21 @@ event.respondWith(
       const networkResponse = await fetch(event.request);
       return networkResponse;
     } catch (error) {
-      console.log("Returning offline page instead.", error);
+      console.log('Returning offline page instead.', error);
 
       const cache = await caches.open(CACHE_NAME);
       const cachedResponse = await cache.match(OFFLINE_URL);
       return cachedResponse;
     }
   })()
-);
+);"
+code_chunk_custom(js_code, "js")
 ```
 
 All other requests are handled in the `else` statement. The logic remains the same. We first try to get assets from the network and fallback to the cache upon error, that is for instance in offline mode. 
-  
-```js
-// Other requests
+
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Other requests
 event.respondWith(
   (async () => {
     try {
@@ -368,7 +375,8 @@ event.respondWith(
       
     }
   })()
-);
+);"
+code_chunk_custom(js_code, "js")
 ```
 
 To sum up, this service worker redirects the end user to the offline cached page (`offline.html`) whenever the app is offline, thereby offering a better user experience. The full code is located [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/5bc49eab9496696a06da3f62d6aaf8ef468cdad4/inst/shinyMobile/pwa/www/service-worker.js).
@@ -381,11 +389,12 @@ We strongly advise to keep the same file names.
 
 The next step involves the service worker __registration__. Framework7 has a dedicated module in the app configuration. We modify the `config` in `helpers_config.js` before initializing the `app` and run `build_js()` to update the minified file:
 
-```js
-config.serviceWorker = {
+```{r, echo=FALSE, results='asis'}
+js_code <- "config.serviceWorker = {
   path: window.location.pathname + 'service-worker.js',
   scope: window.location.pathname
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 If the process is successful, you get the result shown in Figure \@ref(fig:mobile-pwa-registered-sw).
@@ -404,8 +413,8 @@ knitr::include_graphics("images/mobile/mobile-pwa-cache.png")
 
 The new PWA standard imposes to return a valid response when the app is __offline__. The offline page is also copied from `{charpente}` and below is a summarized version:
 
-```html
-<!DOCTYPE html>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<!DOCTYPE html>
 <html>
   <head>
     <!-- Required meta tags ... -->
@@ -431,7 +440,8 @@ The new PWA standard imposes to return a valid response when the app is __offlin
       // ...
     </script>
   </body>
-</html>
+</html>'
+code_chunk_custom(html_code, "html")
 ```
 
 Notice that jQuery, required for easier DOM interactions, as well as Framework7 CSS and JS assets are cached in the above service worker script, thereby making them
@@ -476,17 +486,18 @@ f7_page <- function(..., navbar, toolbar, title = NULL,
 
 We recover it on the JS side within `helpers_config.js`:
 
-```js
-// check if the app is intended to be a PWA
-let isPWA = $('body').attr('data-pwa') === "true";
+```{r, echo=FALSE, results='asis'}
+js_code <- "// check if the app is intended to be a PWA
+let isPWA = $('body').attr('data-pwa') === 'true';
 
 if (isPWA) {
   config.serviceWorker = {
-    path: window.location.pathname + "service-worker.js",
+    path: window.location.pathname + 'service-worker.js',
     scope: window.location.pathname
   };
 }
-
+"
+code_chunk_custom(js_code, "js")
 ```
 
 It __only__ creates `config.serviceWorker` if the user specified `allowPWA = TRUE`.
@@ -502,23 +513,25 @@ To be able to install the app, make sure to replace `start_url` by the url
 
 We create a new script with `create_js("helpers_pwa")` and export the `setPWA` function:
 
-```js
-export const setPWA = (app) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "export const setPWA = (app) => {
   // Install logic
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 Once the installation criteria are met, the web browser raises the __beforeinstallprompt__ event, (except
 on the iOS platform which is not compatible yet. We add an event listener inside `setPWA`:
 
-```js
-let deferredPrompt;
+```{r, echo=FALSE, results='asis'}
+js_code <- "let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   // Prevent the mini-infobar from appearing on mobile
   e.preventDefault();
   // Stash the event so it can be triggered later.
   deferredPrompt = e;
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 This code adds an event listener to the window, prevents it from showing at start with `e.preventDefault` and
@@ -528,22 +541,23 @@ The next step comprises the design of our custom piece of UI that will trigger t
 a [toast](https://framework7.io/docs/toast.html) containing an install button. The initialization
 is fairly simple, following the pattern `app.<COMPONENT>.create(parameters)`:
 
-```js
-// Create custom install UI
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Create custom install UI
 let installToast = app.toast.create({
   position: 'center',
   text: `<button 
-    id="install-button" 
-    class="toast-button button color-green">
+    id=\"install-button\" 
+    class=\"toast-button button color-green\">
     Install
   </button>`
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We give it an id so as to call it later and edit the __beforeinstallprompt__ event listener to show the toast:
 
-```js
-let deferredPrompt;
+```{r, echo=FALSE, results='asis'}
+js_code <- "let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   // Prevent the mini-infobar from appearing on mobile
   e.preventDefault();
@@ -551,7 +565,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
   deferredPrompt = e;
   // Show install trigger
   installToast.open();
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 ::: {.noteblock data-latex=""}
@@ -561,8 +576,8 @@ With jQuery like `$(window).on('beforeinstallprompt', ...)`, we would capture th
 We register a second event listener, which fires on the toast button click. We first close the 
 toast, call the `prompt` method on the deferred event and log the result:
 
-```js
-app.utils.nextTick(function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "app.utils.nextTick(function() {
   $('#install-button').on('click', function() {
     // close install toast
     installToast.close();
@@ -580,13 +595,14 @@ app.utils.nextTick(function() {
       deferredPrompt = null;
     });
   });
-}, 500);
+}, 500);"
+code_chunk_custom(js_code, "js")
 ```
 
 Inside `init.js`, we add our brand new module:
 
-```js
-import { setConfig } from './helpers_config.js';
+```{r, echo=FALSE, results='asis'}
+js_code <- "import { setConfig } from './helpers_config.js';
 import { initTheme } from './helpers_theme.js'
 import { setPWA } from './helpers_pwa.js'
 // other imports ...
@@ -598,7 +614,8 @@ $( document ).ready(function() {
   initTheme(config, app);
   // PWA setup
   setPWA(app);
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We run `build_js()` and deploy the app to shinyapps.io (remember, we must serve the app under HTTPS). Figure \@ref(fig:mobile-pwa-installable)

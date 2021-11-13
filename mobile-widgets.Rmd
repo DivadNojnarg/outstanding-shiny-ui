@@ -9,16 +9,18 @@ knitr::include_graphics("images/mobile/mobile-widget-gauges.png")
 
 Looking at the [documentation](https://v5.framework7.io/docs/), the API is most of the time always the same that is, we create the widget:
 
-```js
-app.widget.create(parameters);
+```{r, echo=FALSE, results='asis'}
+js_code <- "app.widget.create(parameters);"
+code_chunk_custom(js_code, "js")
 ```
 
 and we update, open or close it later:
 
-```js
-app.widget.update(newParameters);
+```{r, echo=FALSE, results='asis'}
+js_code <- "app.widget.update(newParameters);
 app.widget.open();
-app.widget.close();
+app.widget.close();"
+code_chunk_custom(js_code, "js")
 ```
 
 I must admit, there are few deviations like the navbar (`app.navbar.show()`) or the modal [dialog](https://v5.framework7.io/docs/dialog.html#dialog-shortcuts) but we have enough common points to design a main wrapper that creates any widget and update/open/close it.
@@ -35,8 +37,9 @@ As shown earlier in this book, there is a simple way to achieve this. Let's cons
 
 On the UI side, we expect to have:
 
-```html
-<div class="gauge"></div>
+```{r, echo=FALSE, results='asis'}
+html_code <- '<div class="gauge"></div>'
+code_chunk_custom(html_code, "html")
 ```
 
 Upon widget instantiation, Framework7 populates this container with the relevant tags and attributes. The `f7_gauge()` function creates a `div` tag with the `gauge` class as well as a configuration tag:
@@ -114,10 +117,11 @@ create_js("widgets")
 We set an array containing all compatible widget names in two categories and concatenate
 in a `widgets` element:
 
-```js
-const uiWidgets = ["gauge", "swiper", "searchbar"];
-const serverWidgets = ["toast", "photoBrowser", "notification"];
-const widgets = uiWidgets.concat(serverWidgets);
+```{r, echo=FALSE, results='asis'}
+js_code <- "const uiWidgets = ['gauge', 'swiper', 'searchbar'];
+const serverWidgets = ['toast', 'photoBrowser', 'notification'];
+const widgets = uiWidgets.concat(serverWidgets);"
+code_chunk_custom(js_code, "js")
 ```
 
 Notice that as we are going to use the `app` object, we import them from the `init.js` script, located
@@ -125,20 +129,22 @@ in the same `./srcjs` folder.
 
 We then define the `activateWidget` function, only considering UI widgets. 
 
-```js
-const activateWidget = (widget) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const activateWidget = (widget) => {
  // function logic
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 Since we have two widgets categories, this function first checks whether the widget is part of the `uiWidgets` array with `indexOf`:
 
-```js
-const activateWidget = (widget) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const activateWidget = (widget) => {
   if (uiWidgets.indexOf(widget) > -1) {
     // Init widget
   }
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 As there may be multiple widgets of the same type, we must loop through all
@@ -146,49 +152,53 @@ possible elements. This is where the class is important and must match the widge
 For instance, the gauge has the `gauge` class and the methods are always `app.gauge.`.
 How do we loop through multiple widgets? We use the jQuery `each` method:
 
-```js
-const activateWidget = (widget) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const activateWidget = (widget) => {
   if (uiWidgets.indexOf(widget) > -1) {
-    $("." + widget).each(function() {
+    $('.' + widget).each(function() {
       // Init widget
     }
   }
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
-We see that `$("." + widget)` gives `$(".gauge")` when the widget is a gauge, which
+We see that `$('.' + widget)` gives `$('.gauge')` when the widget is a gauge, which
 targets all gauges one by one. Then for each gauge, we extract the configuration containing
 all options passed by the end user. Remember that each element has a unique id. 
 We extract the current element `$(this)` in the `$el` variable and search for a 
-script tag pointing to the unique tag having `$el.attr("id")` as id. The configuration is parsed
+script tag pointing to the unique tag having `$el.attr('id')` as id. The configuration is parsed
 and converted to an object. Note that most of the time, Framework7 expects to have a `el`
 attributes which simply contains the CSS selector of the current element, 
-in other words its unique id `'#' + $el.attr("id")`:
+in other words its unique id `'#' + $el.attr('id')`:
 
-```js
-let $el = $(this);
+```{r, echo=FALSE, results='asis'}
+js_code <- "let $el = $(this);
 let config = $(document).find(
-  "script[data-for='" + $el.attr("id") + "']"
+  'script[data-for=\"' + $el.attr('id') + '\"]'
 );
 config = JSON.parse(config.html());
 // add the id
-config.el = '#' + $el.attr("id");
+config.el = '#' + $el.attr('id');"
+code_chunk_custom(js_code, "js")
 ```
 
 The final step consists in initializing the widget, which is quite straightforward if we notice that
 `app.gauge` is the same as `app["gauge"]`. We obtain the general code:
 
-```js
-app[widget].create(config);
+```{r, echo=FALSE, results='asis'}
+js_code <- "app[widget].create(config);"
+code_chunk_custom(js_code, "js")
 ```
+
 
 For the server widgets, it is even simpler. We recover the message with a `Shiny.addCustomMessageHandler("type", callback)` and
 initialize it. The only possible source of problem is the custom message `type` that must be the same 
 as the one specified in the R function with `session$sendCustomMessage("type", message)`. As shown in the below code, we can chain methods and immediately open the widget, right after its creation. Moreover, it is always good practice to let Shiny know about the widget state, that is whether it is currently opened. This is the reason why we added an `on` property to the message. All widgets trigger [events](https://v5.framework7.io/docs/notification.html#dom-events), 
-for instance notifications have the `notification:opened` and `notification:closed`. For each event, we set an input value on the fly, with `Shiny.setInputValue` as explained in Chapter \@ref(quick-inputs). This way, our future users can know exactly when the widget is closed or opened, thereby being able to trigger any subsequent action. This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness!
+for instance notifications have the `notification:opened` and `notification:closed`. For each event, we set an input value on the fly, with `Shiny.setInputValue` as explained in Chapter \@ref(quick-inputs). This way, our future users can know exactly when the widget is closed or opened, thereby being able to trigger any subsequent action. This obviously requires the widget to pass an optional `id` attribute to ensure the uniqueness.
 
-```js
-// Server widget logic
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Server widget logic
 Shiny.addCustomMessageHandler(widget, function(message) {
   if (message.id !== undefined) {
     message.on = {
@@ -202,31 +212,33 @@ Shiny.addCustomMessageHandler(widget, function(message) {
   }
 
   app[widget].create(message).open();
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We create an `else` statement following the `if` condition (handling the UI widgets) and put the server widget logic inside:
 
-
-```js
-const activateWidget = (widget) => {
+```{r, echo=FALSE, results='asis'}
+js_code <- "const activateWidget = (widget) => {
   if (uiWidgets.indexOf(widget) > -1) {
     // UI widget logic
   } else {
     // Server widget logic
   }
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 The full JavaScript code may be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/5bc49eab9496696a06da3f62d6aaf8ef468cdad4/srcjs/widgets.js#L7).
 
 The final step aims at activating all widgets. We proceed with a `forEach` loop:
 
-```js
-// Loop over all widgets to activate them
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Loop over all widgets to activate them
 widgets.forEach(function(w) {
   activateWidget(w);
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 Let's try below with a notification example, where we capture the state of the notification in an input element. This allows to trigger another notification on the server side, in another `observeEvent()`. 
@@ -244,13 +256,14 @@ We would like to develop a similar generalized interface to update any element i
 
 We leverage the `app.data` element (see Chapter \@ref(mobile-global-data)) to store all instances by widget type. Inside `helper_config.js`, we add a empty gauge array to `config.data`:
 
-```js
-config.data = function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "config.data = function() {
   return {
     // any other widget type to cache ...
     gauge: []
   };
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 The array name must be the same as the app method. For instance,
@@ -259,9 +272,10 @@ we have `app.gauge`, which means that we should create `config.data.gauge` and n
 Once the cache is available, we have to modify the JavaScript that creates the widget instance,
 to store the new instance in the cache, as shown Figure \@ref(fig:mobile-widget-store). We add the following code, where `w` refers to the widget instance:
 
-```js
-// ui widgets
-app.data[widget][$el.attr("id")] = w;
+```{r, echo=FALSE, results='asis'}
+js_code <- "// ui widgets
+app.data[widget][$el.attr('id')] = w;"
+code_chunk_custom(js_code, "js")
 ```
 
 ::: {.noteblock data-latex=""}
@@ -271,24 +285,25 @@ as they are already generated by the server.
 
 The `activateWidget` function should be:
 
-```js
-// Instantiate a widget
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Instantiate a widget
 const activateWidget = (widget) => {
   // Handle ui side widgets
   if (uiWidgets.indexOf(widget) > -1) {
-    $("." + widget).each(function() {
+    $('.' + widget).each(function() {
       // unchanged
 
       // feed the create method
       let w = app[widget].create(config);
       // Store the widget instance in the app data cache
-      app.data[widget][$el.attr("id")] = w;
+      app.data[widget][$el.attr('id')] = w;
     });
   } else {
     // Server widgets logic
     // Unchanged
   }
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 Once done, this is time to design `update_f7_instance()`. The R code sends a message to
@@ -355,27 +370,29 @@ update_f7_instance <- function(
 
 On the JS side, we receive the message, still in the `widget.js` script:
 
-```js
-Shiny.addCustomMessageHandler(
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
   'update-instance', 
   function(message) {
     // Treat message ...
   }
-);
+);"
+code_chunk_custom(js_code, "js")
 ```
 
 All widgets are stored by __type__ in the app data, for instance, the element having for unique id
-`mygauge` is located in `app.data["gauge"]["mygauge"]`. As there is no easy way to recover the widget type given its id, the first step of the message handler is to find where our instance is located. We design a nested __for__ loop. The outer loop scans all `app.data` __properties__ (ie widget categories), while the inner loop scans all existing instances for each category. Whenever, the `message.id` matches the instance name, we store the corresponding widget category in a variable:
+`mygauge` is located in `app.data['gauge']['mygauge']`. As there is no easy way to recover the widget type given its id, the first step of the message handler is to find where our instance is located. We design a nested __for__ loop. The outer loop scans all `app.data` __properties__ (ie widget categories), while the inner loop scans all existing instances for each category. Whenever, the `message.id` matches the instance name, we store the corresponding widget category in a variable:
 
-```js
-let instanceFamily;
+```{r, echo=FALSE, results='asis'}
+js_code <- "let instanceFamily;
 for (const property in app.data) {
   for (const e in app.data[property]) {
     if (e === message.id) {
       instanceFamily = property;
     }
   }
-}
+}"
+code_chunk_custom(js_code, "js")
 ```
 
 We then access the old instance using the newly defined variable and the `message.id`.
@@ -386,22 +403,24 @@ We capture its parameters located in `oldInstance.params`. From there, multiple 
   
 In what follows, we decided to merge the old and new configurations using `app.utils.extend`:
 
-```js
-let oldInstance = app.data[instanceFamily][message.id];
+```{r, echo=FALSE, results='asis'}
+js_code <- "let oldInstance = app.data[instanceFamily][message.id];
 let oldConfig = oldInstance.params;
-let newConfig = app.utils.extend(oldConfig,  message.options);
+let newConfig = app.utils.extend(oldConfig,  message.options);"
+code_chunk_custom(js_code, "js")
 ```
 
 The next steps consist of destroying the old instance, initializing the new instance, and refreshing 
 the `app.data` cache:
 
-```js
-// Destroy old instance
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Destroy old instance
 oldInstance.destroy();
 // Create new config
 let newInstance = app[instanceFamily].create(newConfig);
 // Update app data
-app.data[instanceFamily][message.id] = newInstance;
+app.data[instanceFamily][message.id] = newInstance;"
+code_chunk_custom(js_code, "js")
 ```
 
 The whole code can be found [here](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/5bc49eab9496696a06da3f62d6aaf8ef468cdad4/srcjs/widgets.js#L55).
@@ -474,23 +493,25 @@ add_f7_tooltip <- function(
 On the JS side within `widgets.js`, we recover the message by building a custom message handler with `Shiny.addCustomMessageHandler` pointing to `add_tooltip`. Again, if there is a mismatch between R and JS __type__, the API won't work. Like all Framework7 widgets,
 creating a tooltip is rather straightforward:
 
-```js
-Shiny.addCustomMessageHandler('add_tooltip', function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler('add_tooltip', function(message) {
   app.tooltip.create(message).show();
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 As mentioned earlier, this syntax is fine since `message` is a JSON element and we can also chain methods. There is however a problem: `add_tooltip` is fired
 each time the user triggers a specific element on the R side. It means the tooltip __instance__ is 
 created each time, which is not optimal. To fix this issue, we set a tooltips cache in the `app.data` object and accordingly modify `helpers_config.js`:
 
-```js
-config.data = function() {
+```{r, echo=FALSE, results='asis'}
+js_code <- "config.data = function() {
   return {
     gauge: [], 
     tooltips: []
   };
-};
+};"
+code_chunk_custom(js_code, "js")
 ```
 
 We update the previous custom handler so that we:
@@ -498,8 +519,8 @@ We update the previous custom handler so that we:
   - Check if the tooltip instance is already in the cached `app.data` before creating an instance. If is is already there, nothing has to be done.
   - Each time we create a new instance, we save it in the `app.data` cache to retrieve it later.
   
-```js
-Shiny.addCustomMessageHandler('add_tooltip', function(message) {
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler('add_tooltip', function(message) {
   // We store all created instances in app data so that we don't
   // recreate them later if they exist ...
   if (app.data.tooltips[message.targetEl] === undefined) {
@@ -510,8 +531,9 @@ Shiny.addCustomMessageHandler('add_tooltip', function(message) {
     // Storage in app data (tooltips array)
     app.data.tooltips[message.targetEl] = t;
   }
-});
-```
+});"
+code_chunk_custom(js_code, "js")
+```  
 
 We store the current instance with `app.data.tooltips[message.targetEl] = t;`.
 The __reference__ is given by `message.targetEl` that is the target to apply the tooltip on. When multiple tooltips are created, we may search for them by target name, which is a reasonable choice. For instance `app.data.tooltips["#mybutton"]` points to the tooltip associated to the element having `#mybutton` as id. So far so good!
@@ -562,17 +584,18 @@ The corresponding JS handler:
   
 In `widgets.js`, right after the `add_tooltip` handler, we add the `update` logic, that consists in changing the text:
 
-```js
-Shiny.addCustomMessageHandler(
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
   'update_tooltip', function(message) {
   // Don't do anything if the instance is not there in app data
     if (app.data.tooltips[message.targetEl] !== undefined) {
       let t = app.data.tooltips[message.targetEl];
-      if (message.action === "update") {
+      if (message.action === 'update') {
         t.setText(message.text);
       }
     }
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 The corresponding tooltip instance is accessed in `app.data` with `app.data.tooltips[message.targetEl]`
@@ -580,38 +603,39 @@ and stored in a local variable, `t`. We apply the Framework7 tooltip [method](ht
 
 The next step is to handle the `toggle` case. We check whether the current instance is active applying the `app.tooltip.get` method on `message.targetEl`. If the instance is alive, we get an object, while we obtain undefined if it does not exist. We then call the `app.tooltip.destroy` method on the current instance:
 
-```js
-Shiny.addCustomMessageHandler(
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
   'update_tooltip', function(message) {
     // Don't do anything if the instance is not there in app data
     if (app.data.tooltips[message.targetEl] !== undefined) {
       let t = app.tooltip.get(message.targetEl);
-      if (message.action === "update") {
+      if (message.action === 'update') {
         t.setText(message.text);
-      } else if (message.action === "toggle") {
+      } else if (message.action === 'toggle') {
         // destroy
         if (t) {
           t.destroy();
         }
       }
     }
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
-Wait a moment! There are two issues with this code. As `t` is a variable pointing
+Wait a moment ... There are two issues with this code. As `t` is a variable pointing
 to the current instance, if we destroy that instance, `t` will point to a destroyed element the next time it is called, and any action like `setText` will raise an error. The trick is to create a shallow clone with `Object.assign` that won't be affected by the `destroy` method, save the shallow clone in the `app.data` cache and destroy the old instance. Therefore we update the `tooltips.js` script:
 
-```js
-Shiny.addCustomMessageHandler(
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
   'update_tooltip', function(message) {
     if (app.data.tooltips[message.targetEl] !== undefined) {
       // Try to get the instance
       let t = app.tooltip.get(message.targetEl);
-      if (message.action === "update") {
+      if (message.action === 'update') {
         if (t) {
           t.setText(message.text);
         }
-      } else if (message.action === "toggle") {
+      } else if (message.action === 'toggle') {
         if (t) {
           // create copy that won't be modified if 
           // t is destroyed!
@@ -623,30 +647,32 @@ Shiny.addCustomMessageHandler(
         } 
       }
     }
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 We also check whether the instance is alive before updating it. We are still missing the `re-activation` step that consists in rebuilding the tooltip instance based on the cached data `app.data.tooltips[message.targetEl]` previously saved. All parameters are contained in the `params` object (instance element):
 
-```js
-// Capture parameters
+```{r, echo=FALSE, results='asis'}
+js_code <- "// Capture parameters
 let pars = app.data.tooltips[message.targetEl].params;
 // Recreate the tooltip based on the copy configuration
 t = app.tooltip.create(pars);
 // Replace the app data instance
-app.data.tooltips[message.targetEl] = t;
+app.data.tooltips[message.targetEl] = t;"
+code_chunk_custom(js_code, "js")
 ```
 
 The final JS code is:
 
-```js
-Shiny.addCustomMessageHandler(
+```{r, echo=FALSE, results='asis'}
+js_code <- "Shiny.addCustomMessageHandler(
   'update_tooltip', function(message) {
   if (app.data.tooltips[message.targetEl] !== undefined) {
     // Unchanged
-    if (message.action === "update") {
+    if (message.action === 'update') {
       // Unchanged
-    } else if (message.action === "toggle") {
+    } else if (message.action === 'toggle') {
       if (t) {
         // Unchanged
       } else {
@@ -659,7 +685,8 @@ Shiny.addCustomMessageHandler(
       }
     }
   }
-});
+});"
+code_chunk_custom(js_code, "js")
 ```
 
 You may find an example below.
