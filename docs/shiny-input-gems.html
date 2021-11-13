@@ -97,7 +97,7 @@
 internal methods/functions are available to the programmer. Below, we add more elements to the list, trying to
 give practical examples and see how it can significantly improve your apps. If you ever used the <a href="https://waiter.john-coene.com/">waiter</a> <span class="citation">(<a href="references.html#ref-R-waiter" role="doc-biblioref">Coene 2021b</a>)</span> package by John Coene, know that it heavily relies on some Shiny’s event (Figure <a href="shiny-input-gems.html#fig:waiter-preloader">14.1</a>).</p>
 <p></p>
-<div class="figure">
+<div class="figure" style="text-align: center">
 <span style="display:block;" id="fig:waiter-preloader"></span>
 <img src="images/survival-kit/waiter-preloader.png" alt="{waiter} preloader significantly improves the perceived app performance and user experience." width="100%"><p class="caption">
 FIGURE 14.1: {waiter} preloader significantly improves the perceived app performance and user experience.
@@ -211,6 +211,7 @@ FIGURE 14.2: Inspect the input-changed event in the JS console.
 </div>
 <p></p>
 <p>Contrary to what is mentioned in the online <a href="https://shiny.rstudio.com/articles/js-events.html">documentation</a>, <strong>inputType</strong> does not always have a value. In this case, an alternative, is to access the related input binding and extract its name (Figure @ref(fig: input-changed-event-zoom)), as shown below:</p>
+<p></p>
 <div class="sourceCode" id="cb574"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb574-1"><a href="shiny-input-gems.html#cb574-1" aria-hidden="true" tabindex="-1"></a><span class="fu">$</span>(<span class="bu">document</span>)<span class="op">.</span><span class="fu">on</span>(<span class="st">'shiny:inputchanged'</span><span class="op">,</span> <span class="kw">function</span>(<span class="bu">event</span>) {</span>
 <span id="cb574-2"><a href="shiny-input-gems.html#cb574-2" aria-hidden="true" tabindex="-1"></a>  Shiny<span class="op">.</span><span class="fu">setInputValue</span>(</span>
 <span id="cb574-3"><a href="shiny-input-gems.html#cb574-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">'pleaseStayHome'</span><span class="op">,</span> </span>
@@ -221,6 +222,7 @@ FIGURE 14.2: Inspect the input-changed event in the JS console.
 <span id="cb574-8"><a href="shiny-input-gems.html#cb574-8" aria-hidden="true" tabindex="-1"></a>    }</span>
 <span id="cb574-9"><a href="shiny-input-gems.html#cb574-9" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
 <span id="cb574-10"><a href="shiny-input-gems.html#cb574-10" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p></p>
 <p>If you use this code in a custom shiny template, it is possible that input bindings doesn’t have name, which would thereby make <code>event.binding.name.split('.')[1]</code> crash, <code>event.binding</code> being undefined.</p>
 <p></p>
 <div class="sourceCode" id="cb575"><pre class="downlit sourceCode r">
@@ -423,12 +425,14 @@ In the following, we’ll focus on the <code><a href="https://rdrr.io/pkg/waiter
 <p>Under the hood, this feature relies on the <code>shiny:idle</code> event. When the app starts, <code>shiny:idle</code> is triggered just after <code>shiny:connected</code> and <code>shiny:sessioninitialized</code>. <code>shiny:idle</code> is also called each time a computation cycle is finished, that is each time an input is changed and the related output are re-rendered.</p>
 <p>Whenever we call <code><a href="https://rdrr.io/pkg/waiter/man/waiter.html">waiter_preloader()</a></code>, an HTML overlay is added in the DOM. Moreover, this extra JS code ensures to
 hide the waiter when shiny is ready:</p>
+<p></p>
 <div class="sourceCode" id="cb579"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb579-1"><a href="shiny-input-gems.html#cb579-1" aria-hidden="true" tabindex="-1"></a><span class="bu">window</span><span class="op">.</span><span class="at">ran</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
 <span id="cb579-2"><a href="shiny-input-gems.html#cb579-2" aria-hidden="true" tabindex="-1"></a><span class="fu">$</span>(<span class="bu">document</span>)<span class="op">.</span><span class="fu">on</span>(<span class="st">'shiny:idle'</span><span class="op">,</span> <span class="kw">function</span>(<span class="bu">event</span>){</span>
 <span id="cb579-3"><a href="shiny-input-gems.html#cb579-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(<span class="op">!</span><span class="bu">window</span><span class="op">.</span><span class="at">ran</span>)</span>
 <span id="cb579-4"><a href="shiny-input-gems.html#cb579-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">hide_waiter</span>(id <span class="op">=</span> <span class="kw">null</span>)<span class="op">;</span></span>
 <span id="cb579-5"><a href="shiny-input-gems.html#cb579-5" aria-hidden="true" tabindex="-1"></a>  <span class="bu">window</span><span class="op">.</span><span class="at">ran</span> <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
 <span id="cb579-6"><a href="shiny-input-gems.html#cb579-6" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p></p>
 <p>As a security, <code>window.ran</code> prevents us from running this code twice. As an example, consider this app with
 a slider input and a plot output. We simulated a delay of three seconds to produce the plot.</p>
 <p></p>
@@ -469,6 +473,7 @@ a slider input and a plot output. We simulated a delay of three seconds to produ
 </h3>
 <p>Similarly, the <code><a href="https://rdrr.io/pkg/waiter/man/waiter.html">waiter_on_busy()</a></code> exploit the <code>shiny:idle</code> and <code>shiny:busy</code> events. Each time an output is invalidated, <code>shiny:busy</code> is fired, which triggers the recalculation until the next <code>shiny:idle</code> event. The loader is shown as soon as
 shiny is busy:</p>
+<p></p>
 <div class="sourceCode" id="cb581"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb581-1"><a href="shiny-input-gems.html#cb581-1" aria-hidden="true" tabindex="-1"></a><span class="fu">$</span>(<span class="bu">document</span>)<span class="op">.</span><span class="fu">on</span>(<span class="st">'shiny:busy'</span><span class="op">,</span> <span class="kw">function</span>(<span class="bu">event</span>) {</span>
 <span id="cb581-2"><a href="shiny-input-gems.html#cb581-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">show_waiter</span>(</span>
 <span id="cb581-3"><a href="shiny-input-gems.html#cb581-3" aria-hidden="true" tabindex="-1"></a>    id <span class="op">=</span> <span class="kw">null</span><span class="op">,</span></span>
@@ -476,10 +481,13 @@ shiny is busy:</p>
 <span id="cb581-5"><a href="shiny-input-gems.html#cb581-5" aria-hidden="true" tabindex="-1"></a>    color <span class="op">=</span> <span class="op">...</span></span>
 <span id="cb581-6"><a href="shiny-input-gems.html#cb581-6" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
 <span id="cb581-7"><a href="shiny-input-gems.html#cb581-7" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p></p>
 <p>and is hidden once shiny is done:</p>
+<p></p>
 <div class="sourceCode" id="cb582"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb582-1"><a href="shiny-input-gems.html#cb582-1" aria-hidden="true" tabindex="-1"></a><span class="fu">$</span>(<span class="bu">document</span>)<span class="op">.</span><span class="fu">on</span>(<span class="st">'shiny:idle'</span><span class="op">,</span> <span class="kw">function</span>(<span class="bu">event</span>) {</span>
 <span id="cb582-2"><a href="shiny-input-gems.html#cb582-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">hide_waiter</span>(<span class="kw">null</span>)<span class="op">;</span></span>
 <span id="cb582-3"><a href="shiny-input-gems.html#cb582-3" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p></p>
 <p></p>
 <div class="sourceCode" id="cb583"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">### RUN ### </span>
@@ -551,7 +559,7 @@ shiny is busy:</p>
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-11-11.</p>
+    <p>"<strong>Outstanding User Interfaces with Shiny</strong>" was written by David Granjon. It was last built on 2021-11-13.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
