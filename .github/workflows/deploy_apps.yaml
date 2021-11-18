@@ -46,12 +46,21 @@ jobs:
           r-version: "4.0"
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v1
-        with:
-          cache-version: 1
-          extra-packages: |
-            curl
+      # Install system dependencies but do not install pkgs. Let renv do that
+      - name: Install system dependencies
+        shell: Rscript {0}
+        run: |
+          cat("::group::Install pak\n")
+          options(pak.no_extra_messages = TRUE)
+          install.packages("pak", repos = "https://r-lib.github.io/p/pak/${{ inputs.pak-version }}/")
 
+          local_deps <- pak::local_dev_deps(dependencies = "all")[["ref"]]
+          pak::local_system_requirements(execute = TRUE)
+          for (dep in c("curl")) {
+            pak::pkg_system_requirements(dep, execute = TRUE)
+          }
+
+      # Installs specific R packages
       - uses: r-lib/actions/setup-renv@v1
         with:
           cache-version: 2
