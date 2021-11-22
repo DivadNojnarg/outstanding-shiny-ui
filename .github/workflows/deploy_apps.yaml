@@ -26,7 +26,7 @@ jobs:
   deploy:
     runs-on: ubuntu-20.04
 
-    name: "unleash-shiny"
+    name: "unleash-shiny.shinyapps.io"
 
     env:
       R_KEEP_PKG_SOURCE: yes
@@ -45,17 +45,26 @@ jobs:
         with:
           r-version: "4.0"
           use-public-rspm: true
-            
+
+
+      # Move .Rprofile so that system dependencies can be installed
+      - name: "Temporarily move .Rprofile"
+        shell: bash
+        run: mv .Rprofile tmp-Rprofile
+      # Installs latest R packages
       - uses: r-lib/actions/setup-r-dependencies@v1
         with:
           cache-version: 1
           extra-packages: |
             curl
+      - name: "Move .Rprofile back"
+        shell: bash
+        run: mv tmp-Rprofile .Rprofile
 
+      # Installs specific R packages
       - uses: r-lib/actions/setup-renv@v1
         with:
           cache-version: 2
-      
 
       - name: Deploy apps
         env:
