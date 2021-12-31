@@ -1,4 +1,4 @@
-# Oustanding User Interfaces with Shiny
+# Outstanding User Interfaces with Shiny
 
 This book comes with a standalone companion package.
 
