@@ -1,7 +1,7 @@
 # Adding more interactivity {#custom-templates-interactivity}
 In this part, we are going to bring even more life to the template element. 
 We first see how to enhance an existing static HTML component, through a simple progress bar example. 
-Then we explore more complex elements involving specific Shiny patterns. By the end of the chapter, you will be able to implement components like the one showed on Figure \@ref(fig:tabler-progress-overview). 
+Then we explore more complex elements involving specific Shiny patterns. By the end of the chapter, you will be able to implement components like the one showed in Figure \@ref(fig:tabler-progress-overview). 
 
 ```{r tabler-progress-overview, echo=FALSE, fig.cap='Stacked progress bar inside a card.', out.width='100%'}
 knitr::include_graphics("images/practice/tabler-progress-overview.png")
@@ -27,7 +27,7 @@ tabler_custom_js <- htmlDependency(
 ```
 
 ## Custom progress bars
-__Progress bars__ are a good way to display metric related to a progress, for instance tracking the number of remaining tasks for a project. In general, those elements are static HTML. Hence, it would be interesting to update the current value from the server side. Since it is not an proper input element, implementing an input binding is inappropriate and we decide to proceed with a custom handler. We first create the `tabler_progress()` tag which is mainly composed of:
+__Progress bars__ are a good way to display metrics related to a progress, for instance tracking the number of remaining tasks for a project. In general, those elements are static HTML. Hence, it would be interesting to update the current value from the server side. Since it is not an proper input element, implementing an input binding is inappropriate, and we decide to proceed with a custom handler. We first create the `tabler_progress()` tag, which is mainly composed of:
 
   - `style` gives the current progress value. This is the main element.
   - `min` and `max` are bounds, in general between 0 and 100.
@@ -52,10 +52,10 @@ tabler_progress <- function(id = NULL, value) {
 }
 ```
 
-The next element is the `update_tabler_progress()` function which sends two elements from R to JS.
+The next element is the `update_tabler_progress()` function, which sends two elements from R to JS.
 
 ::: {.noteblock data-latex=""}
-How to handle custom messages in shiny modules? Well, it is pretty straightforward. We wrap any __id__ with the module __namespace__ given by `session$ns()` before sending it to JS. You may even do it by default since `session$ns()` returns `""`. 
+How to handle custom messages in Shiny modules? Well, it is pretty straightforward. We wrap any __id__ with the module __namespace__ given by `session$ns()` before sending it to JS. You may even do it by default since `session$ns()` returns `""`. 
 :::
 
   - The progress __id__ wrapped in `session$ns`. 
@@ -75,7 +75,7 @@ update_tabler_progress <- function(
 }
 ```
 
-On the JS side, we leverage the well known `Shiny.addCustomMessageHandler`. As mentioned in Chapter \@ref(survival-kit-javascript), `sendCustomMessage` and `addCustomMessageHandler` are connected by the __type__ parameter. This is crucial! Moreover, as the sent message is a R list, it becomes an JSON, meaning that elements must be accessed with a `.` in JS:
+On the JS side, we leverage the well-known `Shiny.addCustomMessageHandler`. As mentioned in Chapter \@ref(survival-kit-javascript), `sendCustomMessage` and `addCustomMessageHandler` are connected by the __type__ parameter. This is crucial! Moreover, as the sent message is a R list, it becomes an JSON, meaning that elements must be accessed with a `.` in JS:
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "$(function () {
@@ -87,7 +87,7 @@ js_code <- "$(function () {
 code_chunk_custom(js_code, "js")
 ```
 
-We finally test these components in a simple app, whom output is depicted in Figure \@ref(fig:tabler-progress):
+We finally test these components in a simple app, whose output is depicted in Figure \@ref(fig:tabler-progress):
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("tabler/update-progress"), "r")
@@ -97,14 +97,14 @@ code_chunk(OSUICode::get_example("tabler/update-progress"), "r")
 knitr::include_graphics("images/practice/tabler-progress.png")
 ```
 
-Is there a way to directly update the progress from the client which would avoid to exchange data between R and JS, thereby saving some time?
+Is there a way to directly update the progress from the client that would avoid to exchange data between R and JS, thereby saving some time?
 
 The idea is to get rid of the classic `session$sendCustomMessage` and `Shiny.addCustomMessageHandler` method. We could directly create a function that inserts a script in the UI taking a __trigger__ and __target__ as main parameters. This function would have to be inserted multiple times if multiple triggers had to update the same target. The JS logic is slightly different:
 
-  - We have to wait for shiny to be connected so that the JS `Shiny` object is ready.
+  - We have to wait for Shiny to be connected so that the JS `Shiny` object is ready.
   - We recover the trigger element with any JS/jQuery method.
-  - We leverage the noUiSlider [API](https://refreshless.com/nouislider/) to listen to any update in the range. It's fine because the slider instance has already been initialized in the shinyWidget [input binding](https://github.com/dreamRs/shinyWidgets/blob/55ec7eab9bcf18ceefee2e3714328fd09cfa6e06/inst/assets/nouislider/nouislider-bindings.js#L100). This would not work if we were not waiting for shiny to be connected (you may try)! Notice the use of `this.get()` in the event listener, which avoids to repeat `slider.noUiSlider`
-  - We modify the `width` CSS property of the target like in the previous example.
+  - We leverage the noUiSlider [API](https://refreshless.com/nouislider/) to listen to any update in the range. It's fine because the slider instance has already been initialized in the shinyWidget [input binding](https://github.com/dreamRs/shinyWidgets/blob/55ec7eab9bcf18ceefee2e3714328fd09cfa6e06/inst/assets/nouislider/nouislider-bindings.js#L100). This would not work if we were not waiting for Shiny to be connected (you may try)! Notice the use of `this.get()` in the event listener, which avoids repeating `slider.noUiSlider`
+  - We modify the `width` CSS property of the target as in the previous example.
   
 ```{r, echo=FALSE, results='asis'}
 js_code <- "$(document).on('shiny:connected', function(event) {
@@ -138,9 +138,9 @@ update_tabler_progress2 <- function(trigger, target) {
 code_chunk(OSUICode::get_example("tabler/update-progress-2"), "r")
 ```
 
-**Question:** Run the above example in an external web browser, then stop the app from RStudio. Try to move both sliders. What happens for the progress bars? Compare with a classic `update` function. How could you explain this? Answer: as we are not sending message through the websocket with `session$sendCustomMessage`, the progress bar still updates even though the websocket connection is closed. 
+**Question:** Run the above example in an external web browser, then stop the app from RStudio. Try to move both sliders. What happens for the progress bars? Compare with a classic `update` function. How could you explain this? Answer: as we are not sending a message through the websocket with `session$sendCustomMessage`, the progress bar still updates even though the websocket connection is closed. 
 
-Overall this way is a bit more complex. Yet, assuming an app with data manipulation, tons of inputs and visualizations, everything that can be done from the client (web browser) is less work for the R server part and a better end-user experience! Building outstanding shiny apps is not only designing amazing user interfaces, it's also about __optimization__ and speed as mentioned by Colin Fay et al. in their [book](https://engineering-shiny.org/optimjs.html) [@thinkrShiny].
+Overall this way is a bit more complex. Yet, assuming an app with data manipulation, tons of inputs and visualizations, everything that can be done from the client (web browser) is less work for the R server part and a better end-user experience! Building outstanding Shiny apps is not only designing amazing user interfaces, it's also about __optimization__ and speed as mentioned by Colin Fay et al. in their [book](https://engineering-shiny.org/optimjs.html) [@thinkrShiny].
 
 
 ## User feedback: toasts
@@ -178,7 +178,7 @@ Toasts have a JS API to control their behavior, for instance `$('<toast_selector
   - __autohide__ automatically hides the toast (TRUE by default).
   - __delay__ is the delay to hide the toast (500 ms).
 
-There are three methods: __hide__, __show__ and __dispose__ (dispose ensures the toast does not appear anymore). Finally, we may fine tune the toast behavior with four events: `show.bs.toast`, `shown.bs.toast`, `hide.bs.toast`, `hidden.bs.toast` (like for tabs).
+There are three methods: __hide__, __show__ and __dispose__ (dispose ensures the toast does not appear anymore). Finally, we may fine-tune the toast behavior with four events: `show.bs.toast`, `shown.bs.toast`, `hide.bs.toast`, `hidden.bs.toast` (like for tabs).
 
 ### R implementation
 We first create the toast skeleton in a `tabler_toast()` function. We assume our toast will eventually hide automatically, so we may remove the delete button as well as the `data-autohide="false` attribute. All parameters are optional except the toast id, which is required to toggle the toast:
@@ -190,7 +190,7 @@ tabler_toast <- function(id, title = NULL, subtitle = NULL,
 }
 ```
 
-The first part of is the toast header, which is a direct translation of the above HTML structure. Notice how we handle optional parameters with `if (!is.null(<PARAM>))` so that the tag is not included if no value is given:
+The first part is the toast header, which is a direct translation of the above HTML structure. Notice how we handle optional parameters with `if (!is.null(<PARAM>))` so that the tag is not included if no value is given:
 
 ```{r, eval=FALSE}
 toast_header <- div(
@@ -275,6 +275,8 @@ code_chunk_custom(js_code, "js")
 code_chunk(OSUICode::get_example("tabler/toast"), "r")
 ```
 
+The result of shown in Figure \@ref(fig:tabler-toast).
+
 ```{r tabler-toast, echo=FALSE, fig.cap='Tabler toast element.', out.width='100%'}
 knitr::include_graphics("images/practice/tabler-toast.png")
 ```
@@ -283,9 +285,9 @@ knitr::include_graphics("images/practice/tabler-toast.png")
 Based on the Tabler [documentation](https://preview-dev.tabler.io/docs/tooltips.html), add the `tabler_tooltip()` function. Hint: you may also check the corresponding Bootstrap 4 help.
 
 ## Transform an element in a custom action button
-As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The Tabler template has dropdown menus in the navbar and we would like to transform those dropdown items in action buttons. The `tabler_dropdown()` function takes the following parameters:
+As seen in Chapter \@ref(custom-templates-inputs), any `<button>`, `<a>` element holding the `action-button` class may eventually become an action button. The Tabler template has dropdown menus in the navbar, and we would like to transform those dropdown items in action buttons. The `tabler_dropdown()` function takes the following parameters:
 
-  - __id__ is required by the `show_tabler_dropdown()` (see below) function which opens the menu.
+  - __id__ is required by the `show_tabler_dropdown()` (see below) function, which opens the menu.
   - __title__ is the dropdown menu name.
   - __subtitle__ is optional text.
   - __img__ is an optional image.
@@ -372,7 +374,7 @@ tabler_dropdown_item <- function(..., id = NULL) {
 }
 ```
 
-We finally create the `show_tabler_dropdown()` as well as the corresponding Shiny message handler.
+We finally create the `show_tabler_dropdown()`, as well as the corresponding Shiny message handler.
 
 ```{r, eval=FALSE}
 show_tabler_dropdown <- function(
@@ -386,7 +388,7 @@ show_tabler_dropdown <- function(
 }
 ```
 
-To show the dropdown, we use the __dropdown__ method which is linked to the `data-toggle="dropdown"` of `tabler_dropdown()`. 
+To show the dropdown, we use the __dropdown__ method, which is linked to the `data-toggle="dropdown"` of `tabler_dropdown()`. 
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "$(function() {
@@ -409,12 +411,12 @@ knitr::include_graphics("images/practice/tabler-dropdown.png")
 ```
 
 ## Tab events
-Do you remember about the navbar element and the __tabsetpanel__ system of Chapter \@ref(custom-templates-skeleton)? __Navs__ allow to organize any app into several tabs, acting like a multi pages application. This is a powerful tool for Shiny since it is currently not straightforward to create [multi-pages](https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698) Shiny apps like anyone would do in a standard website. Navs rely on the Bootstrap 4 API but we only use a few JS functions.
+Do you remember about the navbar element and the __tabsetpanel__ system of Chapter \@ref(custom-templates-skeleton)? __Navs__ allow users to organize any app into several tabs, acting like a multi-page application. This is a powerful tool for Shiny since it is currently not straightforward to create [multi-pages](https://community.rstudio.com/t/shiny-app-composed-of-many-many-pages/7698) Shiny apps like anyone would do in a standard website. Navs rely on the Bootstrap 4 API but we only use a few JS functions.
 
-### Insert/Remove tabs in tabsetpanel {#insert-tabs}
+### Insert/remove tabs in tabsetpanel {#insert-tabs}
 How about dynamically inserting/removing tabs from a `tabler_navbar()`? We chose this example since it involves extra technical details about Shiny, especially process extra dependencies at render time.  
 
-How do we proceed? If you recall about the `tabler_navbar_menu_item()` and `tabler_tab_item()` coupling, inserting a tab implies to insert the trigger in the navigation menu as well as the content in the dashboard body. Therefore, we need to know the structure of what we insert. Below is a reminder:
+How do we proceed? If you recall about the `tabler_navbar_menu_item()` and `tabler_tab_item()` coupling, inserting a tab implies inserting the trigger in the navigation menu as well as the content in the dashboard body. Therefore, we need to know the structure of what we insert. Below is a reminder:
 
   - `tabler_navbar_menu_item()` are `<li>` elements.
   - `tabler_tab_item()` is a `<div>` element with specific classes.
@@ -505,7 +507,7 @@ session$sendCustomMessage(type = "insert-tab-1", message)
 On the JS side, we capture the R message (list) in two elements:
 
   - `$divTag` contains the tab __content__.
-  - `$liTag` contains the tab link, ie the __navigation__ part.
+  - `$liTag` contains the tab link, i.e. the __navigation__ part.
 
 Depending on the position parameter, we use the `insertAfter()` and `insertBefore()` jQuery methods. Finally, if the newly inserted tab has to be selected, we activate the corresponding tab element with `$(tablink).tab('show')`. 
 
@@ -596,9 +598,9 @@ js_code <- "exports.renderContent($tag[0], {
 code_chunk_custom(js_code, "js")
 ```
 
-Note that, as it is bad practice to rely on other packages internal functions, we'll rely on `htmltools::renderTags` instead of `shiny:::processDeps`, being very similar.
+Note that, as it is bad practice to rely on other packages's internal functions, we'll rely on `htmltools::renderTags` instead of `shiny:::processDeps`, being very similar.
 
-In the following, we modify the `insert_tabler_tab()` to include the dependencies processing step. This actually requires to change only three lines of code (the last one consists in pointing to the new JS handler): 
+In the following, we modify the `insert_tabler_tab()` to include the dependencies processing step. This actually requires changing only three lines of code (the last one consists of pointing to the new JS handler): 
 
 ```{r, eval=FALSE}
 insert_tabler_tab_2 <- function(
@@ -663,4 +665,4 @@ knitr::include_graphics("images/practice/process-deps.png")
 Et voila! As shown in Figure \@ref(fig:process-deps), everything is properly displayed.
 
 ### Exercise
-Taking inspiration on the `insert_tabler_tab()` function, write the `remove_tabler_tab()` function.
+Taking inspiration from the `insert_tabler_tab()` function, write the `remove_tabler_tab()` function.
