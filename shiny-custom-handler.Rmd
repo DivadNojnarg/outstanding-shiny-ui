@@ -1,14 +1,14 @@
 # Optimize your apps with custom handlers  {#shiny-custom-handler}
 
-The three previous chapters are largely dedicated to Shiny input elements. Yet, not everything is input in Shiny. This chapter shows how one may leverage the internal Shiny JavaScript tools to build highly __interactive__ and __optimized__ interfaces. 
+The three previous chapters are largely dedicated to Shiny input elements. Yet, not everything is input in Shiny. This chapter shows how you may leverage the internal Shiny JavaScript tools to build highly __interactive__ and __optimized__ interfaces. 
 
 ## Introduction
 
-As shown in Hadley Wickham's Mastering Shiny [book](https://mastering-shiny.org/action-dynamic.html), there exists many functions to update UI components from the server. You can use all __update<INPUT_NAME>__ functions like `updateTextInput()` or `updateTabsetPanel()`. 
-Other tools to manage your UI consist in __toggle__ functions like `hideTab()`, `showTab()`, the limit being the very few number of them, which often obliges to use packages like `shinyjs` [@R-shinyjs] or write custom JavaScript code. Finally, `insertUI()` and `removeUI()` allow to dynamically insert or remove any element, anywhere in the DOM. Let's start this chapter with the less optimized approach, that is `renderUI()`, to highlight its caveats and introduce better approaches to optimize your apps. 
+As shown in Hadley Wickham's Mastering Shiny book [@wickham2021mastering], many functions can update UI components from the server. You can use all __update<INPUT_NAME>__ functions like `updateTextInput()` or `updateTabsetPanel()`. 
+Other tools to manage your UI consist of __toggle__ functions like `hideTab()`, `showTab()`, the limit being the very few number of them, which often obliges to use packages like `shinyjs` [@R-shinyjs] or write custom JavaScript code. Finally, `insertUI()` and `removeUI()` allow users to dynamically insert or remove any element, anywhere in the DOM. Let's start this chapter with the less optimized approach, that is `renderUI()`, to highlight its caveats and introduce better approaches to optimize your apps. 
 
 ## The renderUI case
-The `renderUI()` and `uiOutput()` couple is the most famous way to __render__ any HTML block from the __server__, without too much pain. While the `update<INPUT_NAME>` and `toggle` tools are component specific, meaning they only target the element to modify, `renderUI` re-renders the whole block each time an associated reactive dependency is invalidated, even though only a little part would deserve to be updated. You should avoid to choose this approach since it implies poor performances in complex apps. We consider a simple app in which a three seconds computation is required to get the slider input value, subsequently triggering the slider input rendering:
+The `renderUI()` and `uiOutput()` couple is the most famous way to __render__ any HTML block from the __server__, without too much pain. While the `update<INPUT_NAME>` and `toggle` tools are component-specific, meaning they only target the element to modify, `renderUI` re-renders the whole block each time an associated reactive dependency is invalidated, even though only a little part would deserve to be updated. You should avoid choosing this approach since it implies poor performances in complex apps. We consider a simple app in which a 3 s computation is required to get the slider input value, subsequently triggering the slider input rendering:
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("custom-handlers/renderUI-delay"), "r")
@@ -20,11 +20,11 @@ The same example with the `updateSliderInput()` functions:
 code_chunk(OSUICode::get_example("custom-handlers/update-slider"), "r")
 ```
 
-As already discussed in \@ref(boxes-on-steroids-more), the first approach's biggest problem is the three seconds delay, during which nothing happens, which may discourage the end users. The second approach is already much better, even though they may be tempted to play with the slider (and they will!), until it suddenly changes value, thereby creating a possibly weird situation. 
+As already discussed in section \@ref(boxes-on-steroids-more), the first approach's biggest problem is the 3 s delay, during which nothing happens, which may discourage the end users. The second approach is already much better, even though they may be tempted to play with the slider (and they will!), until it suddenly changes value, thereby creating a possibly weird situation. 
 
-Below is an very naive and dirty example where `renderUI()` makes an entire dropdown menu re-render each time something changes in the `renderUI()` expression, being definitely not optimal. React users would probably leap off their chairs if they ever heard about this. Indeed, in React, we only re-render what needs to be [updated](https://en.reactjs.org/docs/rendering-elements.html#react-only-updates-whats-necessary)! 
+Below is an very naive and dirty example where `renderUI()` makes an entire dropdown menu re-render each time something changes in the `renderUI()` expression, which is definitely not optimal. React users would probably leap off their chairs if they ever heard about this. Indeed, in React, we only re-render what needs to be [updated](https://en.reactjs.org/docs/rendering-elements.html#react-only-updates-whats-necessary)! 
 
-Run the app below, open the HTML inspector and click to add one message. Notice that the entire block is updated, whereas only the corresponding HTML element should (Figure \@ref(fig:render-ui-1)). No doubt that any advanced user see a place for `insertUI()`.
+Run the app below, open the HTML inspector and click to add one message. Notice that the entire block is updated, whereas only the corresponding HTML element should (Figure \@ref(fig:render-ui-1)). No doubt that any advanced user sees a place for `insertUI()`.
 
 ::: {.importantblock data-latex=""}
 This requires `{bs4Dash}` >= 2.0.0.
@@ -38,7 +38,7 @@ code_chunk(OSUICode::get_example("custom-handlers/renderUI-dropdownMenu"), "r")
 knitr::include_graphics("images/survival-kit/render-ui-1.png")
 ```
 
-This lack of specificity justifies why you should avoid this method as much as possible, as it overloads the server. Later in this chapter, we leverage __custom handlers__ to solve this problem. Overall, it's more work, maybe more complex but ensures to be specific and more optimized.
+This lack of specificity justifies why you should avoid this method as much as possible, as it overloads the server. Later in this chapter, we leverage __custom handlers__ to solve this problem. Overall, it's more work, maybe more complex but ensures it is specific and more optimized.
 
 ## Other Shiny handlers {#insert-ui}
 As mentioned in Chapter \@ref(update-input-lifecycle), all `update<INPUT_NAME>` functions are Shiny defined __messages handlers__. 
@@ -68,12 +68,12 @@ sendInsertUI = function(selector, multiple, where, content) {
 
 The content is processed by `shiny:::processDeps()` that:
 
-  - __Finds__ and __resolve__ any HTML dependency, as shown in Chapter \@ref(htmltools-dependencies).
+  - __Finds__ and __resolves__ any HTML dependency, as shown in Chapter \@ref(htmltools-dependencies).
   - For each dependency, makes sure the corresponding files can be accessed on the server with `createWebDependency()` and `addResourcePath()`. 
   - Returns a list of the HTML element and dependencies. The HTML will be accessed by `message.content.html` and dependencies by `message.content.deps`.
   
 ::: {.importantblock data-latex=""}
-I strongly discourage to use `shiny:::processDeps()` or any other internal function, since they might change in future Shiny releases. Instead, we'll leverage the `htmltools::renderTags()` function mentioned earlier in \@ref(build-shiny-ui).
+I strongly discourage using `shiny:::processDeps()` or any other internal function, since they might change in future Shiny releases. Instead, we'll leverage the `htmltools::renderTags()` function mentioned earlier in section \@ref(build-shiny-ui).
 :::
   
 On the UI side, Shiny has a predefined message [handler](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js#L671):
@@ -109,19 +109,19 @@ js_code <- "addMessageHandler('shiny-insert-ui', function(message) {
 code_chunk_custom(js_code, "js")
 ```
 
-It checks whether the provided selector has multiple DOM elements. If at least one item is found, it calls __renderContent(html, el, dependencies)__ that triggers __renderHtml(html, el, dependencies)__:
+It checks whether the provided selector has multiple DOM elements. If at least one item is found, it calls __renderContent(html, el, dependencies)__, which triggers __renderHtml(html, el, dependencies)__:
 
-  - __Processes__ the provided HTML (treat the head, body and singletons).
+  - __Processes__ the provided HTML (treats the head, body and singletons).
   - __Renders__ all given dependencies into the page's [head](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/output_binding_html.js#L249).
-  - __Insert__ the HTML into the page at the position provided in the `insertUI` __where__ parameter. Internally this calls the `insertAdjacentHTML` method. 
-  - __Initialize__ any input, __bind__ them to the scope and __send__ the value to the server so that output/observers are invalidated. Outputs are also bound. If this step is skiped, the newly inserted input won't react, so are the related outputs and any observer.
+  - __Inserts__ the HTML into the page at the position provided in the `insertUI` __where__ parameter. Internally, this calls the `insertAdjacentHTML` method. 
+  - __Initializes__ any input, __binds__ them to the scope and __sends__ the value to the server so that output/observers are invalidated. Outputs are also bound. Skipping this step will result in a broken Shiny app.
   
 ::: {.noteblock data-latex=""}
-Keep __renderContent__ and __renderHtml__ in mind, we'll use them in section \@ref(custom-ui-functions).
+Keep __renderContent__ and __renderHtml__ in mind; we'll use them in section \@ref(custom-ui-functions).
 :::
   
 ### Example 
-Going back to the previous example, why don't we just go for `insertUI()`? To save space, we encapsulated the dashboard UI inside a function which will be reused across some example. 
+Going back to the previous example, why don't we just go for `insertUI()`? To save space, we encapsulated the dashboard UI inside a function that will be reused across some example. 
 
 ```{r, eval=FALSE}
 dropdownMenuUI <- function() {
@@ -147,28 +147,28 @@ dropdownMenuUI <- function() {
 code_chunk(OSUICode::get_example("custom-handlers/insertUI-dropdownMenu-1"), "r")
 ```
 
-Well, if the item is inserted, the item counter as well as the dropdown text are not, as depicted Figure \@ref(fig:insertUI-1). We can't blame `insertUI()` for this, since this is the fault of the `{bs4Dash}` component that actually has interconnected HTML pieces. Indeed, the `bs4Dash::dropdownMenu()` function generates HTML, detecting the number of `bs4Dash::messageItem()`. This works well when the app fires but the component is not able to maintain an up to date state. 
+If the item is inserted, the item counter as well as the dropdown text are not, as depicted in Figure \@ref(fig:insertUI-1). We can't blame `insertUI()` for this, since this is the fault of the `{bs4Dash}` component, which actually has interconnected HTML pieces. Indeed, the `bs4Dash::dropdownMenu()` function generates HTML, detecting the number of `bs4Dash::messageItem()`. This works well when the app fires, but the component is not able to maintain an up-to-date state. 
 
-```{r insertUI-1, echo=FALSE, fig.cap='insertUI is not enough specific.', out.width='50%', fig.align='center'}
+```{r insertUI-1, echo=FALSE, fig.cap='insertUI is not specific enough.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/survival-kit/insertUI-1.png")
 ```
 
-We may fix that by adding extra `insertUI()` and `removeUI()` to replace those parts (`insertUI()` does not update the targeted item). Moreover, you we must set correct priority for each `observeEvent()` (try to remove them, it will fail) to ensure that __remove__ happens before __insert__.
+We may fix that by adding extra `insertUI()` and `removeUI()` to replace those parts (`insertUI()` does not update the targeted item). Moreover, we must set correct priority for each `observeEvent()` (try to remove them; it will fail) to ensure that __remove__ happens before __insert__.
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("custom-handlers/insertUI-dropdownMenu-2"), "r")
 ```
 
-So many `observeEvent()` for a simple action! Imagine if we had 10 similar tasks ... Isn't there a way to do all of this at once, thereby reducing the server code? Moreover, setting priorities in `observeEvent()` is a rather bad smell of poorly designed shiny app.
+So many `observeEvent()` used for a simple action! Imagine if we had 10 similar tasks ... Isn't there a way to do all of this at once, thereby reducing the server code? Moreover, setting priorities in `observeEvent()` is a rather bad smell of poorly designed Shiny app.
 
 It seems that we have to create our own message handler. 
 
 ## Custom handlers
 
-Custom __handlers__ are a specific category of message handlers, as they are __user defined__.
+Custom __handlers__ are a specific category of message handlers, as they are __user-defined__.
 
 ### Theory
-Shiny provides tools to ease the communication between R and JavaScript, as illustrated in section \@ref(shiny-intro). We already discussed the usage of `session$sendInputMessage()` in the input binding section \@ref(shiny-input-system). The other important method is __session$sendCustomMessage(type, message)__. It works by pair with the JS method __Shiny.AddCustomMessageHandler__, tightly linked by the type parameter.
+Shiny provides tools to ease the communication between R and JavaScript, as illustrated in Chapter \@ref(shiny-intro). We already discussed the usage of `session$sendInputMessage()` in the input binding Chapter \@ref(shiny-input-system). The other important method is __session$sendCustomMessage(type, message)__. It works by pairing with the JS method __Shiny.AddCustomMessageHandler__, tightly linked by the type parameter.
 
 ```{r, eval=FALSE}
 say_hello_to_js <- function(
@@ -191,7 +191,7 @@ js_code <- "$(function() {
 code_chunk_custom(js_code, "js")
 ```
 
-The following shiny app example will simply print a welcome message every five seconds. We obviously set `options(shiny.trace = TRUE)` so as to capture all messages sent between R and JS. Figure \@ref(fig:shiny-custom-message) summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found [here](https://github.com/DivadNojnarg/OSUICode/blob/43911d32885e960d6f42c7bd7d92748109f29f00/R/custom-handlers.R#L9). Don't forget to load the `say_hello_to_js()` function before:
+The following Shiny app example will simply print a welcome message every 5 seconds. We obviously set `options(shiny.trace = TRUE)` so as to capture all messages sent between R and JS. Figure \@ref(fig:shiny-custom-message) summarizes the main mechanisms involved in the R to JS communication. The corresponding code may be found [here](https://github.com/DivadNojnarg/OSUICode/blob/43911d32885e960d6f42c7bd7d92748109f29f00/R/custom-handlers.R#L9). Don't forget to load the `say_hello_to_js()` function before:
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("custom-handlers/say-hello"), "r")
@@ -231,7 +231,7 @@ js_code <- "const getPokemon = () => {
 code_chunk_custom(js_code, "js")
 ```
 
-`input$pokeData` is actually a quite complex list and some manipulation is done from R in the `observeEvent()` block. Once done, we send the data back to JS through the websocket (the session object sends a message). 
+`input$pokeData` is actually a quite complex list, and some manipulation is done from R in the `observeEvent()` block. Once done, we send the data back to JS through the websocket (the session object sends a message). 
 
 An event listener is set to the only button on the page so that each time we click, we call `getPokemon` to select a random background image.
 
@@ -243,7 +243,7 @@ $('#button').on('click', function() {
 code_chunk_custom(js_code, "js")
 ```
 
-This last piece of JS code ensures to add the randomly selected background contained in the `message` parameter to the `body` tag.
+This last piece of JS code ensures adding the randomly selected background contained in the `message` parameter to the `body` tag.
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "// update background based on R data
@@ -287,7 +287,7 @@ We create the `insertMessageItem` function with two parameters:
   - __item__, the HTML element we want to insert in the DOM.
   - __session__, used to send a message to JavaScript with `session$sendCustomMessage`.
   
-We don't use `htmltools::renderTags` as it is very unlikely that our `messageItem` contains any extra dependency. item is converted to a character (important) and sent to JavaScript through the shiny session R6 object. We give it a __type__, that is `add-message-item`, to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
+We don't use `htmltools::renderTags` as it is very unlikely that our `messageItem` contains any extra dependency. Item is converted to a character (important) and sent to JavaScript through the Shiny session R6 object. We give it a __type__, that is `add-message-item`, to be able to identify it from JavaScript with `Shiny.addCustomMessageHandler`.
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "$(function() {
@@ -308,7 +308,7 @@ js_code <- "$(function() {
 code_chunk_custom(js_code, "js")
 ```
 
-We also update the dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. The number of items is given by the dropdown children (without the `dropdown-divier` class). These two extra JS steps save us to create extra `observeEvent()` on the server, as shown before.
+We also update the dropdown menu item counter as well as the icon text since the dropdown menu is not re-rendered. The number of items is given by the dropdown children (without the `dropdown-divier` class). These two extra JS steps save us from creating extra `observeEvent()` on the server, as shown before.
 We then recover the sent message on the JS side with `Shiny.addCustomMessageHandler`, parse the string to HTML with `$.parseHTML` and insert it after the header (that is the next UI element of the dropdown body). The `bs4Dash::dropdownMenu()` is modified so that dependencies are [attached](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/blob/85cb171642de7a564e2774390964d1bfbbd5b4ee/R/insertMessageItem.R#L61). 
 
 ```{r, eval=FALSE}
@@ -346,7 +346,7 @@ This solution significantly lightens the server code since everything may be don
 
 #### A chat system for {shinydashboardPlus} {#custom-handlers-chat}
 
-`{shinydashboardPlus}` user messages provide an easy way to create a chat system within a shiny app. `userMessages()` hosts the main container while `userMessage()` is the message element. All of this is pure HTML:
+`{shinydashboardPlus}` user messages provide an easy way to create a chat system within a Shiny app. `userMessages()` hosts the main container, while `userMessage()` is the message element. All of this is pure HTML:
 
 ```{r, echo=FALSE, results='asis'}
 html_code <- '<div class="direct-chat-msg">
@@ -503,19 +503,19 @@ userMessage <- function(..., author, date = NULL, image = NULL,
 
 
 ##### Handle interactions
-`userMessages()` and `userMessage()` alone only provide a static API. Let's design an `updateUserMessages()` function that offers way to update the message container. That function must allow to:
+`userMessages()` and `userMessage()` alone only provide a static API. Let's design an `updateUserMessages()` function that offers ways to update the message container. That function must allow users to:
 
   - __Add__ any message to the list.
   - __Remove__ any existing message.
   - __Update__ a selected message.
   
-For now, we assume to add only one message at a time. `updateUserMessages()` is linked to any `userMessages()` container by the __id__ parameter. In order to delete/update a message, we define an __index__ parameter.
+For now, we assume we add only one message at a time. `updateUserMessages()` is linked to any `userMessages()` container by the __id__ parameter. In order to delete/update a message, we define an __index__ parameter.
 
 ::: {.warningblock data-latex=""}
 Don't forget that the first element of a vector has index 1 in R, while JS starts from 0.
 :::
 
-Consequently, we have to decrease the R index by 1 so that JS receives the correct number. We must also provide a content parameter so as to update any existing message content. The content has to be compatible we the `userMessage` structure. We expect the user to pass a list like:
+Consequently, we have to decrease the R index by 1 so that JS receives the correct number. We must also provide a content parameter so as to update any existing message content. The content has to be compatible with the `userMessage` structure. We expect the user to pass a list like:
 
 ```{r, eval=FALSE}
 list(
@@ -536,7 +536,7 @@ list(
 )
 ```
 
-Interestingly, we may offer the ability to add input/output element in the message content (as shown above) with __dependencies__ that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the `htmltools::renderTags()` function on the R side for all elements with `lapply()` function. Finally, the message is sent to JS with `session$sendCustomMessage`:
+Interestingly, we may offer the ability to add input/output elements in the message content (as shown above) with __dependencies__ that are not yet made available to shiny. We therefore assume that if the content is a shiny tag or a list of shiny tags, it may contain elements with extra dependencies and leverage the `htmltools::renderTags()` function on the R side for all elements with `lapply()` function. Finally, the message is sent to JS with `session$sendCustomMessage`:
 
 ```{r, eval=FALSE}
 updateUserMessages <- function(
@@ -594,7 +594,7 @@ js_code <- "message.id"
 code_chunk_custom(js_code, "js")
 ```
 
-and similarly for other elements. There may be nested lists, like the message content, which is not very complex to handle: we simply use the `.` JS notation to access lower level elements, that is `message.content.text` for the message text. 
+and similarly for other elements. There may be nested lists, like the message content, which is not very complex to handle: we simply use the `.` JS notation to access lower-level elements, that is `message.content.text` for the message text. 
 
 The second step is to store all message elements in multiple variables separated by commas. This step is not mandatory but improves the code readability:
 
@@ -610,10 +610,10 @@ js_code <- "Shiny.addCustomMessageHandler(
 code_chunk_custom(js_code, "js")
 ```
 
-In the following we show how to process any message content. For sake of simplicity, we assume to be able to only edit the message text. As mentioned earlier, there are two possible cases:
+In the following, we show how to process any message content. For sake of simplicity, we assume we are able to only edit the message text. As mentioned earlier, there are two possible cases:
 
   - The text is simple text or simple HTML without any extra dependency, we do nothing more than storing it into a meaningful variable.
-  - The text is a list of shiny tags containing input/output with extra dependencies like `sliderInput()`. We have to leverage the `renderHtml` method to correctly process the missing dependencies passed from R via `htmltools::renderTags()` in `updateUserMessages()`.
+  - The text is a list of Shiny tags containing input/output with extra dependencies like `sliderInput()`. We have to leverage the `renderHtml` method to correctly process the missing dependencies passed from R via `htmltools::renderTags()` in `updateUserMessages()`.
   
 This yields:
 
@@ -652,7 +652,7 @@ Then, the next step is to implement the multiple options provided by the user (u
   - Remember that a message has the `direct-chat-msg` class.
   - Use the `remove` jQuery method.
   
-We therefore target the main container with `$("#" + id)`, look for its messages with `find(".direct-chat-msg")`, specify the target using `eq(index - 1)` (index is the R value) and apply the remove method:
+We, therefore, target the main container with `$("#" + id)`, look for its messages with `find(".direct-chat-msg")`, specify the target using `eq(index - 1)` (index is the R value) and apply the remove method:
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "Shiny.addCustomMessageHandler(
@@ -674,7 +674,7 @@ code_chunk_custom(js_code, "js")
 
 We could add more security with `console.warn` whenever the user wants to delete a message that does not exist. We leave it to the reader as an exercise. 
 
-The second case consists in adding a new message. We define new variables containing the author, the date, the image and the message type. 
+The second case consists of adding a new message. We define new variables containing the author, the date, the image and the message type. 
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "// ... Other conditions ....
@@ -736,7 +736,7 @@ else if (action === 'add') {
 code_chunk_custom(js_code, "js")
 ```
 
-We wrap all of these elements in a `direct-chat-msg` div which class may vary depending on the message type. If sent, the class is `direct-chat-msg right` and `direct-chat-msg` otherwise. 
+We wrap all of these elements in a `direct-chat-msg` div, whose class may vary depending on the message type. If sent, the class is `direct-chat-msg right` and `direct-chat-msg` otherwise. 
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "// ... Other conditions ...
@@ -764,8 +764,8 @@ code_chunk_custom(js_code, "js")
 ```
 
 The final step is to target the main container with `$("#" + id)`, look for the messages slot `find(".direct-chat-messages")` (the message container is nested in the main wrapper) and `append` it 
-to the DOM. We used `append` which adds the message at the end but could choose `prepend` to add it on top
-of all other messages. This behavior may be defined by the programmer with no option for the end-user.
+to the DOM. We used `append`, which adds the message at the end but could choose `prepend` to add it on top
+of all other messages. This behavior may be defined by the programmer with no option for the end user.
 Alternatively, the developer could expose an external parameter to control the add position. 
 
 ```{r, echo=FALSE, results='asis'}
@@ -786,7 +786,7 @@ code_chunk_custom(js_code, "js")
 ```
 
 
-Finally, the last case is to update a given message. As stated above, we assume to only edit the
+Finally, the last case is to update a given message. As stated above, we only edit the
 message text and the date. To update the message, we target the messages container with `$("#" + id)`,
 look for all texts with `find(".direct-chat-text")`, refine our choice by targeting the good element with
 `eq(index - 1)` and call `replaceWith` containing the new text element: 
@@ -851,7 +851,7 @@ code_chunk_custom(js_code, "js")
 
 The whole JS code may be found [here](https://github.com/RinteRface/shinydashboardPlus/blob/ee2437cbaa1b7db36adea534d5b613b944c0a09e/srcjs/shinydashboardPlus-2.0.2/userMessages.js#L2).
 
-Output is shown on Figure \@ref(fig:shinydashboardPlus-chat-api). To reproduce that figure, run the below demonstration, click on add message, then click on update message leaving the numeric input to 1.
+Output is shown in Figure \@ref(fig:shinydashboardPlus-chat-api). To reproduce that figure, run the below demonstration, click on add message, then click on update message leaving the numeric input to 1.
 
 ```{r, echo=FALSE, results='asis'}
 code_chunk(OSUICode::get_example("custom-handlers/shinydashboardPlus-chat", view_code = FALSE), "r")
@@ -861,7 +861,7 @@ code_chunk(OSUICode::get_example("custom-handlers/shinydashboardPlus-chat", view
 knitr::include_graphics("images/survival-kit/shinydashboardPlus-chat-api.png")
 ```
 
-Why can't we use the __renderContent__ JS function, thereby allowing use to remove the three extra steps (unbind, initialize and bind inputs)? This would lead to a __timing issue__. Indeed,
+Why can't we use the __renderContent__ JS function, thereby allowing us to remove the three extra steps (unbind, initialize and bind inputs)? This would lead to a __timing issue__. Indeed,
 let's say we first click on add message which creates one slider input and one plot output. 
 It works well the first time since those element don't exist for Shiny. If we remove the newly created message and click again on add, we obtain an error message `Uncaught Duplicate binding for ID distPlot`. The root cause is rather obvious and internal to `renderContent`. The later cannot be called before the target is in the DOM. It means that during some time, we actually added a second output (identical to the first one) without unbinding the first, thereby causing the __duplication__ error. 
 
