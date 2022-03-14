@@ -1,13 +1,20 @@
-# Introduction to Sass {#beautify-sass}
-One of the main problem with __CSS__ is to handle the growing number of files and the __code repetition__. Nowadays, web developers mainly use __CSS pre processors__ like [Sass](https://sass-lang.com/guide), that stands for "Syntactically Awesome Style Sheets ", providing access to variables, mathematical operators, functions and loops, thereby reducing the code complexity and extending the possibilities. [RStudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package [@R-sass], which makes it possible to use __Sass__ in Shiny apps or Rmarkdown documents.
+# Tidy your CSS with Sass {#beautify-sass}
+One of the main problem with __CSS__ is to handle the growing number of files and the __code repetition__. Nowadays, web developers mainly use __CSS pre-processors__ like [Sass](https://sass-lang.com/guide), which stands for "Syntactically Awesome Style Sheets ", providing access to variables, mathematical operators, functions and loops, thereby reducing the code complexity and extending the possibilities. [RStudio](https://rstudio.com) developed the [{sass}](https://rstudio.github.io/sass/articles/sass.html) package [@R-sass], which makes it possible to use __Sass__ in Shiny apps or Rmarkdown documents.
+
+```{r, echo=FALSE}
+# disable devmode.
+# For some reason it may turn on without notice.
+shiny::devmode(FALSE)
+```
 
 ## Getting started with Sass
 While we could use Sass from the terminal, we leverage the `{sass}` package features to work from R.
 To install `{sass}`, we run:
 
 ```{r, eval=FALSE}
+# CRAN
 install.packages("sass")
-# OR
+# development version
 remotes::install_github("rstudio/sass")
 ```
 
@@ -15,10 +22,10 @@ The main function is `sass()`, whose __input__ parameter accepts:
 
   - A R string like `a { color: pink}`.
   - A named `list()`.
-  - A file passed with `sass_file()`, imports with `sass_import()`.
+  - A file passed with `sass_file()`; imports with `sass_import()`.
   - More complex structures.
 
-```{r}
+```{r, eval=FALSE}
 library(sass)
 # with a string
 sass(input = ".element-class { color: pink;}")
@@ -26,19 +33,26 @@ sass(input = ".element-class { color: pink;}")
 sass(list(color = "pink", ".element-class { color: $color;}"))
 ```
 
-Note how the R code objects are seamlessly converted to Sass variable. For convenience, we will be using named lists in the remaining of the book.
+```{r, echo=FALSE}
+library(sass)
+print(sass(list(color = "pink", ".element-class { color: $color;}")))
+```
+
+
+Note how the R code objects are seamlessly converted to Sass variables. For convenience, we will be using named lists in the remainder of the book.
 
 ### Variables
 Let us consider the following example, where two different classes have the same color:
 
-```css
-.class-1{
+```{r, echo=FALSE, results='asis'}
+css_code <- ".class-1{
   color: #33BEFF;
 }
 
 .class-2{
   background-color: #33BEFF;
-}
+}"
+code_chunk_custom(css_code, "css")
 ```
 
 Shouldn't this be easier? Imagine if we had hundreds of elements with the same color.
@@ -46,26 +60,29 @@ What happens in case the color changes? Do we have to update all properties by h
 
 If we let the Sass variable `$color`:
 
-```css
-$color: purple;
+```{r, echo=FALSE, results='asis'}
+css_code <- "$color: purple;
 .class-1{
   color: $color;
 }
 .class-2{
   background-color: $color;
-}
+}"
+code_chunk_custom(css_code, "css")
 ```
 
 we can quickly solve that problem. With `{sass}`, we define one variable holding the color as well as
 our two rules, so that we obtain:
 
-```{r}
+```{r, eval=FALSE}
 rule1 <- ".class-1{ color: $color; }"
 rule2 <- ".class-2{ background-color: $color; }"
 sass(input = list(color = "purple", rule1, rule2))
 ```
 
 ```{r, echo=FALSE}
+rule1 <- ".class-1{ color: $color; }"
+rule2 <- ".class-2{ background-color: $color; }"
 print(sass(input = list(color = "purple", rule1, rule2)))
 ```
 
@@ -75,23 +92,19 @@ to let others modify it, that is `"$color: purple !default;"`.
 :::
 
 ### Partials and Modules
-It is best practice to save useful code snippets in one place, and reuse them
-at anytime and anywhere. Sass allows to define __partials__, like `_partial.css`, with the leading
-underscore, which avoids it to be converted into CSS. Partials are subsequently called
+It is best practice to save useful code snippets in one place, and reuse them anytime and anywhere. Sass allows to define __partials__, like `_partial.css`, with the leading
+underscore, which avoids its conversion into CSS. Partials are subsequently called
 with `@import <PARTIAL_NAME>` (you may also find `@use`, the latter not being handled
 by `LibSass`, which fuels`{sass}`), thereby significantly reducing code duplication.
 
 Modules are pieces of Sass files that are later converted into CSS, reducing file size to a minimum.
 Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/bootstrap/blob/main/scss/bootstrap.scss):
 
-```css
-/*!
+```{r, echo=FALSE, results='asis'}
+css_code <- '/*!
  * Bootstrap v5.0.0-beta1 (https://getbootstrap.com/)
- * Copyright 2011-2021 The Bootstrap Authors
- * Copyright 2011-2021 Twitter, Inc.
- * Licensed under MIT
- * (https://github.com/twbs/bootstrap/blob/main/LICENSE)
- */
+ ...
+*/
 
 // scss-docs-start import-stack
 // Configuration
@@ -110,7 +123,8 @@ Below is an example of the `bootstrap.scss` [file](https://github.com/twbs/boots
 
 // Utilities
 @import "utilities/api";
-// scss-docs-end import-stack
+// scss-docs-end import-stack'
+code_chunk_custom(css_code, "css")
 ```
 
 which is easier to read and maintain than the original `bootstrap.css` with 10717 lines of code!
@@ -126,20 +140,21 @@ Another great advantage of Sass is the ability to generate reusable units of cod
 as __mixins__ or __functions__.
 
 #### Mixins
-To make a 90 degrees rotation in CSS, we have to write:
+To make a 90-degree rotation in CSS, we have to write:
 
-```css
-.element {
+```{r, echo=FALSE, results='asis'}
+css_code <- ".element {
   -webkit-transform: rotate(90deg);
   -ms-transform: rotate(90deg);
   transform: rotate(90deg);
-}
+}"
+code_chunk_custom(css_code, "css")
 ```
 
-which is already tedious. Mixins allow to encapsulate the logic into a __reusable__ unit:
+which is already tedious. Mixins allow us to encapsulate the logic into a __reusable__ unit:
 
-```css
-@mixin transform($property, ...) {
+```{r, echo=FALSE, results='asis'}
+css_code <- "@mixin transform($property, ...) {
   -webkit-transform: $property;
   -ms-transform: $property;
   transform: $property;
@@ -147,15 +162,16 @@ which is already tedious. Mixins allow to encapsulate the logic into a __reusabl
 
 .element1 {
   @include transform(rotate(90deg));
-}
+}"
+code_chunk_custom(css_code, "css")
 ```
 
 The mixin starts with a `@mixin` keyword followed by its name and parameters.
-It is called with `@include <MIXIN_NAME(PARMS)>`, very similar to a function declaration, excepts that
+It is called with `@include <MIXIN_NAME(PARMS)>`, very similar to a function declaration, except that
 it must return a CSS rule.
 
 
-```{r}
+```{r, eval=FALSE}
 mixin <- "@mixin transform($property) {
   -webkit-transform: $property;
   -ms-transform: $property;
@@ -166,16 +182,21 @@ sass(input = list(prop = "rotate(90deg)", mixin, rule))
 ```
 
 ```{r, echo=FALSE}
-res <- sass(input = list(prop = "rotate(90deg)", mixin, rule))
-print(res)
+mixin <- "@mixin transform($property) {
+  -webkit-transform: $property;
+  -ms-transform: $property;
+  transform: $property;
+}"
+rule <- ".element1 { @include transform($prop); }"
+print(sass(input = list(prop = "rotate(90deg)", mixin, rule)))
 ```
 
 #### Functions
-Sass offers many built-In [modules](https://sass-lang.com/documentation/modules) containing
-ready to use functions for colors, numbers, strings, lists, maps, ... Some functions like
+Sass offers many built-in [modules](https://sass-lang.com/documentation/modules) containing
+ready-to-use functions for colors, numbers, strings, lists, maps, ... Some functions like
 `rgb` are global, so that we don't have to import the corresponding module.
 
-```{r}
+```{r, eval=FALSE}
 sass(".pouet { color: rgb(0, 255, 0); }")
 ```
 
@@ -183,26 +204,26 @@ sass(".pouet { color: rgb(0, 255, 0); }")
 print(sass(".pouet { color: rgb(0, 255, 0); }"))
 ```
 
-It is definitely possible to design custom functions with `@function`,
-whose syntax is very close the mixins:
+Besides, it is also possible to design custom functions with `@function`, the syntax being similar to that of the mixins:
 
-
-```css
-@function name($parm1, $parm2) {
+```{r, echo=FALSE, results='asis'}
+css_code <- "@function name($parm1, $parm2) {
   /* logic */
   @return value;
-}
+}"
+code_chunk_custom(css_code, "css")
 ```
 
 While debugging functions, it might be useful to capture intermediate elements.
 `@debug` allows this:
 
-```css
-$test: 1;
-@debug test;
+```{r, echo=FALSE, results='asis'}
+css_code <- "$test: 1;
+@debug test;"
+code_chunk_custom(css_code, "css")
 ```
 
-```{r}
+```{r, eval=FALSE}
 sass(
   list(
     a = 2,
@@ -240,14 +261,16 @@ print(
 )
 ```
 
+Notice the use of __mathematical operators__ like `*`, `+`, `-`, `/` and `%`, which is not possible with CSS. 
+
 ### Extend/Inheritance
-We consider two alerts with the color as only difference. As we can't capture multiple properties
-inside one single Sass variable, we introduce the __extend__ concept, which permits to import
+We consider two alerts with the color as the only difference. As we can't capture multiple properties
+inside one single Sass variable, we introduce the __extend__ concept, which permits us to import
 CSS properties inside multiple rules. We first define a generic `alerts-common` rule,
 prefixed by the `%` symbol. It contains several rules and variables:
 
-```css
-%alerts-common {
+```{r, echo=FALSE, results='asis'}
+css_code <- "%alerts-common {
   position: relative;
   padding: $alert-padding-y $alert-padding-x;
   margin-bottom: $alert-margin-bottom;
@@ -262,13 +285,13 @@ prefixed by the `%` symbol. It contains several rules and variables:
 .alert-green {
   @extend %alerts-common;
   color: green;
-}
-
+}"
+code_chunk_custom(css_code, "css")
 ```
 
 Let's translate this into R:
 
-```{r}
+```{r, eval=FALSE}
 common <- "%alerts-common {
   position: relative;
   padding: $alert-padding-y $alert-padding-x;
@@ -295,6 +318,21 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+alert_red <- ".alert-red {
+  @extend %alerts-common;
+  color: red;
+}
+"
+alert_green <- ".alert-green {
+  @extend %alerts-common;
+  color: green;
+}
+"
 print(sass(input = list(
   "alert-padding-y" = "5px",
   "alert-padding-x" = "10px",
@@ -305,20 +343,20 @@ print(sass(input = list(
 )))
 ```
 
-This method avoids to multiply classes on elements such as `.alert-common .alert-red ...`.
+This method avoids to overload elements with unnecessary classes such as `.alert-common .alert-red ...`.
 Yet, we could have programmatically generated the two alert
-classes with a loop, to avoid duplication.
+classes with a loop to avoid duplication.
 
-### Flow Controls
-These are elements aiming at fine tuning mixins and functions behavior.
+### Flow controls
+These are elements aimed at fine-tuning mixins and functions behavior.
 
 #### if and else
-Like in every programming language `if` and `else` control the execution of a code block, depending
+As in every programming language, `if` and `else` control the execution of a code block, depending
 on some conditions.
 Below, we only want to conditionally control a shadow property, depending on the alert color:
 
-```css
-@mixin add-shadow($color) {
+```{r, echo=FALSE, results='asis'}
+css_code <- "@mixin add-shadow($color) {
   @if $color == red {
     box-shadow:
       0 4px 10px 0 rgb(255, 0, 0),
@@ -340,11 +378,11 @@ Below, we only want to conditionally control a shadow property, depending on the
   @extend %alerts-common;
   color: green;
   @include add-shadow($color: green);
-}
+}"
+code_chunk_custom(css_code, "css")
 ```
 
-
-```{r}
+```{r, eval=FALSE}
 add_shadow <- "@mixin add-shadow($color) {
   @if $color == red {
     box-shadow:
@@ -389,6 +427,38 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
+add_shadow <- "@mixin add-shadow($color) {
+  @if $color == red {
+    box-shadow:
+      0 4px 10px 0 rgb(255, 0, 0),
+      0 4px 20px 0 rgb(255, 0, 0);
+  } @else if $color == green {
+    box-shadow:
+      0 4px 10px 0 rgb(0, 255, 0),
+      0 4px 20px 0 rgb(0, 255, 0);
+  }
+}
+"
+
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+
+alert_red <- ".alert-red {
+  @extend %alerts-common;
+  color: red;
+  @include add-shadow($color: red);
+}
+"
+
+alert_green <- ".alert-green {
+  @extend %alerts-common;
+  color: green;
+  @include add-shadow($color: green);
+}
+"
 print(sass(input = list(
   "alert-padding-y" = "5px",
   "alert-padding-x" = "10px",
@@ -403,25 +473,26 @@ print(sass(input = list(
 #### Loops
 ##### Each
 We would like to create the alert class with only one rule. We first define a list of colors in Sass and
-call the `@each`:
+call `@each`:
 
-```css
-$colors: red, green;
+```{r, echo=FALSE, results='asis'}
+css_code <- "$colors: red, green;
 
 @each $color in $colors {
   .alert-#{$color} {
     color: green;
     @include add-shadow($box-color: $color);
   }
-}
+}"
+code_chunk_custom(css_code, "css")
 ```
 
-The structure is the same as the JavaScript loop. You'll also notice the `#{...}` which
-is called [interpolation](https://sass-lang.com/documentation/interpolation) and allows to
+The structure is the same as the JavaScript loop. You'll also notice the `#{...}`, which
+is called [interpolation](https://sass-lang.com/documentation/interpolation) and allows us to
 insert any Sass expression in a string. As another example, if we want to create a `background-image` property
 within a mixin, we could do `background-image: url("/some_path/#{$name}.svg")`, where `#{$name}` holds the file name.
 
-```{r}
+```{r, eval=FALSE}
 add_shadow <- "@mixin add-shadow($color) {
   @if $color == red {
     box-shadow:
@@ -461,6 +532,33 @@ sass(input = list(
 ```
 
 ```{r, echo=FALSE}
+add_shadow <- "@mixin add-shadow($color) {
+  @if $color == red {
+    box-shadow:
+      0 4px 10px 0 rgb(255, 0, 0),
+      0 4px 20px 0 rgb(255, 0, 0);
+  } @else if $color == green {
+    box-shadow:
+      0 4px 10px 0 rgb(0, 255, 0),
+      0 4px 20px 0 rgb(0, 255, 0);
+  }
+}
+"
+
+common <- "%alerts-common {
+  position: relative;
+  padding: $alert-padding-y $alert-padding-x;
+  margin-bottom: $alert-margin-bottom;
+}"
+
+alerts_rule <- "@each $color in $colors {
+  .alert-#{$color} {
+    @extend %alerts-common;
+    color: green;
+    @include add-shadow($color: $color);
+  }
+}
+"
 print(sass(input = list(
   colors = c("green", "red"),
   "alert-padding-y" = "5px",
@@ -472,24 +570,86 @@ print(sass(input = list(
 )))
 ```
 
-It becomes even more powerful while working with __maps__ like `$font-weights: ("regular": 400, "medium": 500, "bold": 700);`, i.e by key/value [pairs](https://sass-lang.com/documentation/at-rules/control/each#with-maps).
+It becomes even more powerful while working with __maps__ like `$font-weights: ("regular": 400, "medium": 500, "bold": 700);`, i.e, by key/value [pairs](https://sass-lang.com/documentation/at-rules/control/each#with-maps).
 `@each` is as convenient as `lapply` or `map` functions to chain repetitive rules creation.
 
 ##### For
 However, it is not straightforward to count up or down with `@each`. This is precisely where
 `@for` fills the gap. The generic scheme is:
 
-```css
-@for <variable> from <expression> to <expression> { ... }
-@for <variable> from <expression> through <expression> { ... }
+```{r, echo=FALSE, results='asis'}
+css_code <- "@for <variable> from <expression> to <expression> { ... }
+@for <variable> from <expression> through <expression> { ... }"
+code_chunk_custom(css_code, "css")
 ```
 
 __to__ excludes the last number while __through__ includes it.
 
+### Nesting code
+To make your code more readable, `Sass` allows you to __nest__ rules by hierarchy, thereby aligning with the underlying HTML structure. For instance, looking at the previous example from section \@ref(css-pseudoelements):
+
+```{r, echo=FALSE, results='asis'}
+css_code <- ".navbar-nav > li:first-child > a {
+  font-size: 20px;
+  font-weight: bold;
+}
+.navbar-nav > li:first-child > a::before {
+  content: '✌️'
+}"
+code_chunk_custom(css_code, "css")
+```
+
+Transforming to Sass code, we combine the two previous rules into a single one:
+
+```{r, echo=FALSE, results='asis'}
+css_code <- ".navbar-nav {
+  > li:first-child {
+    > a {
+      font-size: 20px;
+      font-weight: bold;
+      
+      &:before {
+        content: '✌️'
+      }
+    }
+  }
+}"
+code_chunk_custom(css_code, "css")
+```
+
+The following is another example taken from the AdminLTE3 library powering `{bs4Dash}`. This code shows how the card CSS is structured, leveraging all the above Sass capabilities like __mixins__, nesting, functions, ... This chunk may be read from top to bottom and gives a rather good idea of how the card will look, contrary to the classic CSS approach. It first applies a shadow with a mixin, then sets the bottom margin with a function. All listed variables are defined in a separate file. Besides, the card body has text printed in white color when the dark mode is active. Finally, when the card is collapsed, none of the body and footer elements are displayed. 
+
+```{r, echo=FALSE, results='asis'}
+css_code <- ".card {
+  @include box-shadow($card-shadow);
+  margin-bottom: map-get($spacers, 3);
+
+  &.bg-dark {
+    .card-header {
+      border-color: $card-dark-border-color;
+    }
+
+    &,
+    .card-body {
+      color: $white;
+    }
+  }
+  /* other rules */ 
+  // collapsed mode
+  &.collapsed-card {
+    .card-body,
+    .card-footer {
+      display: none;
+    }
+  }
+  /* other rules */ 
+}"
+code_chunk_custom(css_code, "css")
+```
 
 ## `{sass}` best practices
 As it's best practice, especially for debugging purposes, to include assets as HTML
-dependencies, it is a good idea to organize the Sass variable definition, function/mixins in __layers__, leveraging the `sass_layer()` function:
+dependencies, it is a good idea to organize the Sass variable definition, the function/mixins in __layers__, leveraging the `sass_layer()` function:
 
 ```{r, warning=FALSE}
 rule1 <- ".class-1{ color: $color; }"
@@ -505,7 +665,7 @@ print(layer1)
 ```
 
 
-Besides, `sass_layer()` provide options like:
+Besides, `sass_layer()` provides options like:
 
   - __declarations__ containing any function, mixin elements, in a `sass_file` for instance.
   - __html_deps__ that attaches a single or a list of HTML dependencies to the provided Sass code, as shown below.
@@ -558,7 +718,7 @@ print(sass(my_bundle))
 to generate the CSS file. Best practice consists in enabling __compression__ and __source maps__. We discuss
 this later in the book in Chapter \@ref(workflow-charpente). Overall those steps makes the code faster to load and easier to debug:
 
-```{r}
+```{r, eval=FALSE}
 sass(
   list(
    color = "pink",
@@ -571,6 +731,19 @@ sass(
 )
 ```
 
+<!-- manual copy paste for pdf output formating -->
+
+```{r, echo=FALSE, results='asis'}
+css_code <- "/* CSS */
+.a{color:pink}
+
+/*# sourceMappingURL=data:application/json;base64,ewoJInZlcn
+Npb24iOiAzLAoJImZpbGUiOiAic3RkaW4uY3NzIiwKCSJzb3VyY2VzIjogWwo
+JCSJzdGRpbiIKCV0sCgkibmFtZXMiOiBbXSwKCSJtYXBwaW5ncyI6ICJBQUNB
+LEFBQUEsRUFBRSxBQUFDLENBQUUsS0FBSyxDQURGLElBQUksQ0FDVSIK
+fQ== */"
+code_chunk_custom(css_code, "css")
+```
 
 ```{r, eval=FALSE}
 sass(
@@ -583,14 +756,17 @@ sass(
 )
 ```
 
+## Caching
+By default, `sass()` will try to do the minimum work, that is, on the first compilation, the resulting code is cached so that further compilation is not required. However, this behavior can lead to issues during development, especially for previewing a new theme change, since by definition, `sass()` will go directly in the cache instead of picking up the new elements. This is also what happens in a web browser when CSS is cached, preventing seeing any style change unless the cache is emptied. To avoid this, we encourage developers to set `options(sass.cache=FALSE)` during the theme development phase. 
+
 
 ## Sass and Shiny
 Now let's go back to Shiny! How do we include Sass code in a Shiny app? There are multiple situations:
 
-  1. You simply want to style a shiny app.
+  1. You simply want to style a Shiny app.
   2. You developed a template with custom JS and Sass/CSS to be reused by other developers.
 
-The first option is rather simple since the Sass code is compiled with `sass()` before the shiny apps is launched. The resulting code may be either a string or a CSS file (within the `www` folder), to be included in the `head`. We assume to be located at the app folder level:
+The first option is rather simple since the Sass code is compiled with `sass()` before the Shiny app is launched. The resulting code may be either a string or a CSS file (within the `www` folder), to be included in the `head`. We assume it is located at the app folder level:
 
 ```{r, eval=FALSE}
 sass(
@@ -605,7 +781,7 @@ sass(
       }
     }"
   ),
-  output = sprintf("www/main.min.css"),
+  output = "www/main.min.css",
   options = sass_options(
     output_style = "compressed",
     source_map_embed = TRUE
@@ -614,18 +790,17 @@ sass(
 ```
 
 Source maps allow us to see the original Sass code, as shown Figure \@ref(fig:sass-inspect).
-`sass_options()` gives the flexibility to fine tune the CSS output and source map configuration.
+`sass_options()` gives the flexibility to fine-tune the CSS output and source map configuration.
 
 ::: {.importantblock data-latex=""}
-For complex projects where the CSS compilation may take time, we strongly advise to process the CSS independently from
-the app startup.
+For complex projects where the CSS compilation may take time, we strongly advise processing the CSS independently from the app startup.
 :::
 
-```{r sass-inspect, echo=FALSE, fig.cap='Inspect Sass code in the web browser', out.width='100%'}
+```{r sass-inspect, echo=FALSE, fig.cap='Inspect Sass code in the web browser.', out.width='100%', fig.align='center'}
 knitr::include_graphics("images/beautify/sass-inspect.png")
 ```
 
-The second option requires to run `sass()` passing an __output__ file within the package. Then, the generated CSS
+The second option requires running `sass()` passing an __output__ file within the package. Then, the generated CSS
 is included in an HTML dependency, ready to be shipped with the template:
 
 ```{r, eval=FALSE}
@@ -651,13 +826,13 @@ my_css_deps <- htmltools::htmlDependency(
 ## Examples
 
 ### Customize `{bs4Dash}` colors {#sass-customize-bs4Dash}
-`{bs4Dash}` is a Bootstrap 4 dashboard template built on top of the [AdminLTE3](https://adminlte.io/themes/v3/) HTML template. `{shinydashboard}` is powered by the previous version, that is [AdminLTE2](https://adminlte.io/themes/AdminLTE/index2.html), which make it somehow `{bs4Dash}`'s big brother!
-AdminLTE3 relies on Sass and all files are stored [here](https://github.com/ColorlibHQ/AdminLTE/tree/master/build/scss). Particularly, all variables are located in the `_variables.scss` partial. Since we can decompose our
+`{bs4Dash}` is a Bootstrap 4 dashboard template built on top of the [AdminLTE3](https://adminlte.io/themes/v3/) HTML template. `{shinydashboard}` is powered by the previous version, that is [AdminLTE2](https://adminlte.io/themes/AdminLTE/index2.html), which makes it somehow `{bs4Dash}`'s big brother!
+AdminLTE3 relies on Sass, and all files are stored [here](https://github.com/ColorlibHQ/AdminLTE/tree/4fc0f9e59fff2a96b2fecae66def58664af57e9d/build/scss). Particularly, all variables are located in the `_variables.scss` partial. Since we can decompose our
 Sass code in multiple layers, we seamlessly customize the theme color
 variables listed below:
 
-```css
-$blue: #0073b7 !default;
+```{r, echo=FALSE, results='asis'}
+css_code <- "$blue: #0073b7 !default;
 $lightblue: #3c8dbc !default;
 $navy: #001f3f !default;
 $teal: #39cccc !default;
@@ -668,28 +843,28 @@ $fuchsia: #f012be !default;
 $purple: #605ca8 !default;
 $maroon: #d81b60 !default;
 $black: #111 !default;
-$gray-x-light: #d2d6de !default;
+$gray-x-light: #d2d6de !default;"
+code_chunk_custom(css_code, "css")
 ```
 
 Let's provide our own defaults with some custom [colors](https://colorswall.com/palette/66354/):
 
-```css
-$blue: #136377 !default;
+```{r, echo=FALSE, results='asis'}
+css_code <- "$blue: #136377 !default;
 $olive: #d8bc66 !default;
 $lime: #fcec0c !default;
 $orange: #978d01 !default;
 $maroon: #58482c !default;
-$gray-x-light: #d1c5c0 !default;
+$gray-x-light: #d1c5c0 !default;"
+code_chunk_custom(css_code, "css")
 ```
 
 Now we would have to recompile the whole AdminLTE3 Sass code to account for these changes.
-It means, all scss assets must be accessible somewhere: this is what the `{fresh}` package is doing under the [hoods](https://github.com/dreamRs/fresh/blob/master/R/create_theme.R).
-No worries, we'll come back on `{fresh}` in the next Chapter. For now, we rely on the `{OSUICode}` Sass code stored at
-`system.file("sass/adminlte/adminlte.scss", package = "OSUICode")` (since `{fresh}` may change in the future, `{OSUICode}` will be frozen to make sure the code always work):
+It means all scss assets must be accessible somewhere: this is what the `{fresh}` package is doing under the [hood](https://github.com/dreamRs/fresh/blob/bf1e00a9d9f2c3388fd88a6a0ca63869b3bf8a81/R/create_theme.R#L69).
+No worries, we'll come back to `{fresh}` in the next chapter. For now, we rely on the `{OSUICode}` Sass code stored at
+`system.file("sass/adminlte/adminlte.scss", package = "OSUICode")` (since `{fresh}` may change in the future, `{OSUICode}` will be frozen to make sure the code always works):
 
 ```{r, eval=FALSE}
-library(bs4Dash)
-
 css <- sass(
   sass_layer(
     defaults = list(
@@ -708,52 +883,18 @@ css <- sass(
     )
   )
 )
-
-
-ui <- dashboardPage(
-  dashboardHeader(title = "Custom colors"),
-  dashboardSidebar(),
-  dashboardBody(
-    tags$head(tags$style(css)),
-    # Boxes need to be put in a row (or column)
-    fluidRow(
-      box(
-        solidHeader = TRUE,
-        plotOutput("plot1", height = 250),
-        status = "olive"
-        ),
-      box(
-        solidHeader = TRUE,
-        status = "lightblue",
-        title = "Controls",
-        sliderInput(
-          "slider",
-          "Number of observations:",
-          1,
-          100,
-          50
-        )
-      )
-    )
-  )
-)
-
-server <- function(input, output) {
-  set.seed(122)
-  histdata <- rnorm(500)
-
-  output$plot1 <- renderPlot({
-    data <- histdata[seq_len(input$slider)]
-    hist(data)
-  })
-}
-
-shinyApp(ui, server)
+# This CSS is injected inside the app head (see example)
 ```
 
-Output is shown on Figure \@ref(fig:sass-adminlte-colors).
+The corresponding app may be tested below. If you want to see the whole code, run `OSUICode::get_example("sass/examples/bs4Dash-custom")`. 
 
-```{r sass-adminlte-colors, echo=FALSE, fig.cap='Custom AdminLTE colors', out.width='100%'}
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("sass/examples/bs4Dash-custom", view_code = FALSE), "r")
+```
+
+Output is shown in Figure \@ref(fig:sass-adminlte-colors).
+
+```{r sass-adminlte-colors, echo=FALSE, fig.cap='Custom AdminLTE colors.', out.width='100%'}
 knitr::include_graphics("images/beautify/sass-adminlte-colors.png")
 ```
 
@@ -762,7 +903,7 @@ namely `3.1.0`, that is not necessarily the one we want. Therefore, an alternati
 be to download the Sass files from AdminLTE3, store them in a package, ideally the `/inst` folder, and recompile the code from that folder with new variables. As AdminLTE3 depends on Bootstrap 4, we would have to recover those dependencies in a separate folder, making sure it is accessible to the AdminLTE Sass code.
 
 ### Customize `{shinybulma}`
-For convenience, the Sass code is already included in the book side [package](https://github.com/DivadNojnarg/outstanding-shiny-ui-code/tree/master/inst/sass/bulma).
+For convenience, the Sass code is already included in the book side [package](https://github.com/DivadNojnarg/OSUICode/tree/43911d32885e960d6f42c7bd7d92748109f29f00/inst/sass/bulma).
 The goal is to change the main color palette that comprises:
 
   - primary
@@ -774,17 +915,18 @@ The goal is to change the main color palette that comprises:
 In total, bulma exposes 419 Sass [variables](https://bulma.io/documentation/customize/concepts/)!
 
 Among all files, we locate the main variables file and select the relevant variables we want to modify.
-Notice we can retrieve all those information: [initial variables](https://bulma.io/documentation/customize/variables/#initial-variables) and [derived variables](https://bulma.io/documentation/customize/variables/#variables).
+Notice we can retrieve all the information on [initial variables](https://bulma.io/documentation/customize/variables/#initial-variables) and [derived variables](https://bulma.io/documentation/customize/variables/#variables).
 
 We assign them new [values](https://blog.depositphotos.com/neon-color-palettes.html):
 
-```css
-$turquoise: #03a4ff;
+```{r, echo=FALSE, results='asis'}
+css_code <- "$turquoise: #03a4ff;
 $cyan: #e705be;
 $green: #f3d6e9;
 $yellow: #fdaf2c;
 $red: #ff483e;
-$scheme-main: hsl(0, 0%, 4%);
+$scheme-main: hsl(0, 0%, 4%);"
+code_chunk_custom(css_code, "css")
 ```
 
 Particularly, we target the main body color stored in `$scheme-main`. Instead of pointing
@@ -809,52 +951,13 @@ css <- sass(
 )
 ```
 
-Finally, we try the new theme in the following app, shown on Figure \@ref(fig:sass-bulma-tiles):
+Finally, we try the new theme in the following app, shown in Figure \@ref(fig:sass-bulma-tiles). 
+If you want to see the whole code, run `OSUICode::get_example("sass/examples/shinybulma-custom")`. 
 
-```{r, eval=FALSE}
-#remotes::install_github("RinteRface/shinybulma")
-
-library(shinybulma)
-
-shinyApp(
-  ui = bulmaPage(
-    tags$head(tags$style(css)),
-    bulmaSection(
-      bulmaTileAncestor(
-        bulmaTileParent(
-          vertical = TRUE,
-          bulmaTileChild(
-            bulmaTitle("Tile 1"),
-            p("Put some data here"),
-            color = "link"
-          ),
-          bulmaTileChild(
-            bulmaTitle("Tile 2"),
-            "Hi Bulma!",
-            color = "danger"
-          )
-        ),
-        bulmaTileParent(
-          vertical = TRUE,
-          bulmaTileChild(
-            bulmaTitle("Tile 3"),
-            p("Put some data here"),
-            color = "warning"
-          ),
-          bulmaTileChild(
-            bulmaTitle("Tile 3"),
-            ("Put some data here"),
-            color = "info"
-          )
-        )
-      )
-    )
-  ),
-  server = function(input, output) {}
-)
+```{r, echo=FALSE, results='asis'}
+code_chunk(OSUICode::get_example("sass/examples/shinybulma-custom", view_code = FALSE), "r")
 ```
 
-
-```{r sass-bulma-tiles, echo=FALSE, fig.cap='Custom bulma theme', out.width='100%'}
+```{r sass-bulma-tiles, echo=FALSE, fig.cap='Custom bulma theme.', out.width='100%'}
 knitr::include_graphics("images/beautify/sass-bulma-tiles.png")
 ```
