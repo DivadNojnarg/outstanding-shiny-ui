@@ -1,15 +1,15 @@
 # Shiny inputs lifecycles {#shiny-input-lifecycle}
-In the following, we provide an integrated view of the shiny input system by summarizing all 
-mechanisms seen since chapter \@ref(shiny-intro).
+In the following, we provide an integrated view of the Shiny input system by summarizing all 
+mechanisms seen since Chapter \@ref(shiny-intro).
 
 ## App initialization
-When a shiny apps starts, Shiny runs `initShiny` on the client. This JS [function](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js) has three main tasks:
+When a Shiny app starts, Shiny runs `initShiny` on the client. This JS [function](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js) has three main tasks:
 
   - __Bind__ all inputs and outputs.
   - __Initialize__ all inputs (if necessary) with `initializeInputs`.
-  - Initialize the client __websocket__ connection mentioned in the previous chapter \@ref(shiny-intro) and send __initial values__ to the server.
+  - Initialize the client __websocket__ connection mentioned in Chapter \@ref(shiny-intro) and send __initial values__ to the server.
 
-Most input bindings are in principle bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple shiny app. In any case, they are all contained in a __binding registry__, namely `inputBindings` built on top the following class:
+Most input bindings are, in principle, bundled in the `{shiny}` package. Some may be user-defined like in `{shinyMobile}` or even in a simple Shiny app. In any case, they are all contained in a __binding registry__, namely `inputBindings` built on top the following class:
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "var BindingRegistry = function() {
@@ -21,23 +21,23 @@ code_chunk_custom(js_code, "js")
 
 This class has a method to `register` a binding. This method is executed when calling `Shiny.inputBindings.register(myBinding, 'reference');`, which appends the newly created binding to the bindings array. 
 
-When shiny starts, it has to find all defined bindings with the `getBindings` method.
+When Shiny starts, it has to find all defined bindings with the `getBindings` method.
 Once done, for each binding, `find` is triggered. If no corresponding element is found in the DOM, nothing is done. For each found input, the following methods are triggered:
 
   - `getId` returns the input id. This ensures the uniqueness and is critical.
-  - `getType` optionally handles any `registerInputHandler` defined by the user on the R side. A detailed example is shown in \@ref(custom-data-format).
+  - `getType` optionally handles any `registerInputHandler` defined by the user on the R side. A detailed example is shown in section \@ref(custom-data-format).
   - `getValue` gets the initial input value.
   - `subscribe` registers event listeners driving the input behavior.
 
-The data attribute `shiny-input-binding` is then added. This allows shiny to access the input binding methods from the client, as shown in \@ref(update-binding-client). The `shiny-bound-input` class is added, the corresponding input is appended to the `boundInputs` object (listing all bound inputs) and `shiny:bound` triggered on the client. As a side note, if you recall about the `Shiny.unbinAll()` method from section \@ref(input-binding) and \@ref(edit-input-binding), it triggers the `shiny:unbound` event for all inputs as well as remove them from the `boundInputs` registry.
+The data attribute `shiny-input-binding` is then added. This allows Shiny to access the input binding methods from the client, as shown in section \@ref(update-binding-client). The `shiny-bound-input` class is added, the corresponding input is appended to the `boundInputs` object (listing all bound inputs) and `shiny:bound` triggered on the client. As a side note, if you recall the `Shiny.unbinAll()` method from sections \@ref(input-binding) and \@ref(edit-input-binding), it triggers the `shiny:unbound` event for all inputs as well as removes them from the `boundInputs` registry.
 
-Once done, shiny stores all initial values in a variable `initialInput`, also containing all [client data](https://shiny.rstudio.com/articles/client-data.html) and pass them to the `Shinyapp.connect` method. As shown in \@ref(shiny-intro), the latter opens the client __websocket__ connection, raises the `shiny:connected` event and send all values to the server (R). Few time after, `shiny:sessioninitialized` is triggered.
+Once done, Shiny stores all initial values in a variable `initialInput`, also containing all [client data](https://shiny.rstudio.com/articles/client-data.html) and passes them to the `Shinyapp.connect` method. As shown in Chapter \@ref(shiny-intro), the latter opens the client __websocket__ connection, raises the `shiny:connected` event and sends all values to the server (R). A few time after, `shiny:sessioninitialized` is triggered.
 
 ```{r init-shiny-recap, echo=FALSE, fig.cap='What Shiny does client side on initialization.', out.width='50%', fig.align='center'}
 knitr::include_graphics("images/survival-kit/init-shiny-recap.png")
 ```
 
-In chapter \@ref(shiny-intro), we briefly described the `Shiny` JavaScript object. As an exercise, let's explore what the `Shiny.shinyApp` object contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js). 
+In Chapter \@ref(shiny-intro), we briefly described the `Shiny` JavaScript object. As an exercise, let's explore what the `Shiny.shinyApp` object contains. The definition is located in the shinyapps.js [script](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/shinyapp.js). 
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "var ShinyApp = function() {
@@ -62,7 +62,7 @@ js_code <- "var ShinyApp = function() {
 code_chunk_custom(js_code, "js")
 ```
 
-It creates several properties, some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization):
+It creates several properties; some of them are easy to guess like `inputValues` or `initialInput`. Let's run the example below and open the HTML inspector. Notice that the `sliderInput` is set to 500 at `t0` (initialization):
 
 <!-- NOT deploy: not informative just for test -->
 
@@ -94,7 +94,7 @@ knitr::include_graphics("images/survival-kit/shiny-init-input.png")
 ```
 
 ## Update input {#update-input-lifecycle}
-Below we try to explain what are the mechanisms to update an input from the server on the client. As stated above, it all starts with an `update<name>Input` function call, which actually sends a message through the current __session__. This message is received by the client __websocket__ message manager:
+Below we try to explain what are the mechanisms to update an input from the server on the client. As stated previously, it all starts with an `update<name>Input` function call, which actually sends a message through the current __session__. This message is received by the client __websocket__ message manager:
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "socket.onmessage = function(e) {
@@ -127,7 +127,7 @@ js_code <- "addMessageHandler('inputMessages', function(message) {
 code_chunk_custom(js_code, "js")
 ```
 
-In short, it gets the `inputId` and access the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and call the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
+In short, it gets the `inputId` and accesses the corresponding input binding. Then it triggers the `shiny:updateinput` [event](https://shiny.rstudio.com/articles/js-events.html) and calles the input binding `receiveMessage` method. This fires `setValue` and `subscribe`. The way `subscribe` works is not really well covered in the official [documentation](https://shiny.rstudio.com/articles/building-inputs.html). 
 The `callback` function is actually defined during the initialization [process](https://github.com/rstudio/shiny/blob/60db1e02b03d8e6fb146c9bb1bbfbce269231add/srcjs/init_shiny.js#L128):
 
 ```{r, echo=FALSE, results='asis'}
@@ -156,7 +156,7 @@ code_chunk_custom(js_code, "js")
 code_chunk(OSUICode::get_example("inputs-lifecycle/event-message"), "r")
 ```
 
-Overall, the result is stored in a queue, namely `pendingData` and sent to the server with `shinyapp.sendInput`:
+Overall, the result is stored in a queue, namely `pendingData`, and sent to the server with `shinyapp.sendInput`:
 
 ```{r, echo=FALSE, results='asis'}
 js_code <- "this.sendInput = function(values) {
